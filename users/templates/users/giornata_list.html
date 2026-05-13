@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block title %}Giornate lavorative{% endblock %}
+
+{% block sidebar_nav %}
+  <li class="nav-section-title">Principale</li>
+  <li><a href="{% url 'dashboard' %}"><i class="bi bi-speedometer2"></i><span>Dashboard</span></a></li>
+  <li><a href="{% url 'users:user_list' %}"><i class="bi bi-people"></i><span>Dipendenti</span></a></li>
+  <li><a href="{% url 'users:timbratura_list' %}" class="active"><i class="bi bi-clock-history"></i><span>Timbrature</span></a></li>
+  <li class="nav-section-title">Presenze</li>
+  <li><a href="{% url 'users:richieste_ferie_list' %}"><i class="bi bi-calendar-check"></i><span>Ferie e Permessi</span></a></li>
+  {% if user.is_staff %}
+  <li><a href="{% url 'users:richieste_ferie_admin_list' %}"><i class="bi bi-clipboard2-check"></i><span>Gestione Richieste</span></a></li>
+  {% endif %}
+  <li><a href="{% url 'core:calendario_aziendale' %}"><i class="bi bi-calendar3"></i><span>Calendario</span></a></li>
+  {% if user.is_staff %}
+  <li class="nav-section-title">Amministrazione</li>
+  <li><a href="{% url 'core:amministrazione_dashboard' %}"><i class="bi bi-gear"></i><span>Impostazioni</span></a></li>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+  <div>
+    <h1 class="h4 fw-bold mb-1" style="color:var(--slate-900);">Giornate lavorative</h1>
+    <p class="text-muted mb-0" style="font-size:.875rem;">Riepilogo presenze per giornata</p>
+  </div>
+</div>
+
+<!-- Filters -->
+<div class="card card-body mb-3">
+  <form method="get" class="row g-2 align-items-end">
+    <div class="col-md-3">
+      <label class="form-label-sm">Dipendente</label>
+      <select name="user" class="form-select form-select-sm">
+        <option value="">Tutti</option>
+        {% for u in tutti_utenti %}
+        <option value="{{ u.pk }}" {% if request.GET.user == u.pk|stringformat:"s" %}selected{% endif %}>
+          {{ u.get_full_name|default:u.username }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2">
+      <label class="form-label-sm">Mese</label>
+      <input type="month" name="mese" class="form-control form-control-sm" value="{{ request.GET.mese }}">
+    </div>
+    <div class="col-auto">
+      <button type="submit" class="btn btn-primary btn-sm">Filtra</button>
+      <a href="{% url 'users:giornata_list' %}" class="btn btn-outline-secondary btn-sm">Reset</a>
+    </div>
+    <div class="col-auto ms-auto">
+      <a href="?{{ request.GET.urlencode }}&export=excel" class="btn btn-outline-success btn-sm d-flex align-items-center gap-1">
+        <i class="bi bi-file-earmark-excel"></i> Excel
+      </a>
+    </div>
+  </form>
+</div>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Dipendente</th>
+          <th>Data</th>
+          <th>Ore ordinarie</th>
+          <th>Ore straordinarie</th>
+          <th>Stato</th>
+          <th>Note</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for g in giornate %}
+        <tr>
+          <td>
+            <a href="{% url 'users:user_detail' g.user.pk %}?tab=presenze" style="color:var(--indigo-600);font-size:.875rem;text-decoration:none;">
+              {{ g.user.get_full_name|default:g.user.username }}
+            </a>
+          </td>
+          <td style="font-size:.875rem;">{{ g.data|date:"D d/m/Y" }}</td>
+          <td style="font-size:.875rem;">{{ g.ore_ordinarie|floatformat:1|default:"—" }}h</td>
+          <td style="font-size:.875rem;">
+            {% if g.ore_straordinarie %}
+              <span style="color:#f59e0b;">{{ g.ore_straordinarie|floatformat:1 }}h</span>
+            {% else %}—{% endif %}
+          </td>
+          <td>
+            {% if g.stato == 'CHIUSA' %}
+              <span class="badge" style="background:#dcfce7;color:#166534;font-size:.7rem;">Chiusa</span>
+            {% elif g.stato == 'approvata' %}
+              <span class="badge" style="background:#dbeafe;color:#1e40af;font-size:.7rem;">Approvata</span>
+            {% else %}
+              <span class="badge" style="background:#f1f5f9;color:#64748b;font-size:.7rem;">Aperta</span>
+            {% endif %}
+          </td>
+          <td style="font-size:.75rem;color:var(--slate-400);">{{ g.note|default:"" }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="6" class="text-center py-5" style="color:var(--slate-400);">
+            <i class="bi bi-calendar-week" style="font-size:2.5rem;display:block;margin-bottom:.75rem;"></i>
+            Nessuna giornata trovata
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<style>
+  body { font-family: 'Helvetica', Arial, sans-serif; font-size: 11pt; color: #1e293b; margin: 0; padding: 0; }
+  .page { padding: 2.5cm 2.5cm 2cm 2.5cm; }
+  .header { border-bottom: 2px solid #6366f1; padding-bottom: 1rem; margin-bottom: 2rem; }
+  .brand { font-size: 18pt; font-weight: 700; color: #6366f1; }
+  .protocollo { font-size: 9pt; color: #64748b; margin-top: .25rem; font-family: monospace; }
+  .meta-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; padding: .75rem 1rem; margin-bottom: 2rem; }
+  .meta-row { display: flex; gap: 2rem; }
+  .meta-item label { font-size: 8pt; text-transform: uppercase; color: #94a3b8; letter-spacing: .05em; display: block; }
+  .meta-item span { font-size: 10pt; font-weight: 600; color: #0f172a; }
+  .mittente-dest { display: flex; gap: 3rem; margin-bottom: 2rem; }
+  .indirizzo h3 { font-size: 9pt; text-transform: uppercase; color: #94a3b8; letter-spacing: .05em; margin: 0 0 .5rem; }
+  .indirizzo p { margin: 0; font-size: 10pt; line-height: 1.6; }
+  .oggetto { margin-bottom: 1.5rem; }
+  .oggetto h2 { font-size: 13pt; font-weight: 700; color: #0f172a; margin: 0; }
+  .oggetto .ref { font-size: 9pt; color: #64748b; }
+  .contenuto { line-height: 1.8; font-size: 10.5pt; white-space: pre-wrap; }
+  .footer { margin-top: 3rem; border-top: 1px solid #e2e8f0; padding-top: 1rem; font-size: 8pt; color: #94a3b8; }
+  .priority-urgente { color: #dc2626; }
+  .priority-alta { color: #f59e0b; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="header">
+    <div class="brand">Gestionale BASE</div>
+    <div class="protocollo">Corrispondenza № {{ corrispondenza.numero_protocollo }}</div>
+  </div>
+
+  <div class="meta-box">
+    <div class="meta-row">
+      <div class="meta-item">
+        <label>Data</label>
+        <span>{% if corrispondenza.data_invio %}{{ corrispondenza.data_invio|date:"d/m/Y" }}{% else %}{{ corrispondenza.created_at|date:"d/m/Y" }}{% endif %}</span>
+      </div>
+      <div class="meta-item">
+        <label>Protocollo</label>
+        <span>{{ corrispondenza.numero_protocollo }}</span>
+      </div>
+      <div class="meta-item">
+        <label>Priorità</label>
+        <span class="priority-{{ corrispondenza.priorita }}">{{ corrispondenza.get_priorita_display }}</span>
+      </div>
+      {% if corrispondenza.tipo_corrispondenza %}
+      <div class="meta-item">
+        <label>Tipo</label>
+        <span>{{ corrispondenza.tipo_corrispondenza.nome }}</span>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="mittente-dest">
+    <div class="indirizzo">
+      <h3>Mittente</h3>
+      <p><strong>{{ corrispondenza.creato_da.get_full_name|default:corrispondenza.creato_da.username }}</strong></p>
+    </div>
+    <div class="indirizzo">
+      <h3>Destinatario</h3>
+      <p>
+        <strong>{{ corrispondenza.get_destinatario_display }}</strong><br>
+        {% if corrispondenza.tipo_destinatario == 'esterno' %}
+          {% if corrispondenza.destinatario_indirizzo %}{{ corrispondenza.destinatario_indirizzo }}<br>{% endif %}
+          {% if corrispondenza.destinatario_cap %}{{ corrispondenza.destinatario_cap }} {% endif %}
+          {% if corrispondenza.destinatario_citta %}{{ corrispondenza.destinatario_citta }}{% endif %}
+          {% if corrispondenza.destinatario_provincia %} ({{ corrispondenza.destinatario_provincia }}){% endif %}
+        {% endif %}
+      </p>
+    </div>
+  </div>
+
+  <div class="oggetto">
+    <div class="ref">OGGETTO</div>
+    <h2>{{ corrispondenza.oggetto }}</h2>
+  </div>
+
+  <div class="contenuto">{{ corrispondenza.contenuto }}</div>
+
+  <div class="footer">
+    Documento generato il {{ corrispondenza.created_at|date:"d/m/Y H:i" }} — Gestionale BASE
+  </div>
+</div>
+</body>
+</html>

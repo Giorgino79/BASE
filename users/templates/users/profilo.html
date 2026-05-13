@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Il mio profilo{% endblock %}
+
+{% block sidebar_nav %}
+  <li class="nav-section-title">Principale</li>
+  <li><a href="{% url 'dashboard' %}"><i class="bi bi-speedometer2"></i><span>Dashboard</span></a></li>
+  <li><a href="{% url 'users:user_list' %}"><i class="bi bi-people"></i><span>Dipendenti</span></a></li>
+  <li class="nav-section-title">Account</li>
+  <li><a href="{% url 'users:profilo' %}" class="active"><i class="bi bi-person-circle"></i><span>Il mio profilo</span></a></li>
+  <li><a href="{% url 'users:impostazioni' %}"><i class="bi bi-sliders"></i><span>Impostazioni</span></a></li>
+  <li><a href="{% url 'users:change_password' %}"><i class="bi bi-key"></i><span>Cambia password</span></a></li>
+{% endblock %}
+
+{% block content %}
+<h1 class="h4 fw-bold mb-4" style="color:var(--slate-900);">Il mio profilo</h1>
+
+<div class="row g-3">
+  <div class="col-lg-3">
+    {% with profile_user=request.user %}
+    {% include "users/includes/user_detail_sidebar.html" %}
+    {% endwith %}
+  </div>
+
+  <div class="col-lg-9">
+    <div class="row g-3">
+      <div class="col-md-6">
+        <div class="card card-body">
+          <h6 class="fw-semibold mb-3" style="font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--slate-500);">
+            Dati personali
+          </h6>
+          <dl class="row mb-0" style="font-size:.875rem;">
+            <dt class="col-5 text-muted">Nome completo</dt>
+            <dd class="col-7 mb-2">{{ request.user.get_full_name|default:"—" }}</dd>
+            <dt class="col-5 text-muted">Email</dt>
+            <dd class="col-7 mb-2">{{ request.user.email|default:"—" }}</dd>
+            <dt class="col-5 text-muted">Telefono</dt>
+            <dd class="col-7 mb-2">{{ request.user.telefono|default:"—" }}</dd>
+            <dt class="col-5 text-muted">Cod. fiscale</dt>
+            <dd class="col-7 mb-0">{{ request.user.codice_fiscale|default:"—" }}</dd>
+          </dl>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="card card-body">
+          <h6 class="fw-semibold mb-3" style="font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--slate-500);">
+            Dati lavorativi
+          </h6>
+          <dl class="row mb-0" style="font-size:.875rem;">
+            <dt class="col-5 text-muted">Mansione</dt>
+            <dd class="col-7 mb-2">{{ request.user.qualifica|default:"—" }}</dd>
+            <dt class="col-5 text-muted">Assunzione</dt>
+            <dd class="col-7 mb-2">{{ request.user.data_assunzione|date:"d/m/Y"|default:"—" }}</dd>
+            <dt class="col-5 text-muted">Username</dt>
+            <dd class="col-7 mb-0">{{ request.user.username }}</dd>
+          </dl>
+        </div>
+      </div>
+
+      <!-- Ferie stats -->
+      <div class="col-12">
+        <div class="card card-body">
+          <h6 class="fw-semibold mb-3" style="font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--slate-500);">
+            Riepilogo presenze — anno {{ oggi.year }}
+          </h6>
+          <div class="row g-3">
+            <div class="col-sm-4">
+              <div class="p-3 rounded text-center" style="background:var(--slate-50);border:1px solid var(--slate-100);">
+                <div class="fw-bold" style="font-size:1.5rem;color:#4f46e5;">{{ ferie_approvate|default:0 }}</div>
+                <div style="font-size:.75rem;color:var(--slate-500);">Giorni ferie approvati</div>
+              </div>
+            </div>
+            <div class="col-sm-4">
+              <div class="p-3 rounded text-center" style="background:var(--slate-50);border:1px solid var(--slate-100);">
+                <div class="fw-bold" style="font-size:1.5rem;color:#f59e0b;">{{ ferie_in_attesa|default:0 }}</div>
+                <div style="font-size:.75rem;color:var(--slate-500);">Richieste in attesa</div>
+              </div>
+            </div>
+            <div class="col-sm-4">
+              <div class="p-3 rounded text-center" style="background:var(--slate-50);border:1px solid var(--slate-100);">
+                <div class="fw-bold" style="font-size:1.5rem;color:#0ea5e9;">{{ ore_permesso|default:0 }}h</div>
+                <div style="font-size:.75rem;color:var(--slate-500);">Ore permesso usate</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

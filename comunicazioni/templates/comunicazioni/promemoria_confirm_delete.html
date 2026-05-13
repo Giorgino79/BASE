@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block title %}Elimina promemoria{% endblock %}
+
+{% block sidebar_nav %}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-5">
+    <div class="card border-danger">
+      <div class="card-body p-4 text-center">
+        <div class="mb-3" style="color:#dc2626;font-size:3rem;">
+          <i class="bi bi-trash"></i>
+        </div>
+        <h5 class="fw-bold mb-2">Elimina promemoria</h5>
+        <p class="text-muted mb-1" style="font-size:.9rem;">
+          Stai per eliminare il promemoria:
+        </p>
+        <p class="fw-semibold mb-4">"{{ object.titolo }}"</p>
+        <p class="text-muted" style="font-size:.8rem;">Questa azione non può essere annullata.</p>
+        <form method="post" class="d-flex gap-2 justify-content-center mt-3">
+          {% csrf_token %}
+          <a href="{% url 'comunicazioni:promemoria_list' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-x-lg me-1"></i>Annulla
+          </a>
+          <button type="submit" class="btn btn-danger">
+            <i class="bi bi-trash me-1"></i>Elimina
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

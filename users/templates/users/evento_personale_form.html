@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block title %}{% if object %}Modifica evento{% else %}Nuovo evento{% endif %}{% endblock %}
+
+{% block sidebar_nav %}
+  <li class="nav-section-title">Principale</li>
+  <li><a href="{% url 'dashboard' %}"><i class="bi bi-speedometer2"></i><span>Dashboard</span></a></li>
+  <li class="nav-section-title">Presenze</li>
+  <li><a href="{% url 'core:calendario_aziendale' %}"><i class="bi bi-calendar3"></i><span>Calendario</span></a></li>
+  <li><a href="{% url 'core:calendario_personale' %}" class="active"><i class="bi bi-calendar-heart"></i><span>Il mio calendario</span></a></li>
+{% endblock %}
+
+{% block content %}
+<nav class="mb-3" style="font-size:.8rem;">
+  <a href="{% url 'core:calendario_personale' %}" style="color:var(--indigo-600);text-decoration:none;">Il mio calendario</a>
+  <i class="bi bi-chevron-right mx-1" style="color:var(--slate-400);"></i>
+  <span style="color:var(--slate-500);">{% if object %}Modifica evento{% else %}Nuovo evento{% endif %}</span>
+</nav>
+
+<div class="row justify-content-center">
+  <div class="col-xl-5 col-lg-7">
+    <div class="card">
+      <div class="card-header" style="background:var(--slate-50);">
+        <h5 class="fw-semibold mb-0" style="color:var(--slate-900);">
+          <i class="bi bi-calendar-heart me-2" style="color:var(--indigo-600);"></i>
+          {% if object %}Modifica evento{% else %}Nuovo evento personale{% endif %}
+        </h5>
+      </div>
+      <div class="card-body">
+        <form method="post" novalidate>
+          {% csrf_token %}
+          {% crispy form %}
+          <div class="d-flex gap-2 justify-content-end pt-3 mt-2" style="border-top:1px solid var(--slate-100);">
+            <a href="{% url 'core:calendario_personale' %}" class="btn btn-outline-secondary">Annulla</a>
+            {% if object %}
+            <a href="{% url 'users:evento_personale_delete' object.pk %}"
+               class="btn btn-outline-danger me-auto"
+               onclick="return confirm('Eliminare questo evento?')">
+              <i class="bi bi-trash me-1"></i> Elimina
+            </a>
+            {% endif %}
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-check-lg me-1"></i>
+              {% if object %}Salva modifiche{% else %}Crea evento{% endif %}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

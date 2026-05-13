@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block title %}Gestisci permesso{% endblock %}
+
+{% block sidebar_nav %}
+  <li class="nav-section-title">Principale</li>
+  <li><a href="{% url 'dashboard' %}"><i class="bi bi-speedometer2"></i><span>Dashboard</span></a></li>
+  <li><a href="{% url 'users:user_list' %}"><i class="bi bi-people"></i><span>Dipendenti</span></a></li>
+  <li class="nav-section-title">Presenze</li>
+  <li><a href="{% url 'users:richieste_ferie_list' %}"><i class="bi bi-calendar-check"></i><span>Ferie e Permessi</span></a></li>
+  <li><a href="{% url 'users:richieste_permessi_admin_list' %}" class="active"><i class="bi bi-clipboard2-check"></i><span>Gestione Richieste</span></a></li>
+{% endblock %}
+
+{% block content %}
+<nav class="mb-3" style="font-size:.8rem;">
+  <a href="{% url 'users:richieste_permessi_admin_list' %}" style="color:var(--indigo-600);text-decoration:none;">Gestione permessi</a>
+  <i class="bi bi-chevron-right mx-1" style="color:var(--slate-400);"></i>
+  <span style="color:var(--slate-500);">Gestisci permesso</span>
+</nav>
+
+<div class="row g-3 justify-content-center">
+  <div class="col-lg-5">
+    <div class="card card-body">
+      <h6 class="fw-semibold mb-3" style="color:var(--slate-900);">Dettaglio richiesta</h6>
+      <div class="d-flex align-items-center gap-3 mb-4">
+        <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+             style="width:48px;height:48px;background:#e0e7ff;color:#4338ca;font-size:1.1rem;font-weight:700;">
+          {{ richiesta.user.first_name|first|upper }}{{ richiesta.user.last_name|first|upper }}
+        </div>
+        <div>
+          <div class="fw-semibold" style="color:var(--slate-900);">{{ richiesta.user.get_full_name }}</div>
+          <div style="font-size:.8rem;color:var(--slate-400);">{{ richiesta.user.qualifica|default:"Dipendente" }}</div>
+        </div>
+      </div>
+      <dl class="row mb-0" style="font-size:.875rem;">
+        <dt class="col-5" style="color:var(--slate-400);font-weight:500;">Data</dt>
+        <dd class="col-7 mb-2" style="color:var(--slate-700);">{{ richiesta.data_inizio|date:"d/m/Y" }}</dd>
+        <dt class="col-5" style="color:var(--slate-400);font-weight:500;">Ore richieste</dt>
+        <dd class="col-7 mb-2" style="color:var(--slate-700);">{{ richiesta.ore_richieste|default:"—" }}h</dd>
+        <dt class="col-5" style="color:var(--slate-400);font-weight:500;">Tipo permesso</dt>
+        <dd class="col-7 mb-2" style="color:var(--slate-700);">{{ richiesta.tipo_permesso|default:"—" }}</dd>
+        <dt class="col-5" style="color:var(--slate-400);font-weight:500;">Motivazione</dt>
+        <dd class="col-7 mb-0" style="color:var(--slate-700);">{{ richiesta.motivazione|default:"—" }}</dd>
+      </dl>
+    </div>
+  </div>
+  <div class="col-lg-7">
+    <div class="card card-body">
+      <h6 class="fw-semibold mb-3" style="color:var(--slate-900);">Decisione</h6>
+      <form method="post" novalidate>
+        {% csrf_token %}
+        {% crispy form %}
+        <div class="d-flex gap-2 pt-3 mt-2" style="border-top:1px solid var(--slate-100);">
+          <button type="submit" name="azione" value="approva" class="btn btn-success flex-fill">
+            <i class="bi bi-check-circle me-1"></i>Approva
+          </button>
+          <button type="submit" name="azione" value="rifiuta" class="btn btn-danger flex-fill">
+            <i class="bi bi-x-circle me-1"></i>Rifiuta
+          </button>
+          <a href="{% url 'users:richieste_permessi_admin_list' %}" class="btn btn-outline-secondary">Annulla</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

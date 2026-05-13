@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block title %}Nuova chat{% endblock %}
+
+{% block sidebar_nav %}{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+  <div>
+    <h1 class="h4 fw-bold mb-1" style="color:var(--slate-900);">Nuova chat</h1>
+    <p class="text-muted mb-0" style="font-size:.875rem;">Avvia una chat diretta o crea un gruppo</p>
+  </div>
+  <a href="{% url 'comunicazioni:chat_list' %}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left me-1"></i>Annulla
+  </a>
+</div>
+
+<div class="row justify-content-center">
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-body p-4">
+        <form method="post">
+          {% csrf_token %}
+
+          <!-- Tipo -->
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Tipo di chat</label>
+            <div class="d-flex gap-3">
+              {% for radio in form.tipo %}
+              <div class="form-check">
+                {{ radio.tag }}
+                <label class="form-check-label" for="{{ radio.id_for_label }}">
+                  {{ radio.choice_label }}
+                </label>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+
+          <!-- Titolo gruppo -->
+          <div class="mb-3" id="titoloWrap" style="display:none;">
+            <label class="form-label fw-semibold" for="{{ form.titolo.id_for_label }}">Titolo gruppo</label>
+            {{ form.titolo }}
+          </div>
+
+          <!-- Destinatari -->
+          <div class="mb-4">
+            <label class="form-label fw-semibold">Destinatari</label>
+            <div style="max-height:220px;overflow-y:auto;border:1px solid #e2e8f0;border-radius:8px;padding:.75rem;">
+              {% for cb in form.destinatari %}
+              <div class="form-check">
+                {{ cb.tag }}
+                <label class="form-check-label" for="{{ cb.id_for_label }}">{{ cb.choice_label }}</label>
+              </div>
+              {% endfor %}
+            </div>
+            {% if form.destinatari.errors %}
+            <div class="text-danger" style="font-size:.8rem;">{{ form.destinatari.errors }}</div>
+            {% endif %}
+          </div>
+
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-chat-dots me-1"></i>Avvia chat
+            </button>
+            <a href="{% url 'comunicazioni:chat_list' %}" class="btn btn-outline-secondary">Annulla</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const tipoRadios = document.querySelectorAll('input[name="tipo"]');
+const titoloWrap = document.getElementById('titoloWrap');
+
+function updateTitolo() {
+  const val = document.querySelector('input[name="tipo"]:checked')?.value;
+  titoloWrap.style.display = val === 'group' ? '' : 'none';
+}
+tipoRadios.forEach(r => r.addEventListener('change', updateTitolo));
+updateTitolo();
+</script>
+{% endblock %}

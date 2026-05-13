@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard Moduli{% endblock %}
+
+{% block sidebar_nav %}
+  <li class="nav-section-title">Principale</li>
+  <li><a href="{% url 'dashboard' %}"><i class="bi bi-speedometer2"></i><span>Dashboard</span></a></li>
+  <li class="nav-section-title">Amministrazione</li>
+  <li><a href="{% url 'core:amministrazione_dashboard' %}"><i class="bi bi-gear"></i><span>Impostazioni</span></a></li>
+  <li><a href="{% url 'core:modules_dashboard' %}" class="active"><i class="bi bi-puzzle"></i><span>Moduli</span></a></li>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+  <div>
+    <h1 class="h4 fw-bold mb-1" style="color:var(--slate-900);">Dashboard Moduli</h1>
+    <p class="text-muted mb-0" style="font-size:.875rem;">
+      {{ total_installed }} / {{ total_modules }} moduli installati
+    </p>
+  </div>
+</div>
+
+{% if has_issues %}
+<div class="alert d-flex gap-2 mb-4" style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;">
+  <i class="bi bi-exclamation-triangle-fill" style="color:#ef4444;flex-shrink:0;margin-top:.1rem;"></i>
+  <div>
+    <div class="fw-semibold" style="font-size:.875rem;color:#7f1d1d;">Problemi di dipendenza rilevati</div>
+    <ul class="mb-0 mt-1" style="font-size:.8rem;color:#991b1b;">
+      {% for issue in dependency_issues %}
+      <li>{{ issue }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+{% endif %}
+
+<!-- Stats -->
+<div class="row g-3 mb-4">
+  <div class="col-sm-4">
+    <div class="stat-card">
+      <div class="stat-card-icon icon-indigo">
+        <i class="bi bi-puzzle-fill"></i>
+      </div>
+      <div class="stat-card-body">
+        <div class="stat-card-value">{{ total_modules }}</div>
+        <div class="stat-card-label">Moduli disponibili</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-4">
+    <div class="stat-card">
+      <div class="stat-card-icon icon-emerald">
+        <i class="bi bi-check-circle-fill"></i>
+      </div>
+      <div class="stat-card-body">
+        <div class="stat-card-value">{{ core_installed }}</div>
+        <div class="stat-card-label">Moduli core</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-4">
+    <div class="stat-card">
+      <div class="stat-card-icon icon-sky">
+        <i class="bi bi-star-fill"></i>
+      </div>
+      <div class="stat-card-body">
+        <div class="stat-card-value">{{ optional_installed }}</div>
+        <div class="stat-card-label">Moduli opzionali</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Installed modules -->
+{% if installed_modules %}
+<div class="card mb-3">
+  <div class="card-header" style="background:var(--slate-50);border-bottom:1px solid var(--slate-100);">
+    <span class="fw-semibold" style="font-size:.875rem;color:var(--slate-900);">
+      <i class="bi bi-check-circle-fill text-success me-2"></i>Moduli installati
+    </span>
+  </div>
+  <div class="table-responsive">
+    <table class="table mb-0">
+      <thead>
+        <tr>
+          <th>Modulo</th>
+          <th>Versione</th>
+          <th>Tipo</th>
+          <th>Dipendenze</th>
+          <th>Stato</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in installed_modules %}
+        <tr>
+          <td>
+            <div class="fw-medium" style="font-size:.875rem;color:var(--slate-800);">{{ m.label|default:m.name }}</div>
+            {% if m.description %}
+            <div style="font-size:.75rem;color:var(--slate-400);">{{ m.description }}</div>
+            {% endif %}
+          </td>
+          <td style="font-size:.875rem;font-family:monospace;color:var(--slate-600);">{{ m.version|default:"—" }}</td>
+          <td>
+            {% if m.is_core %}
+              <span class="badge" style="background:#ede9fe;color:#5b21b6;font-size:.7rem;">Core</span>
+            {% else %}
+              <span class="badge" style="background:#dbeafe;color:#1e40af;font-size:.7rem;">Opzionale</span>
+            {% endif %}
+          </td>
+          <td style="font-size:.75rem;color:var(--slate-400);">
+            {% if m.dependencies %}{{ m.dependencies|join:", " }}{% else %}—{% endif %}
+          </td>
+          <td>
+            <span class="badge" style="background:#dcfce7;color:#166534;font-size:.7rem;">
+              <i class="bi bi-check me-1"></i>Installato
+            </span>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<!-- Not installed -->
+{% if not_installed_modules %}
+<div class="card">
+  <div class="card-header" style="background:var(--slate-50);border-bottom:1px solid var(--slate-100);">
+    <span class="fw-semibold" style="font-size:.875rem;color:var(--slate-900);">
+      <i class="bi bi-dash-circle me-2" style="color:var(--slate-400);"></i>Moduli non installati
+    </span>
+  </div>
+  <div class="table-responsive">
+    <table class="table mb-0">
+      <thead>
+        <tr>
+          <th>Modulo</th>
+          <th>Tipo</th>
+          <th>Dipendenze richieste</th>
+          <th>Stato</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in not_installed_modules %}
+        <tr style="opacity:.7;">
+          <td>
+            <div class="fw-medium" style="font-size:.875rem;color:var(--slate-700);">{{ m.label|default:m.name }}</div>
+            {% if m.description %}
+            <div style="font-size:.75rem;color:var(--slate-400);">{{ m.description }}</div>
+            {% endif %}
+          </td>
+          <td>
+            {% if m.is_core %}
+              <span class="badge" style="background:#ede9fe;color:#5b21b6;font-size:.7rem;">Core</span>
+            {% else %}
+              <span class="badge" style="background:#f1f5f9;color:#64748b;font-size:.7rem;">Opzionale</span>
+            {% endif %}
+          </td>
+          <td style="font-size:.75rem;color:var(--slate-400);">
+            {% if m.dependencies %}{{ m.dependencies|join:", " }}{% else %}—{% endif %}
+          </td>
+          <td>
+            <span class="badge" style="background:#f1f5f9;color:#64748b;font-size:.7rem;">Non installato</span>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

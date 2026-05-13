@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}Elimina evento{% endblock %}
+
+{% block sidebar_nav %}
+  <li class="nav-section-title">Principale</li>
+  <li><a href="{% url 'dashboard' %}"><i class="bi bi-speedometer2"></i><span>Dashboard</span></a></li>
+  <li class="nav-section-title">Presenze</li>
+  <li><a href="{% url 'core:calendario_aziendale' %}" class="active"><i class="bi bi-calendar3"></i><span>Calendario</span></a></li>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-5">
+    <div class="card">
+      <div class="card-header" style="background:#fef2f2;border-bottom:1px solid #fecaca;">
+        <h5 class="fw-semibold mb-0" style="color:#991b1b;">
+          <i class="bi bi-trash me-2"></i>Elimina evento
+        </h5>
+      </div>
+      <div class="card-body">
+        <p style="font-size:.9rem;color:var(--slate-700);">
+          Stai per eliminare l'evento <strong>{{ object.titolo }}</strong>
+          del <strong>{{ object.data_inizio|date:"d/m/Y" }}</strong>.
+        </p>
+        <p style="font-size:.875rem;color:var(--slate-500);">Questa operazione non può essere annullata.</p>
+        <form method="post">
+          {% csrf_token %}
+          <div class="d-flex gap-2">
+            <a href="{% url 'core:calendario_aziendale' %}" class="btn btn-outline-secondary">Annulla</a>
+            <button type="submit" class="btn btn-danger">
+              <i class="bi bi-trash me-1"></i>Elimina definitivamente
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

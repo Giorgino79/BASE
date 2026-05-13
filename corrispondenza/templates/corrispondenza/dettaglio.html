@@ -1,0 +1,212 @@
+{% extends "base.html" %}
+
+{% block title %}{{ corrispondenza.numero_protocollo }}{% endblock %}
+
+{% block sidebar_nav %}
+  <div class="sidebar-section">Corrispondenza</div>
+  <nav class="sidebar-nav">
+    <ul class="nav flex-column">
+      <li class="nav-item">
+        <a href="{% url 'corrispondenza:lista' %}" class="nav-link active">
+          <i class="bi bi-envelope-paper"></i> Tutte
+        </a>
+      </li>
+      <li class="nav-item">
+        <a href="{% url 'corrispondenza:crea' %}" class="nav-link">
+          <i class="bi bi-plus-circle"></i> Nuova lettera
+        </a>
+      </li>
+    </ul>
+  </nav>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center gap-3 mb-4">
+  <a href="{% url 'corrispondenza:lista' %}" class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-arrow-left"></i>
+  </a>
+  <div>
+    <h1 class="h4 fw-bold mb-0" style="color:var(--slate-900);">{{ corrispondenza.numero_protocollo }}</h1>
+    <p class="text-muted mb-0" style="font-size:.8rem;">{{ corrispondenza.created_at|date:"d/m/Y H:i" }}</p>
+  </div>
+  <div class="ms-auto d-flex gap-2 flex-wrap">
+    <a href="{% url 'corrispondenza:pdf' corrispondenza.pk %}" class="btn btn-sm btn-outline-danger">
+      <i class="bi bi-file-earmark-pdf me-1"></i>PDF
+    </a>
+    <a href="{% url 'corrispondenza:duplica' corrispondenza.pk %}" class="btn btn-sm btn-outline-warning">
+      <i class="bi bi-files me-1"></i>Duplica
+    </a>
+    {% if corrispondenza.can_edit %}
+    <a href="{% url 'corrispondenza:modifica' corrispondenza.pk %}" class="btn btn-sm btn-primary">
+      <i class="bi bi-pencil me-1"></i>Modifica
+    </a>
+    {% endif %}
+    {% if corrispondenza.stato == 'bozza' %}
+    <button class="btn btn-sm btn-success" onclick="apriModalInvia()">
+      <i class="bi bi-send me-1"></i>Invia
+    </button>
+    {% endif %}
+    {% if corrispondenza.stato == 'inviata' %}
+    <button class="btn btn-sm btn-outline-secondary" onclick="apriModalArchivia()">
+      <i class="bi bi-archive me-1"></i>Archivia
+    </button>
+    {% endif %}
+  </div>
+</div>
+
+<div class="row g-3">
+  <!-- Contenuto principale -->
+  <div class="col-lg-8">
+    <div class="card card-body mb-3">
+      <div class="d-flex align-items-center gap-2 mb-3">
+        <span class="badge" style="background:{{ corrispondenza.stato_color }}20;color:{{ corrispondenza.stato_color }};">
+          {{ corrispondenza.get_stato_display }}
+        </span>
+        <span class="badge" style="background:{{ corrispondenza.priorita_color }}20;color:{{ corrispondenza.priorita_color }};">
+          {{ corrispondenza.get_priorita_display }}
+        </span>
+        {% if corrispondenza.tipo_corrispondenza %}
+        <span class="badge" style="background:var(--slate-100);color:var(--slate-600);">{{ corrispondenza.tipo_corrispondenza.nome }}</span>
+        {% endif %}
+      </div>
+      <h5 class="fw-semibold mb-3" style="color:var(--slate-900);">{{ corrispondenza.oggetto }}</h5>
+      <div class="p-3 rounded" style="background:var(--slate-50);border:1px solid var(--slate-100);white-space:pre-wrap;font-size:.9rem;line-height:1.7;color:var(--slate-700);">{{ corrispondenza.contenuto }}</div>
+    </div>
+
+    {% if corrispondenza.note_interne %}
+    <div class="card card-body">
+      <h6 class="fw-semibold mb-2" style="font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--slate-500);">
+        <i class="bi bi-lock me-1"></i>Note interne (non stampate)
+      </h6>
+      <p class="mb-0" style="font-size:.875rem;color:var(--slate-600);">{{ corrispondenza.note_interne }}</p>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Sidebar destra -->
+  <div class="col-lg-4">
+    <!-- Destinatario -->
+    <div class="card card-body mb-3">
+      <h6 class="fw-semibold mb-2" style="font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--slate-500);">
+        Destinatario
+      </h6>
+      <div style="font-size:.875rem;color:var(--slate-700);">
+        <div class="fw-semibold">{{ corrispondenza.get_destinatario_display }}</div>
+        {% if corrispondenza.tipo_destinatario == 'esterno' %}
+          {% if corrispondenza.destinatario_indirizzo %}<div>{{ corrispondenza.destinatario_indirizzo }}</div>{% endif %}
+          {% if corrispondenza.destinatario_cap or corrispondenza.destinatario_citta %}
+          <div>{{ corrispondenza.destinatario_cap }} {{ corrispondenza.destinatario_citta }} {{ corrispondenza.destinatario_provincia }}</div>
+          {% endif %}
+          {% if corrispondenza.destinatario_email %}
+          <div class="mt-1"><i class="bi bi-envelope me-1 text-muted"></i>{{ corrispondenza.destinatario_email }}</div>
+          {% endif %}
+          {% if corrispondenza.destinatario_telefono %}
+          <div><i class="bi bi-telephone me-1 text-muted"></i>{{ corrispondenza.destinatario_telefono }}</div>
+          {% endif %}
+        {% else %}
+          {% if corrispondenza.destinatario_utente %}
+          <div class="text-muted">{{ corrispondenza.destinatario_utente.email }}</div>
+          {% endif %}
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Metadati -->
+    <div class="card card-body mb-3">
+      <h6 class="fw-semibold mb-2" style="font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--slate-500);">
+        Dettagli
+      </h6>
+      <dl class="row mb-0" style="font-size:.85rem;">
+        <dt class="col-5 text-muted">Protocollo</dt>
+        <dd class="col-7 mb-2 fw-semibold" style="font-family:monospace;">{{ corrispondenza.numero_protocollo }}</dd>
+        <dt class="col-5 text-muted">Creato da</dt>
+        <dd class="col-7 mb-2">{{ corrispondenza.creato_da.get_full_name|default:corrispondenza.creato_da.username }}</dd>
+        <dt class="col-5 text-muted">Creato il</dt>
+        <dd class="col-7 mb-2">{{ corrispondenza.created_at|date:"d/m/Y H:i" }}</dd>
+        {% if corrispondenza.data_invio %}
+        <dt class="col-5 text-muted">Inviato il</dt>
+        <dd class="col-7 mb-0">{{ corrispondenza.data_invio|date:"d/m/Y" }}</dd>
+        {% endif %}
+      </dl>
+    </div>
+
+    {% if corrispondenza.allegato %}
+    <div class="card card-body">
+      <h6 class="fw-semibold mb-2" style="font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--slate-500);">
+        Allegato
+      </h6>
+      <a href="{{ corrispondenza.allegato.url }}" target="_blank" class="d-flex align-items-center gap-2 text-decoration-none"
+         style="font-size:.875rem;color:#6366f1;">
+        <i class="bi bi-paperclip"></i>
+        {{ corrispondenza.allegato.name|slice:"30:" }}
+      </a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Modal Invia -->
+<div class="modal fade" id="modalInvia" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-send me-2"></i>Invia corrispondenza</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p>Inviare <strong>{{ corrispondenza.oggetto }}</strong>?</p>
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" id="chkEmail">
+          <label class="form-check-label" for="chkEmail">Invia anche via email al destinatario</label>
+        </div>
+        <small class="text-muted">Una volta inviata non potrà più essere modificata.</small>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Annulla</button>
+        <button type="button" class="btn btn-success btn-sm" id="btnConfermaInvia">
+          <i class="bi bi-send me-1"></i>Conferma
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- Modal Archivia -->
+<div class="modal fade" id="modalArchivia" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-archive me-2"></i>Archivia</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body"><p>Archiviare questa corrispondenza?</p></div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Annulla</button>
+        <button type="button" class="btn btn-warning btn-sm" id="btnConfermaArchivia">
+          <i class="bi bi-archive me-1"></i>Archivia
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function apriModalInvia() { new bootstrap.Modal(document.getElementById('modalInvia')).show(); }
+function apriModalArchivia() { new bootstrap.Modal(document.getElementById('modalArchivia')).show(); }
+function submitForm(url, extra) {
+  const f = document.createElement('form'); f.method='POST'; f.action=url;
+  [['csrfmiddlewaretoken','{{ csrf_token }}'], ...(extra||[])].forEach(([n,v]) => {
+    const i = document.createElement('input'); i.type='hidden'; i.name=n; i.value=v; f.appendChild(i);
+  });
+  document.body.appendChild(f); f.submit();
+}
+document.getElementById('btnConfermaInvia').addEventListener('click', function() {
+  const extra = document.getElementById('chkEmail').checked ? [['invia_email','on']] : [];
+  submitForm('{% url "corrispondenza:invia" corrispondenza.pk %}', extra);
+});
+document.getElementById('btnConfermaArchivia').addEventListener('click', function() {
+  submitForm('{% url "corrispondenza:archivia" corrispondenza.pk %}');
+});
+</script>
+{% endblock %}

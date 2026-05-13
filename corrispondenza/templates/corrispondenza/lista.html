@@ -1,0 +1,277 @@
+{% extends "base.html" %}
+
+{% block title %}Corrispondenza{% endblock %}
+
+{% block sidebar_nav %}
+  <div class="sidebar-section">Corrispondenza</div>
+  <nav class="sidebar-nav">
+    <ul class="nav flex-column">
+      <li class="nav-item">
+        <a href="{% url 'corrispondenza:lista' %}" class="nav-link active">
+          <i class="bi bi-envelope-paper"></i> Tutte
+        </a>
+      </li>
+      <li class="nav-item">
+        <a href="{% url 'corrispondenza:crea' %}" class="nav-link">
+          <i class="bi bi-plus-circle"></i> Nuova lettera
+        </a>
+      </li>
+    </ul>
+  </nav>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+  <div>
+    <h1 class="h4 fw-bold mb-1" style="color:var(--slate-900);">Corrispondenza</h1>
+    <p class="text-muted mb-0" style="font-size:.875rem;">Gestione lettere e comunicazioni formali</p>
+  </div>
+  <a href="{% url 'corrispondenza:crea' %}" class="btn btn-primary btn-sm d-flex align-items-center gap-1">
+    <i class="bi bi-plus-lg"></i> Nuova
+  </a>
+</div>
+
+<!-- Statistiche -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-xl-3">
+    <div class="stat-card">
+      <div class="stat-card-icon icon-indigo"><i class="bi bi-envelope-paper-fill"></i></div>
+      <div><div class="stat-card-value">{{ stats.totale }}</div><div class="stat-card-label">Totale</div></div>
+    </div>
+  </div>
+  <div class="col-6 col-xl-3">
+    <div class="stat-card">
+      <div class="stat-card-icon icon-amber"><i class="bi bi-pencil-fill"></i></div>
+      <div><div class="stat-card-value">{{ stats.bozze }}</div><div class="stat-card-label">Bozze</div></div>
+    </div>
+  </div>
+  <div class="col-6 col-xl-3">
+    <div class="stat-card">
+      <div class="stat-card-icon icon-emerald"><i class="bi bi-send-fill"></i></div>
+      <div><div class="stat-card-value">{{ stats.inviate }}</div><div class="stat-card-label">Inviate</div></div>
+    </div>
+  </div>
+  <div class="col-6 col-xl-3">
+    <div class="stat-card">
+      <div class="stat-card-icon" style="background:#f1f5f9;color:#64748b;"><i class="bi bi-archive-fill"></i></div>
+      <div><div class="stat-card-value">{{ stats.archiviate }}</div><div class="stat-card-label">Archiviate</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- Filtri -->
+<div class="card mb-4">
+  <div class="card-body py-3">
+    <form method="get" class="row g-2 align-items-end">
+      <div class="col-12 col-md-4">
+        {{ search_form.q }}
+      </div>
+      <div class="col-6 col-md-2">
+        {{ search_form.stato }}
+      </div>
+      <div class="col-6 col-md-2">
+        {{ search_form.priorita }}
+      </div>
+      <div class="col-6 col-md-2">
+        {{ search_form.data_da }}
+      </div>
+      <div class="col-6 col-md-2">
+        {{ search_form.data_a }}
+      </div>
+      <div class="col-12 d-flex gap-2">
+        <button type="submit" class="btn btn-primary btn-sm">
+          <i class="bi bi-search me-1"></i>Cerca
+        </button>
+        <a href="{% url 'corrispondenza:lista' %}" class="btn btn-outline-secondary btn-sm">
+          <i class="bi bi-x-circle me-1"></i>Reset
+        </a>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% if page_obj %}
+<div class="d-flex flex-column gap-2">
+  {% for corr in page_obj %}
+  <div class="card card-body py-3" style="border-left: 4px solid {{ corr.priorita_color }};">
+    <div class="row align-items-center g-2">
+      <div class="col-12 col-md-8">
+        <div class="d-flex align-items-center gap-2 flex-wrap mb-1">
+          <a href="{% url 'corrispondenza:dettaglio' corr.pk %}"
+             class="fw-bold text-decoration-none" style="font-family:monospace;color:var(--slate-900);">
+            {{ corr.numero_protocollo }}
+          </a>
+          <span class="badge" style="background:{{ corr.stato_color }}20;color:{{ corr.stato_color }};font-size:.7rem;">
+            {{ corr.get_stato_display }}
+          </span>
+          <span class="badge" style="background:{{ corr.priorita_color }}20;color:{{ corr.priorita_color }};font-size:.7rem;">
+            {{ corr.get_priorita_display }}
+          </span>
+          {% if corr.tipo_corrispondenza %}
+          <span class="badge" style="background:var(--slate-100);color:var(--slate-600);font-size:.7rem;">{{ corr.tipo_corrispondenza.nome }}</span>
+          {% endif %}
+        </div>
+        <div class="fw-semibold" style="font-size:.9rem;color:var(--slate-900);">{{ corr.oggetto }}</div>
+        <div class="mt-1" style="font-size:.78rem;color:var(--slate-500);">
+          <i class="bi bi-person me-1"></i>{{ corr.get_tipo_destinatario_display }}:
+          <strong>{{ corr.get_destinatario_display }}</strong>
+          &nbsp;·&nbsp;
+          <i class="bi bi-calendar3 me-1"></i>{{ corr.created_at|date:"d/m/Y" }}
+          {% if corr.data_invio %}&nbsp;·&nbsp;<i class="bi bi-send me-1"></i>{{ corr.data_invio|date:"d/m/Y" }}{% endif %}
+          &nbsp;·&nbsp;{{ corr.creato_da.get_full_name|default:corr.creato_da.username }}
+        </div>
+      </div>
+      <div class="col-12 col-md-4">
+        <div class="d-flex flex-wrap gap-1 justify-content-md-end">
+          <a href="{% url 'corrispondenza:dettaglio' corr.pk %}" class="btn btn-sm btn-outline-primary" title="Visualizza">
+            <i class="bi bi-eye"></i>
+          </a>
+          {% if corr.can_edit %}
+          <a href="{% url 'corrispondenza:modifica' corr.pk %}" class="btn btn-sm btn-outline-secondary" title="Modifica">
+            <i class="bi bi-pencil"></i>
+          </a>
+          {% endif %}
+          <a href="{% url 'corrispondenza:pdf' corr.pk %}" class="btn btn-sm btn-outline-danger" title="PDF">
+            <i class="bi bi-file-earmark-pdf"></i>
+          </a>
+          {% if corr.stato == 'bozza' %}
+          <button type="button" class="btn btn-sm btn-outline-success"
+                  onclick="apriModalInvia('{{ corr.pk }}','{{ corr.oggetto|escapejs }}')" title="Invia">
+            <i class="bi bi-send"></i>
+          </button>
+          {% endif %}
+          <a href="{% url 'corrispondenza:duplica' corr.pk %}" class="btn btn-sm btn-outline-warning" title="Duplica">
+            <i class="bi bi-files"></i>
+          </a>
+          {% if corr.stato == 'inviata' %}
+          <button type="button" class="btn btn-sm btn-outline-secondary"
+                  onclick="apriModalArchivia('{{ corr.pk }}','{{ corr.oggetto|escapejs }}')" title="Archivia">
+            <i class="bi bi-archive"></i>
+          </button>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{% if page_obj.has_other_pages %}
+<nav class="mt-4">
+  <ul class="pagination justify-content-center">
+    {% if page_obj.has_previous %}
+    <li class="page-item">
+      <a class="page-link" href="?{% for k,v in request.GET.items %}{% if k != 'page' %}{{ k }}={{ v }}&{% endif %}{% endfor %}page={{ page_obj.previous_page_number }}">
+        <i class="bi bi-chevron-left"></i>
+      </a>
+    </li>
+    {% endif %}
+    {% for num in page_obj.paginator.page_range %}
+      {% if page_obj.number == num %}
+      <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+      {% elif num > page_obj.number|add:"-3" and num < page_obj.number|add:"3" %}
+      <li class="page-item">
+        <a class="page-link" href="?{% for k,v in request.GET.items %}{% if k != 'page' %}{{ k }}={{ v }}&{% endif %}{% endfor %}page={{ num }}">{{ num }}</a>
+      </li>
+      {% endif %}
+    {% endfor %}
+    {% if page_obj.has_next %}
+    <li class="page-item">
+      <a class="page-link" href="?{% for k,v in request.GET.items %}{% if k != 'page' %}{{ k }}={{ v }}&{% endif %}{% endfor %}page={{ page_obj.next_page_number }}">
+        <i class="bi bi-chevron-right"></i>
+      </a>
+    </li>
+    {% endif %}
+  </ul>
+</nav>
+{% endif %}
+
+{% else %}
+<div class="card card-body text-center py-5" style="color:var(--slate-400);">
+  <i class="bi bi-envelope-open" style="font-size:3rem;display:block;margin-bottom:.75rem;"></i>
+  <div>Nessuna corrispondenza</div>
+  <a href="{% url 'corrispondenza:crea' %}" class="btn btn-primary btn-sm mt-3">Crea la prima</a>
+</div>
+{% endif %}
+
+<!-- Modal Invia -->
+<div class="modal fade" id="modalInvia" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-send me-2"></i>Invia corrispondenza</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p>Inviare <strong id="titoloInvia"></strong>?</p>
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" id="chkEmail">
+          <label class="form-check-label" for="chkEmail">Invia anche via email al destinatario</label>
+        </div>
+        <small class="text-muted">Una volta inviata non potrà più essere modificata.</small>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Annulla</button>
+        <button type="button" class="btn btn-success btn-sm" id="btnConfermaInvia">
+          <i class="bi bi-send me-1"></i>Conferma
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Archivia -->
+<div class="modal fade" id="modalArchivia" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-archive me-2"></i>Archivia</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p>Archiviare <strong id="titoloArchivia"></strong>?</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Annulla</button>
+        <button type="button" class="btn btn-warning btn-sm" id="btnConfermaArchivia">
+          <i class="bi bi-archive me-1"></i>Archivia
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+  let currentPk = null;
+  window.apriModalInvia = function(pk, titolo) {
+    currentPk = pk;
+    document.getElementById('titoloInvia').textContent = titolo;
+    new bootstrap.Modal(document.getElementById('modalInvia')).show();
+  };
+  window.apriModalArchivia = function(pk, titolo) {
+    currentPk = pk;
+    document.getElementById('titoloArchivia').textContent = titolo;
+    new bootstrap.Modal(document.getElementById('modalArchivia')).show();
+  };
+  function submitForm(url, extra) {
+    const f = document.createElement('form');
+    f.method = 'POST'; f.action = url;
+    [['csrfmiddlewaretoken','{{ csrf_token }}'], ...(extra||[])].forEach(([n,v]) => {
+      const i = document.createElement('input'); i.type='hidden'; i.name=n; i.value=v; f.appendChild(i);
+    });
+    document.body.appendChild(f); f.submit();
+  }
+  document.getElementById('btnConfermaInvia').addEventListener('click', function() {
+    const url = `/corrispondenza/${currentPk}/invia/`;
+    const extra = document.getElementById('chkEmail').checked ? [['invia_email','on']] : [];
+    submitForm(url, extra);
+  });
+  document.getElementById('btnConfermaArchivia').addEventListener('click', function() {
+    submitForm(`/corrispondenza/${currentPk}/archivia/`);
+  });
+})();
+</script>
+{% endblock %}

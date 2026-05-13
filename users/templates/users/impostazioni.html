@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block title %}Impostazioni{% endblock %}
+
+{% block sidebar_nav %}
+  <li class="nav-section-title">Account</li>
+  <li><a href="{% url 'users:profilo' %}"><i class="bi bi-person-circle"></i><span>Il mio profilo</span></a></li>
+  <li><a href="{% url 'users:impostazioni' %}" class="active"><i class="bi bi-sliders"></i><span>Impostazioni</span></a></li>
+  <li><a href="{% url 'users:change_password' %}"><i class="bi bi-key"></i><span>Cambia password</span></a></li>
+{% endblock %}
+
+{% block content %}
+<h1 class="h4 fw-bold mb-4" style="color:var(--slate-900);">Impostazioni account</h1>
+
+<div class="row g-3">
+  <!-- Quick links -->
+  <div class="col-lg-8">
+    <div class="row g-3">
+      <div class="col-12">
+        <div class="card card-body">
+          <h6 class="fw-semibold mb-3" style="font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--slate-500);">
+            Profilo personale
+          </h6>
+          <div class="d-flex align-items-center justify-content-between">
+            <div>
+              <div class="fw-medium" style="font-size:.9rem;color:var(--slate-800);">Modifica i tuoi dati</div>
+              <div style="font-size:.8rem;color:var(--slate-400);">Nome, cognome, telefono, foto</div>
+            </div>
+            <a href="{% url 'users:profilo_update' %}" class="btn btn-outline-primary btn-sm">Modifica</a>
+          </div>
+        </div>
+      </div>
+      <div class="col-12">
+        <div class="card card-body">
+          <h6 class="fw-semibold mb-3" style="font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--slate-500);">
+            Sicurezza
+          </h6>
+          <div class="d-flex align-items-center justify-content-between">
+            <div>
+              <div class="fw-medium" style="font-size:.9rem;color:var(--slate-800);">Cambia password</div>
+              <div style="font-size:.8rem;color:var(--slate-400);">Aggiorna le tue credenziali di accesso</div>
+            </div>
+            <a href="{% url 'users:change_password' %}" class="btn btn-outline-secondary btn-sm">Cambia</a>
+          </div>
+        </div>
+      </div>
+      <div class="col-12">
+        <div class="card card-body">
+          <h6 class="fw-semibold mb-3" style="font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--slate-500);">
+            Tesserino digitale
+          </h6>
+          <div class="d-flex align-items-center justify-content-between">
+            <div>
+              <div class="fw-medium" style="font-size:.9rem;color:var(--slate-800);">Scarica il tuo tesserino</div>
+              <div style="font-size:.8rem;color:var(--slate-400);">PDF con QR code e dati personali</div>
+            </div>
+            <a href="{% url 'users:tesserino' request.user.pk %}" class="btn btn-outline-secondary btn-sm" target="_blank">
+              <i class="bi bi-person-badge me-1"></i>Scarica PDF
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

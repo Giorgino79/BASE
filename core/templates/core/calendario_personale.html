@@ -1,0 +1,216 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Il mio calendario{% endblock %}
+
+{% block extra_css %}
+<link href='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css' rel='stylesheet' />
+<style>
+  .fc { font-family: inherit; }
+  .fc-toolbar-title { font-size: 1.1rem; font-weight: 600; color: var(--slate-900); }
+  .fc-button { font-size: .8rem !important; padding: .3rem .65rem !important; }
+  .fc-button-primary { background: var(--indigo-600) !important; border-color: var(--indigo-600) !important; }
+  .fc-button-primary:hover { background: #4338ca !important; border-color: #4338ca !important; }
+  .fc-button-active { background: #312e81 !important; border-color: #312e81 !important; }
+  .fc-event { cursor: pointer; border: none !important; border-radius: 4px; font-size: .75rem; }
+  .fc-event:hover { opacity: .85; }
+  .fc-day-today { background: #eff6ff !important; }
+  .fc-col-header-cell { font-size: .75rem; font-weight: 700; color: var(--slate-500); text-transform: uppercase; letter-spacing: .05em; }
+
+  #evento-tooltip {
+    display: none; position: fixed; z-index: 9999;
+    background: #fff; border: 1px solid var(--slate-200);
+    border-radius: 8px; padding: 12px;
+    box-shadow: 0 4px 16px rgba(0,0,0,.12);
+    max-width: 260px; pointer-events: none; font-size: .8rem;
+  }
+
+  .tipo-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: .7rem; padding: .15rem .5rem; border-radius: 12px; font-weight: 500;
+  }
+  .tipo-promemoria { background: #ede9fe; color: #5b21b6; }
+  .tipo-appuntamento { background: #dbeafe; color: #1e40af; }
+  .tipo-compleanno { background: #fce7f3; color: #9d174d; }
+  .tipo-scadenza { background: #fee2e2; color: #991b1b; }
+  .tipo-altro { background: var(--slate-100); color: var(--slate-600); }
+</style>
+{% endblock %}
+
+{% block sidebar_nav %}
+  <li class="nav-section-title">Principale</li>
+  <li><a href="{% url 'dashboard' %}"><i class="bi bi-speedometer2"></i><span>Dashboard</span></a></li>
+  <li><a href="{% url 'users:user_list' %}"><i class="bi bi-people"></i><span>Dipendenti</span></a></li>
+  <li><a href="{% url 'users:timbratura_list' %}"><i class="bi bi-clock-history"></i><span>Timbrature</span></a></li>
+  <li class="nav-section-title">Presenze</li>
+  <li><a href="{% url 'users:richieste_ferie_list' %}"><i class="bi bi-calendar-check"></i><span>Ferie e Permessi</span></a></li>
+  {% if user.is_staff %}
+  <li><a href="{% url 'users:richieste_ferie_admin_list' %}"><i class="bi bi-clipboard2-check"></i><span>Gestione Richieste</span></a></li>
+  {% endif %}
+  <li><a href="{% url 'core:calendario_aziendale' %}"><i class="bi bi-calendar3"></i><span>Calendario</span></a></li>
+  <li><a href="{% url 'core:calendario_personale' %}" class="active"><i class="bi bi-calendar-heart"></i><span>Il mio calendario</span></a></li>
+  {% if user.is_staff %}
+  <li class="nav-section-title">Amministrazione</li>
+  <li><a href="{% url 'core:amministrazione_dashboard' %}"><i class="bi bi-gear"></i><span>Impostazioni</span></a></li>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+  <div>
+    <h1 class="h4 fw-bold mb-1" style="color:var(--slate-900);">Il mio calendario</h1>
+    <p class="text-muted mb-0" style="font-size:.875rem;">I tuoi eventi, ferie e promemoria personali</p>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{% url 'users:evento_personale_create' %}" class="btn btn-primary btn-sm d-flex align-items-center gap-1">
+      <i class="bi bi-plus-lg"></i> Nuovo evento
+    </a>
+    <a href="{% url 'core:calendario_aziendale' %}" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1">
+      <i class="bi bi-buildings"></i> Aziendale
+    </a>
+  </div>
+</div>
+
+<div class="row g-3">
+
+  <!-- Calendario FullCalendar -->
+  <div class="col-lg-8">
+    <div class="card p-3">
+      <div id="calendario-personale"></div>
+    </div>
+  </div>
+
+  <!-- Prossimi eventi sidebar -->
+  <div class="col-lg-4">
+    <div class="card card-body mb-3">
+      <h6 class="fw-semibold mb-3" style="font-size:.8rem;text-transform:uppercase;letter-spacing:.05em;color:var(--slate-500);">
+        <i class="bi bi-clock-history me-1"></i> Prossimi eventi
+      </h6>
+      <div class="d-flex flex-column gap-2" id="lista-prossimi">
+        <p class="text-muted mb-0" style="font-size:.8rem;">Caricamento…</p>
+      </div>
+    </div>
+
+    <div class="card card-body">
+      <h6 class="fw-semibold mb-3" style="font-size:.8rem;text-transform:uppercase;letter-spacing:.05em;color:var(--slate-500);">
+        <i class="bi bi-calendar-check me-1"></i> Ferie e permessi
+      </h6>
+      <a href="{% url 'users:richieste_ferie_list' %}" class="btn btn-outline-secondary btn-sm w-100 mb-2">
+        <i class="bi bi-calendar-check me-1"></i> Le mie richieste
+      </a>
+      <a href="{% url 'users:richiesta_ferie_create' %}" class="btn btn-outline-primary btn-sm w-100">
+        <i class="bi bi-plus-lg me-1"></i> Nuova richiesta ferie
+      </a>
+    </div>
+  </div>
+
+</div>
+
+<!-- Tooltip -->
+<div id="evento-tooltip">
+  <div id="tooltip-content"></div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js'></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const calendarEl = document.getElementById('calendario-personale');
+  const tooltip = document.getElementById('evento-tooltip');
+  const tooltipContent = document.getElementById('tooltip-content');
+
+  const calendar = new FullCalendar.Calendar(calendarEl, {
+    locale: 'it',
+    initialView: 'dayGridMonth',
+    headerToolbar: {
+      left: 'prev,next today',
+      center: 'title',
+      right: 'dayGridMonth,timeGridWeek,listMonth'
+    },
+    buttonText: { today: 'Oggi', month: 'Mese', week: 'Settimana', list: 'Lista' },
+    firstDay: 1,
+    height: 'auto',
+    navLinks: true,
+    dateClick: function (info) {
+      window.location.href = '{% url "users:evento_personale_create" %}?date=' + info.dateStr + 'T09:00';
+    },
+    eventSources: [{
+      url: '{% url "core:calendario_personale_eventi_api" %}',
+      failure: function () { console.error('Errore caricamento eventi personali'); }
+    }],
+    eventClick: function (info) {
+      if (info.event.url) {
+        info.jsEvent.preventDefault();
+        window.location.href = info.event.url;
+      }
+    },
+    eventMouseEnter: function (info) {
+      const p = info.event.extendedProps;
+      let html = `<strong style="color:var(--slate-900);">${info.event.title}</strong>`;
+      if (info.event.start) {
+        html += `<br><small style="color:var(--slate-500);">${info.event.start.toLocaleDateString('it-IT')}`;
+        if (info.event.end && !info.event.allDay) {
+          html += ` – ${info.event.end.toLocaleTimeString('it-IT', {hour:'2-digit',minute:'2-digit'})}`;
+        }
+        html += '</small>';
+      }
+      if (p.stato) html += `<br><span class="badge mt-1" style="background:var(--slate-100);color:var(--slate-700);">${p.stato}</span>`;
+      if (p.giorni) html += `<br><small style="color:var(--slate-500);">${p.giorni} giorni</small>`;
+      if (p.ore) html += `<br><small style="color:var(--slate-500);">${p.ore} ore</small>`;
+      if (p.priorita) html += `<br><small style="color:var(--slate-500);">Priorità: ${p.priorita}</small>`;
+      if (p.descrizione) html += `<br><small style="color:var(--slate-400);">${p.descrizione}</small>`;
+      tooltipContent.innerHTML = html;
+      tooltip.style.display = 'block';
+    },
+    eventMouseLeave: function () { tooltip.style.display = 'none'; },
+    datesSet: function (info) {
+      loadProssimiEventi(info.start, info.end);
+    }
+  });
+
+  calendar.render();
+
+  document.addEventListener('mousemove', function (e) {
+    tooltip.style.left = (e.clientX + 15) + 'px';
+    tooltip.style.top = (e.clientY + 10) + 'px';
+  });
+
+  function loadProssimiEventi(start, end) {
+    const params = new URLSearchParams({ start: start.toISOString(), end: end.toISOString() });
+    fetch('{% url "core:calendario_personale_eventi_api" %}?' + params)
+      .then(r => r.json())
+      .then(events => {
+        const lista = document.getElementById('lista-prossimi');
+        const oggi = new Date();
+        const prossimi = events
+          .filter(e => new Date(e.start) >= oggi)
+          .sort((a, b) => new Date(a.start) - new Date(b.start))
+          .slice(0, 6);
+
+        if (prossimi.length === 0) {
+          lista.innerHTML = '<p class="text-muted mb-0" style="font-size:.8rem;">Nessun evento in programma</p>';
+          return;
+        }
+
+        lista.innerHTML = prossimi.map(e => {
+          const d = new Date(e.start);
+          const day = d.toLocaleDateString('it-IT', {day:'numeric', month:'short'});
+          const color = e.color || '#6c757d';
+          return `<div class="d-flex align-items-center gap-2 py-1" style="border-bottom:1px solid var(--slate-50);">
+            <div style="width:4px;height:36px;border-radius:2px;background:${color};flex-shrink:0;"></div>
+            <div class="flex-grow-1 min-width-0">
+              <div class="fw-medium text-truncate" style="font-size:.8rem;color:var(--slate-800);">${e.title}</div>
+              <div style="font-size:.72rem;color:var(--slate-400);">${day}</div>
+            </div>
+            ${e.url ? `<a href="${e.url}" class="btn btn-icon btn-sm"><i class="bi bi-arrow-right" style="font-size:.7rem;"></i></a>` : ''}
+          </div>`;
+        }).join('');
+      })
+      .catch(() => {
+        document.getElementById('lista-prossimi').innerHTML = '<p class="text-muted mb-0" style="font-size:.8rem;">Errore caricamento</p>';
+      });
+  }
+});
+</script>
+{% endblock %}

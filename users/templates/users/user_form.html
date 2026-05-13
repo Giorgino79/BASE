@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block title %}{% if object %}Modifica {{ object.get_full_name }}{% else %}Nuovo dipendente{% endif %}{% endblock %}
+
+{% block sidebar_nav %}
+  <li class="nav-section-title">Principale</li>
+  <li><a href="{% url 'dashboard' %}"><i class="bi bi-speedometer2"></i><span>Dashboard</span></a></li>
+  <li><a href="{% url 'users:user_list' %}" class="active"><i class="bi bi-people"></i><span>Dipendenti</span></a></li>
+{% endblock %}
+
+{% block content %}
+<nav class="mb-3" style="font-size:.8rem;">
+  <a href="{% url 'users:user_list' %}" style="color:var(--indigo-600);text-decoration:none;">Dipendenti</a>
+  <i class="bi bi-chevron-right mx-1" style="color:var(--slate-400);"></i>
+  {% if object %}
+  <a href="{% url 'users:user_detail' object.pk %}" style="color:var(--indigo-600);text-decoration:none;">{{ object.get_full_name|default:object.username }}</a>
+  <i class="bi bi-chevron-right mx-1" style="color:var(--slate-400);"></i>
+  <span style="color:var(--slate-500);">Modifica</span>
+  {% else %}
+  <span style="color:var(--slate-500);">Nuovo dipendente</span>
+  {% endif %}
+</nav>
+
+<div class="row justify-content-center">
+  <div class="col-xl-9">
+    <div class="card">
+      <div class="card-header" style="background:var(--slate-50);border-bottom:1px solid var(--slate-100);">
+        <h5 class="fw-semibold mb-0" style="color:var(--slate-900);">
+          {% if object %}
+            <i class="bi bi-pencil me-2" style="color:var(--indigo-600);"></i>Modifica dipendente
+          {% else %}
+            <i class="bi bi-person-plus me-2" style="color:var(--indigo-600);"></i>Nuovo dipendente
+          {% endif %}
+        </h5>
+      </div>
+      <div class="card-body">
+        <form method="post" enctype="multipart/form-data" novalidate>
+          {% csrf_token %}
+
+          {% if form.non_field_errors %}
+          <div class="alert alert-danger mb-3" style="font-size:.875rem;">{{ form.non_field_errors }}</div>
+          {% endif %}
+
+          <!-- Credenziali -->
+          <div class="mb-4">
+            <h6 class="section-label">Credenziali di accesso</h6>
+            <div class="row g-3">
+              <div class="col-md-4">{{ form.username|as_crispy_field }}</div>
+              {% if not object %}
+              <div class="col-md-4">{{ form.password1|as_crispy_field }}</div>
+              <div class="col-md-4">{{ form.password2|as_crispy_field }}</div>
+              {% endif %}
+              <div class="col-md-4">{{ form.email|as_crispy_field }}</div>
+            </div>
+          </div>
+
+          <!-- Dati anagrafici -->
+          <div class="mb-4">
+            <h6 class="section-label">Dati anagrafici</h6>
+            <div class="row g-3">
+              <div class="col-md-4">{{ form.first_name|as_crispy_field }}</div>
+              <div class="col-md-4">{{ form.last_name|as_crispy_field }}</div>
+              <div class="col-md-4">{{ form.codice_fiscale|as_crispy_field }}</div>
+              <div class="col-md-4">{{ form.data_nascita|as_crispy_field }}</div>
+              <div class="col-md-4">{{ form.luogo_nascita|as_crispy_field }}</div>
+              <div class="col-md-4">{{ form.telefono|as_crispy_field }}</div>
+            </div>
+          </div>
+
+          <!-- Dati lavorativi -->
+          <div class="mb-4">
+            <h6 class="section-label">Dati lavorativi</h6>
+            <div class="row g-3">
+              <div class="col-md-4">{{ form.qualifica|as_crispy_field }}</div>
+              <div class="col-md-4">{{ form.reparto|as_crispy_field }}</div>
+              <div class="col-md-4">{{ form.stato|as_crispy_field }}</div>
+              <div class="col-md-4">{{ form.data_assunzione|as_crispy_field }}</div>
+              {% if form.giorni_ferie_anno %}
+              <div class="col-md-4">{{ form.giorni_ferie_anno|as_crispy_field }}</div>
+              {% endif %}
+              {% if form.ore_permesso_residue %}
+              <div class="col-md-4">{{ form.ore_permesso_residue|as_crispy_field }}</div>
+              {% endif %}
+              {% if form.template_permessi %}
+              <div class="col-md-6">{{ form.template_permessi|as_crispy_field }}</div>
+              {% endif %}
+            </div>
+          </div>
+
+          <!-- Foto e note -->
+          <div class="mb-4">
+            <h6 class="section-label">Foto e note</h6>
+            <div class="row g-3">
+              {% if form.foto_profilo %}
+              <div class="col-md-6">{{ form.foto_profilo|as_crispy_field }}</div>
+              {% endif %}
+              {% if form.note %}
+              <div class="col-12">{{ form.note|as_crispy_field }}</div>
+              {% endif %}
+              {% if form.note_interne %}
+              <div class="col-12">{{ form.note_interne|as_crispy_field }}</div>
+              {% endif %}
+            </div>
+          </div>
+
+          <div class="d-flex gap-2 justify-content-end pt-2" style="border-top:1px solid var(--slate-100);">
+            <a href="{% if object %}{% url 'users:user_detail' object.pk %}{% else %}{% url 'users:user_list' %}{% endif %}"
+               class="btn btn-outline-secondary">Annulla</a>
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-check-lg me-1"></i>
+              {% if object %}Salva modifiche{% else %}Crea dipendente{% endif %}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+  .section-label {
+    font-size:.72rem;
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:.08em;
+    color:var(--slate-500);
+    border-bottom:1px solid var(--slate-100);
+    padding-bottom:.4rem;
+    margin-bottom:.75rem;
+  }
+</style>
+{% endblock %}

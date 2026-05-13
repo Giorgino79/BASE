@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block title %}Promemoria{% endblock %}
+
+{% block sidebar_nav %}{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+  <div>
+    <h1 class="h4 fw-bold mb-1" style="color:var(--slate-900);">Promemoria</h1>
+    <p class="text-muted mb-0" style="font-size:.875rem;">
+      {% if attivi_count %}{{ attivi_count }} attivi{% else %}Nessun promemoria attivo{% endif %}
+    </p>
+  </div>
+  <a href="{% url 'comunicazioni:promemoria_create' %}" class="btn btn-primary btn-sm d-flex align-items-center gap-1">
+    <i class="bi bi-plus-lg"></i> Nuovo
+  </a>
+</div>
+
+<!-- Filtri -->
+<div class="d-flex gap-2 mb-3 flex-wrap">
+  <a href="{% url 'comunicazioni:promemoria_list' %}"
+     class="btn btn-sm {% if not stato_filter %}btn-primary{% else %}btn-outline-secondary{% endif %}">
+    Attivi
+  </a>
+  <a href="?stato=completato"
+     class="btn btn-sm {% if stato_filter == 'completato' %}btn-success{% else %}btn-outline-secondary{% endif %}">
+    <i class="bi bi-check-circle me-1"></i>Completati
+  </a>
+  <a href="?stato="
+     class="btn btn-sm {% if stato_filter == '' and request.GET.stato is not None %}btn-secondary{% else %}btn-outline-secondary{% endif %}">
+    Tutti
+  </a>
+</div>
+
+{% if promemoria %}
+<div class="d-flex flex-column gap-2">
+  {% for p in promemoria %}
+  <div class="card card-body d-flex flex-row align-items-start gap-3 py-3
+              {% if p.is_scaduto %}border-danger{% endif %}"
+       style="{% if p.stato == 'completato' %}opacity:.6;{% endif %}">
+
+    <!-- Checkbox toggle -->
+    <button class="btn p-0 flex-shrink-0 toggle-btn" data-pk="{{ p.pk }}"
+            style="color:{% if p.stato == 'completato' %}#22c55e{% else %}var(--slate-300){% endif %};font-size:1.25rem;border:none;background:none;">
+      <i class="bi bi-{% if p.stato == 'completato' %}check-circle-fill{% else %}circle{% endif %}"></i>
+    </button>
+
+    <div class="flex-grow-1 min-width-0">
+      <div class="d-flex align-items-center gap-2 flex-wrap">
+        <span class="fw-semibold" style="font-size:.9rem;color:var(--slate-900);
+              {% if p.stato == 'completato' %}text-decoration:line-through;{% endif %}">
+          {{ p.titolo }}
+        </span>
+        <!-- Priorità badge -->
+        {% if p.priorita == 'urgente' %}
+          <span class="badge" style="background:#fee2e2;color:#991b1b;font-size:.7rem;">Urgente</span>
+        {% elif p.priorita == 'alta' %}
+          <span class="badge" style="background:#fef3c7;color:#92400e;font-size:.7rem;">Alta</span>
+        {% elif p.priorita == 'media' %}
+          <span class="badge" style="background:#dbeafe;color:#1e40af;font-size:.7rem;">Media</span>
+        {% else %}
+          <span class="badge" style="background:var(--slate-100);color:var(--slate-500);font-size:.7rem;">Bassa</span>
+        {% endif %}
+        {% if p.is_scaduto %}
+          <span class="badge" style="background:#fee2e2;color:#991b1b;font-size:.7rem;"><i class="bi bi-alarm me-1"></i>Scaduto</span>
+        {% endif %}
+      </div>
+      {% if p.descrizione %}
+      <p class="mb-0 mt-1" style="font-size:.8rem;color:var(--slate-500);">{{ p.descrizione|truncatechars:100 }}</p>
+      {% endif %}
+      <div class="d-flex gap-3 mt-1" style="font-size:.75rem;color:var(--slate-400);">
+        {% if p.data_scadenza %}
+        <span><i class="bi bi-clock me-1"></i>{{ p.data_scadenza|date:"d/m/Y H:i" }}</span>
+        {% endif %}
+        {% if p.assegnato_a %}
+        <span><i class="bi bi-person me-1"></i>{{ p.assegnato_a.get_full_name|default:p.assegnato_a.username }}</span>
+        {% endif %}
+      </div>
+    </div>
+
+    <a href="{% url 'comunicazioni:promemoria_update' p.pk %}" class="btn btn-icon btn-sm flex-shrink-0" title="Modifica">
+      <i class="bi bi-pencil"></i>
+    </a>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card card-body text-center py-5" style="color:var(--slate-400);">
+  <i class="bi bi-bell-slash" style="font-size:3rem;display:block;margin-bottom:.75rem;"></i>
+  <div>Nessun promemoria{% if stato_filter %} in questo stato{% endif %}</div>
+  <a href="{% url 'comunicazioni:promemoria_create' %}" class="btn btn-primary btn-sm mt-3">
+    Crea il primo promemoria
+  </a>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.querySelectorAll('.toggle-btn').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    const pk = btn.dataset.pk;
+    fetch(`/comunicazioni/promemoria/${pk}/toggle/`, {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': '{{ csrf_token }}',
+        'X-Requested-With': 'XMLHttpRequest',
+      }
+    })
+    .then(r => r.json())
+    .then(data => { location.reload(); })
+    .catch(console.error);
+  });
+});
+</script>
+{% endblock %}

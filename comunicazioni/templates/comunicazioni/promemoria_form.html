@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block title %}{% if object %}Modifica promemoria{% else %}Nuovo promemoria{% endif %}{% endblock %}
+
+{% block sidebar_nav %}{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+  <div>
+    <h1 class="h4 fw-bold mb-1" style="color:var(--slate-900);">
+      {% if object %}Modifica promemoria{% else %}Nuovo promemoria{% endif %}
+    </h1>
+    <p class="text-muted mb-0" style="font-size:.875rem;">
+      {% if object %}Aggiorna i dettagli del promemoria{% else %}Inserisci i dati del nuovo promemoria{% endif %}
+    </p>
+  </div>
+  <a href="{% url 'comunicazioni:promemoria_list' %}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left me-1"></i>Annulla
+  </a>
+</div>
+
+<div class="row justify-content-center">
+  <div class="col-lg-7">
+    <div class="card">
+      <div class="card-body p-4">
+        <form method="post">
+          {% csrf_token %}
+          {% crispy form %}
+          <div class="d-flex gap-2 mt-3">
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-check-lg me-1"></i>
+              {% if object %}Salva modifiche{% else %}Crea promemoria{% endif %}
+            </button>
+            <a href="{% url 'comunicazioni:promemoria_list' %}" class="btn btn-outline-secondary">Annulla</a>
+            {% if object %}
+            <a href="{% url 'comunicazioni:promemoria_delete' object.pk %}"
+               class="btn btn-outline-danger ms-auto">
+              <i class="bi bi-trash me-1"></i>Elimina
+            </a>
+            {% endif %}
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

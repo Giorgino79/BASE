@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block title %}{% if object %}Modifica lettera di richiamo{% else %}Nuova lettera di richiamo{% endif %}{% endblock %}
+
+{% block sidebar_nav %}
+  <li class="nav-section-title">Principale</li>
+  <li><a href="{% url 'dashboard' %}"><i class="bi bi-speedometer2"></i><span>Dashboard</span></a></li>
+  <li><a href="{% url 'users:user_list' %}" class="active"><i class="bi bi-people"></i><span>Dipendenti</span></a></li>
+  <li class="nav-section-title">Amministrazione</li>
+  <li><a href="{% url 'core:amministrazione_dashboard' %}"><i class="bi bi-gear"></i><span>Impostazioni</span></a></li>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-xl-7 col-lg-9">
+    <div class="card">
+      <div class="card-header" style="background:var(--slate-50);border-bottom:1px solid var(--slate-100);">
+        <h5 class="fw-semibold mb-0" style="color:var(--slate-900);">
+          <i class="bi bi-file-earmark-text me-2" style="color:#ef4444;"></i>
+          {% if object %}Modifica lettera di richiamo{% else %}Nuova lettera di richiamo{% endif %}
+        </h5>
+      </div>
+      <div class="card-body">
+        <form method="post" novalidate>
+          {% csrf_token %}
+          {% crispy form %}
+          <div class="d-flex gap-2 justify-content-end pt-3 mt-2" style="border-top:1px solid var(--slate-100);">
+            <a href="{% url 'users:lettera_richiamo_list' %}" class="btn btn-outline-secondary">Annulla</a>
+            <button type="submit" class="btn btn-danger">
+              <i class="bi bi-file-earmark-check me-1"></i>
+              {% if object %}Salva modifiche{% else %}Crea lettera{% endif %}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

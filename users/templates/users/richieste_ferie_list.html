@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+
+{% block title %}Le mie ferie e permessi{% endblock %}
+
+{% block sidebar_nav %}
+  <li class="nav-section-title">Principale</li>
+  <li><a href="{% url 'dashboard' %}"><i class="bi bi-speedometer2"></i><span>Dashboard</span></a></li>
+  <li><a href="{% url 'users:user_list' %}"><i class="bi bi-people"></i><span>Dipendenti</span></a></li>
+  <li><a href="{% url 'users:timbratura_list' %}"><i class="bi bi-clock-history"></i><span>Timbrature</span></a></li>
+  <li class="nav-section-title">Presenze</li>
+  <li><a href="{% url 'users:richieste_ferie_list' %}" class="active"><i class="bi bi-calendar-check"></i><span>Ferie e Permessi</span></a></li>
+  {% if user.is_staff %}
+  <li><a href="{% url 'users:richieste_ferie_admin_list' %}"><i class="bi bi-clipboard2-check"></i><span>Gestione Richieste</span></a></li>
+  {% endif %}
+  <li><a href="{% url 'core:calendario_aziendale' %}"><i class="bi bi-calendar3"></i><span>Calendario</span></a></li>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+  <div>
+    <h1 class="h4 fw-bold mb-1" style="color:var(--slate-900);">Ferie e Permessi</h1>
+    <p class="text-muted mb-0" style="font-size:.875rem;">Le tue richieste di assenza</p>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{% url 'users:richiesta_ferie_create' %}" class="btn btn-primary btn-sm d-flex align-items-center gap-1">
+      <i class="bi bi-sun"></i> Richiesta ferie
+    </a>
+    <a href="{% url 'users:richiesta_permesso_create' %}" class="btn btn-outline-primary btn-sm d-flex align-items-center gap-1">
+      <i class="bi bi-clock"></i> Richiesta permesso
+    </a>
+  </div>
+</div>
+
+<!-- Riepilogo -->
+{% if riepilogo %}
+<div class="row g-3 mb-4">
+  <div class="col-sm-4">
+    <div class="stat-card">
+      <div class="stat-card-icon icon-sky">
+        <i class="bi bi-sun-fill"></i>
+      </div>
+      <div class="stat-card-body">
+        <div class="stat-card-value">{{ riepilogo.ferie_approvate|default:0 }}</div>
+        <div class="stat-card-label">Giorni ferie approvati</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-4">
+    <div class="stat-card">
+      <div class="stat-card-icon icon-amber">
+        <i class="bi bi-hourglass-split"></i>
+      </div>
+      <div class="stat-card-body">
+        <div class="stat-card-value">{{ riepilogo.in_attesa|default:0 }}</div>
+        <div class="stat-card-label">In attesa di approvazione</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-4">
+    <div class="stat-card">
+      <div class="stat-card-icon icon-emerald">
+        <i class="bi bi-clock-fill"></i>
+      </div>
+      <div class="stat-card-body">
+        <div class="stat-card-value">{{ riepilogo.ore_permesso|default:0 }}h</div>
+        <div class="stat-card-label">Ore permesso usate</div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Tipo</th>
+          <th>Dal</th>
+          <th>Al</th>
+          <th>Durata</th>
+          <th>Motivazione</th>
+          <th>Stato</th>
+          <th class="text-end">Azioni</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in richieste %}
+        <tr>
+          <td>
+            <span class="d-flex align-items-center gap-1" style="font-size:.875rem;">
+              <i class="bi bi-sun" style="color:#f59e0b;"></i> Ferie
+            </span>
+          </td>
+          <td style="font-size:.875rem;">{{ r.data_inizio|date:"d/m/Y" }}</td>
+          <td style="font-size:.875rem;">{{ r.data_fine|date:"d/m/Y" }}</td>
+          <td style="font-size:.875rem;">
+            {% if r.giorni_richiesti %}{{ r.giorni_richiesti }} gg
+            {% elif r.ore_richieste %}{{ r.ore_richieste }}h
+            {% else %}—{% endif %}
+          </td>
+          <td style="font-size:.75rem;color:var(--slate-500);max-width:180px;">
+            {{ r.motivazione|truncatechars:40|default:"—" }}
+          </td>
+          <td>
+            {% if r.stato == 'approvata' %}
+              <span class="badge" style="background:#dcfce7;color:#166534;font-size:.7rem;">
+                <i class="bi bi-check-circle me-1"></i>Approvata
+              </span>
+            {% elif r.stato == 'rifiutata' %}
+              <span class="badge" style="background:#fee2e2;color:#991b1b;font-size:.7rem;">
+                <i class="bi bi-x-circle me-1"></i>Rifiutata
+              </span>
+            {% else %}
+              <span class="badge" style="background:#fef3c7;color:#92400e;font-size:.7rem;">
+                <i class="bi bi-hourglass me-1"></i>In attesa
+              </span>
+            {% endif %}
+          </td>
+          <td class="text-end">
+            {% if r.stato == 'in_attesa' %}
+            <a href="{% url 'users:richiesta_ferie_update' r.pk %}" class="btn btn-icon btn-sm" title="Modifica">
+              <i class="bi bi-pencil"></i>
+            </a>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="7" class="text-center py-5" style="color:var(--slate-400);">
+            <i class="bi bi-calendar-x" style="font-size:2.5rem;display:block;margin-bottom:.75rem;"></i>
+            Nessuna richiesta trovata
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

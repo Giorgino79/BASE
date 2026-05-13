@@ -1,0 +1,264 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Calendario aziendale{% endblock %}
+
+{% block extra_css %}
+<link href='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css' rel='stylesheet' />
+<style>
+  .fc { font-family: inherit; }
+  .fc-toolbar-title { font-size: 1.1rem; font-weight: 600; color: var(--slate-900); }
+  .fc-button { font-size: .8rem !important; padding: .3rem .65rem !important; }
+  .fc-button-primary { background: var(--indigo-600) !important; border-color: var(--indigo-600) !important; }
+  .fc-button-primary:hover { background: #4338ca !important; border-color: #4338ca !important; }
+  .fc-button-primary:not(.fc-button-active):hover { background: #4338ca !important; }
+  .fc-button-active { background: #312e81 !important; border-color: #312e81 !important; }
+  .fc-event { cursor: pointer; border: none !important; border-radius: 4px; font-size: .75rem; }
+  .fc-event:hover { opacity: .85; }
+  .fc-daygrid-event { padding: 1px 4px; }
+  .fc-day-today { background: #eff6ff !important; }
+  .fc-col-header-cell { font-size: .75rem; font-weight: 700; color: var(--slate-500); text-transform: uppercase; letter-spacing: .05em; }
+
+  /* Provider toggle */
+  .provider-btn {
+    display: flex; align-items: center; gap: 8px;
+    width: 100%; text-align: left; padding: 7px 10px;
+    border-radius: 6px; border: 1px solid var(--slate-200);
+    background: #fff; font-size: .8rem; cursor: pointer;
+    transition: all .15s; margin-bottom: 5px; color: var(--slate-700);
+  }
+  .provider-btn:hover { background: var(--slate-50); }
+  .provider-btn.active { border-color: transparent; color: #fff; }
+  .provider-btn.inactive { opacity: .45; background: var(--slate-50); color: var(--slate-500); }
+  .provider-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+  /* Tooltip */
+  #evento-tooltip {
+    display: none; position: fixed; z-index: 9999;
+    background: #fff; border: 1px solid var(--slate-200);
+    border-radius: 8px; padding: 12px;
+    box-shadow: 0 4px 16px rgba(0,0,0,.12);
+    max-width: 260px; pointer-events: none; font-size: .8rem;
+  }
+</style>
+{% endblock %}
+
+{% block sidebar_nav %}
+  <li class="nav-section-title">Principale</li>
+  <li><a href="{% url 'dashboard' %}"><i class="bi bi-speedometer2"></i><span>Dashboard</span></a></li>
+  <li><a href="{% url 'users:user_list' %}"><i class="bi bi-people"></i><span>Dipendenti</span></a></li>
+  <li><a href="{% url 'users:timbratura_list' %}"><i class="bi bi-clock-history"></i><span>Timbrature</span></a></li>
+  <li class="nav-section-title">Presenze</li>
+  <li><a href="{% url 'users:richieste_ferie_list' %}"><i class="bi bi-calendar-check"></i><span>Ferie e Permessi</span></a></li>
+  {% if user.is_staff %}
+  <li><a href="{% url 'users:richieste_ferie_admin_list' %}"><i class="bi bi-clipboard2-check"></i><span>Gestione Richieste</span></a></li>
+  {% endif %}
+  <li><a href="{% url 'core:calendario_aziendale' %}" class="active"><i class="bi bi-calendar3"></i><span>Calendario</span></a></li>
+  <li><a href="{% url 'core:calendario_personale' %}"><i class="bi bi-calendar-heart"></i><span>Il mio calendario</span></a></li>
+  {% if user.is_staff %}
+  <li class="nav-section-title">Amministrazione</li>
+  <li><a href="{% url 'core:amministrazione_dashboard' %}"><i class="bi bi-gear"></i><span>Impostazioni</span></a></li>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+  <div>
+    <h1 class="h4 fw-bold mb-1" style="color:var(--slate-900);">Calendario aziendale</h1>
+    <p class="text-muted mb-0" style="font-size:.875rem;">Ferie, permessi ed eventi aziendali</p>
+  </div>
+  <div class="d-flex gap-2">
+    {% if user.is_staff %}
+    <a href="{% url 'core:evento_calendario_create' %}" class="btn btn-primary btn-sm d-flex align-items-center gap-1">
+      <i class="bi bi-plus-lg"></i> Nuovo evento
+    </a>
+    {% endif %}
+    <a href="{% url 'core:calendario_personale' %}" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1">
+      <i class="bi bi-person-calendar"></i> Il mio
+    </a>
+  </div>
+</div>
+
+<div class="row g-3">
+
+  <!-- Filtri laterali -->
+  <div class="col-lg-3">
+    <div class="card card-body mb-3">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h6 class="fw-semibold mb-0" style="font-size:.8rem;text-transform:uppercase;letter-spacing:.05em;color:var(--slate-500);">
+          <i class="bi bi-toggles me-1"></i> Tipi di evento
+        </h6>
+        <div class="d-flex gap-2">
+          <button class="btn btn-link btn-sm p-0" id="btn-tutti" style="font-size:.75rem;color:var(--indigo-600);">Tutti</button>
+          <span style="color:var(--slate-300);">·</span>
+          <button class="btn btn-link btn-sm p-0" id="btn-nessuno" style="font-size:.75rem;color:var(--slate-400);">Nessuno</button>
+        </div>
+      </div>
+      <div id="filtri-provider">
+        {% for p in providers_info %}
+        <button
+          class="provider-btn active"
+          data-provider="{{ p.name }}"
+          data-color="{{ p.color|default:'#6c757d' }}"
+          style="background-color:{{ p.color|default:'#6c757d' }};border-color:{{ p.color|default:'#6c757d' }};"
+          title="{{ p.description }}"
+        >
+          <span class="provider-dot" style="background:rgba(255,255,255,.8);"></span>
+          <span>{{ p.description }}</span>
+        </button>
+        {% empty %}
+        <p class="text-muted mb-0" style="font-size:.8rem;">Nessun tipo disponibile.</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Calendario principale -->
+  <div class="col-lg-9">
+    <div class="card p-3">
+      <div id="calendario"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Tooltip evento -->
+<div id="evento-tooltip">
+  <div id="tooltip-content"></div>
+</div>
+
+<!-- Modal creazione rapida evento -->
+{% if user.is_staff %}
+<div class="modal fade" id="modal-evento" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header" style="border-bottom:1px solid var(--slate-100);">
+        <h6 class="modal-title fw-semibold" style="color:var(--slate-900);">Nuovo evento</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p class="text-muted mb-0" style="font-size:.875rem;" id="modal-data-label"></p>
+        <div class="d-flex gap-2 mt-3">
+          <a id="btn-crea-evento" href="{% url 'core:evento_calendario_create' %}" class="btn btn-primary flex-fill">
+            <i class="bi bi-calendar-plus me-1"></i> Crea evento
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js'></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const calendarEl = document.getElementById('calendario');
+  const tooltip = document.getElementById('evento-tooltip');
+  const tooltipContent = document.getElementById('tooltip-content');
+
+  function getProviderAttivi() {
+    return [...document.querySelectorAll('.provider-btn.active')].map(b => b.dataset.provider);
+  }
+
+  const calendar = new FullCalendar.Calendar(calendarEl, {
+    locale: 'it',
+    initialView: 'dayGridMonth',
+    headerToolbar: {
+      left: 'prev,next today',
+      center: 'title',
+      right: 'dayGridMonth,timeGridWeek,listMonth'
+    },
+    buttonText: { today: 'Oggi', month: 'Mese', week: 'Settimana', list: 'Lista' },
+    firstDay: 1,
+    height: 'auto',
+    navLinks: true,
+    editable: false,
+    {% if user.is_staff %}
+    dateClick: function (info) {
+      document.getElementById('modal-data-label').textContent = 'Data: ' + info.date.toLocaleDateString('it-IT', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
+      document.getElementById('btn-crea-evento').href = '{% url "core:evento_calendario_create" %}?date=' + info.dateStr + 'T09:00';
+      new bootstrap.Modal(document.getElementById('modal-evento')).show();
+    },
+    {% endif %}
+    eventSources: [{
+      url: '{% url "core:calendario_eventi_api" %}',
+      extraParams: function () {
+        const sel = getProviderAttivi();
+        return { providers: sel.length > 0 ? sel.join(',') : '__nessuno__' };
+      },
+      failure: function () { console.error('Errore caricamento eventi calendario'); }
+    }],
+    eventClick: function (info) {
+      if (info.event.url) {
+        info.jsEvent.preventDefault();
+        window.location.href = info.event.url;
+      }
+    },
+    eventMouseEnter: function (info) {
+      const p = info.event.extendedProps;
+      let html = `<strong style="color:var(--slate-900);">${info.event.title}</strong>`;
+      if (info.event.start) {
+        html += `<br><small style="color:var(--slate-500);">${info.event.start.toLocaleDateString('it-IT')}`;
+        if (info.event.end && !info.event.allDay) {
+          html += ` – ${info.event.end.toLocaleTimeString('it-IT', {hour:'2-digit',minute:'2-digit'})}`;
+        }
+        html += '</small>';
+      }
+      if (p.stato) html += `<br><span class="badge mt-1" style="background:var(--slate-100);color:var(--slate-700);">${p.stato}</span>`;
+      if (p.dipendente) html += `<br><small style="color:var(--slate-500);"><i class="bi bi-person me-1"></i>${p.dipendente}</small>`;
+      if (p.giorni) html += `<br><small style="color:var(--slate-500);">${p.giorni} giorni</small>`;
+      if (p.descrizione) html += `<br><small style="color:var(--slate-400);">${p.descrizione}</small>`;
+      tooltipContent.innerHTML = html;
+      tooltip.style.display = 'block';
+    },
+    eventMouseLeave: function () { tooltip.style.display = 'none'; },
+  });
+
+  calendar.render();
+
+  document.addEventListener('mousemove', function (e) {
+    tooltip.style.left = (e.clientX + 15) + 'px';
+    tooltip.style.top = (e.clientY + 10) + 'px';
+  });
+
+  // Toggle provider
+  document.querySelectorAll('.provider-btn').forEach(function (btn) {
+    const color = btn.dataset.color || '#6c757d';
+    btn.addEventListener('click', function () {
+      if (btn.classList.contains('active')) {
+        btn.classList.replace('active', 'inactive');
+        btn.style.backgroundColor = '';
+        btn.style.borderColor = color;
+        btn.style.color = '';
+      } else {
+        btn.classList.replace('inactive', 'active');
+        btn.style.backgroundColor = color;
+        btn.style.borderColor = color;
+        btn.style.color = 'white';
+      }
+      calendar.refetchEvents();
+    });
+  });
+
+  document.getElementById('btn-tutti')?.addEventListener('click', function () {
+    document.querySelectorAll('.provider-btn').forEach(function (btn) {
+      const color = btn.dataset.color || '#6c757d';
+      btn.classList.add('active'); btn.classList.remove('inactive');
+      btn.style.backgroundColor = color; btn.style.borderColor = color; btn.style.color = 'white';
+    });
+    calendar.refetchEvents();
+  });
+
+  document.getElementById('btn-nessuno')?.addEventListener('click', function () {
+    document.querySelectorAll('.provider-btn').forEach(function (btn) {
+      const color = btn.dataset.color || '#6c757d';
+      btn.classList.add('inactive'); btn.classList.remove('active');
+      btn.style.backgroundColor = ''; btn.style.borderColor = color; btn.style.color = '';
+    });
+    calendar.refetchEvents();
+  });
+});
+</script>
+{% endblock %}

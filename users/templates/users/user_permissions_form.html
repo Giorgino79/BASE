@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block title %}Permessi — {{ profile_user.get_full_name }}{% endblock %}
+
+{% block sidebar_nav %}
+  <li class="nav-section-title">Principale</li>
+  <li><a href="{% url 'dashboard' %}"><i class="bi bi-speedometer2"></i><span>Dashboard</span></a></li>
+  <li><a href="{% url 'users:user_list' %}" class="active"><i class="bi bi-people"></i><span>Dipendenti</span></a></li>
+  <li class="nav-section-title">Amministrazione</li>
+  <li><a href="{% url 'core:amministrazione_dashboard' %}"><i class="bi bi-gear"></i><span>Impostazioni</span></a></li>
+{% endblock %}
+
+{% block content %}
+<nav class="mb-3" style="font-size:.8rem;">
+  <a href="{% url 'users:user_list' %}" style="color:var(--indigo-600);text-decoration:none;">Dipendenti</a>
+  <i class="bi bi-chevron-right mx-1" style="color:var(--slate-400);"></i>
+  <a href="{% url 'users:user_detail' profile_user.pk %}" style="color:var(--indigo-600);text-decoration:none;">
+    {{ profile_user.get_full_name }}
+  </a>
+  <i class="bi bi-chevron-right mx-1" style="color:var(--slate-400);"></i>
+  <span style="color:var(--slate-500);">Permessi</span>
+</nav>
+
+<div class="row">
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-header" style="background:var(--slate-50);">
+        <h5 class="fw-semibold mb-0" style="color:var(--slate-900);">
+          <i class="bi bi-shield-lock me-2" style="color:var(--indigo-600);"></i>
+          Permessi — {{ profile_user.get_full_name }}
+        </h5>
+      </div>
+      <div class="card-body">
+        <div class="alert mb-4 d-flex gap-2" style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;">
+          <i class="bi bi-info-circle-fill" style="color:#3b82f6;flex-shrink:0;margin-top:.1rem;"></i>
+          <div style="font-size:.8rem;color:#1e40af;">
+            Puoi applicare un template predefinito o impostare i permessi manualmente.
+            I permessi si accumulano: il template aggiunge i permessi definiti senza rimuovere quelli esistenti.
+          </div>
+        </div>
+
+        {% if template_form %}
+        <div class="mb-4 p-3 rounded" style="background:var(--slate-50);border:1px solid var(--slate-100);">
+          <h6 class="fw-semibold mb-3" style="font-size:.8rem;color:var(--slate-600);text-transform:uppercase;letter-spacing:.06em;">
+            Applica template permessi
+          </h6>
+          <form method="post" action="{% url 'users:user_apply_template' profile_user.pk %}" novalidate>
+            {% csrf_token %}
+            <div class="d-flex gap-2 align-items-end">
+              <div class="flex-grow-1">{{ template_form.template_permessi|as_crispy_field }}</div>
+              <button type="submit" class="btn btn-outline-primary btn-sm mb-3">
+                <i class="bi bi-magic me-1"></i>Applica
+              </button>
+            </div>
+          </form>
+        </div>
+        {% endif %}
+
+        <form method="post" novalidate>
+          {% csrf_token %}
+          {% crispy form %}
+          <div class="d-flex gap-2 justify-content-end pt-3 mt-2" style="border-top:1px solid var(--slate-100);">
+            <a href="{% url 'users:user_detail' profile_user.pk %}" class="btn btn-outline-secondary">Annulla</a>
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-check-lg me-1"></i>Salva permessi
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

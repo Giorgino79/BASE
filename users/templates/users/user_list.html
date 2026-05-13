@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+
+{% block title %}Dipendenti{% endblock %}
+
+{% block sidebar_nav %}
+  <li class="nav-section-title">Principale</li>
+  <li><a href="{% url 'dashboard' %}"><i class="bi bi-speedometer2"></i><span>Dashboard</span></a></li>
+  <li><a href="{% url 'users:user_list' %}" class="active"><i class="bi bi-people"></i><span>Dipendenti</span></a></li>
+  <li><a href="{% url 'users:timbratura_list' %}"><i class="bi bi-clock-history"></i><span>Timbrature</span></a></li>
+  <li class="nav-section-title">Presenze</li>
+  <li><a href="{% url 'users:richieste_ferie_list' %}"><i class="bi bi-calendar-check"></i><span>Ferie e Permessi</span></a></li>
+  {% if user.is_staff %}
+  <li><a href="{% url 'users:richieste_ferie_admin_list' %}"><i class="bi bi-clipboard2-check"></i><span>Gestione Richieste</span></a></li>
+  {% endif %}
+  <li><a href="{% url 'core:calendario_aziendale' %}"><i class="bi bi-calendar3"></i><span>Calendario</span></a></li>
+  {% if user.is_staff %}
+  <li class="nav-section-title">Amministrazione</li>
+  <li><a href="{% url 'core:amministrazione_dashboard' %}"><i class="bi bi-gear"></i><span>Impostazioni</span></a></li>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+  <div>
+    <h1 class="h4 fw-bold mb-1" style="color:var(--slate-900);">Dipendenti</h1>
+    <p class="text-muted mb-0" style="font-size:.875rem;">{{ object_list|length }} utenti registrati</p>
+  </div>
+  {% if perms.users.add_user %}
+  <a href="{% url 'users:user_create' %}" class="btn btn-primary btn-sm d-flex align-items-center gap-1">
+    <i class="bi bi-person-plus"></i> Nuovo dipendente
+  </a>
+  {% endif %}
+</div>
+
+<!-- Filters -->
+<div class="card card-body mb-3">
+  <form method="get" class="row g-2 align-items-end">
+    <div class="col-md-4">
+      <label class="form-label-sm">Cerca</label>
+      <div class="input-group input-group-sm">
+        <span class="input-group-text"><i class="bi bi-search"></i></span>
+        <input type="text" name="q" class="form-control" placeholder="Nome, cognome, username…" value="{{ request.GET.q }}">
+      </div>
+    </div>
+    <div class="col-md-3">
+      <label class="form-label-sm">Stato</label>
+      <select name="attivo" class="form-select form-select-sm">
+        <option value="">Tutti</option>
+        <option value="1" {% if request.GET.attivo == '1' %}selected{% endif %}>Attivi</option>
+        <option value="0" {% if request.GET.attivo == '0' %}selected{% endif %}>Disattivati</option>
+      </select>
+    </div>
+    <div class="col-auto">
+      <button type="submit" class="btn btn-primary btn-sm">Filtra</button>
+      <a href="{% url 'users:user_list' %}" class="btn btn-outline-secondary btn-sm">Reset</a>
+    </div>
+  </form>
+</div>
+
+<!-- Table -->
+<div class="card">
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Dipendente</th>
+          <th>Username</th>
+          <th>Mansione</th>
+          <th>Stato</th>
+          <th>Data assunzione</th>
+          <th class="text-end">Azioni</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in object_list %}
+        <tr>
+          <td>
+            <div class="d-flex align-items-center gap-2">
+              <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                   style="width:34px;height:34px;background:#e0e7ff;color:#4338ca;font-weight:700;font-size:.75rem;">
+                {{ u.first_name|first|upper }}{{ u.last_name|first|upper }}
+              </div>
+              <div>
+                <div class="fw-medium" style="font-size:.875rem;color:var(--slate-800);">{{ u.get_full_name|default:u.username }}</div>
+                <div style="font-size:.75rem;color:var(--slate-400);">{{ u.email }}</div>
+              </div>
+            </div>
+          </td>
+          <td style="font-size:.875rem;color:var(--slate-600);">{{ u.username }}</td>
+          <td style="font-size:.875rem;color:var(--slate-600);">{{ u.qualifica|default:"—" }}</td>
+          <td>
+            {% if u.is_active %}
+              <span class="badge" style="background:#dcfce7;color:#166534;font-size:.7rem;">Attivo</span>
+            {% else %}
+              <span class="badge" style="background:#fee2e2;color:#991b1b;font-size:.7rem;">Disattivato</span>
+            {% endif %}
+            {% if u.is_staff %}
+              <span class="badge" style="background:#ede9fe;color:#5b21b6;font-size:.7rem;">Staff</span>
+            {% endif %}
+          </td>
+          <td style="font-size:.875rem;color:var(--slate-600);">{{ u.data_assunzione|date:"d/m/Y"|default:"—" }}</td>
+          <td class="text-end">
+            <div class="d-flex justify-content-end gap-1">
+              <a href="{% url 'users:user_detail' u.pk %}" class="btn btn-icon btn-sm" title="Dettaglio">
+                <i class="bi bi-eye"></i>
+              </a>
+              {% if perms.users.change_user %}
+              <a href="{% url 'users:user_update' u.pk %}" class="btn btn-icon btn-sm" title="Modifica">
+                <i class="bi bi-pencil"></i>
+              </a>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="6" class="text-center py-5" style="color:var(--slate-400);">
+            <i class="bi bi-people" style="font-size:2.5rem;display:block;margin-bottom:.75rem;"></i>
+            Nessun dipendente trovato
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if is_paginated %}
+  <div class="card-footer d-flex align-items-center justify-content-between" style="background:var(--slate-50);border-top:1px solid var(--slate-100);">
+    <small class="text-muted">
+      Pagina {{ page_obj.number }} di {{ page_obj.paginator.num_pages }}
+    </small>
+    <nav>
+      <ul class="pagination pagination-sm mb-0">
+        {% if page_obj.has_previous %}
+        <li class="page-item">
+          <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">
+            <i class="bi bi-chevron-left"></i>
+          </a>
+        </li>
+        {% endif %}
+        {% for i in page_obj.paginator.page_range %}
+        <li class="page-item {% if page_obj.number == i %}active{% endif %}">
+          <a class="page-link" href="?page={{ i }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">{{ i }}</a>
+        </li>
+        {% endfor %}
+        {% if page_obj.has_next %}
+        <li class="page-item">
+          <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">
+            <i class="bi bi-chevron-right"></i>
+          </a>
+        </li>
+        {% endif %}
+      </ul>
+    </nav>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

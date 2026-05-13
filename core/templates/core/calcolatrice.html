@@ -1,0 +1,251 @@
+{% extends "base.html" %}
+
+{% block title %}Calcolatrice{% endblock %}
+
+{% block extra_css %}
+<style>
+  .calc-tabs .nav-link { font-size: .82rem; padding: .5rem .9rem; border-radius: 8px 8px 0 0; }
+  .calc-display {
+    background: #0f172a; color: #f8fafc; font-family: monospace;
+    font-size: 2rem; padding: 1rem 1.25rem; border-radius: 8px;
+    text-align: right; min-height: 3.5rem; word-break: break-all;
+    line-height: 1.2; margin-bottom: .75rem;
+  }
+  .calc-display .sub { font-size: 1rem; color: #64748b; display: block; }
+  .calc-btn {
+    border: none; border-radius: 8px; font-size: 1rem; font-weight: 600;
+    height: 56px; cursor: pointer; transition: filter .1s;
+  }
+  .calc-btn:active { filter: brightness(.85); }
+  .btn-num   { background: #1e293b; color: #f8fafc; }
+  .btn-op    { background: #4f46e5; color: #fff; }
+  .btn-fn    { background: #334155; color: #cbd5e1; font-size: .85rem; }
+  .btn-eq    { background: #6366f1; color: #fff; }
+  .btn-clear { background: #dc2626; color: #fff; }
+  .btn-zero  { grid-column: span 2; }
+
+  .iva-result, .margin-result, .ore-result {
+    background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 1.25rem;
+    margin-top: .75rem;
+  }
+  .result-row { display: flex; justify-content: space-between; align-items: center; padding: .4rem 0; border-bottom: 1px solid #f1f5f9; font-size: .9rem; }
+  .result-row:last-child { border: none; font-weight: 700; font-size: 1rem; }
+  .result-label { color: #64748b; }
+  .result-value { color: #0f172a; font-family: monospace; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+  <div>
+    <h1 class="h4 fw-bold mb-1" style="color:var(--slate-900);">Calcolatrice</h1>
+    <p class="text-muted mb-0" style="font-size:.875rem;">Strumenti di calcolo aziendale</p>
+  </div>
+</div>
+
+<div class="row g-3">
+
+  <!-- Calcolatrice generale -->
+  <div class="col-lg-4">
+    <div class="card card-body">
+      <h6 class="fw-semibold mb-3" style="font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--slate-500);">
+        <i class="bi bi-calculator me-1"></i>Calcolatrice
+      </h6>
+      <div class="calc-display" id="calcDisplay">
+        <span class="sub" id="calcExpr">&nbsp;</span>
+        <span id="calcVal">0</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.5rem;">
+        <button class="calc-btn btn-clear" onclick="calcClear()">C</button>
+        <button class="calc-btn btn-fn" onclick="calcToggleSign()">+/−</button>
+        <button class="calc-btn btn-fn" onclick="calcPercent()">%</button>
+        <button class="calc-btn btn-op" onclick="calcOp('/')">÷</button>
+
+        <button class="calc-btn btn-num" onclick="calcDigit('7')">7</button>
+        <button class="calc-btn btn-num" onclick="calcDigit('8')">8</button>
+        <button class="calc-btn btn-num" onclick="calcDigit('9')">9</button>
+        <button class="calc-btn btn-op" onclick="calcOp('*')">×</button>
+
+        <button class="calc-btn btn-num" onclick="calcDigit('4')">4</button>
+        <button class="calc-btn btn-num" onclick="calcDigit('5')">5</button>
+        <button class="calc-btn btn-num" onclick="calcDigit('6')">6</button>
+        <button class="calc-btn btn-op" onclick="calcOp('-')">−</button>
+
+        <button class="calc-btn btn-num" onclick="calcDigit('1')">1</button>
+        <button class="calc-btn btn-num" onclick="calcDigit('2')">2</button>
+        <button class="calc-btn btn-num" onclick="calcDigit('3')">3</button>
+        <button class="calc-btn btn-op" onclick="calcOp('+')">+</button>
+
+        <button class="calc-btn btn-num btn-zero" onclick="calcDigit('0')">0</button>
+        <button class="calc-btn btn-num" onclick="calcDot()">.</button>
+        <button class="calc-btn btn-eq" onclick="calcEquals()">=</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Calcolatore IVA -->
+  <div class="col-lg-4">
+    <div class="card card-body">
+      <h6 class="fw-semibold mb-3" style="font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--slate-500);">
+        <i class="bi bi-percent me-1"></i>IVA
+      </h6>
+      <div class="mb-3">
+        <label class="form-label fw-semibold" style="font-size:.85rem;">Imponibile (€)</label>
+        <input type="number" id="ivaImponibile" class="form-control" placeholder="0.00" step="0.01" min="0">
+      </div>
+      <div class="mb-3">
+        <label class="form-label fw-semibold" style="font-size:.85rem;">Aliquota IVA</label>
+        <div class="d-flex gap-2 flex-wrap">
+          <button class="btn btn-sm btn-outline-secondary" onclick="setAliquota(4)">4%</button>
+          <button class="btn btn-sm btn-outline-secondary" onclick="setAliquota(5)">5%</button>
+          <button class="btn btn-sm btn-outline-secondary" onclick="setAliquota(10)">10%</button>
+          <button class="btn btn-sm btn-primary" onclick="setAliquota(22)">22%</button>
+        </div>
+        <input type="number" id="ivaAliquota" class="form-control mt-2" placeholder="22" value="22" min="0" max="100">
+      </div>
+      <button class="btn btn-primary btn-sm w-100" onclick="calcolaIVA()">Calcola</button>
+      <div class="iva-result" id="ivaResult" style="display:none;">
+        <div class="result-row"><span class="result-label">Imponibile</span><span class="result-value" id="r_imponibile"></span></div>
+        <div class="result-row"><span class="result-label">IVA (<span id="r_aliquota"></span>%)</span><span class="result-value" id="r_iva"></span></div>
+        <div class="result-row"><span class="result-label">Totale</span><span class="result-value" id="r_totale"></span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Calcolatore Margine + Ore -->
+  <div class="col-lg-4">
+    <div class="card card-body mb-3">
+      <h6 class="fw-semibold mb-3" style="font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--slate-500);">
+        <i class="bi bi-graph-up me-1"></i>Margine / Ricarico
+      </h6>
+      <div class="mb-2">
+        <label class="form-label fw-semibold" style="font-size:.85rem;">Costo (€)</label>
+        <input type="number" id="mCosto" class="form-control" placeholder="0.00" step="0.01" min="0">
+      </div>
+      <div class="mb-3">
+        <label class="form-label fw-semibold" style="font-size:.85rem;">Prezzo vendita (€)</label>
+        <input type="number" id="mPrezzo" class="form-control" placeholder="0.00" step="0.01" min="0">
+      </div>
+      <button class="btn btn-primary btn-sm w-100" onclick="calcolaMargine()">Calcola</button>
+      <div class="margin-result" id="margineResult" style="display:none;">
+        <div class="result-row"><span class="result-label">Margine €</span><span class="result-value" id="r_margine_val"></span></div>
+        <div class="result-row"><span class="result-label">Margine %</span><span class="result-value" id="r_margine_pct"></span></div>
+        <div class="result-row"><span class="result-label">Ricarico %</span><span class="result-value" id="r_ricarico"></span></div>
+      </div>
+    </div>
+
+    <div class="card card-body">
+      <h6 class="fw-semibold mb-3" style="font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--slate-500);">
+        <i class="bi bi-clock me-1"></i>Ore → Giorni
+      </h6>
+      <div class="mb-2">
+        <label class="form-label fw-semibold" style="font-size:.85rem;">Ore totali</label>
+        <input type="number" id="oreInput" class="form-control" placeholder="0" step="0.5" min="0">
+      </div>
+      <div class="mb-3">
+        <label class="form-label fw-semibold" style="font-size:.85rem;">Ore/giorno lavorativo</label>
+        <input type="number" id="orePerGiorno" class="form-control" value="8" step="0.5" min="1">
+      </div>
+      <button class="btn btn-primary btn-sm w-100" onclick="calcolaOre()">Calcola</button>
+      <div class="ore-result" id="oreResult" style="display:none;">
+        <div class="result-row"><span class="result-label">Giorni interi</span><span class="result-value" id="r_giorni"></span></div>
+        <div class="result-row"><span class="result-label">Ore rimanenti</span><span class="result-value" id="r_ore_rim"></span></div>
+        <div class="result-row"><span class="result-label">Totale</span><span class="result-value" id="r_totale_ore"></span></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ── Calcolatrice generale ──────────────────────────────────────────────────
+let calcCurrent = '0', calcPrev = '', calcOperator = '', calcNewInput = true;
+
+function calcUpdate() {
+  document.getElementById('calcVal').textContent = parseFloat(calcCurrent).toLocaleString('it-IT', {maximumFractionDigits:10});
+  document.getElementById('calcExpr').textContent = calcPrev ? `${calcPrev} ${calcOperator}` : ' ';
+}
+function calcDigit(d) {
+  if (calcNewInput) { calcCurrent = d; calcNewInput = false; }
+  else calcCurrent = calcCurrent === '0' ? d : calcCurrent + d;
+  calcUpdate();
+}
+function calcDot() {
+  if (calcNewInput) { calcCurrent = '0.'; calcNewInput = false; }
+  else if (!calcCurrent.includes('.')) calcCurrent += '.';
+  calcUpdate();
+}
+function calcOp(op) {
+  if (calcPrev && !calcNewInput) calcEquals();
+  calcPrev = calcCurrent; calcOperator = op; calcNewInput = true;
+  calcUpdate();
+}
+function calcEquals() {
+  if (!calcOperator || calcNewInput) return;
+  const a = parseFloat(calcPrev), b = parseFloat(calcCurrent);
+  const ops = {'+': a+b, '-': a-b, '*': a*b, '/': b !== 0 ? a/b : NaN};
+  calcCurrent = String(ops[calcOperator] ?? 0);
+  calcPrev = ''; calcOperator = ''; calcNewInput = true;
+  calcUpdate();
+}
+function calcClear() { calcCurrent='0'; calcPrev=''; calcOperator=''; calcNewInput=true; calcUpdate(); }
+function calcToggleSign() { calcCurrent = String(-parseFloat(calcCurrent)); calcUpdate(); }
+function calcPercent() { calcCurrent = String(parseFloat(calcCurrent)/100); calcUpdate(); }
+document.addEventListener('keydown', e => {
+  if ('0123456789'.includes(e.key)) calcDigit(e.key);
+  else if (e.key === '.') calcDot();
+  else if (['+','-','*','/'].includes(e.key)) calcOp(e.key);
+  else if (e.key === 'Enter' || e.key === '=') calcEquals();
+  else if (e.key === 'Escape') calcClear();
+  else if (e.key === 'Backspace') {
+    if (!calcNewInput && calcCurrent.length > 1) calcCurrent = calcCurrent.slice(0,-1);
+    else calcCurrent = '0';
+    calcUpdate();
+  }
+});
+
+// ── IVA ───────────────────────────────────────────────────────────────────
+function setAliquota(v) { document.getElementById('ivaAliquota').value = v; }
+function fmt(n) { return '€ ' + parseFloat(n).toFixed(2).replace('.',','); }
+function calcolaIVA() {
+  const imp = parseFloat(document.getElementById('ivaImponibile').value);
+  const al = parseFloat(document.getElementById('ivaAliquota').value);
+  if (isNaN(imp) || isNaN(al)) return;
+  const iva = imp * al / 100, totale = imp + iva;
+  document.getElementById('r_imponibile').textContent = fmt(imp);
+  document.getElementById('r_aliquota').textContent = al;
+  document.getElementById('r_iva').textContent = fmt(iva);
+  document.getElementById('r_totale').textContent = fmt(totale);
+  document.getElementById('ivaResult').style.display = '';
+}
+
+// ── Margine ───────────────────────────────────────────────────────────────
+function calcolaMargine() {
+  const costo = parseFloat(document.getElementById('mCosto').value);
+  const prezzo = parseFloat(document.getElementById('mPrezzo').value);
+  if (isNaN(costo) || isNaN(prezzo) || prezzo === 0) return;
+  const margineVal = prezzo - costo;
+  const marginePct = (margineVal / prezzo) * 100;
+  const ricarico = costo !== 0 ? (margineVal / costo) * 100 : Infinity;
+  document.getElementById('r_margine_val').textContent = fmt(margineVal);
+  document.getElementById('r_margine_pct').textContent = marginePct.toFixed(2).replace('.',',') + '%';
+  document.getElementById('r_ricarico').textContent = isFinite(ricarico) ? ricarico.toFixed(2).replace('.',',') + '%' : '∞';
+  document.getElementById('margineResult').style.display = '';
+}
+
+// ── Ore ───────────────────────────────────────────────────────────────────
+function calcolaOre() {
+  const ore = parseFloat(document.getElementById('oreInput').value);
+  const opg = parseFloat(document.getElementById('orePerGiorno').value) || 8;
+  if (isNaN(ore)) return;
+  const giorni = Math.floor(ore / opg);
+  const rim = ore - giorni * opg;
+  document.getElementById('r_giorni').textContent = giorni;
+  document.getElementById('r_ore_rim').textContent = rim.toFixed(1).replace('.',',') + 'h';
+  document.getElementById('r_totale_ore').textContent = `${giorni} giorni e ${rim.toFixed(1).replace('.',',')}h`;
+  document.getElementById('oreResult').style.display = '';
+}
+</script>
+{% endblock %}

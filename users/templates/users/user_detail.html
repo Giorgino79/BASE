@@ -1,0 +1,210 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ profile_user.get_full_name|default:profile_user.username }}{% endblock %}
+
+{% block sidebar_nav %}
+  <li class="nav-section-title">Principale</li>
+  <li><a href="{% url 'dashboard' %}"><i class="bi bi-speedometer2"></i><span>Dashboard</span></a></li>
+  <li><a href="{% url 'users:user_list' %}" class="active"><i class="bi bi-people"></i><span>Dipendenti</span></a></li>
+  <li><a href="{% url 'users:timbratura_list' %}"><i class="bi bi-clock-history"></i><span>Timbrature</span></a></li>
+  <li class="nav-section-title">Presenze</li>
+  <li><a href="{% url 'users:richieste_ferie_list' %}"><i class="bi bi-calendar-check"></i><span>Ferie e Permessi</span></a></li>
+  {% if user.is_staff %}
+  <li><a href="{% url 'users:richieste_ferie_admin_list' %}"><i class="bi bi-clipboard2-check"></i><span>Gestione Richieste</span></a></li>
+  {% endif %}
+  <li><a href="{% url 'core:calendario_aziendale' %}"><i class="bi bi-calendar3"></i><span>Calendario</span></a></li>
+  {% if user.is_staff %}
+  <li class="nav-section-title">Amministrazione</li>
+  <li><a href="{% url 'core:amministrazione_dashboard' %}"><i class="bi bi-gear"></i><span>Impostazioni</span></a></li>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+<!-- Breadcrumb -->
+<nav class="mb-3" style="font-size:.8rem;">
+  <a href="{% url 'users:user_list' %}" style="color:var(--indigo-600);text-decoration:none;">Dipendenti</a>
+  <i class="bi bi-chevron-right mx-1" style="color:var(--slate-400);"></i>
+  <span style="color:var(--slate-500);">{{ profile_user.get_full_name|default:profile_user.username }}</span>
+</nav>
+
+<div class="row g-3">
+  <!-- Left sidebar -->
+  <div class="col-lg-3">
+    {% include "users/includes/user_detail_sidebar.html" %}
+  </div>
+
+  <!-- Main content -->
+  <div class="col-lg-9">
+
+    <!-- Tabs -->
+    <ul class="nav nav-tabs mb-3" style="border-bottom:2px solid var(--slate-100);">
+      <li class="nav-item">
+        <a class="nav-link {% if tab == 'info' or not tab %}active{% endif %}"
+           href="?tab=info" style="font-size:.875rem;">
+          <i class="bi bi-person me-1"></i>Informazioni
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link {% if tab == 'presenze' %}active{% endif %}"
+           href="?tab=presenze" style="font-size:.875rem;">
+          <i class="bi bi-clock me-1"></i>Presenze
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link {% if tab == 'ferie' %}active{% endif %}"
+           href="?tab=ferie" style="font-size:.875rem;">
+          <i class="bi bi-calendar-check me-1"></i>Ferie &amp; Permessi
+        </a>
+      </li>
+      {% if request.user.is_staff %}
+      <li class="nav-item">
+        <a class="nav-link {% if tab == 'documenti' %}active{% endif %}"
+           href="?tab=documenti" style="font-size:.875rem;">
+          <i class="bi bi-paperclip me-1"></i>Documenti
+        </a>
+      </li>
+      {% endif %}
+    </ul>
+
+    <!-- Info tab -->
+    {% if tab == 'info' or not tab %}
+    <div class="row g-3">
+      <div class="col-md-6">
+        <div class="card card-body">
+          <h6 class="fw-semibold mb-3" style="color:var(--slate-900);font-size:.875rem;text-transform:uppercase;letter-spacing:.05em;">
+            Dati anagrafici
+          </h6>
+          <dl class="row mb-0" style="font-size:.875rem;">
+            <dt class="col-5" style="color:var(--slate-400);font-weight:500;">Nome</dt>
+            <dd class="col-7 mb-2" style="color:var(--slate-700);">{{ profile_user.first_name|default:"—" }}</dd>
+            <dt class="col-5" style="color:var(--slate-400);font-weight:500;">Cognome</dt>
+            <dd class="col-7 mb-2" style="color:var(--slate-700);">{{ profile_user.last_name|default:"—" }}</dd>
+            <dt class="col-5" style="color:var(--slate-400);font-weight:500;">Codice fiscale</dt>
+            <dd class="col-7 mb-2" style="color:var(--slate-700);">{{ profile_user.codice_fiscale|default:"—" }}</dd>
+            <dt class="col-5" style="color:var(--slate-400);font-weight:500;">Data nascita</dt>
+            <dd class="col-7 mb-2" style="color:var(--slate-700);">{{ profile_user.data_nascita|date:"d/m/Y"|default:"—" }}</dd>
+            <dt class="col-5" style="color:var(--slate-400);font-weight:500;">Luogo nascita</dt>
+            <dd class="col-7 mb-0" style="color:var(--slate-700);">{{ profile_user.luogo_nascita|default:"—" }}</dd>
+          </dl>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="card card-body">
+          <h6 class="fw-semibold mb-3" style="color:var(--slate-900);font-size:.875rem;text-transform:uppercase;letter-spacing:.05em;">
+            Dati lavorativi
+          </h6>
+          <dl class="row mb-0" style="font-size:.875rem;">
+            <dt class="col-5" style="color:var(--slate-400);font-weight:500;">Mansione</dt>
+            <dd class="col-7 mb-2" style="color:var(--slate-700);">{{ profile_user.qualifica|default:"—" }}</dd>
+            <dt class="col-5" style="color:var(--slate-400);font-weight:500;">Assunzione</dt>
+            <dd class="col-7 mb-2" style="color:var(--slate-700);">{{ profile_user.data_assunzione|date:"d/m/Y"|default:"—" }}</dd>
+            <dt class="col-5" style="color:var(--slate-400);font-weight:500;">Email</dt>
+            <dd class="col-7 mb-2" style="color:var(--slate-700);">{{ profile_user.email|default:"—" }}</dd>
+            <dt class="col-5" style="color:var(--slate-400);font-weight:500;">Telefono</dt>
+            <dd class="col-7 mb-2" style="color:var(--slate-700);">{{ profile_user.telefono|default:"—" }}</dd>
+            <dt class="col-5" style="color:var(--slate-400);font-weight:500;">Username</dt>
+            <dd class="col-7 mb-0" style="color:var(--slate-700);">{{ profile_user.username }}</dd>
+          </dl>
+        </div>
+      </div>
+      {% if profile_user.note %}
+      <div class="col-12">
+        <div class="card card-body">
+          <h6 class="fw-semibold mb-2" style="color:var(--slate-900);font-size:.875rem;text-transform:uppercase;letter-spacing:.05em;">Note</h6>
+          <p class="mb-0" style="font-size:.875rem;color:var(--slate-600);">{{ profile_user.note }}</p>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- Presenze tab -->
+    {% if tab == 'presenze' %}
+    <div class="card">
+      <div class="card-header d-flex align-items-center justify-content-between" style="background:var(--slate-50);">
+        <span class="fw-semibold" style="font-size:.875rem;">Ultime timbrature</span>
+        <a href="{% url 'users:timbratura_list' %}?user={{ profile_user.pk }}" class="btn btn-sm btn-outline-secondary">Vedi tutte</a>
+      </div>
+      <div class="table-responsive">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Data</th><th>Ora</th><th>Tipo</th><th>Turno</th><th>Note</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for t in ultime_timbrature %}
+            <tr>
+              <td style="font-size:.875rem;">{{ t.data|date:"d/m/Y" }}</td>
+              <td style="font-size:.875rem;font-family:monospace;">{{ t.ora|time:"H:i" }}</td>
+              <td style="font-size:.875rem;">
+                {% if t.tipo == 'ingresso' %}
+                  <span class="badge" style="background:#dcfce7;color:#166534;font-size:.7rem;">Ingresso</span>
+                {% else %}
+                  <span class="badge" style="background:#fee2e2;color:#991b1b;font-size:.7rem;">Uscita</span>
+                {% endif %}
+              </td>
+              <td style="font-size:.875rem;color:var(--slate-600);">{{ t.get_turno_display }}</td>
+              <td style="font-size:.75rem;color:var(--slate-400);">{{ t.note|default:"" }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="text-center py-4" style="color:var(--slate-400);">Nessuna timbratura registrata</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Ferie tab -->
+    {% if tab == 'ferie' %}
+    <div class="card">
+      <div class="card-header" style="background:var(--slate-50);">
+        <span class="fw-semibold" style="font-size:.875rem;">Storico ferie e permessi</span>
+      </div>
+      <div class="table-responsive">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Tipo</th><th>Dal</th><th>Al</th><th>Giorni</th><th>Stato</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in storico_richieste %}
+            <tr>
+              <td style="font-size:.875rem;">
+                <i class="bi bi-sun text-warning me-1"></i>Ferie
+              </td>
+              <td style="font-size:.875rem;">{{ r.data_inizio|date:"d/m/Y" }}</td>
+              <td style="font-size:.875rem;">{{ r.data_fine|date:"d/m/Y" }}</td>
+              <td style="font-size:.875rem;">{{ r.giorni_richiesti|default:"—" }}</td>
+              <td>
+                {% if r.stato == 'approvata' %}
+                  <span class="badge" style="background:#dcfce7;color:#166534;font-size:.7rem;">Approvata</span>
+                {% elif r.stato == 'rifiutata' %}
+                  <span class="badge" style="background:#fee2e2;color:#991b1b;font-size:.7rem;">Rifiutata</span>
+                {% else %}
+                  <span class="badge" style="background:#fef3c7;color:#92400e;font-size:.7rem;">In attesa</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="text-center py-4" style="color:var(--slate-400);">Nessuna richiesta trovata</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Documenti tab -->
+    {% if tab == 'documenti' and request.user.is_staff %}
+    <div class="card card-body">
+      <p class="text-muted mb-0" style="font-size:.875rem;">Nessun documento allegato.</p>
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+{% endblock %}

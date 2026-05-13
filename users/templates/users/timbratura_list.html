@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+
+{% block title %}Timbrature{% endblock %}
+
+{% block sidebar_nav %}
+  <li class="nav-section-title">Principale</li>
+  <li><a href="{% url 'dashboard' %}"><i class="bi bi-speedometer2"></i><span>Dashboard</span></a></li>
+  <li><a href="{% url 'users:user_list' %}"><i class="bi bi-people"></i><span>Dipendenti</span></a></li>
+  <li><a href="{% url 'users:timbratura_list' %}" class="active"><i class="bi bi-clock-history"></i><span>Timbrature</span></a></li>
+  <li class="nav-section-title">Presenze</li>
+  <li><a href="{% url 'users:richieste_ferie_list' %}"><i class="bi bi-calendar-check"></i><span>Ferie e Permessi</span></a></li>
+  {% if user.is_staff %}
+  <li><a href="{% url 'users:richieste_ferie_admin_list' %}"><i class="bi bi-clipboard2-check"></i><span>Gestione Richieste</span></a></li>
+  {% endif %}
+  <li><a href="{% url 'core:calendario_aziendale' %}"><i class="bi bi-calendar3"></i><span>Calendario</span></a></li>
+  {% if user.is_staff %}
+  <li class="nav-section-title">Amministrazione</li>
+  <li><a href="{% url 'core:amministrazione_dashboard' %}"><i class="bi bi-gear"></i><span>Impostazioni</span></a></li>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+  <div>
+    <h1 class="h4 fw-bold mb-1" style="color:var(--slate-900);">Timbrature</h1>
+    <p class="text-muted mb-0" style="font-size:.875rem;">Registro presenze dipendenti</p>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{% url 'users:timbratura_quick' %}" class="btn btn-primary btn-sm d-flex align-items-center gap-1">
+      <i class="bi bi-clock"></i> Timbra ora
+    </a>
+    {% if user.is_staff %}
+    <a href="{% url 'users:giornata_list' %}" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1">
+      <i class="bi bi-calendar-week"></i> Giornate
+    </a>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Filters -->
+<div class="card card-body mb-3">
+  <form method="get" class="row g-2 align-items-end">
+    {% if user.is_staff %}
+    <div class="col-md-3">
+      <label class="form-label-sm">Dipendente</label>
+      <select name="user" class="form-select form-select-sm">
+        <option value="">Tutti</option>
+        {% for u in tutti_utenti %}
+        <option value="{{ u.pk }}" {% if request.GET.user == u.pk|stringformat:"s" %}selected{% endif %}>
+          {{ u.get_full_name|default:u.username }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+    {% endif %}
+    <div class="col-md-2">
+      <label class="form-label-sm">Dal</label>
+      <input type="date" name="dal" class="form-control form-control-sm" value="{{ request.GET.dal }}">
+    </div>
+    <div class="col-md-2">
+      <label class="form-label-sm">Al</label>
+      <input type="date" name="al" class="form-control form-control-sm" value="{{ request.GET.al }}">
+    </div>
+    <div class="col-auto">
+      <button type="submit" class="btn btn-primary btn-sm">Filtra</button>
+      <a href="{% url 'users:timbratura_list' %}" class="btn btn-outline-secondary btn-sm">Reset</a>
+    </div>
+    {% if user.is_staff %}
+    <div class="col-auto ms-auto">
+      <a href="?{{ request.GET.urlencode }}&export=excel" class="btn btn-outline-success btn-sm d-flex align-items-center gap-1">
+        <i class="bi bi-file-earmark-excel"></i> Excel
+      </a>
+    </div>
+    {% endif %}
+  </form>
+</div>
+
+<!-- Table -->
+<div class="card">
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          {% if user.is_staff %}<th>Dipendente</th>{% endif %}
+          <th>Data</th>
+          <th>Ora</th>
+          <th>Tipo</th>
+          <th>Turno</th>
+          <th>Note</th>
+          {% if user.is_staff %}<th class="text-end">Azioni</th>{% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in timbrature %}
+        <tr>
+          {% if user.is_staff %}
+          <td>
+            <a href="{% url 'users:user_detail' t.user.pk %}" style="color:var(--indigo-600);font-size:.875rem;text-decoration:none;">
+              {{ t.user.get_full_name|default:t.user.username }}
+            </a>
+          </td>
+          {% endif %}
+          <td style="font-size:.875rem;">{{ t.data|date:"d/m/Y" }}</td>
+          <td style="font-size:.875rem;font-family:monospace;">{{ t.ora|time:"H:i" }}</td>
+          <td>
+            {% if t.tipo == 'ingresso' %}
+              <span class="badge" style="background:#dcfce7;color:#166534;font-size:.75rem;"><i class="bi bi-box-arrow-in-right me-1"></i>Ingresso</span>
+            {% else %}
+              <span class="badge" style="background:#fee2e2;color:#991b1b;font-size:.75rem;"><i class="bi bi-box-arrow-right me-1"></i>Uscita</span>
+            {% endif %}
+          </td>
+          <td style="font-size:.875rem;color:var(--slate-600);">{{ t.get_turno_display }}</td>
+          <td style="font-size:.75rem;color:var(--slate-400);max-width:200px;">
+            {{ t.note|truncatechars:50|default:"" }}
+          </td>
+          {% if user.is_staff %}
+          <td class="text-end">
+            <a href="{% url 'users:timbratura_update' t.pk %}" class="btn btn-icon btn-sm" title="Modifica">
+              <i class="bi bi-pencil"></i>
+            </a>
+          </td>
+          {% endif %}
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="7" class="text-center py-5" style="color:var(--slate-400);">
+            <i class="bi bi-clock-history" style="font-size:2.5rem;display:block;margin-bottom:.75rem;"></i>
+            Nessuna timbratura trovata
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if is_paginated %}
+  <div class="card-footer d-flex align-items-center justify-content-between" style="background:var(--slate-50);border-top:1px solid var(--slate-100);">
+    <small class="text-muted">Pagina {{ page_obj.number }} di {{ page_obj.paginator.num_pages }}</small>
+    <nav>
+      <ul class="pagination pagination-sm mb-0">
+        {% if page_obj.has_previous %}
+        <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}"><i class="bi bi-chevron-left"></i></a></li>
+        {% endif %}
+        {% for i in page_obj.paginator.page_range %}
+        <li class="page-item {% if page_obj.number == i %}active{% endif %}">
+          <a class="page-link" href="?page={{ i }}">{{ i }}</a>
+        </li>
+        {% endfor %}
+        {% if page_obj.has_next %}
+        <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}"><i class="bi bi-chevron-right"></i></a></li>
+        {% endif %}
+      </ul>
+    </nav>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

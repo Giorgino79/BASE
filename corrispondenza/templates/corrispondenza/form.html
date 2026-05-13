@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block sidebar_nav %}
+  <div class="sidebar-section">Corrispondenza</div>
+  <nav class="sidebar-nav">
+    <ul class="nav flex-column">
+      <li class="nav-item">
+        <a href="{% url 'corrispondenza:lista' %}" class="nav-link active">
+          <i class="bi bi-envelope-paper"></i> Tutte
+        </a>
+      </li>
+    </ul>
+  </nav>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+  #sezione-interno { display: none; }
+  #sezione-esterno { display: none; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+  <div>
+    <h1 class="h4 fw-bold mb-1" style="color:var(--slate-900);">{{ title }}</h1>
+    {% if corrispondenza %}
+    <p class="text-muted mb-0" style="font-size:.875rem;">Protocollo: <strong>{{ corrispondenza.numero_protocollo }}</strong></p>
+    {% endif %}
+  </div>
+  <a href="{% if corrispondenza %}{% url 'corrispondenza:dettaglio' corrispondenza.pk %}{% else %}{% url 'corrispondenza:lista' %}{% endif %}"
+     class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left me-1"></i>Annulla
+  </a>
+</div>
+
+<form method="post" enctype="multipart/form-data">
+  {% csrf_token %}
+  <div class="row g-3">
+    <div class="col-lg-8">
+      <div class="card card-body">
+        {% crispy form %}
+      </div>
+    </div>
+    <div class="col-lg-4">
+      <div class="card card-body mb-3">
+        <h6 class="fw-semibold mb-3" style="font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--slate-500);">
+          Istruzioni
+        </h6>
+        <ul style="font-size:.82rem;color:var(--slate-500);padding-left:1.25rem;margin:0;line-height:1.8;">
+          <li>Il <strong>numero protocollo</strong> viene generato automaticamente al salvataggio</li>
+          <li>Le <strong>bozze</strong> possono essere modificate ed eliminate</li>
+          <li>Una volta <strong>inviata</strong>, la corrispondenza non è più modificabile</li>
+          <li>Le <strong>note interne</strong> non vengono stampate nel PDF</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="d-flex gap-2 mt-3">
+    <button type="submit" class="btn btn-primary">
+      <i class="bi bi-check-lg me-1"></i>Salva
+    </button>
+    <a href="{% if corrispondenza %}{% url 'corrispondenza:dettaglio' corrispondenza.pk %}{% else %}{% url 'corrispondenza:lista' %}{% endif %}"
+       class="btn btn-outline-secondary">Annulla</a>
+    {% if corrispondenza and corrispondenza.can_edit %}
+    <a href="{% url 'corrispondenza:elimina' corrispondenza.pk %}" class="btn btn-outline-danger ms-auto">
+      <i class="bi bi-trash me-1"></i>Elimina
+    </a>
+    {% endif %}
+  </div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const tipoField = document.getElementById('id_tipo_destinatario');
+const sezInt = document.getElementById('id_destinatario_utente')?.closest('.mb-3');
+const sezEst = document.querySelectorAll('#id_destinatario_nome, #id_destinatario_telefono, #id_destinatario_email, #id_destinatario_indirizzo, #id_destinatario_cap, #id_destinatario_citta, #id_destinatario_provincia');
+
+function aggiornaCampi() {
+  if (!tipoField) return;
+  const val = tipoField.value;
+  if (sezInt) sezInt.style.display = val === 'interno' ? '' : 'none';
+  sezEst.forEach(el => { const w = el.closest('.mb-3') || el.closest('.col-md-8') || el.closest('.col-md-4') || el.closest('.col-md-6') || el.closest('.col-md-3'); if (w) w.style.display = val === 'esterno' ? '' : 'none'; });
+}
+tipoField?.addEventListener('change', aggiornaCampi);
+aggiornaCampi();
+</script>
+{% endblock %}
