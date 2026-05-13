@@ -51,6 +51,24 @@ class PermissionTemplateForm(forms.ModelForm):
         # Dashboard
         ('users.visualizza_dashboard_admin', '✨ Dashboard amministratore'),
         ('users.visualizza_report_presenze', '✨ Report presenze'),
+
+        # Corrispondenza
+        ('corrispondenza.add_corrispondenza', 'Creare corrispondenza'),
+        ('corrispondenza.view_corrispondenza', 'Visualizzare propria corrispondenza'),
+        ('corrispondenza.change_corrispondenza', 'Modificare corrispondenza in bozza'),
+        ('corrispondenza.delete_corrispondenza', 'Eliminare corrispondenza in bozza'),
+        ('corrispondenza.can_view_all', '✨ Visualizzare tutta la corrispondenza'),
+        ('corrispondenza.can_send', '✨ Inviare corrispondenza'),
+
+        # Promemoria
+        ('comunicazioni.add_promemoria', 'Creare promemoria'),
+        ('comunicazioni.view_promemoria', 'Visualizzare promemoria'),
+        ('comunicazioni.change_promemoria', 'Modificare promemoria'),
+        ('comunicazioni.delete_promemoria', 'Eliminare promemoria'),
+
+        # Chat
+        ('comunicazioni.add_chatconversazione', 'Avviare conversazioni chat'),
+        ('comunicazioni.view_chatconversazione', 'Visualizzare chat'),
     ]
 
     permessi_base_selezionati = forms.MultipleChoiceField(

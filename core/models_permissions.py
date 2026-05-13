@@ -36,14 +36,13 @@ class PermissionTemplate(TimestampMixin):
     )
 
     # Permessi CRUD sui modelli (molti-a-molti)
+    # Nessun limit_choices_to hardcoded: il form filtra dinamicamente
+    # tramite ModelPermissionRegistry (solo i modelli registrati compaiono)
     permessi_crud = models.ManyToManyField(
         Permission,
         verbose_name="Permessi CRUD",
         related_name="templates_crud",
         blank=True,
-        limit_choices_to={
-            'content_type__app_label__in': ['users', 'payroll', 'core']
-        },
         help_text="Permessi CRUD sui modelli (add, view, change, delete)"
     )
 

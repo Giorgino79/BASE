@@ -208,6 +208,48 @@ def register_default_models():
     )
 
 
+    # ========== APP: COMUNICAZIONI ==========
+    registry.register(
+        app_label="comunicazioni",
+        model_name="promemoria",
+        display_name="Promemoria",
+        category="💬 Comunicazioni",
+        icon="bi-bell-fill",
+    )
+
+    registry.register(
+        app_label="comunicazioni",
+        model_name="chatconversazione",
+        display_name="Chat - Conversazioni",
+        category="💬 Comunicazioni",
+        icon="bi-chat-dots-fill",
+    )
+
+    registry.register(
+        app_label="comunicazioni",
+        model_name="chatmessaggio",
+        display_name="Chat - Messaggi",
+        category="💬 Comunicazioni",
+        icon="bi-chat-left-text",
+    )
+
+    # ========== APP: CORRISPONDENZA ==========
+    registry.register(
+        app_label="corrispondenza",
+        model_name="corrispondenza",
+        display_name="Corrispondenza",
+        category="📨 Corrispondenza",
+        icon="bi-envelope-fill",
+    )
+
+    registry.register(
+        app_label="corrispondenza",
+        model_name="tipocorrispondenza",
+        display_name="Tipi Corrispondenza",
+        category="📨 Corrispondenza",
+        icon="bi-tags-fill",
+    )
+
     # Aggiungi qui le registrazioni dei moduli futuri.
 # UTILITY FUNCTIONS
 # ============================================================================
