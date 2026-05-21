@@ -2,19 +2,6 @@
 
 {% block title %}Le mie ferie e permessi{% endblock %}
 
-{% block sidebar_nav %}
-  <li class="nav-section-title">Principale</li>
-  <li><a href="{% url 'dashboard' %}"><i class="bi bi-speedometer2"></i><span>Dashboard</span></a></li>
-  <li><a href="{% url 'users:user_list' %}"><i class="bi bi-people"></i><span>Dipendenti</span></a></li>
-  <li><a href="{% url 'users:timbratura_list' %}"><i class="bi bi-clock-history"></i><span>Timbrature</span></a></li>
-  <li class="nav-section-title">Presenze</li>
-  <li><a href="{% url 'users:richieste_ferie_list' %}" class="active"><i class="bi bi-calendar-check"></i><span>Ferie e Permessi</span></a></li>
-  {% if user.is_staff %}
-  <li><a href="{% url 'users:richieste_ferie_admin_list' %}"><i class="bi bi-clipboard2-check"></i><span>Gestione Richieste</span></a></li>
-  {% endif %}
-  <li><a href="{% url 'core:calendario_aziendale' %}"><i class="bi bi-calendar3"></i><span>Calendario</span></a></li>
-{% endblock %}
-
 {% block content %}
 <div class="d-flex align-items-center justify-content-between mb-4">
   <div>
@@ -89,7 +76,7 @@
         <tr>
           <td>
             <span class="d-flex align-items-center gap-1" style="font-size:.875rem;">
-              <i class="bi bi-sun" style="color:#f59e0b;"></i> Ferie
+              <i class="bi bi-sun" style="color:var(--color-2);"></i> Ferie
             </span>
           </td>
           <td style="font-size:.875rem;">{{ r.data_inizio|date:"d/m/Y" }}</td>
@@ -99,20 +86,29 @@
             {% elif r.ore_richieste %}{{ r.ore_richieste }}h
             {% else %}—{% endif %}
           </td>
-          <td style="font-size:.75rem;color:var(--slate-500);max-width:180px;">
-            {{ r.motivazione|truncatechars:40|default:"—" }}
+          <td style="font-size:.75rem;max-width:200px;">
+            {% if r.motivo %}
+              <span style="color:var(--slate-500);">{{ r.motivo|truncatechars:50 }}</span>
+            {% else %}
+              <span style="color:var(--slate-300);">—</span>
+            {% endif %}
+            {% if r.stato == 'rifiutata' and r.motivazione_rifiuto %}
+              <div class="mt-1" style="color:var(--slate-600);">
+                <i class="bi bi-x-circle me-1"></i><em>{{ r.motivazione_rifiuto|truncatechars:60 }}</em>
+              </div>
+            {% endif %}
           </td>
           <td>
             {% if r.stato == 'approvata' %}
-              <span class="badge" style="background:#dcfce7;color:#166534;font-size:.7rem;">
+              <span class="badge" style="background:var(--color-1-light);color:var(--color-1-dark);font-size:.7rem;">
                 <i class="bi bi-check-circle me-1"></i>Approvata
               </span>
             {% elif r.stato == 'rifiutata' %}
-              <span class="badge" style="background:#fee2e2;color:#991b1b;font-size:.7rem;">
+              <span class="badge" style="background:var(--slate-200);color:var(--slate-600);font-size:.7rem;">
                 <i class="bi bi-x-circle me-1"></i>Rifiutata
               </span>
             {% else %}
-              <span class="badge" style="background:#fef3c7;color:#92400e;font-size:.7rem;">
+              <span class="badge" style="background:var(--color-4);color:var(--color-1-dark);font-size:.7rem;">
                 <i class="bi bi-hourglass me-1"></i>In attesa
               </span>
             {% endif %}

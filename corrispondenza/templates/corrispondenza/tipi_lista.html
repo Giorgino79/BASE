@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block title %}Tipi Corrispondenza{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+  <div>
+    <h1 class="h4 fw-bold mb-1" style="color:var(--slate-900);">Tipi di Corrispondenza</h1>
+    <p class="text-muted mb-0" style="font-size:.875rem;">Categorie per classificare la corrispondenza</p>
+  </div>
+  <a href="{% url 'corrispondenza:lista' %}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left me-1"></i>Torna alla lista
+  </a>
+</div>
+
+<div class="row g-4">
+
+  <!-- Lista tipi -->
+  <div class="col-md-7">
+    {% if tipi %}
+    <div class="d-flex flex-column gap-2">
+      {% for tipo in tipi %}
+      <div class="card card-body py-2 px-3 d-flex flex-row align-items-center gap-3">
+        <div class="flex-grow-1">
+          <div class="d-flex align-items-center gap-2">
+            <span class="fw-semibold" style="font-size:.9rem;color:var(--slate-900);">{{ tipo.nome }}</span>
+            {% if not tipo.attivo %}
+            <span class="badge bg-secondary" style="font-size:.65rem;">Inattivo</span>
+            {% endif %}
+          </div>
+          {% if tipo.descrizione %}
+          <div style="font-size:.78rem;color:var(--slate-500);">{{ tipo.descrizione }}</div>
+          {% endif %}
+        </div>
+        <div class="d-flex gap-1 flex-shrink-0">
+          <a href="{% url 'corrispondenza:tipo_modifica' tipo.pk %}" class="btn btn-sm btn-outline-secondary" title="Modifica">
+            <i class="bi bi-pencil"></i>
+          </a>
+          <form method="post" action="{% url 'corrispondenza:tipo_elimina' tipo.pk %}"
+                onsubmit="return confirm('Eliminare «{{ tipo.nome }}»?')">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-sm btn-outline-primary" title="Elimina">
+              <i class="bi bi-trash"></i>
+            </button>
+          </form>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="card card-body text-center py-5" style="color:var(--slate-400);">
+      <i class="bi bi-tag" style="font-size:2.5rem;display:block;margin-bottom:.5rem;"></i>
+      Nessun tipo definito
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Form aggiunta -->
+  <div class="col-md-5">
+    <div class="card">
+      <div class="card-header fw-semibold" style="font-size:.875rem;">
+        <i class="bi bi-plus-circle me-1"></i>Nuovo tipo
+      </div>
+      <div class="card-body">
+        <form method="post">
+          {% csrf_token %}
+          {% crispy form %}
+          <button type="submit" class="btn btn-primary btn-sm w-100 mt-2">
+            <i class="bi bi-plus-lg me-1"></i>Aggiungi
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

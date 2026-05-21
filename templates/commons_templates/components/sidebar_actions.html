@@ -1,0 +1,165 @@
+{% load allegati_tags %}
+{% comment %}
+Sidebar destra con azioni, allegati e QR code.
+
+Variabili richieste nel contesto:
+  object           — l'oggetto Django (deve avere AllegatiMixin per allegati/QR)
+  content_type_id  — ID ContentType dell'oggetto
+  object_id        — PK dell'oggetto
+
+Variabili opzionali:
+  edit_url         — URL pagina di modifica
+  delete_url       — URL pagina di eliminazione
+  list_url         — URL lista
+  extra_actions    — lista di dict: [{label, url, icon, css_class}]
+  show_allegati    — bool (default True se oggetto ha AllegatiMixin)
+  show_qr          — bool (default True se oggetto ha AllegatiMixin)
+{% endcomment %}
+
+<!-- ─── Azioni ─────────────────────────────────────────────── -->
+<div class="card border-0 shadow-sm mb-3">
+  <div class="card-header bg-transparent fw-semibold small text-uppercase py-2"
+       style="color:var(--slate-500);">
+    <i class="bi bi-lightning-charge me-1"></i>Azioni
+  </div>
+  <div class="list-group list-group-flush">
+    {% if edit_url %}
+    <a href="{{ edit_url }}" class="list-group-item list-group-item-action py-2"
+       style="color:var(--slate-700);">
+      <i class="bi bi-pencil-square me-2" style="color:var(--color-1);"></i>Modifica
+    </a>
+    {% endif %}
+    {% for action in extra_actions %}
+    <a href="{{ action.url }}" class="list-group-item list-group-item-action py-2"
+       style="color:var(--slate-700);">
+      <i class="bi {{ action.icon|default:'bi-arrow-right' }} me-2" style="color:var(--color-1);"></i>{{ action.label }}
+    </a>
+    {% endfor %}
+    {% if list_url %}
+    <a href="{{ list_url }}" class="list-group-item list-group-item-action py-2"
+       style="color:var(--slate-600);">
+      <i class="bi bi-arrow-left me-2"></i>Torna alla lista
+    </a>
+    {% endif %}
+    {% if delete_url %}
+    <a href="{{ delete_url }}"
+       class="list-group-item list-group-item-action py-2"
+       style="color:var(--slate-700);"
+       onclick="return confirm('Eliminare questo record?')">
+      <i class="bi bi-trash3 me-2"></i>Elimina
+    </a>
+    {% endif %}
+  </div>
+</div>
+
+<!-- ─── Allegati ───────────────────────────────────────────── -->
+{% if object|has_allegati_mixin or show_allegati %}
+<div class="card border-0 shadow-sm mb-3">
+  <div class="card-header bg-transparent fw-semibold small text-uppercase py-2 d-flex justify-content-between align-items-center"
+       style="color:var(--slate-500);">
+    <span><i class="bi bi-paperclip me-1"></i>Allegati</span>
+    {% with cnt=object.conta_allegati %}
+    {% if cnt %}<span class="badge" style="background:var(--color-1-light);color:var(--color-1-dark);">{{ cnt }}</span>{% endif %}
+    {% endwith %}
+  </div>
+  <div class="card-body py-2 px-3">
+    {% include 'core/components/allegati_widget.html' with content_type_id=content_type_id object_id=object_id allegati_count=object.conta_allegati %}
+    {% with ultimi=object.allegati|slice:":3" %}
+    {% if ultimi %}
+    <ul class="list-unstyled mt-2 mb-0 small">
+      {% for a in ultimi %}
+      <li class="py-1 border-bottom d-flex align-items-center gap-2">
+        <i class="bi {{ a|file_icon_class }}"></i>
+        <a href="/core/allegati/{{ a.pk }}/download/" class="text-truncate" style="max-width:160px;" title="{{ a.nome_originale }}">
+          {{ a.nome_originale }}
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+    {% endwith %}
+  </div>
+</div>
+{% endif %}
+
+<!-- ─── QR Code ────────────────────────────────────────────── -->
+{% if object|has_allegati_mixin or show_qr %}
+<div class="card border-0 shadow-sm mb-3">
+  <div class="card-header bg-transparent fw-semibold small text-uppercase py-2"
+       style="color:var(--slate-500);">
+    <i class="bi bi-qr-code me-1"></i>QR Code
+  </div>
+  <div class="card-body text-center py-3" id="qr-sidebar-body">
+    <img id="qr-sidebar-img" src="" alt="QR Code" class="img-fluid d-none" style="max-width:160px;">
+    <button type="button" class="btn btn-outline-secondary btn-sm" id="qr-generate-btn">
+      <i class="bi bi-qr-code-scan me-1"></i>Genera QR
+    </button>
+    <a href="#" id="qr-download-btn" class="btn btn-outline-primary btn-sm d-none" download>
+      <i class="bi bi-download me-1"></i>Scarica
+    </a>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  const generateBtn = document.getElementById('qr-generate-btn');
+  const downloadBtn = document.getElementById('qr-download-btn');
+  const qrImg       = document.getElementById('qr-sidebar-img');
+  if (!generateBtn) return;
+
+  const ctId  = '{{ content_type_id }}';
+  const objId = '{{ object_id }}';
+
+  function getCsrf() {
+    return document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+  }
+
+  function showQr(imgUrl) {
+    qrImg.src = imgUrl;
+    qrImg.classList.remove('d-none');
+    downloadBtn.href = imgUrl;
+    downloadBtn.classList.remove('d-none');
+    generateBtn.classList.add('d-none');
+  }
+
+  // Verifica QR esistente al caricamento
+  fetch('{% url "core:qrcode_check" %}?content_type=' + ctId + '&object_id=' + objId)
+    .then(r => r.json())
+    .then(function (data) {
+      if (data.exists && data.image_url) showQr(data.image_url);
+    })
+    .catch(() => {});
+
+  generateBtn.addEventListener('click', function () {
+    generateBtn.disabled = true;
+    generateBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Generazione…';
+
+    const fd = new FormData();
+    fd.append('content_type', ctId);
+    fd.append('object_id', objId);
+
+    fetch('{% url "core:qrcode_generate" %}', {
+      method: 'POST',
+      headers: { 'X-CSRFToken': getCsrf() },
+      body: fd,
+    })
+    .then(r => r.json())
+    .then(function (data) {
+      if (data.image_url) {
+        showQr(data.image_url);
+      } else {
+        generateBtn.disabled = false;
+        generateBtn.innerHTML = '<i class="bi bi-qr-code-scan me-1"></i>Genera QR';
+        alert(data.error || 'Errore generazione QR.');
+      }
+    })
+    .catch(function () {
+      generateBtn.disabled = false;
+      generateBtn.innerHTML = '<i class="bi bi-qr-code-scan me-1"></i>Genera QR';
+      alert('Errore di rete.');
+    });
+  });
+})();
+</script>
+{% endif %}

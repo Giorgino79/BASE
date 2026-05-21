@@ -28,6 +28,7 @@ urlpatterns = [
     path("users/<int:pk>/permissions/apply-template/", views.user_permissions_apply_template_view, name="user_apply_template"),
     # ========== TIMBRATURE ==========
     path("timbratura/quick/", views.timbratura_quick_view, name="timbratura_quick"),
+    path("timbratura/stato/", views.timbratura_stato_api, name="timbratura_stato"),
     path("timbrature/", views.timbratura_list_view, name="timbratura_list"),
     path("timbrature/<int:pk>/modifica/", views.timbratura_update_view, name="timbratura_update"),
     path("giornate/", views.giornata_lavorativa_list_view, name="giornata_list"),

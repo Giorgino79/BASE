@@ -317,10 +317,20 @@ def allegato_preview(request, allegato_id):
                 {"error": "Preview non disponibile per questo tipo di file"}, status=400
             )
 
+        content_type = allegato.tipo_file
+        if not content_type:
+            ext = allegato.get_file_extension()
+            content_type = {
+                ".pdf": "application/pdf",
+                ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+                ".png": "image/png", ".gif": "image/gif",
+                ".webp": "image/webp", ".bmp": "image/bmp",
+            }.get(ext, "application/octet-stream")
+
         # FileResponse inline (apre nel browser)
         response = FileResponse(
             allegato.file.open("rb"),
-            content_type=allegato.tipo_file or "application/octet-stream",
+            content_type=content_type,
         )
 
         return response

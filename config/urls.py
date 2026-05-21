@@ -12,7 +12,9 @@ urlpatterns = [
     path("core/", include("core.urls")),
     path("comunicazioni/", include("comunicazioni.urls")),
     path("corrispondenza/", include("corrispondenza.urls")),
+    path("payroll/", include("payroll.urls")),
 ]
 
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
-urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+if settings.DEBUG:
+    urlpatterns += static(settings.STATIC_URL, document_root=settings.BASE_DIR / "static")

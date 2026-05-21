@@ -15,7 +15,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
-from django.urls import reverse_lazy
+from django.urls import reverse, reverse_lazy
 from datetime import datetime
 
 from .calendario_registry import CalendarioRegistry
@@ -174,24 +174,19 @@ class CalendarioPersonaleEventiAPIView(LoginRequiredMixin, View):
 
         # --- Promemoria dell'utente ---
         try:
-            from mail.models import Promemoria
+            from comunicazioni.models import Promemoria
             from django.db.models import Q
             from django.urls import reverse
 
             prom_qs = Promemoria.objects.filter(
                 Q(user=user) | Q(assegnato_a=user)
-            ).exclude(stato='cancelled').exclude(data_scadenza__isnull=True)
+            ).exclude(stato__in=['annullato', 'completato']).exclude(data_scadenza__isnull=True)
 
             if start:
                 prom_qs = prom_qs.filter(data_scadenza__gte=start)
             if end:
                 prom_qs = prom_qs.filter(data_scadenza__lte=end)
 
-            colori_prom = {
-                'pending': '#6c757d',
-                'in_progress': '#007bff',
-                'completed': '#28a745',
-            }
             colori_priorita = {
                 'urgente': '#dc3545',
                 'alta': '#fd7e14',
@@ -200,13 +195,13 @@ class CalendarioPersonaleEventiAPIView(LoginRequiredMixin, View):
             }
 
             for prom in prom_qs.select_related('user', 'assegnato_a')[:100]:
-                color = colori_priorita.get(prom.priorita, colori_prom.get(prom.stato, '#6c757d'))
+                color = colori_priorita.get(prom.priorita, '#6c757d')
                 eventi.append({
                     'id': f'promemoria-{prom.pk}',
                     'title': f'📌 {prom.titolo}',
                     'start': prom.data_scadenza.isoformat(),
                     'color': color,
-                    'url': reverse('mail:promemoria_detail', kwargs={'pk': prom.pk}),
+                    'url': reverse('comunicazioni:promemoria_list'),
                     'extendedProps': {
                         'tipo': 'promemoria',
                         'stato': prom.get_stato_display(),
@@ -313,7 +308,7 @@ def evento_calendario_create(request):
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return JsonResponse({'success': True, 'evento': evento.to_fullcalendar()})
             messages.success(request, 'Evento creato.')
-            next_url = request.POST.get('next', request.META.get('HTTP_REFERER', '/'))
+            next_url = request.POST.get('next') or reverse('core:calendario_aziendale')
             return redirect(next_url)
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return JsonResponse({'success': False, 'errors': form.errors}, status=400)
@@ -342,7 +337,7 @@ def evento_calendario_edit(request, pk):
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return JsonResponse({'success': True, 'evento': evento.to_fullcalendar()})
             messages.success(request, 'Evento aggiornato.')
-            next_url = request.POST.get('next', request.META.get('HTTP_REFERER', '/'))
+            next_url = request.POST.get('next') or reverse('core:calendario_aziendale')
             return redirect(next_url)
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return JsonResponse({'success': False, 'errors': form.errors}, status=400)

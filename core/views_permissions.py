@@ -77,7 +77,7 @@ def permission_template_create_view(request):
                     f"Template '{template.nome}' creato con successo! "
                     f"({template.get_permessi_count()} permessi)"
                 )
-                return redirect('core:permission_template_detail', pk=template.pk)
+                return redirect('core:template_permessi_detail', pk=template.pk)
             except Exception as e:
                 messages.error(request, f"Errore nella creazione template: {str(e)}")
         else:
@@ -183,7 +183,7 @@ def permission_template_update_view(request, pk):
                     f"Template '{template.nome}' aggiornato con successo! "
                     f"({template.get_permessi_count()} permessi)"
                 )
-                return redirect('core:permission_template_detail', pk=template.pk)
+                return redirect('core:template_permessi_detail', pk=template.pk)
             except Exception as e:
                 messages.error(request, f"Errore nell'aggiornamento template: {str(e)}")
         else:
@@ -236,4 +236,4 @@ def permission_template_delete_view(request, pk):
     except Exception as e:
         messages.error(request, f"Errore nell'eliminazione template: {str(e)}")
 
-    return redirect('core:permission_template_list')
+    return redirect('core:template_permessi_list')

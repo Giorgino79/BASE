@@ -1,0 +1,438 @@
+{% extends "base.html" %}
+
+{% block title %}Chat{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ── Layout wrapper ──────────────────────────────────────────────── */
+.chat-app {
+  display: flex;
+  height: calc(100vh - var(--topbar-height) - 3.5rem);
+  border: 1px solid var(--slate-200);
+  border-radius: 12px;
+  overflow: hidden;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0,0,0,.06);
+}
+
+/* ── Left sidebar ────────────────────────────────────────────────── */
+.chat-sidebar {
+  width: 320px;
+  min-width: 260px;
+  border-right: 1px solid var(--slate-200);
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  flex-shrink: 0;
+}
+
+.chat-sidebar-header {
+  padding: .85rem 1rem;
+  border-bottom: 1px solid var(--slate-100);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.chat-search {
+  padding: .5rem .85rem;
+  border-bottom: 1px solid var(--slate-100);
+}
+
+.chat-search-wrap { position: relative; }
+.chat-search-wrap i {
+  position: absolute; left: .75rem; top: 50%;
+  transform: translateY(-50%);
+  color: var(--slate-400); font-size: .78rem; pointer-events: none;
+}
+.chat-search-wrap input {
+  width: 100%;
+  background: var(--slate-50);
+  border: 1px solid var(--slate-200);
+  border-radius: 20px;
+  padding: .38rem .9rem .38rem 2rem;
+  font-size: .82rem;
+  outline: none;
+  transition: border-color .15s;
+}
+.chat-search-wrap input:focus { border-color: var(--indigo-600); background: #fff; }
+
+.chat-contact-list { flex: 1; overflow-y: auto; }
+.chat-contact-list::-webkit-scrollbar { width: 3px; }
+.chat-contact-list::-webkit-scrollbar-thumb { background: var(--slate-200); border-radius: 2px; }
+
+.chat-contact-item {
+  display: flex; align-items: center; gap: .7rem;
+  padding: .7rem .9rem;
+  cursor: pointer; text-decoration: none; color: inherit;
+  border-bottom: 1px solid var(--slate-50);
+  transition: background .1s;
+  position: relative;
+}
+.chat-contact-item:hover { background: var(--slate-50); color: inherit; }
+.chat-contact-item.active {
+  background: #eff6ff;
+  border-left: 3px solid var(--indigo-600);
+}
+.chat-contact-item.unread-item { background: #f5f3ff; }
+
+/* ── Avatars ─────────────────────────────────────────────────────── */
+.chat-avatar {
+  width: 42px; height: 42px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .85rem; font-weight: 700; flex-shrink: 0;
+}
+.chat-avatar.direct { background: #ede9fe; color: #6d28d9; }
+.chat-avatar.group  { background: #dbeafe; color: #1d4ed8; }
+.chat-avatar.sm { width: 36px; height: 36px; font-size: .75rem; }
+
+/* ── Right main panel ────────────────────────────────────────────── */
+.chat-main {
+  flex: 1; display: flex; flex-direction: column;
+  min-width: 0; background: #f8fafc;
+}
+
+.chat-conv-header {
+  padding: .7rem 1rem;
+  border-bottom: 1px solid var(--slate-200);
+  background: #fff;
+  display: flex; align-items: center; gap: .75rem;
+}
+
+.chat-messages {
+  flex: 1; overflow-y: auto;
+  padding: 1rem 1.25rem;
+  display: flex; flex-direction: column; gap: .4rem;
+}
+.chat-messages::-webkit-scrollbar { width: 4px; }
+.chat-messages::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 2px; }
+
+/* ── Message bubbles ─────────────────────────────────────────────── */
+.msg-row {
+  display: flex; gap: .45rem; align-items: flex-end;
+  max-width: 72%;
+}
+.msg-row.mine  { flex-direction: row-reverse; align-self: flex-end; }
+.msg-row:not(.mine) { align-self: flex-start; }
+
+.msg-ava {
+  width: 26px; height: 26px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .6rem; font-weight: 700; flex-shrink: 0;
+  background: var(--color-1-light); color: var(--color-1-dark);
+}
+.msg-row.mine .msg-ava { background: var(--indigo-600); color: #fff; }
+
+.msg-bubble {
+  padding: .5rem .8rem; border-radius: 14px;
+  font-size: .875rem; line-height: 1.5;
+  word-break: break-word; white-space: pre-wrap;
+}
+.msg-row:not(.mine) .msg-bubble {
+  background: #fff; color: #1e293b;
+  border-bottom-left-radius: 4px;
+  box-shadow: 0 1px 2px rgba(0,0,0,.07);
+}
+.msg-row.mine .msg-bubble {
+  background: var(--indigo-600); color: #fff;
+  border-bottom-right-radius: 4px;
+}
+.msg-meta {
+  font-size: .63rem; color: #94a3b8; margin-top: .18rem;
+}
+.msg-row:not(.mine) .msg-meta { text-align: left; }
+.msg-row.mine .msg-meta { text-align: right; color: #a5b4d4; }
+
+.msg-date-sep { text-align: center; margin: .6rem 0; }
+.msg-date-sep span {
+  font-size: .7rem; color: var(--slate-400);
+  background: #e2e8f0; padding: .15rem .65rem; border-radius: 10px;
+}
+
+/* ── Input bar ───────────────────────────────────────────────────── */
+.chat-input-bar {
+  padding: .65rem 1rem; background: #fff;
+  border-top: 1px solid var(--slate-200);
+}
+#msgInput {
+  resize: none; border-radius: 20px;
+  padding: .45rem 1rem; font-size: .875rem;
+  max-height: 100px; overflow-y: auto;
+}
+
+/* ── Placeholder ─────────────────────────────────────────────────── */
+.chat-placeholder {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  color: var(--slate-400); text-align: center; gap: .5rem;
+}
+
+/* ── Mobile ──────────────────────────────────────────────────────── */
+@media (max-width: 767px) {
+  .chat-app { height: calc(100vh - var(--topbar-height) - 2rem); border-radius: 8px; }
+  .chat-sidebar {
+    width: 100%;
+    {% if selected_conv %}display: none;{% endif %}
+  }
+  .chat-main {
+    {% if not selected_conv %}display: none;{% endif %}
+  }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="chat-app">
+
+  <!-- ═══════ SIDEBAR ════════════════════════════════════════════ -->
+  <div class="chat-sidebar">
+
+    <div class="chat-sidebar-header">
+      <span class="fw-bold" style="font-size:.92rem;color:var(--slate-900);">
+        <i class="bi bi-chat-dots me-1" style="color:var(--indigo-600);"></i>Chat
+      </span>
+      <a href="{% url 'comunicazioni:chat_nuova' %}"
+         class="btn btn-primary btn-sm d-flex align-items-center gap-1"
+         style="font-size:.76rem;border-radius:20px;padding:.3rem .75rem;">
+        <i class="bi bi-plus-lg"></i>Nuova
+      </a>
+    </div>
+
+    <div class="chat-search">
+      <div class="chat-search-wrap">
+        <i class="bi bi-search"></i>
+        <input type="text" id="chatSearch" placeholder="Cerca conversazione…" autocomplete="off">
+      </div>
+    </div>
+
+    <div class="chat-contact-list" id="contactList">
+      {% for item in conversazioni %}
+      <a href="{% url 'comunicazioni:chat_detail' item.conv.pk %}"
+         class="chat-contact-item {% if selected_conv and selected_conv.pk == item.conv.pk %}active{% elif item.unread %}unread-item{% endif %}"
+         data-name="{{ item.title|lower }}">
+
+        <div class="chat-avatar {% if item.conv.tipo == 'group' %}group{% else %}direct{% endif %}">
+          <i class="bi bi-{% if item.conv.tipo == 'group' %}people-fill{% else %}person-fill{% endif %}"></i>
+        </div>
+
+        <div class="flex-grow-1 min-width-0">
+          <div class="d-flex justify-content-between align-items-baseline gap-1">
+            <span class="fw-semibold text-truncate" style="font-size:.84rem;color:var(--slate-900);">
+              {{ item.title }}
+            </span>
+            {% if item.ultimo %}
+            <span style="font-size:.67rem;color:var(--slate-400);flex-shrink:0;">
+              {{ item.ultimo.created_at|date:"d/m" }}
+            </span>
+            {% endif %}
+          </div>
+          <div class="d-flex justify-content-between align-items-center gap-1">
+            <span class="text-truncate" style="font-size:.77rem;color:var(--slate-500);">
+              {% if item.ultimo %}
+                {% if item.ultimo.mittente == request.user %}
+                  <span style="color:var(--slate-400);">Tu: </span>
+                {% endif %}
+                {{ item.ultimo.contenuto|truncatechars:40 }}
+              {% else %}
+                <em style="color:var(--slate-400);">Nessun messaggio</em>
+              {% endif %}
+            </span>
+            {% if item.unread %}
+            <span class="badge rounded-pill flex-shrink-0"
+                  style="background:var(--color-1);color:#fff;font-size:.62rem;min-width:18px;">
+              {{ item.unread }}
+            </span>
+            {% endif %}
+          </div>
+        </div>
+      </a>
+      {% empty %}
+      <div class="text-center py-5" style="color:var(--slate-400);">
+        <i class="bi bi-chat-square" style="font-size:2.5rem;display:block;margin-bottom:.5rem;"></i>
+        <span style="font-size:.83rem;">Nessuna conversazione</span><br>
+        <a href="{% url 'comunicazioni:chat_nuova' %}" class="btn btn-primary btn-sm mt-2">Inizia una chat</a>
+      </div>
+      {% endfor %}
+
+      <div id="noResults" class="text-center py-4" style="display:none;color:var(--slate-400);">
+        <i class="bi bi-search" style="font-size:1.5rem;display:block;margin-bottom:.4rem;"></i>
+        <span style="font-size:.8rem;">Nessun risultato</span>
+      </div>
+    </div>
+
+  </div><!-- /sidebar -->
+
+  <!-- ═══════ MAIN PANEL ══════════════════════════════════════════ -->
+  <div class="chat-main">
+
+    {% if selected_conv %}
+
+    <!-- Header conversazione -->
+    <div class="chat-conv-header">
+      <a href="{% url 'comunicazioni:chat_list' %}" class="btn btn-icon btn-sm d-md-none me-1"
+         style="color:var(--slate-500);">
+        <i class="bi bi-arrow-left"></i>
+      </a>
+      <div class="chat-avatar sm {% if selected_conv.tipo == 'group' %}group{% else %}direct{% endif %}">
+        <i class="bi bi-{% if selected_conv.tipo == 'group' %}people-fill{% else %}person-fill{% endif %}"></i>
+      </div>
+      <div class="flex-grow-1">
+        <div class="fw-semibold" style="font-size:.9rem;color:var(--slate-900);">{{ conv_title }}</div>
+        <div style="font-size:.72rem;color:var(--slate-400);">
+          {% if selected_conv.tipo == 'group' %}
+            {{ selected_conv.partecipanti.count }} partecipanti
+          {% else %}
+            Chat diretta
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Messaggi -->
+    <div class="chat-messages" id="chatMessages">
+      {% for msg in messaggi %}
+      <div class="msg-row {% if msg.mittente == request.user %}mine{% endif %}" data-id="{{ msg.pk }}">
+        <div class="msg-ava">
+          {{ msg.mittente.first_name|slice:":1"|upper }}{{ msg.mittente.last_name|slice:":1"|upper }}
+        </div>
+        <div>
+          {% if selected_conv.tipo == 'group' and msg.mittente != request.user %}
+          <div style="font-size:.67rem;color:var(--slate-400);margin-bottom:.1rem;">
+            {{ msg.mittente.get_full_name|default:msg.mittente.username }}
+          </div>
+          {% endif %}
+          <div class="msg-bubble">{{ msg.contenuto }}</div>
+          <div class="msg-meta">{{ msg.created_at|date:"d/m H:i" }}</div>
+        </div>
+      </div>
+      {% empty %}
+      <div style="text-align:center;padding:3rem 0;color:var(--slate-400);">
+        <i class="bi bi-chat" style="font-size:2.5rem;display:block;margin-bottom:.5rem;"></i>
+        <span style="font-size:.85rem;">Inizia la conversazione</span>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- Input bar -->
+    <div class="chat-input-bar">
+      <form id="msgForm" class="d-flex gap-2 align-items-end">
+        {% csrf_token %}
+        <textarea id="msgInput" class="form-control flex-grow-1"
+                  placeholder="Scrivi un messaggio…" autocomplete="off" rows="1"></textarea>
+        <button type="submit" class="btn btn-primary d-flex align-items-center justify-content-center"
+                style="border-radius:50%;width:40px;height:40px;flex-shrink:0;padding:0;">
+          <i class="bi bi-send-fill" style="font-size:.85rem;"></i>
+        </button>
+      </form>
+    </div>
+
+    {% else %}
+
+    <!-- Placeholder -->
+    <div class="chat-placeholder">
+      <i class="bi bi-chat-square-dots" style="font-size:4rem;opacity:.35;"></i>
+      <div class="fw-semibold" style="font-size:.95rem;color:var(--slate-600);">Seleziona una conversazione</div>
+      <div style="font-size:.8rem;">
+        oppure <a href="{% url 'comunicazioni:chat_nuova' %}" style="color:var(--indigo-600);">inizia una nuova chat</a>
+      </div>
+    </div>
+
+    {% endif %}
+
+  </div><!-- /main -->
+
+</div><!-- /chat-app -->
+{% endblock %}
+
+{% block extra_js %}
+{% if selected_conv %}
+<script>
+const CONV_PK = {{ selected_conv.pk }};
+const CSRF = '{{ csrf_token }}';
+const IS_GROUP = {{ selected_conv.tipo|yesno:"true,false" }};
+
+const container = document.getElementById('chatMessages');
+const form      = document.getElementById('msgForm');
+const input     = document.getElementById('msgInput');
+
+function scrollBottom() { container.scrollTop = container.scrollHeight; }
+scrollBottom();
+
+function lastId() {
+  const rows = container.querySelectorAll('[data-id]');
+  return rows.length ? parseInt(rows[rows.length - 1].dataset.id) : 0;
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function appendMsg(msg) {
+  const row = document.createElement('div');
+  row.className = 'msg-row' + (msg.mine ? ' mine' : '');
+  row.dataset.id = msg.id;
+  const init = msg.mittente.split(' ').map(w => w[0]||'').slice(0,2).join('').toUpperCase();
+  const sender = (IS_GROUP && !msg.mine)
+    ? `<div style="font-size:.67rem;color:var(--slate-400);margin-bottom:.1rem;">${escHtml(msg.mittente)}</div>` : '';
+  row.innerHTML = `
+    <div class="msg-ava">${init}</div>
+    <div>
+      ${sender}
+      <div class="msg-bubble">${escHtml(msg.contenuto)}</div>
+      <div class="msg-meta">${msg.created_at}</div>
+    </div>`;
+  container.appendChild(row);
+  scrollBottom();
+}
+
+form.addEventListener('submit', function(e) {
+  e.preventDefault();
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+  input.style.height = 'auto';
+  fetch(`/comunicazioni/chat/${CONV_PK}/`, {
+    method: 'POST',
+    headers: {
+      'X-CSRFToken': CSRF,
+      'X-Requested-With': 'XMLHttpRequest',
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: 'contenuto=' + encodeURIComponent(text),
+  }).then(r => r.json()).then(appendMsg).catch(console.error);
+});
+
+input.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); form.dispatchEvent(new Event('submit')); }
+});
+
+input.addEventListener('input', function() {
+  this.style.height = 'auto';
+  this.style.height = Math.min(this.scrollHeight, 100) + 'px';
+});
+
+setInterval(function() {
+  fetch(`/comunicazioni/chat/${CONV_PK}/api/?after=${lastId()}`, {
+    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+  }).then(r => r.json()).then(msgs => msgs.forEach(appendMsg)).catch(() => {});
+}, 3000);
+</script>
+{% endif %}
+
+<script>
+const searchEl   = document.getElementById('chatSearch');
+const contactEls = document.querySelectorAll('.chat-contact-item');
+const noRes      = document.getElementById('noResults');
+
+searchEl && searchEl.addEventListener('input', function() {
+  const q = this.value.toLowerCase().trim();
+  let visible = 0;
+  contactEls.forEach(el => {
+    const match = !q || (el.dataset.name || '').includes(q);
+    el.style.display = match ? '' : 'none';
+    if (match) visible++;
+  });
+  noRes.style.display = (visible === 0 && q) ? 'block' : 'none';
+});
+</script>
+{% endblock %}

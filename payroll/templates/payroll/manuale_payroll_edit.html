@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Modifica Manuale Payroll{% endblock %}
+
+{% block content %}
+<nav class="mb-3" style="font-size:.8rem;">
+  <a href="{% url 'dashboard' %}" style="color:var(--color-1);text-decoration:none;">Dashboard</a>
+  <i class="bi bi-chevron-right mx-1" style="color:var(--slate-400);"></i>
+  <a href="{% url 'payroll:manuale_payroll' %}" style="color:var(--color-1);text-decoration:none;">Manuale Payroll</a>
+  <i class="bi bi-chevron-right mx-1" style="color:var(--slate-400);"></i>
+  <span style="color:var(--slate-500);">Modifica</span>
+</nav>
+
+<h1 class="h4 fw-bold mb-1" style="color:var(--slate-900);">
+  <i class="bi bi-pencil-square me-2" style="color:var(--color-1);"></i>Modifica Manuale Payroll
+</h1>
+<p class="text-muted mb-4" style="font-size:.875rem;">Aggiorna il contenuto del manuale di istruzioni per la compilazione dei form.</p>
+
+<div class="alert alert-info mb-4" style="font-size:.875rem;">
+  <i class="bi bi-info-circle me-2"></i>
+  <strong>Formattazione Markdown supportata:</strong>
+  <code># Titolo</code> &nbsp;
+  <code>## Sottotitolo</code> &nbsp;
+  <code>**grassetto**</code> &nbsp;
+  <code>*corsivo*</code> &nbsp;
+  <code>`codice`</code> &nbsp;
+  <code>[link](url)</code> &nbsp;
+  <code>- lista</code> &nbsp;
+  <code>✅ ❌ ⭐ ⚠️</code>
+</div>
+
+<form method="post" id="edit-form">
+  {% csrf_token %}
+  <div class="row g-3">
+    <!-- Editor -->
+    <div class="col-lg-6">
+      <div class="card card-body">
+        <h6 class="fw-semibold mb-3" style="font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--slate-500);">
+          <i class="bi bi-pencil me-1" style="color:var(--color-2);"></i>Editor
+        </h6>
+        <div class="mb-3">
+          <label for="titolo" class="form-label">Titolo</label>
+          <input type="text" class="form-control" id="titolo" name="titolo" value="{{ manuale.titolo }}" required>
+        </div>
+        <div class="mb-3">
+          <label for="versione" class="form-label">Versione</label>
+          <input type="text" class="form-control" id="versione" name="versione" value="{{ manuale.versione }}" required placeholder="es. 1.0, 2.1">
+        </div>
+        <div class="mb-3">
+          <label for="contenuto" class="form-label">Contenuto</label>
+          <textarea class="form-control font-monospace" id="contenuto" name="contenuto" rows="28" required
+                    style="font-size:.85rem;">{{ manuale.contenuto }}</textarea>
+          <small class="text-muted">Usa Markdown per strutturare il contenuto</small>
+        </div>
+        <div class="d-flex justify-content-between">
+          <a href="{% url 'payroll:manuale_payroll' %}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left me-1"></i>Annulla
+          </a>
+          <button type="submit" class="btn btn-primary btn-sm">
+            <i class="bi bi-save me-1"></i>Salva Modifiche
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Anteprima -->
+    <div class="col-lg-6">
+      <div class="card card-body sticky-top" style="top:calc(var(--topbar-height) + 1rem);">
+        <h6 class="fw-semibold mb-3" style="font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--slate-500);">
+          <i class="bi bi-eye me-1" style="color:var(--color-2);"></i>Anteprima Live
+        </h6>
+        <div id="preview-content" class="manuale-content" style="max-height:75vh;overflow-y:auto;font-size:.875rem;">
+          <p class="text-muted"><em>L'anteprima apparirà qui...</em></p>
+        </div>
+      </div>
+    </div>
+  </div>
+</form>
+
+<style>
+.manuale-content h1 { font-size:1.5rem; font-weight:700; margin:1.25rem 0 .6rem; padding-bottom:.4rem; border-bottom:2px solid var(--slate-200); }
+.manuale-content h2 { font-size:1.2rem; font-weight:700; margin:1rem 0 .4rem; color:var(--color-1); }
+.manuale-content h3 { font-size:1.05rem; font-weight:700; margin:.8rem 0 .4rem; color:var(--color-2); }
+.manuale-content code { background:var(--slate-100); padding:1px 4px; border-radius:3px; font-family:monospace; font-size:.85em; color:#d63384; }
+.manuale-content pre { background:var(--slate-50); padding:.75rem; border-radius:4px; border-left:3px solid var(--color-1); overflow-x:auto; }
+.manuale-content ul, .manuale-content ol { margin-left:1.3rem; }
+.manuale-content blockquote { border-left:3px solid #ffc107; padding-left:.75rem; color:var(--slate-500); font-style:italic; }
+</style>
+
+<script>
+function convertMD(md) {
+  let html = md.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  html = html.replace(/^# (.+)$/gm,'<h1>$1</h1>');
+  html = html.replace(/^## (.+)$/gm,'<h2>$1</h2>');
+  html = html.replace(/^### (.+)$/gm,'<h3>$1</h3>');
+  html = html.replace(/^#### (.+)$/gm,'<h4>$1</h4>');
+  html = html.replace(/```([^`]+)```/g,'<pre><code>$1</code></pre>');
+  html = html.replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');
+  html = html.replace(/\*([^*]+)\*/g,'<em>$1</em>');
+  html = html.replace(/`([^`]+)`/g,'<code>$1</code>');
+  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g,'<a href="$2" target="_blank">$1</a>');
+  html = html.replace(/^- (.+)$/gm,'<li>$1</li>');
+  html = html.replace(/^> (.+)$/gm,'<blockquote>$1</blockquote>');
+  html = html.replace(/^---$/gm,'<hr>');
+  html = html.replace(/\n\n/g,'</p><p>');
+  html = '<p>' + html + '</p>';
+  html = html.replace(/✅/g,'<i class="bi bi-check-circle-fill text-success"></i>');
+  html = html.replace(/❌/g,'<i class="bi bi-x-circle-fill text-danger"></i>');
+  html = html.replace(/⭐/g,'<i class="bi bi-star-fill text-warning"></i>');
+  html = html.replace(/⚠️/g,'<i class="bi bi-exclamation-triangle-fill text-warning"></i>');
+  html = html.replace(/<p>\s*<\/p>/g,'');
+  return html;
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  const textarea = document.getElementById('contenuto');
+  const preview = document.getElementById('preview-content');
+
+  function updatePreview() { preview.innerHTML = convertMD(textarea.value); }
+  updatePreview();
+
+  let t;
+  textarea.addEventListener('input', function() { clearTimeout(t); t = setTimeout(updatePreview, 300); });
+
+  let modified = false;
+  textarea.addEventListener('input', () => { modified = true; });
+  window.addEventListener('beforeunload', (e) => { if (modified) { e.preventDefault(); e.returnValue = ''; } });
+  document.getElementById('edit-form').addEventListener('submit', () => { modified = false; });
+
+  textarea.addEventListener('keydown', function(e) {
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      const s = this.selectionStart, end = this.selectionEnd;
+      this.value = this.value.substring(0, s) + '    ' + this.value.substring(end);
+      this.selectionStart = this.selectionEnd = s + 4;
+    }
+  });
+});
+</script>
+{% endblock %}

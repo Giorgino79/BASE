@@ -90,6 +90,9 @@ def logout_view(request):
 
 @login_required
 def dashboard_view(request):
+    from comunicazioni.models import Promemoria, ChatConversazione, ChatMessaggio
+    from django.db.models import Q
+
     oggi = date.today()
 
     users_attivi = User.objects.filter(stato="attivo").count()
@@ -101,39 +104,34 @@ def dashboard_view(request):
     permessi_pending = request.user.richieste_permessi.filter(stato="in_attesa").count()
     richieste_pending = ferie_pending + permessi_pending
 
-    template_permessi_attivi = 0
-    template_permessi_totali = 0
-    if request.user.has_perm("users.gestione_completa_users"):
-        from core.models_permissions import PermissionTemplate
-        template_permessi_attivi = PermissionTemplate.objects.filter(attivo=True).count()
-        template_permessi_totali = PermissionTemplate.objects.count()
+    promemoria_attivi = Promemoria.objects.filter(
+        assegnato_a=request.user, stato__in=["pending", "in_corso"]
+    ).count()
 
-    stats = {
-        "users_attivi": users_attivi,
-        "ore_oggi": ore_oggi,
-        "richieste_pending": richieste_pending,
-        "template_permessi_attivi": template_permessi_attivi,
-        "template_permessi_totali": template_permessi_totali,
-    }
+    recent_promemoria = Promemoria.objects.filter(
+        Q(assegnato_a=request.user) | Q(user=request.user),
+        stato__in=["pending", "in_corso"],
+    ).distinct().order_by("-created_at")[:5]
 
-    timbrature_oggi = Timbratura.objects.filter(data=oggi).select_related("user").order_by("-ora")
-    if not request.user.is_staff:
-        timbrature_oggi = timbrature_oggi.filter(user=request.user)
+    total_conversations = ChatConversazione.objects.filter(
+        partecipanti=request.user
+    ).count()
 
-    richieste_recenti = RichiestaFerie.objects.filter(stato="in_attesa").select_related("user").order_by("-created_at")[:5]
-
-    from core.models.evento_calendario import EventoCalendario
-    prossimi_eventi = EventoCalendario.objects.filter(data_inizio__date__gte=oggi).order_by("data_inizio")[:5]
+    unread_messages = ChatMessaggio.objects.filter(
+        conversazione__partecipanti=request.user
+    ).exclude(mittente=request.user).exclude(letto_da=request.user).count()
 
     context = {
         "oggi": oggi,
-        "users_attivi": users_attivi,
-        "ore_oggi": ore_oggi,
-        "richieste_pending": richieste_pending,
-        "template_permessi_attivi": template_permessi_attivi,
-        "timbrature_oggi": timbrature_oggi,
-        "richieste_recenti": richieste_recenti,
-        "prossimi_eventi": prossimi_eventi,
+        "stats": {
+            "users_attivi": users_attivi,
+            "ore_oggi": ore_oggi,
+            "richieste_pending": richieste_pending,
+            "promemoria_attivi": promemoria_attivi,
+            "total_conversations": total_conversations,
+            "unread_messages": unread_messages,
+        },
+        "recent_promemoria": recent_promemoria,
     }
 
     return render(request, "commons_templates/dashboard.html", context)
@@ -325,8 +323,41 @@ def user_detail_view(request, pk):
     }
 
     tab = request.GET.get("tab", "info")
-    ultime_timbrature = user.timbrature.order_by("-data", "-ora")[:20]
     storico_richieste = user.richieste_ferie.order_by("-data_inizio")[:20]
+
+    # Presenze tab: raggruppa timbrature per giorno → stesso layout di timbratura_list
+    from datetime import datetime as dt
+    TURNO_ORDER = {"mattina": 0, "pomeriggio": 1, "notte": 2}
+    tq = user.timbrature.order_by("data", "turno", "ora")
+    gruppi = {}
+    for t in tq:
+        key = (t.data, t.turno)
+        if key not in gruppi:
+            gruppi[key] = {"data": t.data, "user": t.user, "turno": t.turno, "ingresso": None, "uscita": None, "ore_f": 0.0}
+        if t.tipo == "ingresso":
+            gruppi[key]["ingresso"] = t
+        elif t.tipo == "uscita":
+            gruppi[key]["uscita"] = t
+    for r in gruppi.values():
+        if r["ingresso"] and r["uscita"]:
+            delta = dt.combine(r["data"], r["uscita"].ora) - dt.combine(r["data"], r["ingresso"].ora)
+            if delta.total_seconds() < 0:
+                delta += timedelta(days=1)
+            r["ore_f"] = round(delta.total_seconds() / 3600, 2)
+    giorni_p = {}
+    for r in gruppi.values():
+        dkey = r["data"]
+        if dkey not in giorni_p:
+            giorni_p[dkey] = {"data": r["data"], "user": r["user"], "turni": [], "ore_totali": 0.0}
+        giorni_p[dkey]["turni"].append(r)
+        giorni_p[dkey]["ore_totali"] += r["ore_f"]
+    for g in giorni_p.values():
+        ore_tot = g["ore_totali"]
+        g["ore_ordinarie"] = min(ore_tot, 8.0)
+        g["ore_straordinarie"] = max(0.0, ore_tot - 8.0)
+        g["ha_straordinario"] = g["ore_straordinarie"] > 0
+        g["turni"].sort(key=lambda x: TURNO_ORDER.get(x["turno"], 9))
+    giorni_presenze = sorted(giorni_p.values(), key=lambda x: -x["data"].toordinal())
 
     context = {
         "profile_user": user,
@@ -341,8 +372,9 @@ def user_detail_view(request, pk):
         "breadcrumbs": breadcrumbs,
         "detail_config": detail_config,
         "tab": tab,
-        "ultime_timbrature": ultime_timbrature,
+        "giorni_presenze": giorni_presenze,
         "storico_richieste": storico_richieste,
+        "allegati": user.allegati.select_related("uploaded_by").order_by("-created_at"),
     }
 
     return render(request, "users/user_detail.html", context)
@@ -425,6 +457,28 @@ def timbratura_quick_view(request):
 
 
 @login_required
+def timbratura_stato_api(request):
+    """Restituisce il turno aperto oggi (ingresso senza uscita corrispondente)."""
+    oggi = date.today()
+    timbrature_oggi = Timbratura.objects.filter(
+        user=request.user, data=oggi
+    ).values("tipo", "turno")
+
+    ingressi = {t["turno"] for t in timbrature_oggi if t["tipo"] == "ingresso"}
+    uscite = {t["turno"] for t in timbrature_oggi if t["tipo"] == "uscita"}
+    turni_aperti = ingressi - uscite
+
+    TURNO_ORDER = ["mattina", "pomeriggio", "notte"]
+    turno_aperto = next((t for t in TURNO_ORDER if t in turni_aperti), None)
+
+    return JsonResponse({
+        "turno_aperto": turno_aperto,
+        "ingressi": list(ingressi),
+        "uscite": list(uscite),
+    })
+
+
+@login_required
 @require_http_methods(["POST"])
 def chiudi_giornata_view(request):
     oggi = date.today()
@@ -468,65 +522,122 @@ def timbratura_update_view(request, pk):
 
 @login_required
 def timbratura_list_view(request):
+    from datetime import datetime as dt
+
     if request.user.is_staff:
-        timbrature = Timbratura.objects.all().select_related("user")
+        qs = Timbratura.objects.all().select_related("user")
         user_filter = request.GET.get("user")
         if user_filter:
-            timbrature = timbrature.filter(user_id=user_filter)
+            qs = qs.filter(user_id=user_filter)
     else:
-        timbrature = request.user.timbrature.all()
-
-    timbrature = timbrature.order_by("-data", "-ora")
+        qs = request.user.timbrature.all().select_related("user")
 
     dal = request.GET.get("dal")
     if dal:
-        timbrature = timbrature.filter(data__gte=dal)
-
+        qs = qs.filter(data__gte=dal)
     al = request.GET.get("al")
     if al:
-        timbrature = timbrature.filter(data__lte=al)
+        qs = qs.filter(data__lte=al)
 
-    paginator = Paginator(timbrature, 50)
-    timbrature_page = paginator.get_page(request.GET.get("page"))
+    # --- Raggruppa per (data, user, turno) ---
+    TURNO_ORDER = {"mattina": 0, "pomeriggio": 1, "notte": 2}
+    gruppi = {}
+    for t in qs.order_by("data", "user_id", "turno", "ora"):
+        key = (t.data, t.user_id, t.turno)
+        if key not in gruppi:
+            gruppi[key] = {"data": t.data, "user": t.user, "turno": t.turno, "ingresso": None, "uscita": None, "ore_f": 0.0}
+        if t.tipo == "ingresso":
+            gruppi[key]["ingresso"] = t
+        elif t.tipo == "uscita":
+            gruppi[key]["uscita"] = t
 
+    # Calcola ore per turno
+    for r in gruppi.values():
+        if r["ingresso"] and r["uscita"]:
+            from datetime import timedelta
+            delta = dt.combine(r["data"], r["uscita"].ora) - dt.combine(r["data"], r["ingresso"].ora)
+            if delta.total_seconds() < 0:
+                delta += timedelta(days=1)
+            r["ore_f"] = round(delta.total_seconds() / 3600, 2)
+
+    # --- Raggruppa per giorno per calcolare ore/straordinari giornalieri ---
+    giorni = {}
+    for r in gruppi.values():
+        dkey = (r["data"], r["user"].pk)
+        if dkey not in giorni:
+            giorni[dkey] = {"data": r["data"], "user": r["user"], "turni": [], "ore_totali": 0.0}
+        giorni[dkey]["turni"].append(r)
+        giorni[dkey]["ore_totali"] += r["ore_f"]
+
+    for g in giorni.values():
+        ore_tot = g["ore_totali"]
+        g["ore_ordinarie"] = min(ore_tot, 8.0)
+        g["ore_straordinarie"] = max(0.0, ore_tot - 8.0)
+        g["ha_straordinario"] = g["ore_straordinarie"] > 0
+        iso = g["data"].isocalendar()
+        g["settimana_iso"] = (iso[0], iso[1])
+        # Ordina turni per ordine naturale
+        g["turni"].sort(key=lambda x: TURNO_ORDER.get(x["turno"], 9))
+
+    # --- Raggruppa per settimana ISO per calcolare straordinari settimanali ---
+    settimane = {}
+    for g in giorni.values():
+        wkey = (g["user"].pk, g["settimana_iso"])
+        if wkey not in settimane:
+            settimane[wkey] = {"user": g["user"], "settimana": g["settimana_iso"], "ore_ordinarie": 0.0, "ore_straord_giorn": 0.0}
+        settimane[wkey]["ore_ordinarie"] += g["ore_ordinarie"]
+        settimane[wkey]["ore_straord_giorn"] += g["ore_straordinarie"]
+
+    for s in settimane.values():
+        s["ore_straord_sett"] = max(0.0, s["ore_ordinarie"] - 40.0)
+        s["ore_straordinarie_totali"] = s["ore_straord_giorn"] + s["ore_straord_sett"]
+
+    # Annota ogni giorno con i totali settimanali
+    for g in giorni.values():
+        wkey = (g["user"].pk, g["settimana_iso"])
+        g["sett"] = settimane.get(wkey, {})
+
+    # Ordina per data decrescente
+    giorni_lista = sorted(giorni.values(), key=lambda x: (-x["data"].toordinal(), x["user"].last_name))
+
+    paginator = Paginator(giorni_lista, 20)
+    page_obj = paginator.get_page(request.GET.get("page"))
     tutti_utenti = User.objects.filter(is_active=True).order_by("last_name", "first_name") if request.user.is_staff else []
 
     return render(request, "users/timbratura_list.html", {
-        "timbrature": timbrature_page,
-        "page_obj": timbrature_page,
-        "is_paginated": timbrature_page.has_other_pages(),
+        "giorni": page_obj,
+        "page_obj": page_obj,
+        "is_paginated": page_obj.has_other_pages(),
         "tutti_utenti": tutti_utenti,
     })
 
 
 @login_required
+@login_required
 def giornata_lavorativa_list_view(request):
-    giornate = request.user.giornate.all().order_by("-data")
-
-    data_da = request.GET.get("data_da")
-    data_a = request.GET.get("data_a")
-
-    if not data_da and not data_a:
-        oggi = date.today()
-        data_da = date(oggi.year, oggi.month, 1)
-        data_a = (
-            date(oggi.year, oggi.month + 1, 1) - timedelta(days=1)
-            if oggi.month < 12
-            else date(oggi.year, 12, 31)
-        )
+    if request.user.is_staff:
+        giornate = GiornataLavorativa.objects.all().select_related("user").order_by("-data")
+        user_filter = request.GET.get("user")
+        if user_filter:
+            giornate = giornate.filter(user_id=user_filter)
+        tutti_utenti = User.objects.filter(is_active=True).order_by("last_name", "first_name")
     else:
-        if data_da:
-            try:
-                data_da = datetime.strptime(data_da, "%Y-%m-%d").date()
-                giornate = giornate.filter(data__gte=data_da)
-            except ValueError:
-                data_da = None
-        if data_a:
-            try:
-                data_a = datetime.strptime(data_a, "%Y-%m-%d").date()
-                giornate = giornate.filter(data__lte=data_a)
-            except ValueError:
-                data_a = None
+        giornate = request.user.giornate.all().order_by("-data")
+        tutti_utenti = []
+
+    # Filtro per mese (input type=month → "YYYY-MM")
+    mese = request.GET.get("mese")
+    if mese:
+        try:
+            anno, m = mese.split("-")
+            giornate = giornate.filter(data__year=int(anno), data__month=int(m))
+        except (ValueError, AttributeError):
+            mese = None
+    else:
+        # Default: mese corrente
+        oggi = date.today()
+        mese = oggi.strftime("%Y-%m")
+        giornate = giornate.filter(data__year=oggi.year, data__month=oggi.month)
 
     stato = request.GET.get("stato")
     if stato == "conclusa":
@@ -539,16 +650,14 @@ def giornata_lavorativa_list_view(request):
     num_giornate = giornate.count()
     media_ore = ore_totali / num_giornate if num_giornate > 0 else 0
 
-    context = {
+    return render(request, "users/giornata_list.html", {
         "giornate": giornate,
         "ore_totali": ore_totali,
         "straordinari": straordinari,
         "media_ore": media_ore,
-        "data_da": data_da.strftime("%Y-%m-%d") if isinstance(data_da, date) else data_da,
-        "data_a": data_a.strftime("%Y-%m-%d") if isinstance(data_a, date) else data_a,
-    }
-
-    return render(request, "users/giornata_list.html", context)
+        "mese": mese,
+        "tutti_utenti": tutti_utenti,
+    })
 
 
 # ============================================================================
@@ -604,12 +713,6 @@ def richiesta_permesso_create_view(request):
         if form.is_valid():
             richiesta = form.save(commit=False)
             richiesta.user = request.user
-            if richiesta.ore_richieste > request.user.ore_permesso_residue:
-                messages.error(
-                    request,
-                    f"Ore richieste ({richiesta.ore_richieste}) superiori a disponibili ({request.user.ore_permesso_residue})",
-                )
-                return render(request, "users/richiesta_permesso_form.html", {"form": form})
             richiesta.save()
             messages.success(request, "Richiesta permesso inviata!")
             return redirect("users:richieste_permessi_list")
@@ -690,7 +793,7 @@ def richiesta_ferie_gestisci_view(request, pk):
     return render(
         request,
         "users/richiesta_ferie_gestisci.html",
-        {"richiesta": richiesta, "altre_richieste": altre_richieste},
+        {"richiesta": richiesta, "altre_richieste": altre_richieste, "form": ApprovaRifiutaForm()},
     )
 
 
@@ -724,7 +827,7 @@ def richiesta_permesso_gestisci_view(request, pk):
     return render(
         request,
         "users/richiesta_permesso_gestisci.html",
-        {"richiesta": richiesta, "altre_richieste": altre_richieste},
+        {"richiesta": richiesta, "altre_richieste": altre_richieste, "form": ApprovaRifiutaForm()},
     )
 
 
@@ -885,18 +988,38 @@ def lettera_richiamo_list_view(request):
 
 @login_required
 def profilo_view(request):
+    from django.urls import reverse
+    user = request.user
     oggi = date.today()
     anno = oggi.year
-    ferie_approvate = request.user.richieste_ferie.filter(
+    ferie_approvate = user.richieste_ferie.filter(
         stato="approvata", data_inizio__year=anno
     ).aggregate(tot=Sum("giorni_richiesti"))["tot"] or 0
-    ferie_in_attesa = request.user.richieste_ferie.filter(
+    ferie_in_attesa = user.richieste_ferie.filter(
         stato="in_attesa", data_inizio__year=anno
     ).count()
-    ore_permesso = request.user.richieste_permessi.filter(
+    ore_permesso = user.richieste_permessi.filter(
         stato="approvata", data__year=anno
     ).aggregate(tot=Sum("ore_richieste"))["tot"] or 0
+
+    ct_id = ContentType.objects.get_for_model(User).pk
+
+    extra_actions = [
+        {"label": "Tesserino", "url": reverse("users:tesserino"), "icon": "bi-person-badge"},
+        {"label": "Nuovo Evento", "url": reverse("users:evento_personale_create"), "icon": "bi-calendar-plus"},
+        {"label": "Richiedi Ferie", "url": reverse("users:richiesta_ferie_create"), "icon": "bi-sun"},
+        {"label": "Richiedi Permesso", "url": reverse("users:richiesta_permesso_create"), "icon": "bi-clock"},
+        {"label": "Le Mie Giornate", "url": reverse("users:giornata_list"), "icon": "bi-calendar3"},
+        {"label": "Ferie & Permessi", "url": reverse("users:richieste_ferie_list"), "icon": "bi-calendar-check"},
+    ]
+
     return render(request, "users/profilo.html", {
+        "object": user,
+        "content_type_id": ct_id,
+        "object_id": user.pk,
+        "page_title": "Il mio profilo",
+        "edit_url": reverse("users:profilo_update"),
+        "extra_actions": extra_actions,
         "oggi": oggi,
         "ferie_approvate": ferie_approvate,
         "ferie_in_attesa": ferie_in_attesa,
@@ -1012,6 +1135,7 @@ def user_permissions_manage_view(request, pk):
     context = {
         "form": form,
         "user_obj": user_obj,
+        "profile_user": user_obj,
         "fields_by_category": fields_by_category,
         "available_templates": available_templates,
         "title": f"Gestione Permessi - {user_obj.get_full_name() or user_obj.username}",
@@ -1030,7 +1154,7 @@ def user_permissions_apply_template_view(request, pk):
 
     if not template_id:
         messages.error(request, "Nessun template selezionato.")
-        return redirect("users:user_permissions_manage", pk=pk)
+        return redirect("users:user_permissions", pk=pk)
 
     try:
         from core.models_permissions import PermissionTemplate
@@ -1048,10 +1172,10 @@ def user_permissions_apply_template_view(request, pk):
             )
             for errore in stats["errori"]:
                 messages.warning(request, f"Attenzione: {errore}")
-        return redirect("users:user_permissions_manage", pk=pk)
+        return redirect("users:user_permissions", pk=pk)
     except Exception as e:
         messages.error(request, f"Errore: {str(e)}")
-        return redirect("users:user_permissions_manage", pk=pk)
+        return redirect("users:user_permissions", pk=pk)
 
 
 # ============================================================================
@@ -1059,64 +1183,130 @@ def user_permissions_apply_template_view(request, pk):
 # ============================================================================
 
 
-@login_required
-def giornate_export_excel(request):
-    from core.excel_generator import generate_excel_response
+def _build_giornate_queryset(request):
+    """Restituisce la queryset filtrata con timbrature prefetchate."""
+    if request.user.is_staff:
+        qs = GiornataLavorativa.objects.all().select_related("user").order_by("-data")
+        user_filter = request.GET.get("user")
+        if user_filter:
+            qs = qs.filter(user_id=user_filter)
+    else:
+        qs = request.user.giornate.all().select_related("user").order_by("-data")
 
-    giornate = request.user.giornate.all().order_by("-data")
     mese = request.GET.get("mese")
     if mese:
         try:
             anno, mese_num = mese.split("-")
-            giornate = giornate.filter(data__year=anno, data__month=mese_num)
+            qs = qs.filter(data__year=anno, data__month=mese_num)
         except ValueError:
             pass
 
-    data = [
-        {
-            "Data": g.data,
-            "Ore Mattina": float(g.ore_mattina),
-            "Ore Pomeriggio": float(g.ore_pomeriggio),
-            "Ore Notte": float(g.ore_notte),
-            "Ore Totali": float(g.ore_totali),
-            "Straordinari": float(g.ore_straordinarie),
-            "Conclusa": "Sì" if g.conclusa else "No",
-            "Note": g.note or "-",
-        }
-        for g in giornate
-    ]
+    stato = request.GET.get("stato")
+    if stato == "conclusa":
+        qs = qs.filter(conclusa=True)
+    elif stato == "in_corso":
+        qs = qs.filter(conclusa=False)
 
-    headers = ["Data", "Ore Mattina", "Ore Pomeriggio", "Ore Notte", "Ore Totali", "Straordinari", "Conclusa", "Note"]
-    filename = f"giornate_{request.user.username}_{timezone.now().strftime('%Y%m%d')}"
-    return generate_excel_response(data, filename, sheet_name="Giornate Lavorative", headers=headers)
+    return qs
+
+
+def _timbrature_map(giornate):
+    """Prefetch timbrature e ritorna un dict {(user_id, data, turno, tipo): ora}."""
+    from django.db.models import Q
+
+    user_ids = list({g.user_id for g in giornate})
+    date_list = list({g.data for g in giornate})
+    timb = Timbratura.objects.filter(
+        user_id__in=user_ids, data__in=date_list
+    ).values("user_id", "data", "turno", "tipo", "ora")
+    return {(t["user_id"], t["data"], t["turno"], t["tipo"]): t["ora"] for t in timb}
+
+
+def _timb_str(tmap, user_id, data, turno, tipo):
+    ora = tmap.get((user_id, data, turno, tipo))
+    return ora.strftime("%H:%M") if ora else "-"
+
+
+def _row_giornata(g, tmap, is_staff):
+    row = {}
+    if is_staff:
+        row["Dipendente"] = g.user.get_full_name() or g.user.username
+    row["Data"] = g.data
+    uid = g.user_id
+    d = g.data
+    row["Entr. Mattina"] = _timb_str(tmap, uid, d, "mattina", "ingresso")
+    row["Usc. Mattina"] = _timb_str(tmap, uid, d, "mattina", "uscita")
+    row["Entr. Pomerigg."] = _timb_str(tmap, uid, d, "pomeriggio", "ingresso")
+    row["Usc. Pomerigg."] = _timb_str(tmap, uid, d, "pomeriggio", "uscita")
+    row["Entr. Notte"] = _timb_str(tmap, uid, d, "notte", "ingresso")
+    row["Usc. Notte"] = _timb_str(tmap, uid, d, "notte", "uscita")
+    row["Ore Mat."] = float(g.ore_mattina)
+    row["Ore Pom."] = float(g.ore_pomeriggio)
+    row["Ore Notte"] = float(g.ore_notte)
+    row["Ore Totali"] = float(g.ore_totali)
+    row["Straord."] = float(g.ore_straordinarie)
+    row["Stato"] = "Chiusa" if g.conclusa else "Aperta"
+    if g.note:
+        row["Note"] = g.note
+    return row
+
+
+@login_required
+def giornate_export_excel(request):
+    from core.excel_generator import generate_excel_response
+
+    giornate = list(_build_giornate_queryset(request))
+    tmap = _timbrature_map(giornate)
+    is_staff = request.user.is_staff
+
+    data = [_row_giornata(g, tmap, is_staff) for g in giornate]
+
+    base_headers = []
+    if is_staff:
+        base_headers.append("Dipendente")
+    base_headers += [
+        "Data",
+        "Entr. Mattina", "Usc. Mattina",
+        "Entr. Pomerigg.", "Usc. Pomerigg.",
+        "Entr. Notte", "Usc. Notte",
+        "Ore Mat.", "Ore Pom.", "Ore Notte",
+        "Ore Totali", "Straord.", "Stato",
+    ]
+    if any(r.get("Note") for r in data):
+        base_headers.append("Note")
+
+    filename = f"giornate_{timezone.now().strftime('%Y%m%d')}"
+    return generate_excel_response(data, filename, sheet_name="Giornate Lavorative", headers=base_headers)
 
 
 @login_required
 def giornate_export_pdf(request):
     from core.pdf_generator import generate_pdf_response
 
-    giornate = request.user.giornate.all().order_by("-data")
-    mese = request.GET.get("mese")
-    if mese:
-        try:
-            anno, mese_num = mese.split("-")
-            giornate = giornate.filter(data__year=anno, data__month=mese_num)
-        except ValueError:
-            pass
+    giornate = list(_build_giornate_queryset(request))
+    tmap = _timbrature_map(giornate)
+    is_staff = request.user.is_staff
 
-    data = [
-        {
-            "Data": g.data,
-            "Mattina": f"{float(g.ore_mattina)}h",
-            "Pomeriggio": f"{float(g.ore_pomeriggio)}h",
-            "Notte": f"{float(g.ore_notte)}h",
-            "Totale": f"{float(g.ore_totali)}h",
-            "Straord.": f"{float(g.ore_straordinarie)}h",
-        }
-        for g in giornate
+    data = [_row_giornata(g, tmap, is_staff) for g in giornate]
+
+    base_headers = []
+    if is_staff:
+        base_headers.append("Dipendente")
+    base_headers += [
+        "Data",
+        "Entr. Mattina", "Usc. Mattina",
+        "Entr. Pomerigg.", "Usc. Pomerigg.",
+        "Entr. Notte", "Usc. Notte",
+        "Ore Mat.", "Ore Pom.", "Ore Notte",
+        "Ore Totali", "Straord.", "Stato",
     ]
+    if any(r.get("Note") for r in data):
+        base_headers.append("Note")
 
-    headers = ["Data", "Mattina", "Pomeriggio", "Notte", "Totale", "Straord."]
-    filename = f"giornate_{request.user.username}_{timezone.now().strftime('%Y%m%d')}"
-    title = f"Giornate Lavorative - {request.user.get_full_name() or request.user.username}"
-    return generate_pdf_response(data, filename, title=title, headers=headers)
+    if is_staff:
+        title = "Giornate Lavorative - Tutti i dipendenti"
+    else:
+        title = f"Giornate Lavorative - {request.user.get_full_name() or request.user.username}"
+
+    filename = f"giornate_{timezone.now().strftime('%Y%m%d')}"
+    return generate_pdf_response(data, filename, title=title, headers=base_headers)

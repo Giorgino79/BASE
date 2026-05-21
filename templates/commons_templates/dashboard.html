@@ -1,315 +1,238 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}Dashboard{% endblock %}
 
-{% block sidebar_nav %}
-  <div class="sidebar-section">Gestione</div>
-  <nav class="sidebar-nav">
-    <ul class="nav flex-column">
-      <li class="nav-item">
-        <a href="{% url 'users:user_list' %}" class="nav-link">
-          <i class="bi bi-people"></i> Dipendenti
-        </a>
-      </li>
-      <li class="nav-item">
-        <a href="{% url 'users:timbratura_list' %}" class="nav-link">
-          <i class="bi bi-clock-history"></i> Timbrature
-        </a>
-      </li>
-    </ul>
-  </nav>
-  <div class="sidebar-section">Presenze</div>
-  <nav class="sidebar-nav">
-    <ul class="nav flex-column">
-      <li class="nav-item">
-        <a href="{% url 'users:richieste_ferie_list' %}" class="nav-link">
-          <i class="bi bi-calendar-check"></i> Ferie e Permessi
-        </a>
-      </li>
-      {% if user.is_staff %}
-      <li class="nav-item">
-        <a href="{% url 'users:richieste_ferie_admin_list' %}" class="nav-link">
-          <i class="bi bi-clipboard2-check"></i> Gestione Richieste
-        </a>
-      </li>
-      {% endif %}
-      <li class="nav-item">
-        <a href="{% url 'core:calendario_aziendale' %}" class="nav-link">
-          <i class="bi bi-calendar3"></i> Calendario
-        </a>
-      </li>
-    </ul>
-  </nav>
-  {% if user.is_staff %}
-  <div class="sidebar-section">Amministrazione</div>
-  <nav class="sidebar-nav">
-    <ul class="nav flex-column">
-      <li class="nav-item">
-        <a href="{% url 'core:amministrazione_dashboard' %}" class="nav-link">
-          <i class="bi bi-gear"></i> Impostazioni
-        </a>
-      </li>
-      <li class="nav-item">
-        <a href="{% url 'admin:index' %}" class="nav-link">
-          <i class="bi bi-shield-lock"></i> Admin Django
-        </a>
-      </li>
-    </ul>
-  </nav>
-  {% endif %}
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet">
+<style>
+  .fc-mini .fc-toolbar { flex-wrap:wrap; gap:4px; margin-bottom:8px !important; }
+  .fc-mini .fc-toolbar-title { font-size:.95rem; font-weight:600; }
+  .fc-mini .fc-button { padding:2px 8px; font-size:.75rem; }
+  .fc-mini .fc-daygrid-day-number { font-size:.75rem; padding:2px 4px; }
+  .fc-mini .fc-col-header-cell-cushion { font-size:.7rem; padding:2px; }
+  .fc-mini .fc-event { font-size:.7rem; border:none; border-radius:3px; cursor:pointer; }
+  .fc-mini .fc-daygrid-event-dot { display:none; }
+  .card-calendario { min-height:380px; }
+</style>
 {% endblock %}
 
 {% block content %}
-<!-- Header -->
-<div class="d-flex align-items-center justify-content-between mb-4">
-  <div>
-    <h1 class="h4 fw-bold mb-1" style="color: var(--slate-900);">Dashboard</h1>
-    <p class="text-muted mb-0" style="font-size:.875rem;">
-      Bentornato, <strong>{{ request.user.get_full_name|default:request.user.username }}</strong>
-      &mdash; {{ oggi|date:"l d F Y" }}
-    </p>
-  </div>
-  <div class="d-flex gap-2">
-    <a href="{% url 'users:timbratura_quick' %}" class="btn btn-primary btn-sm d-flex align-items-center gap-1">
-      <i class="bi bi-clock"></i> Timbra
-    </a>
-    <a href="{% url 'users:richiesta_ferie_create' %}" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1">
-      <i class="bi bi-calendar-plus"></i> Richiesta
-    </a>
-  </div>
-</div>
 
-<!-- Stat cards -->
-<div class="row g-3 mb-4">
-  <div class="col-sm-6 col-xl-3">
-    <div class="stat-card">
-      <div class="stat-card-icon icon-indigo">
-        <i class="bi bi-people-fill"></i>
-      </div>
-      <div class="stat-card-body">
-        <div class="stat-card-value">{{ users_attivi }}</div>
-        <div class="stat-card-label">Dipendenti attivi</div>
-      </div>
-    </div>
-  </div>
-  <div class="col-sm-6 col-xl-3">
-    <div class="stat-card">
-      <div class="stat-card-icon icon-sky">
-        <i class="bi bi-clock-fill"></i>
-      </div>
-      <div class="stat-card-body">
-        <div class="stat-card-value">{{ ore_oggi|floatformat:1 }}h</div>
-        <div class="stat-card-label">Ore lavorate oggi</div>
-      </div>
-    </div>
-  </div>
-  <div class="col-sm-6 col-xl-3">
-    <div class="stat-card">
-      <div class="stat-card-icon icon-amber">
-        <i class="bi bi-hourglass-split"></i>
-      </div>
-      <div class="stat-card-body">
-        <div class="stat-card-value">{{ richieste_pending }}</div>
-        <div class="stat-card-label">Richieste in attesa</div>
-      </div>
-    </div>
-  </div>
-  <div class="col-sm-6 col-xl-3">
-    <div class="stat-card">
-      <div class="stat-card-icon icon-emerald">
-        <i class="bi bi-patch-check-fill"></i>
-      </div>
-      <div class="stat-card-body">
-        <div class="stat-card-value">{{ template_permessi_attivi }}</div>
-        <div class="stat-card-label">Template permessi attivi</div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Main grid -->
-<div class="row g-3">
-
-  <!-- Timbratura oggi -->
-  <div class="col-lg-6">
-    <div class="card card-body h-100">
-      <div class="d-flex align-items-center justify-content-between mb-3">
-        <h6 class="fw-semibold mb-0" style="color:var(--slate-900);">
-          <i class="bi bi-clock-history me-2 text-indigo"></i>Timbrature di oggi
-        </h6>
-        <a href="{% url 'users:timbratura_list' %}" class="btn btn-link btn-sm p-0" style="color:var(--indigo-600);font-size:.8rem;">
-          Vedi tutte <i class="bi bi-arrow-right"></i>
-        </a>
-      </div>
-      {% if timbrature_oggi %}
-        <div class="table-responsive">
-          <table class="table table-sm">
-            <thead>
-              <tr>
-                <th>Dipendente</th>
-                <th>Ora</th>
-                <th>Tipo</th>
-                <th>Turno</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for t in timbrature_oggi %}
-              <tr>
-                <td class="fw-medium">{{ t.user.get_full_name|default:t.user.username }}</td>
-                <td style="font-family:monospace;">{{ t.ora|time:"H:i" }}</td>
-                <td>
-                  {% if t.tipo == 'ingresso' %}
-                    <span class="badge" style="background:#dcfce7;color:#166534;font-size:.7rem;">Ingresso</span>
-                  {% else %}
-                    <span class="badge" style="background:#fee2e2;color:#991b1b;font-size:.7rem;">Uscita</span>
-                  {% endif %}
-                </td>
-                <td style="font-size:.8rem;color:var(--slate-500);">{{ t.get_turno_display }}</td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
+<!-- Benvenuto -->
+<div class="card mb-4" style="border:none;box-shadow:0 1px 3px rgba(0,0,0,.08);">
+  <div class="card-body p-4">
+    <div class="d-flex align-items-center gap-3">
+      {% if request.user.foto_profilo %}
+      <img src="{{ request.user.foto_profilo.url }}" alt=""
+           class="rounded-circle flex-shrink-0"
+           style="width:60px;height:60px;object-fit:cover;border:2px solid var(--color-1-light);">
       {% else %}
-        <div class="text-center py-4" style="color:var(--slate-400);">
-          <i class="bi bi-clock" style="font-size:2rem;display:block;margin-bottom:.5rem;"></i>
-          Nessuna timbratura oggi
-        </div>
+      <div class="rounded-circle flex-shrink-0 d-flex align-items-center justify-content-center"
+           style="width:60px;height:60px;background:linear-gradient(135deg,var(--color-1),var(--color-1-dark));color:#fff;font-size:1.5rem;font-weight:700;">
+        {{ request.user.get_full_name|default:request.user.username|slice:":1"|upper }}
+      </div>
       {% endif %}
+      <div>
+        <h4 class="mb-1 fw-bold" style="color:var(--slate-900);">
+          Benvenuto, {{ request.user.get_full_name|default:request.user.username }}!
+        </h4>
+        <p class="mb-0 text-muted" style="font-size:.875rem;">
+          <i class="bi bi-calendar3 me-1"></i>{{ oggi|date:"l d F Y" }}
+        </p>
+      </div>
     </div>
   </div>
+</div>
 
-  <!-- Richieste in attesa -->
-  <div class="col-lg-6">
-    <div class="card card-body h-100">
-      <div class="d-flex align-items-center justify-content-between mb-3">
-        <h6 class="fw-semibold mb-0" style="color:var(--slate-900);">
-          <i class="bi bi-hourglass-split me-2 text-amber"></i>Richieste in attesa
+<!-- RIGA 1: Promemoria + Chat -->
+<div class="row g-4 mb-4">
+
+  <!-- Promemoria -->
+  <div class="col-md-6">
+    <div class="card h-100">
+      <div class="card-header d-flex justify-content-between align-items-center"
+           style="background:var(--slate-50);">
+        <h6 class="mb-0 fw-semibold" style="color:var(--slate-900);">
+          <i class="bi bi-bell-fill me-1" style="color:var(--color-2);"></i>Promemoria
         </h6>
-        {% if user.is_staff %}
-        <a href="{% url 'users:richieste_ferie_admin_list' %}" class="btn btn-link btn-sm p-0" style="color:var(--indigo-600);font-size:.8rem;">
-          Gestisci <i class="bi bi-arrow-right"></i>
-        </a>
+        {% if stats.promemoria_attivi > 0 %}
+        <span class="badge" style="background:var(--slate-200);color:var(--slate-600);font-size:.7rem;">
+          {{ stats.promemoria_attivi }} attivi
+        </span>
         {% endif %}
       </div>
-      {% if richieste_recenti %}
-        <div class="d-flex flex-column gap-2">
-          {% for r in richieste_recenti %}
-          <div class="d-flex align-items-center gap-3 p-2 rounded" style="background:var(--slate-50);border:1px solid var(--slate-100);">
-            <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
-                 style="width:36px;height:36px;background:#e0e7ff;color:#4338ca;font-weight:700;font-size:.75rem;">
-              {{ r.user.first_name|first|upper }}{{ r.user.last_name|first|upper }}
-            </div>
-            <div class="flex-grow-1 min-width-0">
-              <div class="fw-medium text-truncate" style="font-size:.85rem;color:var(--slate-800);">
-                {{ r.user.get_full_name }}
-              </div>
-              <div style="font-size:.75rem;color:var(--slate-400);">
-                {{ r.data_inizio|date:"d/m" }} – {{ r.data_fine|date:"d/m/Y" }}
-                &nbsp;&middot;&nbsp;
-                <i class="bi bi-sun"></i> Ferie
-              </div>
-            </div>
-            {% if user.is_staff %}
-            <a href="{% url 'users:richiesta_ferie_gestisci' r.pk %}" class="btn btn-xs" style="font-size:.75rem;padding:.2rem .6rem;background:#4f46e5;color:#fff;border-radius:6px;text-decoration:none;white-space:nowrap;">
-              Gestisci
-            </a>
-            {% endif %}
-          </div>
-          {% endfor %}
-        </div>
-      {% else %}
-        <div class="text-center py-4" style="color:var(--slate-400);">
-          <i class="bi bi-check-circle" style="font-size:2rem;display:block;margin-bottom:.5rem;"></i>
-          Nessuna richiesta in attesa
-        </div>
-      {% endif %}
-    </div>
-  </div>
-
-  <!-- Prossimi eventi calendario -->
-  <div class="col-lg-6">
-    <div class="card card-body">
-      <div class="d-flex align-items-center justify-content-between mb-3">
-        <h6 class="fw-semibold mb-0" style="color:var(--slate-900);">
-          <i class="bi bi-calendar3 me-2" style="color:#0ea5e9;"></i>Prossimi eventi
-        </h6>
-        <a href="{% url 'core:calendario_aziendale' %}" class="btn btn-link btn-sm p-0" style="color:var(--indigo-600);font-size:.8rem;">
-          Calendario <i class="bi bi-arrow-right"></i>
-        </a>
-      </div>
-      {% if prossimi_eventi %}
-        <div class="d-flex flex-column gap-2">
-          {% for e in prossimi_eventi %}
-          <div class="d-flex align-items-center gap-3">
-            <div class="text-center flex-shrink-0" style="width:42px;">
-              <div style="font-size:.65rem;text-transform:uppercase;color:var(--slate-400);letter-spacing:.05em;">
-                {{ e.data_inizio|date:"M" }}
-              </div>
-              <div style="font-size:1.1rem;font-weight:700;color:var(--slate-900);line-height:1.2;">
-                {{ e.data_inizio|date:"d" }}
-              </div>
-            </div>
-            <div class="flex-grow-1">
-              <div class="fw-medium" style="font-size:.85rem;color:var(--slate-800);">{{ e.titolo }}</div>
-              {% if e.descrizione %}
-              <div style="font-size:.75rem;color:var(--slate-400);">{{ e.descrizione|truncatechars:60 }}</div>
+      <div class="card-body p-0">
+        {% if recent_promemoria %}
+        <div class="list-group list-group-flush">
+          {% for prom in recent_promemoria %}
+          <a href="{% url 'comunicazioni:promemoria_list' %}"
+             class="list-group-item list-group-item-action py-2 px-3">
+            <div class="d-flex justify-content-between align-items-start">
+              <span style="font-size:.875rem;font-weight:500;color:var(--slate-800);">
+                {{ prom.titolo|truncatechars:50 }}
+              </span>
+              {% if prom.priorita == 'urgente' %}
+                <span class="badge ms-2 flex-shrink-0" style="background:var(--slate-200);color:var(--slate-600);font-size:.65rem;">Urgente</span>
+              {% elif prom.priorita == 'alta' %}
+                <span class="badge ms-2 flex-shrink-0" style="background:var(--color-4);color:var(--color-1-dark);font-size:.65rem;">Alta</span>
+              {% elif prom.priorita == 'media' %}
+                <span class="badge ms-2 flex-shrink-0" style="background:var(--color-1-light);color:var(--color-1);font-size:.65rem;">Media</span>
+              {% else %}
+                <span class="badge ms-2 flex-shrink-0" style="background:var(--slate-100);color:var(--slate-600);font-size:.65rem;">Bassa</span>
               {% endif %}
             </div>
-          </div>
+            {% if prom.data_scadenza %}
+            <small class="text-muted">
+              <i class="bi bi-clock me-1"></i>{{ prom.data_scadenza|date:"d/m/Y H:i" }}
+            </small>
+            {% endif %}
+          </a>
           {% endfor %}
         </div>
-      {% else %}
-        <div class="text-center py-3" style="color:var(--slate-400);">
-          <i class="bi bi-calendar" style="font-size:2rem;display:block;margin-bottom:.5rem;"></i>
-          Nessun evento nei prossimi giorni
+        {% else %}
+        <div class="text-center text-muted py-5">
+          <i class="bi bi-bell-slash d-block mb-2" style="font-size:2rem;"></i>
+          <span style="font-size:.875rem;">Nessun promemoria attivo</span>
         </div>
-      {% endif %}
+        {% endif %}
+      </div>
+      <div class="card-footer" style="background:#fff;border-top:1px solid var(--slate-100);">
+        <div class="d-flex gap-2">
+          <a href="{% url 'comunicazioni:promemoria_list' %}" class="btn btn-sm btn-outline-secondary">
+            Vedi tutti
+          </a>
+          <a href="{% url 'comunicazioni:promemoria_create' %}" class="btn btn-sm btn-primary">
+            <i class="bi bi-plus-lg me-1"></i>Nuovo
+          </a>
+        </div>
+      </div>
     </div>
   </div>
 
-  <!-- Accessi rapidi -->
-  <div class="col-lg-6">
-    <div class="card card-body">
-      <h6 class="fw-semibold mb-3" style="color:var(--slate-900);">
-        <i class="bi bi-lightning-charge me-2" style="color:#f59e0b;"></i>Accessi rapidi
-      </h6>
-      <div class="row g-2">
-        <div class="col-6">
-          <a href="{% url 'users:user_list' %}" class="d-flex align-items-center gap-2 p-3 rounded text-decoration-none"
-             style="background:var(--slate-50);border:1px solid var(--slate-100);transition:all .15s;"
-             onmouseover="this.style.borderColor='#4f46e5'" onmouseout="this.style.borderColor='var(--slate-100)'">
-            <i class="bi bi-people-fill" style="color:#4f46e5;font-size:1.2rem;"></i>
-            <span style="font-size:.85rem;font-weight:500;color:var(--slate-700);">Dipendenti</span>
-          </a>
-        </div>
-        <div class="col-6">
-          <a href="{% url 'users:giornata_list' %}" class="d-flex align-items-center gap-2 p-3 rounded text-decoration-none"
-             style="background:var(--slate-50);border:1px solid var(--slate-100);transition:all .15s;"
-             onmouseover="this.style.borderColor='#0ea5e9'" onmouseout="this.style.borderColor='var(--slate-100)'">
-            <i class="bi bi-calendar-week-fill" style="color:#0ea5e9;font-size:1.2rem;"></i>
-            <span style="font-size:.85rem;font-weight:500;color:var(--slate-700);">Giornate</span>
-          </a>
-        </div>
-        <div class="col-6">
-          <a href="{% url 'users:richieste_permessi_list' %}" class="d-flex align-items-center gap-2 p-3 rounded text-decoration-none"
-             style="background:var(--slate-50);border:1px solid var(--slate-100);transition:all .15s;"
-             onmouseover="this.style.borderColor='#10b981'" onmouseout="this.style.borderColor='var(--slate-100)'">
-            <i class="bi bi-clock-fill" style="color:#10b981;font-size:1.2rem;"></i>
-            <span style="font-size:.85rem;font-weight:500;color:var(--slate-700);">Permessi</span>
-          </a>
-        </div>
-        <div class="col-6">
-          <a href="{% url 'users:profilo' %}" class="d-flex align-items-center gap-2 p-3 rounded text-decoration-none"
-             style="background:var(--slate-50);border:1px solid var(--slate-100);transition:all .15s;"
-             onmouseover="this.style.borderColor='#f59e0b'" onmouseout="this.style.borderColor='var(--slate-100)'">
-            <i class="bi bi-person-fill" style="color:#f59e0b;font-size:1.2rem;"></i>
-            <span style="font-size:.85rem;font-weight:500;color:var(--slate-700);">Il mio profilo</span>
-          </a>
-        </div>
+  <!-- Chat -->
+  <div class="col-md-6">
+    <div class="card h-100">
+      <div class="card-header d-flex justify-content-between align-items-center"
+           style="background:var(--slate-50);">
+        <h6 class="mb-0 fw-semibold" style="color:var(--slate-900);">
+          <i class="bi bi-chat-dots-fill me-1" style="color:var(--color-1);"></i>Chat
+        </h6>
+        {% if stats.unread_messages > 0 %}
+        <span class="badge" style="background:var(--slate-200);color:var(--slate-600);font-size:.7rem;">
+          {{ stats.unread_messages }} non letti
+        </span>
+        {% endif %}
+      </div>
+      <div class="card-body d-flex flex-column align-items-center justify-content-center">
+        <i class="bi bi-chat-dots mb-3" style="font-size:3rem;color:var(--slate-300);"></i>
+        <p class="mb-1 fw-semibold" style="font-size:1.1rem;color:var(--slate-800);">
+          {{ stats.total_conversations }} conversazioni attive
+        </p>
+        <p class="mb-0" style="font-size:.875rem;">
+          {% if stats.unread_messages > 0 %}
+          <span style="color:var(--color-1);font-weight:600;">{{ stats.unread_messages }} messaggi non letti</span>
+          {% else %}
+          <span class="text-muted">Nessun messaggio non letto</span>
+          {% endif %}
+        </p>
+      </div>
+      <div class="card-footer" style="background:#fff;border-top:1px solid var(--slate-100);">
+        <a href="{% url 'comunicazioni:chat_list' %}" class="btn btn-sm btn-outline-secondary">
+          Vai alla Chat
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- RIGA 2: Calendari -->
+<div class="row g-4">
+
+  <!-- Calendario Aziendale -->
+  <div class="col-md-6">
+    <div class="card h-100 card-calendario">
+      <div class="card-header d-flex justify-content-between align-items-center"
+           style="background:var(--slate-50);">
+        <h6 class="mb-0 fw-semibold" style="color:var(--slate-900);">
+          <i class="bi bi-calendar2-week me-1" style="color:var(--color-1);"></i>Calendario Aziendale
+        </h6>
+        <a href="{% url 'core:calendario_aziendale' %}" class="text-muted" title="Apri a schermo intero">
+          <i class="bi bi-arrows-fullscreen" style="font-size:.85rem;"></i>
+        </a>
+      </div>
+      <div class="card-body p-2">
+        {% if request.user.is_staff or request.user.is_superuser %}
+          <div id="cal-aziendale" class="fc-mini"></div>
+        {% else %}
+          <div class="d-flex flex-column align-items-center justify-content-center h-100 text-muted py-4">
+            <i class="bi bi-lock mb-2" style="font-size:2rem;"></i>
+            <p class="mb-0" style="font-size:.875rem;">Accesso riservato allo staff</p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Calendario Personale -->
+  <div class="col-md-6">
+    <div class="card h-100 card-calendario">
+      <div class="card-header d-flex justify-content-between align-items-center"
+           style="background:var(--slate-50);">
+        <h6 class="mb-0 fw-semibold" style="color:var(--slate-900);">
+          <i class="bi bi-person-calendar me-1" style="color:var(--color-1);"></i>Il Mio Calendario
+        </h6>
+        <a href="{% url 'core:calendario_personale' %}" class="text-muted" title="Apri a schermo intero">
+          <i class="bi bi-arrows-fullscreen" style="font-size:.85rem;"></i>
+        </a>
+      </div>
+      <div class="card-body p-2">
+        <div id="cal-personale" class="fc-mini"></div>
+      </div>
+      <div class="card-footer" style="background:#fff;border-top:1px solid var(--slate-100);">
+        <a href="{% url 'users:richiesta_ferie_create' %}" class="btn btn-sm btn-outline-secondary">
+          <i class="bi bi-plus-lg me-1"></i>Richiedi ferie
+        </a>
       </div>
     </div>
   </div>
 
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+  const elAz = document.getElementById('cal-aziendale');
+  if (elAz) {
+    new FullCalendar.Calendar(elAz, {
+      locale: 'it', initialView: 'dayGridMonth', firstDay: 1,
+      headerToolbar: { left: 'prev,next', center: 'title', right: '' },
+      height: 320, editable: false, navLinks: false,
+      eventSources: [{ url: '{% url "core:calendario_eventi_api" %}' }],
+      eventClick: function(info) {
+        info.jsEvent.preventDefault();
+        window.location.href = '{% url "core:calendario_aziendale" %}';
+      }
+    }).render();
+  }
+
+  const elPers = document.getElementById('cal-personale');
+  if (elPers) {
+    new FullCalendar.Calendar(elPers, {
+      locale: 'it', initialView: 'dayGridMonth', firstDay: 1,
+      headerToolbar: { left: 'prev,next', center: 'title', right: '' },
+      height: 320, editable: false, navLinks: false,
+      eventSources: [{ url: '{% url "core:calendario_personale_eventi_api" %}' }],
+      eventClick: function(info) {
+        info.jsEvent.preventDefault();
+        window.location.href = info.event.url || '{% url "core:calendario_personale" %}';
+      }
+    }).render();
+  }
+
+});
+</script>
 {% endblock %}

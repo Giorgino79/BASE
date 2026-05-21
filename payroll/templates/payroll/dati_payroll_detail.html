@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Dati Payroll - {{ user_obj.get_full_name }}{% endblock %}
+
+{% block content %}
+<nav class="mb-3" style="font-size:.8rem;">
+  <a href="{% url 'users:user_list' %}" style="color:var(--color-1);text-decoration:none;">Dipendenti</a>
+  <i class="bi bi-chevron-right mx-1" style="color:var(--slate-400);"></i>
+  <a href="{% url 'users:user_detail' user_obj.pk %}" style="color:var(--color-1);text-decoration:none;">{{ user_obj.get_full_name }}</a>
+  <i class="bi bi-chevron-right mx-1" style="color:var(--slate-400);"></i>
+  <span style="color:var(--slate-500);">Dati Payroll</span>
+</nav>
+
+<div class="d-flex align-items-center justify-content-between mb-4">
+  <h1 class="h4 fw-bold mb-0" style="color:var(--slate-900);">
+    <i class="bi bi-cash-coin me-2" style="color:var(--color-1);"></i>Dati Contrattuali Payroll
+  </h1>
+  {% if perms.payroll.change_daticontrattualiPayroll %}
+  <a href="{% url 'payroll:dati_payroll_form' user_obj.pk %}" class="btn btn-primary btn-sm">
+    <i class="bi bi-pencil me-1"></i>Modifica
+  </a>
+  {% endif %}
+</div>
+
+{% if dati_payroll %}
+<div class="row g-3">
+  <div class="col-md-6">
+    <div class="card card-body">
+      <h6 class="fw-semibold mb-3" style="font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--slate-500);">
+        Dati Contrattuali
+      </h6>
+      <dl class="row mb-0" style="font-size:.875rem;">
+        <dt class="col-5 text-muted">CCNL</dt>
+        <dd class="col-7 mb-2">{{ dati_payroll.ccnl|default:"—" }}</dd>
+        <dt class="col-5 text-muted">Livello</dt>
+        <dd class="col-7 mb-2">{{ dati_payroll.livello|default:"—" }}</dd>
+        <dt class="col-5 text-muted">Tipo contratto</dt>
+        <dd class="col-7 mb-2">{{ dati_payroll.get_tipo_contratto_display }}</dd>
+        <dt class="col-5 text-muted">Fine contratto</dt>
+        <dd class="col-7 mb-2">{{ dati_payroll.data_fine_contratto|date:"d/m/Y"|default:"—" }}</dd>
+        <dt class="col-5 text-muted">Data cessazione</dt>
+        <dd class="col-7 mb-0">{{ dati_payroll.data_cessazione|date:"d/m/Y"|default:"—" }}</dd>
+      </dl>
+    </div>
+  </div>
+
+  <div class="col-md-6">
+    <div class="card card-body">
+      <h6 class="fw-semibold mb-3" style="font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--slate-500);">
+        Orario e Retribuzione
+      </h6>
+      <dl class="row mb-0" style="font-size:.875rem;">
+        <dt class="col-5 text-muted">Ore settimanali</dt>
+        <dd class="col-7 mb-2">{{ dati_payroll.ore_settimanali }}h</dd>
+        <dt class="col-5 text-muted">% Part time</dt>
+        <dd class="col-7 mb-2">{{ dati_payroll.percentuale_part_time }}%</dd>
+        <dt class="col-5 text-muted">Superminimo</dt>
+        <dd class="col-7 mb-2">€ {{ dati_payroll.superminimo|floatformat:2 }}</dd>
+        <dt class="col-5 text-muted">Paga oraria base</dt>
+        <dd class="col-7 mb-0">€ {{ dati_payroll.calcola_paga_oraria|floatformat:4 }}</dd>
+      </dl>
+    </div>
+  </div>
+
+  <div class="col-md-6">
+    <div class="card card-body">
+      <h6 class="fw-semibold mb-3" style="font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--slate-500);">
+        Dati Fiscali
+      </h6>
+      <dl class="row mb-0" style="font-size:.875rem;">
+        <dt class="col-7 text-muted">Add. regionale</dt>
+        <dd class="col-5 mb-2">{{ dati_payroll.aliquota_addizionale_regionale }}%</dd>
+        <dt class="col-7 text-muted">Add. comunale</dt>
+        <dd class="col-5 mb-2">{{ dati_payroll.aliquota_addizionale_comunale }}%</dd>
+        <dt class="col-7 text-muted">Det. lavoro dipendente</dt>
+        <dd class="col-5 mb-2">{% if dati_payroll.detrazione_lavoro_dipendente %}<span class="badge bg-success">Sì</span>{% else %}<span class="badge bg-secondary">No</span>{% endif %}</dd>
+        <dt class="col-7 text-muted">Coniuge a carico</dt>
+        <dd class="col-5 mb-2">{% if dati_payroll.coniuge_a_carico %}<span class="badge bg-success">Sì</span>{% else %}No{% endif %}</dd>
+        <dt class="col-7 text-muted">Figli a carico</dt>
+        <dd class="col-5 mb-0">{{ dati_payroll.numero_figli_a_carico }}</dd>
+      </dl>
+    </div>
+  </div>
+
+  <div class="col-md-6">
+    <div class="card card-body">
+      <h6 class="fw-semibold mb-3" style="font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--slate-500);">
+        Dati Bancari
+      </h6>
+      <dl class="row mb-0" style="font-size:.875rem;">
+        <dt class="col-4 text-muted">IBAN</dt>
+        <dd class="col-8 mb-0" style="font-family:monospace;">{{ dati_payroll.iban|default:"—" }}</dd>
+      </dl>
+    </div>
+  </div>
+</div>
+
+<div class="mt-4 d-flex gap-2">
+  {% if perms.payroll.view_bustapaga %}
+  <a href="{% url 'payroll:busta_paga_list' user_obj.pk %}" class="btn btn-outline-primary btn-sm">
+    <i class="bi bi-receipt-cutoff me-1"></i>Buste Paga
+  </a>
+  {% endif %}
+  {% if perms.payroll.view_feriepermessipayroll %}
+  <a href="{% url 'payroll:ferie_permessi_list' user_obj.pk %}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-calendar-check me-1"></i>Ferie & Permessi
+  </a>
+  {% endif %}
+  <a href="{% url 'users:user_detail' user_obj.pk %}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left me-1"></i>Torna al profilo
+  </a>
+</div>
+
+{% else %}
+<div class="card card-body text-center py-5">
+  <i class="bi bi-cash-coin" style="font-size:3rem;color:var(--slate-300);display:block;margin-bottom:1rem;"></i>
+  <p class="text-muted mb-3">Nessun dato payroll configurato per questo dipendente.</p>
+  {% if perms.payroll.change_daticontrattualiPayroll %}
+  <a href="{% url 'payroll:dati_payroll_form' user_obj.pk %}" class="btn btn-primary btn-sm">
+    <i class="bi bi-plus-lg me-1"></i>Configura Dati Payroll
+  </a>
+  {% endif %}
+</div>
+<div class="mt-3">
+  <a href="{% url 'users:user_detail' user_obj.pk %}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left me-1"></i>Torna al profilo
+  </a>
+</div>
+{% endif %}
+{% endblock %}

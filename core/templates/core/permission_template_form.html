@@ -1,0 +1,243 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+  .category-bar {
+    background: var(--color-1); color: #fff;
+    padding: .6rem 1rem; border-radius: .5rem; margin-bottom: 1rem;
+  }
+  .model-block {
+    border-left: 3px solid var(--color-1);
+    border-radius: .375rem;
+    margin-bottom: .75rem;
+  }
+  .model-block .card-header { background: var(--slate-50); }
+  .select-all-model { cursor: pointer; width: 16px; height: 16px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<nav class="mb-3" style="font-size:.8rem;">
+  <a href="{% url 'core:template_permessi_list' %}" style="color:var(--color-1);text-decoration:none;">
+    Template Permessi
+  </a>
+  <i class="bi bi-chevron-right mx-1" style="color:var(--slate-400);"></i>
+  <span style="color:var(--slate-500);">{% if template %}Modifica{% else %}Nuovo{% endif %}</span>
+</nav>
+
+<h4 class="fw-bold mb-4" style="color:var(--slate-900);">
+  <i class="bi bi-folder-symlink me-2" style="color:var(--color-1);"></i>{{ title }}
+</h4>
+
+<form method="post" id="template-form">
+  {% csrf_token %}
+
+  {% if form.non_field_errors %}
+  <div class="alert alert-danger py-2">{{ form.non_field_errors }}</div>
+  {% endif %}
+
+  <!-- Informazioni base -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header py-2" style="background:var(--color-1);color:#fff;">
+      <h6 class="mb-0"><i class="bi bi-info-circle me-2"></i>Informazioni Template</h6>
+    </div>
+    <div class="card-body">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label for="{{ form.nome.id_for_label }}" class="form-label fw-semibold small">
+            Nome Template <span class="text-danger">*</span>
+          </label>
+          {{ form.nome }}
+          {% if form.nome.errors %}<div class="text-danger small mt-1">{{ form.nome.errors.0 }}</div>{% endif %}
+          <div class="form-text">Es. "Responsabile HR", "Addetto Contabilità"</div>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label fw-semibold small">Stato</label>
+          <div class="form-check mt-2">
+            {{ form.attivo }}
+            <label class="form-check-label" for="{{ form.attivo.id_for_label }}">
+              Template attivo (disponibile per l'uso)
+            </label>
+          </div>
+        </div>
+        <div class="col-12">
+          <label for="{{ form.descrizione.id_for_label }}" class="form-label fw-semibold small">Descrizione</label>
+          {{ form.descrizione }}
+          {% if form.descrizione.errors %}<div class="text-danger small mt-1">{{ form.descrizione.errors.0 }}</div>{% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Permessi base operativi -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header py-2" style="background:var(--color-1);color:#fff;">
+      <h6 class="mb-0"><i class="bi bi-toggles me-2"></i>Permessi Base Operativi</h6>
+      <small style="opacity:.8;">Timbrature, ferie, approvazioni e funzioni operative</small>
+    </div>
+    <div class="card-body">
+      <div class="row">
+        {% for value, label in form.fields.permessi_base_selezionati.choices %}
+        <div class="col-md-6 mb-2">
+          <div class="form-check">
+            <input type="checkbox"
+                   name="permessi_base_selezionati"
+                   value="{{ value }}"
+                   id="perm_base_{{ forloop.counter }}"
+                   class="form-check-input"
+                   {% if value in form.permessi_base_selezionati.value %}checked{% endif %}>
+            <label class="form-check-label small" for="perm_base_{{ forloop.counter }}">{{ label }}</label>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Permessi CRUD -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header py-2" style="background:var(--color-1);color:#fff;">
+      <h6 class="mb-0"><i class="bi bi-grid-3x3-gap me-2"></i>Permessi CRUD sui Modelli</h6>
+      <small style="opacity:.8;">Creazione, visualizzazione, modifica ed eliminazione</small>
+    </div>
+    <div class="card-body">
+      {% for category, data in permessi_by_category.items %}
+      <div class="category-bar">
+        <h6 class="mb-0 fw-semibold">{{ category }}</h6>
+      </div>
+
+      {% for model_name, model_data in data.models.items %}
+      <div class="card model-block mb-3">
+        <div class="card-header d-flex justify-content-between align-items-center py-2">
+          <div class="d-flex align-items-center gap-2">
+            <input type="checkbox"
+                   class="form-check-input select-all-model"
+                   data-model="{{ model_data.info.app_label }}_{{ model_data.info.model_name }}"
+                   title="Seleziona/Deseleziona tutti">
+            <strong style="font-size:.85rem;">
+              <i class="{{ model_data.info.icon }} me-1" style="color:var(--color-1);"></i>{{ model_name }}
+            </strong>
+            <small class="text-muted">({{ model_data.info.app_label }})</small>
+          </div>
+        </div>
+        <div class="card-body py-2">
+          <div class="row g-2">
+            {% for perm_data in model_data.permissions %}
+            <div class="col-6 col-md-3">
+              <div class="form-check">
+                <input type="checkbox"
+                       name="permessi_crud"
+                       value="{{ perm_data.permission.pk }}"
+                       id="perm_{{ perm_data.permission.pk }}"
+                       class="form-check-input crud-perm-{{ model_data.info.app_label }}_{{ model_data.info.model_name }}"
+                       {% if template and perm_data.permission in template.permessi_crud.all %}checked{% endif %}>
+                <label class="form-check-label small" for="perm_{{ perm_data.permission.pk }}">
+                  {% if perm_data.info.action == 'add' %}
+                    <i class="bi bi-plus-circle text-success me-1"></i>Crea
+                  {% elif perm_data.info.action == 'view' %}
+                    <i class="bi bi-eye text-info me-1"></i>Visualizza
+                  {% elif perm_data.info.action == 'change' %}
+                    <i class="bi bi-pencil text-warning me-1"></i>Modifica
+                  {% elif perm_data.info.action == 'delete' %}
+                    <i class="bi bi-trash text-danger me-1"></i>Elimina
+                  {% endif %}
+                </label>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Azioni -->
+  <div class="card border-0 shadow" style="position:sticky;bottom:1rem;z-index:100;">
+    <div class="card-body py-2">
+      <div class="d-flex justify-content-between align-items-center">
+        <a href="{% url 'core:template_permessi_list' %}" class="btn btn-outline-secondary btn-sm">
+          <i class="bi bi-x-circle me-1"></i>Annulla
+        </a>
+        <div class="d-flex gap-2">
+          {% if template %}
+          <button type="button" class="btn btn-outline-primary btn-sm"
+                  data-bs-toggle="modal" data-bs-target="#deleteModal">
+            <i class="bi bi-trash me-1"></i>Elimina
+          </button>
+          {% endif %}
+          <button type="submit" class="btn btn-primary btn-sm">
+            <i class="bi bi-check-circle me-1"></i>
+            {% if template %}Salva Modifiche{% else %}Crea Template{% endif %}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</form>
+
+{% if template %}
+<div class="modal fade" id="deleteModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Conferma Eliminazione</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p>Eliminare il template <strong>{{ template.nome }}</strong>?</p>
+        <p class="text-muted small mb-0">
+          Gli utenti che hanno già ricevuto i permessi da questo template mantengono i loro permessi attuali.
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Annulla</button>
+        <form method="post" action="{% url 'core:template_permessi_delete' template.pk %}">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-primary btn-sm">
+            <i class="bi bi-trash me-1"></i>Elimina
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  // Select-all per modello
+  document.querySelectorAll('.select-all-model').forEach(function (cb) {
+    cb.addEventListener('change', function () {
+      document.querySelectorAll('.crud-perm-' + this.dataset.model)
+        .forEach(c => c.checked = this.checked);
+    });
+  });
+
+  // Aggiorna select-all in base ai singoli
+  document.querySelectorAll('input[name="permessi_crud"]').forEach(function (cb) {
+    cb.addEventListener('change', syncSelectAll);
+    cb.dispatchEvent(new Event('change'));
+  });
+
+  function syncSelectAll(e) {
+    const cls = Array.from(e.target.classList).find(c => c.startsWith('crud-perm-'));
+    if (!cls) return;
+    const modelId = cls.replace('crud-perm-', '');
+    const all = document.querySelectorAll('.crud-perm-' + modelId);
+    const sa  = document.querySelector('.select-all-model[data-model="' + modelId + '"]');
+    if (!sa) return;
+    const allChecked  = [...all].every(c => c.checked);
+    const someChecked = [...all].some(c => c.checked);
+    sa.checked = allChecked;
+    sa.indeterminate = someChecked && !allChecked;
+  }
+});
+</script>
+{% endblock %}

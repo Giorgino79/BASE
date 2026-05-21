@@ -14,6 +14,12 @@ def amministrazione_dashboard(request):
 
 
 @staff_member_required
+def hr_dashboard_view(request):
+    """Dashboard Human Resource — accesso centralizzato alle funzioni HR."""
+    return render(request, "core/hr_dashboard.html", {})
+
+
+@staff_member_required
 def modules_dashboard(request):
     """Dashboard moduli installati"""
     installed = ModuleManager.get_installed_modules()

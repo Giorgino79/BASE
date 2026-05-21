@@ -2,33 +2,17 @@
 
 {% block title %}Timbrature{% endblock %}
 
-{% block sidebar_nav %}
-  <li class="nav-section-title">Principale</li>
-  <li><a href="{% url 'dashboard' %}"><i class="bi bi-speedometer2"></i><span>Dashboard</span></a></li>
-  <li><a href="{% url 'users:user_list' %}"><i class="bi bi-people"></i><span>Dipendenti</span></a></li>
-  <li><a href="{% url 'users:timbratura_list' %}" class="active"><i class="bi bi-clock-history"></i><span>Timbrature</span></a></li>
-  <li class="nav-section-title">Presenze</li>
-  <li><a href="{% url 'users:richieste_ferie_list' %}"><i class="bi bi-calendar-check"></i><span>Ferie e Permessi</span></a></li>
-  {% if user.is_staff %}
-  <li><a href="{% url 'users:richieste_ferie_admin_list' %}"><i class="bi bi-clipboard2-check"></i><span>Gestione Richieste</span></a></li>
-  {% endif %}
-  <li><a href="{% url 'core:calendario_aziendale' %}"><i class="bi bi-calendar3"></i><span>Calendario</span></a></li>
-  {% if user.is_staff %}
-  <li class="nav-section-title">Amministrazione</li>
-  <li><a href="{% url 'core:amministrazione_dashboard' %}"><i class="bi bi-gear"></i><span>Impostazioni</span></a></li>
-  {% endif %}
-{% endblock %}
-
 {% block content %}
 <div class="d-flex align-items-center justify-content-between mb-4">
   <div>
     <h1 class="h4 fw-bold mb-1" style="color:var(--slate-900);">Timbrature</h1>
-    <p class="text-muted mb-0" style="font-size:.875rem;">Registro presenze dipendenti</p>
+    <p class="text-muted mb-0" style="font-size:.875rem;">Registro presenze — 8h/giorno · 40h/settimana</p>
   </div>
   <div class="d-flex gap-2">
-    <a href="{% url 'users:timbratura_quick' %}" class="btn btn-primary btn-sm d-flex align-items-center gap-1">
+    <button type="button" class="btn btn-primary btn-sm d-flex align-items-center gap-1"
+            data-bs-toggle="modal" data-bs-target="#modalTimbraOra">
       <i class="bi bi-clock"></i> Timbra ora
-    </a>
+    </button>
     {% if user.is_staff %}
     <a href="{% url 'users:giornata_list' %}" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1">
       <i class="bi bi-calendar-week"></i> Giornate
@@ -37,7 +21,7 @@
   </div>
 </div>
 
-<!-- Filters -->
+<!-- Filtri -->
 <div class="card card-body mb-3">
   <form method="get" class="row g-2 align-items-end">
     {% if user.is_staff %}
@@ -65,92 +49,138 @@
       <button type="submit" class="btn btn-primary btn-sm">Filtra</button>
       <a href="{% url 'users:timbratura_list' %}" class="btn btn-outline-secondary btn-sm">Reset</a>
     </div>
-    {% if user.is_staff %}
-    <div class="col-auto ms-auto">
-      <a href="?{{ request.GET.urlencode }}&export=excel" class="btn btn-outline-success btn-sm d-flex align-items-center gap-1">
-        <i class="bi bi-file-earmark-excel"></i> Excel
-      </a>
-    </div>
-    {% endif %}
   </form>
 </div>
 
-<!-- Table -->
-<div class="card">
+{% if giorni %}
+{% for giorno in giorni %}
+<div class="card mb-2">
+
+  <!-- Header giorno -->
+  <div class="card-header d-flex align-items-center justify-content-between py-2"
+       style="background:var(--slate-50);border-bottom:1px solid var(--slate-100);">
+    <div class="d-flex align-items-center gap-3">
+      {% if user.is_staff %}
+      <span class="fw-semibold" style="font-size:.85rem;color:var(--slate-700);">
+        {{ giorno.user.get_full_name|default:giorno.user.username }}
+      </span>
+      <span style="color:var(--slate-300);">·</span>
+      {% endif %}
+      <span class="fw-semibold font-monospace" style="font-size:.85rem;color:var(--slate-900);">
+        {{ giorno.data|date:"l d/m/Y" }}
+      </span>
+      <span class="text-muted" style="font-size:.75rem;">
+        Sett. {{ giorno.settimana_iso.1 }}/{{ giorno.settimana_iso.0 }}
+      </span>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+      <!-- Ore totali giorno -->
+      <span style="font-size:.8rem;color:var(--slate-600);">
+        Totale: <strong>{{ giorno.ore_totali|floatformat:1 }}h</strong>
+      </span>
+      <!-- Ore ordinarie -->
+      <span class="badge" style="background:var(--color-1-light);color:var(--color-1-dark);font-size:.72rem;">
+        <i class="bi bi-check-circle me-1"></i>{{ giorno.ore_ordinarie|floatformat:1 }}h ord.
+      </span>
+      {% if giorno.ha_straordinario %}
+      <span class="badge" style="background:var(--color-4);color:var(--color-1-dark);font-size:.72rem;">
+        <i class="bi bi-exclamation-triangle me-1"></i>+{{ giorno.ore_straordinarie|floatformat:1 }}h strao. giorn.
+      </span>
+      {% endif %}
+      {% if giorno.sett.ore_straord_sett > 0 %}
+      <span class="badge" style="background:var(--slate-200);color:var(--slate-600);font-size:.72rem;" title="Straordinario settimanale (ore > 40h/sett)">
+        <i class="bi bi-calendar-week me-1"></i>+{{ giorno.sett.ore_straord_sett|floatformat:1 }}h strao. sett.
+      </span>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Righe turni -->
   <div class="table-responsive">
-    <table class="table">
-      <thead>
-        <tr>
-          {% if user.is_staff %}<th>Dipendente</th>{% endif %}
-          <th>Data</th>
-          <th>Ora</th>
-          <th>Tipo</th>
-          <th>Turno</th>
-          <th>Note</th>
-          {% if user.is_staff %}<th class="text-end">Azioni</th>{% endif %}
-        </tr>
-      </thead>
+    <table class="table table-sm mb-0">
       <tbody>
-        {% for t in timbrature %}
-        <tr>
-          {% if user.is_staff %}
-          <td>
-            <a href="{% url 'users:user_detail' t.user.pk %}" style="color:var(--indigo-600);font-size:.875rem;text-decoration:none;">
-              {{ t.user.get_full_name|default:t.user.username }}
-            </a>
-          </td>
-          {% endif %}
-          <td style="font-size:.875rem;">{{ t.data|date:"d/m/Y" }}</td>
-          <td style="font-size:.875rem;font-family:monospace;">{{ t.ora|time:"H:i" }}</td>
-          <td>
-            {% if t.tipo == 'ingresso' %}
-              <span class="badge" style="background:#dcfce7;color:#166534;font-size:.75rem;"><i class="bi bi-box-arrow-in-right me-1"></i>Ingresso</span>
+        {% for r in giorno.turni %}
+        <tr style="font-size:.875rem;" class="{% if not r.uscita %}table-warning{% endif %}">
+          <td style="width:120px;">
+            {% if r.turno == 'mattina' %}
+              <span class="badge" style="background:var(--color-4);color:var(--color-1-dark);font-size:.72rem;"><i class="bi bi-sunrise me-1"></i>Mattina</span>
+            {% elif r.turno == 'pomeriggio' %}
+              <span class="badge" style="background:var(--color-1-light);color:var(--color-1);font-size:.72rem;"><i class="bi bi-sun me-1"></i>Pomeriggio</span>
             {% else %}
-              <span class="badge" style="background:#fee2e2;color:#991b1b;font-size:.75rem;"><i class="bi bi-box-arrow-right me-1"></i>Uscita</span>
+              <span class="badge" style="background:var(--color-2-light);color:var(--color-2-dark);font-size:.72rem;"><i class="bi bi-moon-stars me-1"></i>Notte</span>
             {% endif %}
           </td>
-          <td style="font-size:.875rem;color:var(--slate-600);">{{ t.get_turno_display }}</td>
-          <td style="font-size:.75rem;color:var(--slate-400);max-width:200px;">
-            {{ t.note|truncatechars:50|default:"" }}
+          <td style="width:130px;">
+            <span style="color:var(--slate-400);font-size:.75rem;">Ingresso</span><br>
+            {% if r.ingresso %}
+              <span class="fw-semibold font-monospace text-success">{{ r.ingresso.ora|time:"H:i" }}</span>
+            {% else %}
+              <span class="text-muted">—</span>
+            {% endif %}
+          </td>
+          <td style="width:130px;">
+            <span style="color:var(--slate-400);font-size:.75rem;">Uscita</span><br>
+            {% if r.uscita %}
+              <span class="fw-semibold font-monospace text-danger">{{ r.uscita.ora|time:"H:i" }}</span>
+            {% else %}
+              <span class="badge" style="background:var(--color-4);color:var(--color-1-dark);font-size:.7rem;">Turno aperto</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if r.ore_f %}
+              <span style="font-size:.8rem;color:var(--slate-600);">{{ r.ore_f|floatformat:1 }}h</span>
+            {% endif %}
           </td>
           {% if user.is_staff %}
-          <td class="text-end">
-            <a href="{% url 'users:timbratura_update' t.pk %}" class="btn btn-icon btn-sm" title="Modifica">
-              <i class="bi bi-pencil"></i>
+          <td class="text-end" style="width:80px;">
+            {% if r.ingresso %}
+            <a href="{% url 'users:timbratura_update' r.ingresso.pk %}" class="btn btn-icon btn-sm" title="Modifica ingresso">
+              <i class="bi bi-pencil" style="font-size:.8rem;"></i>
             </a>
+            {% endif %}
           </td>
           {% endif %}
-        </tr>
-        {% empty %}
-        <tr>
-          <td colspan="7" class="text-center py-5" style="color:var(--slate-400);">
-            <i class="bi bi-clock-history" style="font-size:2.5rem;display:block;margin-bottom:.75rem;"></i>
-            Nessuna timbratura trovata
-          </td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
-  {% if is_paginated %}
-  <div class="card-footer d-flex align-items-center justify-content-between" style="background:var(--slate-50);border-top:1px solid var(--slate-100);">
-    <small class="text-muted">Pagina {{ page_obj.number }} di {{ page_obj.paginator.num_pages }}</small>
-    <nav>
-      <ul class="pagination pagination-sm mb-0">
-        {% if page_obj.has_previous %}
-        <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}"><i class="bi bi-chevron-left"></i></a></li>
-        {% endif %}
-        {% for i in page_obj.paginator.page_range %}
-        <li class="page-item {% if page_obj.number == i %}active{% endif %}">
-          <a class="page-link" href="?page={{ i }}">{{ i }}</a>
-        </li>
-        {% endfor %}
-        {% if page_obj.has_next %}
-        <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}"><i class="bi bi-chevron-right"></i></a></li>
-        {% endif %}
-      </ul>
-    </nav>
+
+  <!-- Nota ROL (se ore < 8 ma giornata completa) -->
+  {% if giorno.ore_totali > 0 and giorno.ore_totali < 8 and not giorno.ha_straordinario %}
+  <div class="card-footer py-1" style="background:var(--color-1-light);border-top:1px solid #bae6fd;">
+    <small style="color:var(--color-1);font-size:.75rem;">
+      <i class="bi bi-info-circle me-1"></i>
+      Ore effettuate: {{ giorno.ore_totali|floatformat:1 }}h — Eventuale differenza ({{ giorno.ore_totali|floatformat:1 }}h / 8h) può essere coperta da ROL o permesso.
+    </small>
   </div>
   {% endif %}
+
 </div>
+{% endfor %}
+
+{% if is_paginated %}
+<nav class="mt-3">
+  <ul class="pagination justify-content-center pagination-sm">
+    {% if page_obj.has_previous %}
+    <li class="page-item"><a class="page-link" href="?{% for k,v in request.GET.items %}{% if k != 'page' %}{{ k }}={{ v }}&{% endif %}{% endfor %}page={{ page_obj.previous_page_number }}"><i class="bi bi-chevron-left"></i></a></li>
+    {% endif %}
+    {% for i in page_obj.paginator.page_range %}
+    <li class="page-item {% if page_obj.number == i %}active{% endif %}">
+      <a class="page-link" href="?{% for k,v in request.GET.items %}{% if k != 'page' %}{{ k }}={{ v }}&{% endif %}{% endfor %}page={{ i }}">{{ i }}</a>
+    </li>
+    {% endfor %}
+    {% if page_obj.has_next %}
+    <li class="page-item"><a class="page-link" href="?{% for k,v in request.GET.items %}{% if k != 'page' %}{{ k }}={{ v }}&{% endif %}{% endfor %}page={{ page_obj.next_page_number }}"><i class="bi bi-chevron-right"></i></a></li>
+    {% endif %}
+  </ul>
+</nav>
+{% endif %}
+
+{% else %}
+<div class="card card-body text-center py-5" style="color:var(--slate-400);">
+  <i class="bi bi-clock-history" style="font-size:3rem;display:block;margin-bottom:.75rem;"></i>
+  Nessuna timbratura trovata
+</div>
+{% endif %}
 {% endblock %}

@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Configura Contratto Payroll - {{ user_obj.get_full_name }}{% endblock %}
+
+{% block content %}
+<nav class="mb-3" style="font-size:.8rem;">
+  <a href="{% url 'users:user_list' %}" style="color:var(--color-1);text-decoration:none;">Dipendenti</a>
+  <i class="bi bi-chevron-right mx-1" style="color:var(--slate-400);"></i>
+  <a href="{% url 'users:user_detail' user_obj.pk %}" style="color:var(--color-1);text-decoration:none;">{{ user_obj.get_full_name }}</a>
+  <i class="bi bi-chevron-right mx-1" style="color:var(--slate-400);"></i>
+  <span style="color:var(--slate-500);">Configura Contratto Payroll</span>
+</nav>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h1 class="h4 fw-bold mb-1" style="color:var(--slate-900);">
+      <i class="bi bi-cash-coin me-2" style="color:var(--color-1);"></i>Configura Contratto Payroll
+    </h1>
+    <p class="text-muted mb-0" style="font-size:.875rem;">Dipendente: <strong>{{ user_obj.get_full_name }}</strong></p>
+  </div>
+  <a href="{% url 'payroll:manuale_payroll' %}" target="_blank" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-book me-1"></i>Manuale
+  </a>
+</div>
+
+<div class="alert alert-info alert-dismissible fade show" style="font-size:.875rem;">
+  <i class="bi bi-info-circle me-2"></i>
+  <strong>Hai dubbi?</strong> Consulta il
+  <a href="{% url 'payroll:manuale_payroll' %}" target="_blank" class="alert-link">Manuale di Compilazione</a>.
+  <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+
+<form method="post" class="needs-validation" novalidate>
+  {% csrf_token %}
+
+  <!-- Dati Contrattuali -->
+  <div class="card card-body mb-3">
+    <h6 class="fw-semibold mb-3" style="font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--slate-500);">
+      <i class="bi bi-file-earmark-text me-1" style="color:var(--color-1);"></i>Dati Contrattuali
+    </h6>
+    <div class="row g-3">
+      <div class="col-md-6">
+        <label for="ccnl" class="form-label">CCNL *</label>
+        <select class="form-select" id="ccnl" name="ccnl" required>
+          <option value="">Seleziona CCNL...</option>
+          {% for ccnl in ccnl_list %}
+          <option value="{{ ccnl.pk }}" {% if dati_payroll and dati_payroll.ccnl.pk == ccnl.pk %}selected{% endif %}>
+            {{ ccnl.nome }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-6">
+        <label for="livello" class="form-label">Livello *</label>
+        <select class="form-select" id="livello" name="livello" required>
+          <option value="">Seleziona Livello...</option>
+          {% for livello in livelli_list %}
+          <option value="{{ livello.pk }}" data-ccnl="{{ livello.ccnl.pk }}" {% if dati_payroll and dati_payroll.livello.pk == livello.pk %}selected{% endif %}>
+            {{ livello.ccnl.nome }} - Liv. {{ livello.codice }}: {{ livello.descrizione }} (€ {{ livello.paga_base_mensile|floatformat:2 }})
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-6">
+        <label for="tipo_contratto" class="form-label">Tipo Contratto *</label>
+        <select class="form-select" id="tipo_contratto" name="tipo_contratto" required>
+          <option value="TEMPO_INDETERMINATO" {% if dati_payroll and dati_payroll.tipo_contratto == 'TEMPO_INDETERMINATO' %}selected{% endif %}>Tempo Indeterminato</option>
+          <option value="TEMPO_DETERMINATO" {% if dati_payroll and dati_payroll.tipo_contratto == 'TEMPO_DETERMINATO' %}selected{% endif %}>Tempo Determinato</option>
+          <option value="APPRENDISTATO" {% if dati_payroll and dati_payroll.tipo_contratto == 'APPRENDISTATO' %}selected{% endif %}>Apprendistato</option>
+          <option value="SOMMINISTRAZIONE" {% if dati_payroll and dati_payroll.tipo_contratto == 'SOMMINISTRAZIONE' %}selected{% endif %}>Somministrazione</option>
+          <option value="PART_TIME" {% if dati_payroll and dati_payroll.tipo_contratto == 'PART_TIME' %}selected{% endif %}>Part Time</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label for="data_fine_contratto" class="form-label">Data Fine Contratto</label>
+        <input type="date" class="form-control" id="data_fine_contratto" name="data_fine_contratto"
+               value="{% if dati_payroll.data_fine_contratto %}{{ dati_payroll.data_fine_contratto|date:'Y-m-d' }}{% endif %}">
+      </div>
+      <div class="col-md-3">
+        <label for="data_cessazione" class="form-label">Data Cessazione</label>
+        <input type="date" class="form-control" id="data_cessazione" name="data_cessazione"
+               value="{% if dati_payroll.data_cessazione %}{{ dati_payroll.data_cessazione|date:'Y-m-d' }}{% endif %}">
+      </div>
+    </div>
+  </div>
+
+  <!-- Orario e Retribuzione -->
+  <div class="card card-body mb-3">
+    <h6 class="fw-semibold mb-3" style="font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--slate-500);">
+      <i class="bi bi-clock-history me-1" style="color:var(--color-1);"></i>Orario e Retribuzione
+    </h6>
+    <div class="row g-3">
+      <div class="col-md-4">
+        <label for="ore_settimanali" class="form-label">Ore Settimanali *</label>
+        <input type="number" step="0.01" class="form-control" id="ore_settimanali" name="ore_settimanali"
+               value="{% if dati_payroll %}{{ dati_payroll.ore_settimanali }}{% else %}40.00{% endif %}" required>
+      </div>
+      <div class="col-md-4">
+        <label for="percentuale_part_time" class="form-label">% Part Time *</label>
+        <input type="number" step="0.01" class="form-control" id="percentuale_part_time" name="percentuale_part_time"
+               value="{% if dati_payroll %}{{ dati_payroll.percentuale_part_time }}{% else %}100.00{% endif %}" required>
+        <small class="text-muted">100 = Full Time</small>
+      </div>
+      <div class="col-md-4">
+        <label for="superminimo" class="form-label">Superminimo €</label>
+        <input type="number" step="0.01" class="form-control" id="superminimo" name="superminimo"
+               value="{% if dati_payroll %}{{ dati_payroll.superminimo }}{% else %}0.00{% endif %}">
+      </div>
+    </div>
+  </div>
+
+  <!-- Dati Fiscali -->
+  <div class="card card-body mb-3">
+    <h6 class="fw-semibold mb-3" style="font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--slate-500);">
+      <i class="bi bi-receipt me-1" style="color:var(--color-1);"></i>Dati Fiscali
+    </h6>
+    <div class="row g-3">
+      <div class="col-md-6">
+        <label for="aliquota_addizionale_regionale" class="form-label">Addizionale Regionale %</label>
+        <input type="number" step="0.01" class="form-control" id="aliquota_addizionale_regionale" name="aliquota_addizionale_regionale"
+               value="{% if dati_payroll %}{{ dati_payroll.aliquota_addizionale_regionale }}{% else %}0.00{% endif %}">
+      </div>
+      <div class="col-md-6">
+        <label for="aliquota_addizionale_comunale" class="form-label">Addizionale Comunale %</label>
+        <input type="number" step="0.01" class="form-control" id="aliquota_addizionale_comunale" name="aliquota_addizionale_comunale"
+               value="{% if dati_payroll %}{{ dati_payroll.aliquota_addizionale_comunale }}{% else %}0.00{% endif %}">
+      </div>
+    </div>
+  </div>
+
+  <!-- Detrazioni -->
+  <div class="card card-body mb-3">
+    <h6 class="fw-semibold mb-3" style="font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--slate-500);">
+      <i class="bi bi-percent me-1" style="color:var(--color-1);"></i>Detrazioni
+    </h6>
+    <div class="row g-3">
+      <div class="col-12">
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" id="detrazione_lavoro_dipendente" name="detrazione_lavoro_dipendente"
+                 {% if not dati_payroll or dati_payroll.detrazione_lavoro_dipendente %}checked{% endif %}>
+          <label class="form-check-label" for="detrazione_lavoro_dipendente">
+            Detrazione Lavoro Dipendente
+          </label>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <label for="numero_figli_a_carico" class="form-label">Numero Figli a Carico</label>
+        <input type="number" class="form-control" id="numero_figli_a_carico" name="numero_figli_a_carico"
+               value="{% if dati_payroll %}{{ dati_payroll.numero_figli_a_carico }}{% else %}0{% endif %}">
+      </div>
+      <div class="col-md-4 d-flex align-items-end pb-1">
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" id="coniuge_a_carico" name="coniuge_a_carico"
+                 {% if dati_payroll and dati_payroll.coniuge_a_carico %}checked{% endif %}>
+          <label class="form-check-label" for="coniuge_a_carico">Coniuge a Carico</label>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <label for="altri_familiari_a_carico" class="form-label">Altri Familiari a Carico</label>
+        <input type="number" class="form-control" id="altri_familiari_a_carico" name="altri_familiari_a_carico"
+               value="{% if dati_payroll %}{{ dati_payroll.altri_familiari_a_carico }}{% else %}0{% endif %}">
+      </div>
+    </div>
+  </div>
+
+  <!-- IBAN -->
+  <div class="card card-body mb-4">
+    <h6 class="fw-semibold mb-3" style="font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--slate-500);">
+      <i class="bi bi-bank me-1" style="color:var(--color-1);"></i>Dati Bancari
+    </h6>
+    <div class="row g-3">
+      <div class="col-12">
+        <label for="iban" class="form-label">IBAN</label>
+        <input type="text" class="form-control" id="iban" name="iban"
+               value="{% if dati_payroll %}{{ dati_payroll.iban }}{% endif %}" maxlength="27"
+               style="font-family:monospace;">
+        <small class="text-muted">Formato: IT60X0542811101000000123456</small>
+      </div>
+    </div>
+  </div>
+
+  <div class="d-flex justify-content-between">
+    <a href="{% url 'users:user_detail' user_obj.pk %}" class="btn btn-outline-secondary">
+      <i class="bi bi-arrow-left me-1"></i>Annulla
+    </a>
+    <button type="submit" class="btn btn-primary">
+      <i class="bi bi-save me-1"></i>Salva Configurazione
+    </button>
+  </div>
+</form>
+
+<script>
+document.getElementById('ccnl').addEventListener('change', function() {
+  const ccnlId = this.value;
+  const livelloSelect = document.getElementById('livello');
+  const options = livelloSelect.getElementsByTagName('option');
+  for (let i = 1; i < options.length; i++) {
+    const opt = options[i];
+    opt.style.display = (!ccnlId || opt.getAttribute('data-ccnl') === ccnlId) ? '' : 'none';
+  }
+  const sel = livelloSelect.options[livelloSelect.selectedIndex];
+  if (sel && sel.getAttribute('data-ccnl') !== ccnlId) livelloSelect.value = '';
+});
+document.getElementById('ccnl').dispatchEvent(new Event('change'));
+</script>
+{% endblock %}

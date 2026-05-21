@@ -7,8 +7,8 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from .forms import CorrispondenzaForm, CorrispondenzaSearchForm
-from .models import Corrispondenza
+from .forms import CorrispondenzaForm, CorrispondenzaSearchForm, TipoCorrispondenzaForm
+from .models import Corrispondenza, TipoCorrispondenza
 
 
 def _get_or_403(user, pk):
@@ -52,6 +52,8 @@ def lista(request):
             qs = qs.filter(stato=search_form.cleaned_data['stato'])
         if search_form.cleaned_data.get('priorita'):
             qs = qs.filter(priorita=search_form.cleaned_data['priorita'])
+        if search_form.cleaned_data.get('tipo'):
+            qs = qs.filter(tipo_corrispondenza=search_form.cleaned_data['tipo'])
         if search_form.cleaned_data.get('data_da'):
             qs = qs.filter(created_at__date__gte=search_form.cleaned_data['data_da'])
         if search_form.cleaned_data.get('data_a'):
@@ -201,6 +203,52 @@ def duplica(request, pk):
     copia.save()
     messages.success(request, f'Duplicata → {copia.numero_protocollo}')
     return redirect('corrispondenza:modifica', pk=copia.pk)
+
+
+@login_required
+def tipi_lista(request):
+    """Gestione tipi di corrispondenza — lista + create inline."""
+    if not request.user.is_staff:
+        raise PermissionDenied
+
+    tipi = TipoCorrispondenza.objects.all().order_by('nome')
+    form = TipoCorrispondenzaForm()
+
+    if request.method == 'POST':
+        form = TipoCorrispondenzaForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Tipo aggiunto.')
+            return redirect('corrispondenza:tipi_lista')
+
+    return render(request, 'corrispondenza/tipi_lista.html', {'tipi': tipi, 'form': form})
+
+
+@login_required
+def tipo_modifica(request, pk):
+    if not request.user.is_staff:
+        raise PermissionDenied
+    tipo = get_object_or_404(TipoCorrispondenza, pk=pk)
+    if request.method == 'POST':
+        form = TipoCorrispondenzaForm(request.POST, instance=tipo)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Tipo aggiornato.')
+            return redirect('corrispondenza:tipi_lista')
+    else:
+        form = TipoCorrispondenzaForm(instance=tipo)
+    return render(request, 'corrispondenza/tipo_form.html', {'form': form, 'tipo': tipo})
+
+
+@login_required
+@require_POST
+def tipo_elimina(request, pk):
+    if not request.user.is_staff:
+        raise PermissionDenied
+    tipo = get_object_or_404(TipoCorrispondenza, pk=pk)
+    tipo.delete()
+    messages.success(request, f'Tipo "{tipo.nome}" eliminato.')
+    return redirect('corrispondenza:tipi_lista')
 
 
 @login_required

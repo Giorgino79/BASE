@@ -3,21 +3,20 @@
 
 {% block title %}{{ profile_user.get_full_name|default:profile_user.username }}{% endblock %}
 
-{% block sidebar_nav %}
-  <li class="nav-section-title">Principale</li>
-  <li><a href="{% url 'dashboard' %}"><i class="bi bi-speedometer2"></i><span>Dashboard</span></a></li>
-  <li><a href="{% url 'users:user_list' %}" class="active"><i class="bi bi-people"></i><span>Dipendenti</span></a></li>
-  <li><a href="{% url 'users:timbratura_list' %}"><i class="bi bi-clock-history"></i><span>Timbrature</span></a></li>
-  <li class="nav-section-title">Presenze</li>
-  <li><a href="{% url 'users:richieste_ferie_list' %}"><i class="bi bi-calendar-check"></i><span>Ferie e Permessi</span></a></li>
-  {% if user.is_staff %}
-  <li><a href="{% url 'users:richieste_ferie_admin_list' %}"><i class="bi bi-clipboard2-check"></i><span>Gestione Richieste</span></a></li>
-  {% endif %}
-  <li><a href="{% url 'core:calendario_aziendale' %}"><i class="bi bi-calendar3"></i><span>Calendario</span></a></li>
-  {% if user.is_staff %}
-  <li class="nav-section-title">Amministrazione</li>
-  <li><a href="{% url 'core:amministrazione_dashboard' %}"><i class="bi bi-gear"></i><span>Impostazioni</span></a></li>
-  {% endif %}
+{% block extra_css %}
+{% if tab == 'calendario' %}
+<link href='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css' rel='stylesheet' />
+<style>
+  .fc { font-family: inherit; }
+  .fc-toolbar-title { font-size: 1rem; font-weight: 600; color: var(--slate-900); }
+  .fc-button { font-size: .78rem !important; padding: .25rem .55rem !important; }
+  .fc-button-primary { background: var(--indigo-600) !important; border-color: var(--indigo-600) !important; }
+  .fc-button-primary:hover { background: var(--color-1-dark) !important; border-color: var(--color-1-dark) !important; }
+  .fc-event { cursor: pointer; border: none !important; border-radius: 4px; font-size: .72rem; }
+  .fc-day-today { background: #eff6ff !important; }
+  .fc-col-header-cell { font-size: .72rem; font-weight: 700; color: var(--slate-500); text-transform: uppercase; letter-spacing: .05em; }
+</style>
+{% endif %}
 {% endblock %}
 
 {% block content %}
@@ -28,183 +27,653 @@
   <span style="color:var(--slate-500);">{{ profile_user.get_full_name|default:profile_user.username }}</span>
 </nav>
 
-<div class="row g-3">
-  <!-- Left sidebar -->
-  <div class="col-lg-3">
-    {% include "users/includes/user_detail_sidebar.html" %}
+<!-- ===== HEADER: 4 card uguali ===== -->
+<div class="row g-3 mb-4 align-items-stretch">
+
+  <!-- Card 1: Foto + nome -->
+  <div class="col-md-3">
+    <div class="card card-body text-center h-100 d-flex flex-column align-items-center justify-content-center">
+      {% if profile_user.foto_profilo %}
+        <img src="{{ profile_user.foto_profilo.url }}" alt="{{ profile_user.get_full_name }}"
+             class="rounded-circle mb-3"
+             style="width:80px;height:80px;object-fit:cover;border:3px solid var(--color-1-light);">
+      {% else %}
+        <div class="rounded-circle mb-3 d-flex align-items-center justify-content-center"
+             style="width:80px;height:80px;background:var(--color-1-light);color:var(--color-1-dark);font-size:1.8rem;font-weight:700;">
+          {{ profile_user.first_name|first|upper }}{{ profile_user.last_name|first|upper }}
+        </div>
+      {% endif %}
+      <h6 class="fw-bold mb-0" style="color:var(--slate-900);">{{ profile_user.get_full_name|default:profile_user.username }}</h6>
+      <small class="text-muted mb-2">{{ profile_user.qualifica|default:"Dipendente" }}</small>
+      <div class="d-flex flex-wrap gap-1 justify-content-center">
+        {% if profile_user.is_active %}
+          <span class="badge" style="background:var(--color-1-light);color:var(--color-1-dark);font-size:.7rem;">Attivo</span>
+        {% else %}
+          <span class="badge" style="background:var(--slate-200);color:var(--slate-600);font-size:.7rem;">Disattivato</span>
+        {% endif %}
+        {% if profile_user.is_staff %}
+          <span class="badge" style="background:var(--color-2-light);color:var(--color-2-dark);font-size:.7rem;">Staff</span>
+        {% endif %}
+      </div>
+    </div>
   </div>
 
-  <!-- Main content -->
-  <div class="col-lg-9">
+  <!-- Card 2: Dati rapidi -->
+  <div class="col-md-3">
+    <div class="card card-body h-100">
+      <h6 class="fw-semibold mb-3" style="font-size:.75rem;text-transform:uppercase;letter-spacing:.05em;color:var(--slate-400);">Dati</h6>
+      <div class="d-flex flex-column gap-2" style="font-size:.84rem;">
+        <div class="d-flex align-items-center gap-2">
+          <i class="bi bi-envelope" style="color:var(--slate-400);width:16px;flex-shrink:0;"></i>
+          <span style="color:var(--slate-600);">{{ profile_user.email|default:"—" }}</span>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+          <i class="bi bi-phone" style="color:var(--slate-400);width:16px;flex-shrink:0;"></i>
+          <span style="color:var(--slate-600);">{{ profile_user.telefono|default:"—" }}</span>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+          <i class="bi bi-calendar-event" style="color:var(--slate-400);width:16px;flex-shrink:0;"></i>
+          <span style="color:var(--slate-600);">Assunto: {{ profile_user.data_assunzione|date:"d/m/Y"|default:"—" }}</span>
+        </div>
+        {% if profile_user.codice_fiscale %}
+        <div class="d-flex align-items-center gap-2">
+          <i class="bi bi-credit-card-2-front" style="color:var(--slate-400);width:16px;flex-shrink:0;"></i>
+          <span style="color:var(--slate-600);">{{ profile_user.codice_fiscale }}</span>
+        </div>
+        {% endif %}
+        <div class="d-flex align-items-center gap-2">
+          <i class="bi bi-briefcase" style="color:var(--slate-400);width:16px;flex-shrink:0;"></i>
+          <span style="color:var(--slate-600);">{{ profile_user.reparto|default:"—" }}</span>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+          <i class="bi bi-person-badge" style="color:var(--slate-400);width:16px;flex-shrink:0;"></i>
+          <span style="color:var(--slate-600);">Cod. {{ profile_user.codice_dipendente|default:"—" }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
 
-    <!-- Tabs -->
-    <ul class="nav nav-tabs mb-3" style="border-bottom:2px solid var(--slate-100);">
-      <li class="nav-item">
-        <a class="nav-link {% if tab == 'info' or not tab %}active{% endif %}"
-           href="?tab=info" style="font-size:.875rem;">
-          <i class="bi bi-person me-1"></i>Informazioni
-        </a>
-      </li>
-      <li class="nav-item">
-        <a class="nav-link {% if tab == 'presenze' %}active{% endif %}"
-           href="?tab=presenze" style="font-size:.875rem;">
-          <i class="bi bi-clock me-1"></i>Presenze
-        </a>
-      </li>
-      <li class="nav-item">
-        <a class="nav-link {% if tab == 'ferie' %}active{% endif %}"
-           href="?tab=ferie" style="font-size:.875rem;">
-          <i class="bi bi-calendar-check me-1"></i>Ferie &amp; Permessi
-        </a>
-      </li>
+  <!-- Card 3: Ferie/permessi mese -->
+  <div class="col-md-3">
+    <div class="card card-body h-100">
+      <h6 class="fw-semibold mb-3" style="font-size:.75rem;text-transform:uppercase;letter-spacing:.05em;color:var(--slate-400);">Mese corrente</h6>
+      <div class="d-flex flex-column gap-2" style="font-size:.84rem;">
+        <div class="d-flex justify-content-between">
+          <span style="color:var(--slate-500);">Ore lavorate</span>
+          <strong style="color:var(--slate-800);">{{ ore_mese|floatformat:1 }}h</strong>
+        </div>
+        <div class="d-flex justify-content-between">
+          <span style="color:var(--slate-500);">Ferie residue</span>
+          <strong style="color:var(--slate-800);">{{ profile_user.giorni_ferie_residui }} gg</strong>
+        </div>
+        <div class="d-flex justify-content-between">
+          <span style="color:var(--slate-500);">Permessi residui</span>
+          <strong style="color:var(--slate-800);">{{ profile_user.ore_permesso_residue }}h</strong>
+        </div>
+        {% if ferie_pending or permessi_pending %}
+        <div class="d-flex justify-content-between">
+          <span style="color:var(--slate-500);">Richieste in attesa</span>
+          <span class="badge" style="background:var(--color-4);color:var(--color-1-dark);font-size:.72rem;">{{ ferie_pending|add:permessi_pending }}</span>
+        </div>
+        {% endif %}
+        {% if lettere_non_lette %}
+        <div class="d-flex justify-content-between">
+          <span style="color:var(--slate-500);">Lettere richiamo</span>
+          <span class="badge" style="background:var(--slate-200);color:var(--slate-600);font-size:.72rem;">{{ lettere_non_lette }}</span>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Card 4: Azioni -->
+  <div class="col-md-3">
+    <div class="card card-body h-100 d-flex flex-column justify-content-center gap-2">
+      <h6 class="fw-semibold mb-1" style="font-size:.75rem;text-transform:uppercase;letter-spacing:.05em;color:var(--slate-400);">Azioni</h6>
+      {% if request.user == profile_user or request.user.is_staff %}
+      <a href="{% url 'users:user_update' profile_user.pk %}" class="btn btn-primary btn-sm w-100">
+        <i class="bi bi-pencil me-1"></i>Modifica dati
+      </a>
+      <a href="{% url 'users:tesserino' profile_user.pk %}" class="btn btn-outline-secondary btn-sm w-100" target="_blank">
+        <i class="bi bi-person-badge me-1"></i>Tesserino
+      </a>
       {% if request.user.is_staff %}
-      <li class="nav-item">
-        <a class="nav-link {% if tab == 'documenti' %}active{% endif %}"
-           href="?tab=documenti" style="font-size:.875rem;">
-          <i class="bi bi-paperclip me-1"></i>Documenti
-        </a>
-      </li>
+      <a href="{% url 'users:user_permissions' profile_user.pk %}" class="btn btn-outline-secondary btn-sm w-100">
+        <i class="bi bi-shield-lock me-1"></i>Permessi
+      </a>
       {% endif %}
-    </ul>
-
-    <!-- Info tab -->
-    {% if tab == 'info' or not tab %}
-    <div class="row g-3">
-      <div class="col-md-6">
-        <div class="card card-body">
-          <h6 class="fw-semibold mb-3" style="color:var(--slate-900);font-size:.875rem;text-transform:uppercase;letter-spacing:.05em;">
-            Dati anagrafici
-          </h6>
-          <dl class="row mb-0" style="font-size:.875rem;">
-            <dt class="col-5" style="color:var(--slate-400);font-weight:500;">Nome</dt>
-            <dd class="col-7 mb-2" style="color:var(--slate-700);">{{ profile_user.first_name|default:"—" }}</dd>
-            <dt class="col-5" style="color:var(--slate-400);font-weight:500;">Cognome</dt>
-            <dd class="col-7 mb-2" style="color:var(--slate-700);">{{ profile_user.last_name|default:"—" }}</dd>
-            <dt class="col-5" style="color:var(--slate-400);font-weight:500;">Codice fiscale</dt>
-            <dd class="col-7 mb-2" style="color:var(--slate-700);">{{ profile_user.codice_fiscale|default:"—" }}</dd>
-            <dt class="col-5" style="color:var(--slate-400);font-weight:500;">Data nascita</dt>
-            <dd class="col-7 mb-2" style="color:var(--slate-700);">{{ profile_user.data_nascita|date:"d/m/Y"|default:"—" }}</dd>
-            <dt class="col-5" style="color:var(--slate-400);font-weight:500;">Luogo nascita</dt>
-            <dd class="col-7 mb-0" style="color:var(--slate-700);">{{ profile_user.luogo_nascita|default:"—" }}</dd>
-          </dl>
-        </div>
-      </div>
-      <div class="col-md-6">
-        <div class="card card-body">
-          <h6 class="fw-semibold mb-3" style="color:var(--slate-900);font-size:.875rem;text-transform:uppercase;letter-spacing:.05em;">
-            Dati lavorativi
-          </h6>
-          <dl class="row mb-0" style="font-size:.875rem;">
-            <dt class="col-5" style="color:var(--slate-400);font-weight:500;">Mansione</dt>
-            <dd class="col-7 mb-2" style="color:var(--slate-700);">{{ profile_user.qualifica|default:"—" }}</dd>
-            <dt class="col-5" style="color:var(--slate-400);font-weight:500;">Assunzione</dt>
-            <dd class="col-7 mb-2" style="color:var(--slate-700);">{{ profile_user.data_assunzione|date:"d/m/Y"|default:"—" }}</dd>
-            <dt class="col-5" style="color:var(--slate-400);font-weight:500;">Email</dt>
-            <dd class="col-7 mb-2" style="color:var(--slate-700);">{{ profile_user.email|default:"—" }}</dd>
-            <dt class="col-5" style="color:var(--slate-400);font-weight:500;">Telefono</dt>
-            <dd class="col-7 mb-2" style="color:var(--slate-700);">{{ profile_user.telefono|default:"—" }}</dd>
-            <dt class="col-5" style="color:var(--slate-400);font-weight:500;">Username</dt>
-            <dd class="col-7 mb-0" style="color:var(--slate-700);">{{ profile_user.username }}</dd>
-          </dl>
-        </div>
-      </div>
-      {% if profile_user.note %}
-      <div class="col-12">
-        <div class="card card-body">
-          <h6 class="fw-semibold mb-2" style="color:var(--slate-900);font-size:.875rem;text-transform:uppercase;letter-spacing:.05em;">Note</h6>
-          <p class="mb-0" style="font-size:.875rem;color:var(--slate-600);">{{ profile_user.note }}</p>
-        </div>
-      </div>
       {% endif %}
     </div>
-    {% endif %}
+  </div>
 
-    <!-- Presenze tab -->
-    {% if tab == 'presenze' %}
-    <div class="card">
-      <div class="card-header d-flex align-items-center justify-content-between" style="background:var(--slate-50);">
-        <span class="fw-semibold" style="font-size:.875rem;">Ultime timbrature</span>
-        <a href="{% url 'users:timbratura_list' %}?user={{ profile_user.pk }}" class="btn btn-sm btn-outline-secondary">Vedi tutte</a>
-      </div>
-      <div class="table-responsive">
-        <table class="table">
-          <thead>
-            <tr>
-              <th>Data</th><th>Ora</th><th>Tipo</th><th>Turno</th><th>Note</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for t in ultime_timbrature %}
-            <tr>
-              <td style="font-size:.875rem;">{{ t.data|date:"d/m/Y" }}</td>
-              <td style="font-size:.875rem;font-family:monospace;">{{ t.ora|time:"H:i" }}</td>
-              <td style="font-size:.875rem;">
-                {% if t.tipo == 'ingresso' %}
-                  <span class="badge" style="background:#dcfce7;color:#166534;font-size:.7rem;">Ingresso</span>
-                {% else %}
-                  <span class="badge" style="background:#fee2e2;color:#991b1b;font-size:.7rem;">Uscita</span>
-                {% endif %}
-              </td>
-              <td style="font-size:.875rem;color:var(--slate-600);">{{ t.get_turno_display }}</td>
-              <td style="font-size:.75rem;color:var(--slate-400);">{{ t.note|default:"" }}</td>
-            </tr>
-            {% empty %}
-            <tr><td colspan="5" class="text-center py-4" style="color:var(--slate-400);">Nessuna timbratura registrata</td></tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    </div>
-    {% endif %}
+</div>
 
-    <!-- Ferie tab -->
-    {% if tab == 'ferie' %}
-    <div class="card">
-      <div class="card-header" style="background:var(--slate-50);">
-        <span class="fw-semibold" style="font-size:.875rem;">Storico ferie e permessi</span>
-      </div>
-      <div class="table-responsive">
-        <table class="table">
-          <thead>
-            <tr>
-              <th>Tipo</th><th>Dal</th><th>Al</th><th>Giorni</th><th>Stato</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for r in storico_richieste %}
-            <tr>
-              <td style="font-size:.875rem;">
-                <i class="bi bi-sun text-warning me-1"></i>Ferie
-              </td>
-              <td style="font-size:.875rem;">{{ r.data_inizio|date:"d/m/Y" }}</td>
-              <td style="font-size:.875rem;">{{ r.data_fine|date:"d/m/Y" }}</td>
-              <td style="font-size:.875rem;">{{ r.giorni_richiesti|default:"—" }}</td>
-              <td>
-                {% if r.stato == 'approvata' %}
-                  <span class="badge" style="background:#dcfce7;color:#166534;font-size:.7rem;">Approvata</span>
-                {% elif r.stato == 'rifiutata' %}
-                  <span class="badge" style="background:#fee2e2;color:#991b1b;font-size:.7rem;">Rifiutata</span>
-                {% else %}
-                  <span class="badge" style="background:#fef3c7;color:#92400e;font-size:.7rem;">In attesa</span>
-                {% endif %}
-              </td>
-            </tr>
-            {% empty %}
-            <tr><td colspan="5" class="text-center py-4" style="color:var(--slate-400);">Nessuna richiesta trovata</td></tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    </div>
-    {% endif %}
+<!-- ===== TABS ===== -->
+<ul class="nav nav-tabs mb-3" style="border-bottom:2px solid var(--slate-100);">
+  <li class="nav-item">
+    <a class="nav-link {% if tab == 'info' or not tab %}active{% endif %}" href="?tab=info" style="font-size:.875rem;">
+      <i class="bi bi-person me-1"></i>Informazioni
+    </a>
+  </li>
+  {% if profile_user.pk == request.user.pk %}
+  <li class="nav-item">
+    <a class="nav-link {% if tab == 'calendario' %}active{% endif %}" href="?tab=calendario" style="font-size:.875rem;">
+      <i class="bi bi-calendar3 me-1"></i>Calendario
+    </a>
+  </li>
+  {% endif %}
+  <li class="nav-item">
+    <a class="nav-link {% if tab == 'presenze' %}active{% endif %}" href="?tab=presenze" style="font-size:.875rem;">
+      <i class="bi bi-clock me-1"></i>Presenze
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link {% if tab == 'ferie' %}active{% endif %}" href="?tab=ferie" style="font-size:.875rem;">
+      <i class="bi bi-calendar-check me-1"></i>Ferie &amp; Permessi
+    </a>
+  </li>
+  {% if request.user.is_staff %}
+  <li class="nav-item">
+    <a class="nav-link {% if tab == 'documenti' %}active{% endif %}" href="?tab=documenti" style="font-size:.875rem;">
+      <i class="bi bi-paperclip me-1"></i>Documenti
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link {% if tab == 'payroll' %}active{% endif %}" href="?tab=payroll" style="font-size:.875rem;">
+      <i class="bi bi-receipt-cutoff me-1"></i>Payroll
+    </a>
+  </li>
+  {% endif %}
+</ul>
 
-    <!-- Documenti tab -->
-    {% if tab == 'documenti' and request.user.is_staff %}
+<!-- ===== TAB: Info ===== -->
+{% if tab == 'info' or not tab %}
+<div class="row g-3">
+  <div class="col-md-6">
     <div class="card card-body">
-      <p class="text-muted mb-0" style="font-size:.875rem;">Nessun documento allegato.</p>
+      <h6 class="fw-semibold mb-3" style="color:var(--slate-900);font-size:.875rem;text-transform:uppercase;letter-spacing:.05em;">Dati anagrafici</h6>
+      <dl class="row mb-0" style="font-size:.875rem;">
+        <dt class="col-5" style="color:var(--slate-400);font-weight:500;">Nome</dt>
+        <dd class="col-7 mb-2" style="color:var(--slate-700);">{{ profile_user.first_name|default:"—" }}</dd>
+        <dt class="col-5" style="color:var(--slate-400);font-weight:500;">Cognome</dt>
+        <dd class="col-7 mb-2" style="color:var(--slate-700);">{{ profile_user.last_name|default:"—" }}</dd>
+        <dt class="col-5" style="color:var(--slate-400);font-weight:500;">Codice fiscale</dt>
+        <dd class="col-7 mb-2" style="color:var(--slate-700);">{{ profile_user.codice_fiscale|default:"—" }}</dd>
+        <dt class="col-5" style="color:var(--slate-400);font-weight:500;">Data nascita</dt>
+        <dd class="col-7 mb-2" style="color:var(--slate-700);">{{ profile_user.data_nascita|date:"d/m/Y"|default:"—" }}</dd>
+        <dt class="col-5" style="color:var(--slate-400);font-weight:500;">Luogo nascita</dt>
+        <dd class="col-7 mb-2" style="color:var(--slate-700);">{{ profile_user.luogo_nascita|default:"—" }}</dd>
+        {% if profile_user.indirizzo %}
+        <dt class="col-5" style="color:var(--slate-400);font-weight:500;">Indirizzo</dt>
+        <dd class="col-7 mb-0" style="color:var(--slate-700);">{{ profile_user.indirizzo }}, {{ profile_user.cap }} {{ profile_user.citta }}</dd>
+        {% endif %}
+      </dl>
     </div>
-    {% endif %}
+  </div>
+  <div class="col-md-6">
+    <div class="card card-body">
+      <h6 class="fw-semibold mb-3" style="color:var(--slate-900);font-size:.875rem;text-transform:uppercase;letter-spacing:.05em;">Dati lavorativi</h6>
+      <dl class="row mb-0" style="font-size:.875rem;">
+        <dt class="col-5" style="color:var(--slate-400);font-weight:500;">Mansione</dt>
+        <dd class="col-7 mb-2" style="color:var(--slate-700);">{{ profile_user.qualifica|default:"—" }}</dd>
+        <dt class="col-5" style="color:var(--slate-400);font-weight:500;">Reparto</dt>
+        <dd class="col-7 mb-2" style="color:var(--slate-700);">{{ profile_user.reparto|default:"—" }}</dd>
+        <dt class="col-5" style="color:var(--slate-400);font-weight:500;">Assunzione</dt>
+        <dd class="col-7 mb-2" style="color:var(--slate-700);">{{ profile_user.data_assunzione|date:"d/m/Y"|default:"—" }}</dd>
+        <dt class="col-5" style="color:var(--slate-400);font-weight:500;">Email</dt>
+        <dd class="col-7 mb-2" style="color:var(--slate-700);">{{ profile_user.email|default:"—" }}</dd>
+        <dt class="col-5" style="color:var(--slate-400);font-weight:500;">Telefono</dt>
+        <dd class="col-7 mb-2" style="color:var(--slate-700);">{{ profile_user.telefono|default:"—" }}</dd>
+        <dt class="col-5" style="color:var(--slate-400);font-weight:500;">Ferie annuali</dt>
+        <dd class="col-7 mb-2" style="color:var(--slate-700);">{{ profile_user.giorni_ferie_anno }} gg (residui: {{ profile_user.giorni_ferie_residui }})</dd>
+        <dt class="col-5" style="color:var(--slate-400);font-weight:500;">Permessi residui</dt>
+        <dd class="col-7 mb-0" style="color:var(--slate-700);">{{ profile_user.ore_permesso_residue }}h</dd>
+      </dl>
+    </div>
+  </div>
+  {% if profile_user.note %}
+  <div class="col-12">
+    <div class="card card-body">
+      <h6 class="fw-semibold mb-2" style="color:var(--slate-900);font-size:.875rem;text-transform:uppercase;letter-spacing:.05em;">Note</h6>
+      <p class="mb-0" style="font-size:.875rem;color:var(--slate-600);">{{ profile_user.note }}</p>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
 
+<!-- ===== TAB: Calendario ===== -->
+{% if tab == 'calendario' and profile_user.pk == request.user.pk %}
+<div class="card p-3">
+  <div id="calendario-personale"></div>
+</div>
+{% endif %}
+
+<!-- ===== TAB: Presenze ===== -->
+{% if tab == 'presenze' %}
+<div class="d-flex align-items-center justify-content-between mb-3">
+  <span class="fw-semibold" style="font-size:.875rem;color:var(--slate-700);">Storico timbrature</span>
+  <a href="{% url 'users:timbratura_list' %}?user={{ profile_user.pk }}" class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-funnel me-1"></i>Filtra per periodo
+  </a>
+</div>
+
+{% if giorni_presenze %}
+{% for giorno in giorni_presenze %}
+<div class="card mb-2">
+  <div class="card-header d-flex align-items-center justify-content-between py-2"
+       style="background:var(--slate-50);border-bottom:1px solid var(--slate-100);">
+    <div class="d-flex align-items-center gap-3">
+      <span class="fw-semibold font-monospace" style="font-size:.85rem;color:var(--slate-900);">
+        {{ giorno.data|date:"l d/m/Y" }}
+      </span>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+      <span style="font-size:.8rem;color:var(--slate-600);">
+        Totale: <strong>{{ giorno.ore_totali|floatformat:1 }}h</strong>
+      </span>
+      <span class="badge" style="background:var(--color-1-light);color:var(--color-1-dark);font-size:.72rem;">
+        <i class="bi bi-check-circle me-1"></i>{{ giorno.ore_ordinarie|floatformat:1 }}h ord.
+      </span>
+      {% if giorno.ha_straordinario %}
+      <span class="badge" style="background:var(--color-4);color:var(--color-1-dark);font-size:.72rem;">
+        <i class="bi bi-exclamation-triangle me-1"></i>+{{ giorno.ore_straordinarie|floatformat:1 }}h strao.
+      </span>
+      {% endif %}
+    </div>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-sm mb-0">
+      <tbody>
+        {% for r in giorno.turni %}
+        <tr style="font-size:.875rem;" class="{% if not r.uscita %}table-warning{% endif %}">
+          <td style="width:110px;">
+            {% if r.turno == 'mattina' %}
+              <span class="badge" style="background:var(--color-4);color:var(--color-1-dark);font-size:.72rem;"><i class="bi bi-sunrise me-1"></i>Mattina</span>
+            {% elif r.turno == 'pomeriggio' %}
+              <span class="badge" style="background:var(--color-1-light);color:var(--color-1);font-size:.72rem;"><i class="bi bi-sun me-1"></i>Pomeriggio</span>
+            {% else %}
+              <span class="badge" style="background:var(--color-2-light);color:var(--color-2-dark);font-size:.72rem;"><i class="bi bi-moon-stars me-1"></i>Notte</span>
+            {% endif %}
+          </td>
+          <td style="width:120px;">
+            <span style="color:var(--slate-400);font-size:.72rem;">Ingresso</span><br>
+            {% if r.ingresso %}
+              <span class="fw-semibold font-monospace text-success">{{ r.ingresso.ora|time:"H:i" }}</span>
+            {% else %}<span class="text-muted">—</span>{% endif %}
+          </td>
+          <td style="width:120px;">
+            <span style="color:var(--slate-400);font-size:.72rem;">Uscita</span><br>
+            {% if r.uscita %}
+              <span class="fw-semibold font-monospace text-danger">{{ r.uscita.ora|time:"H:i" }}</span>
+            {% else %}
+              <span class="badge" style="background:var(--color-4);color:var(--color-1-dark);font-size:.7rem;">Turno aperto</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if r.ore_f %}
+              <span style="font-size:.8rem;color:var(--slate-600);">{{ r.ore_f|floatformat:1 }}h</span>
+            {% endif %}
+          </td>
+          {% if request.user.is_staff %}
+          <td class="text-end" style="width:60px;">
+            {% if r.ingresso %}
+            <a href="{% url 'users:timbratura_update' r.ingresso.pk %}" class="btn btn-icon btn-sm" title="Modifica">
+              <i class="bi bi-pencil" style="font-size:.75rem;"></i>
+            </a>
+            {% endif %}
+          </td>
+          {% endif %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if giorno.ore_totali > 0 and giorno.ore_totali < 8 and not giorno.ha_straordinario %}
+  <div class="card-footer py-1" style="background:var(--color-1-light);border-top:1px solid #bae6fd;">
+    <small style="color:var(--color-1);font-size:.72rem;">
+      <i class="bi bi-info-circle me-1"></i>
+      {{ giorno.ore_totali|floatformat:1 }}h / 8h — la differenza può essere coperta da ROL o permesso.
+    </small>
+  </div>
+  {% endif %}
+</div>
+{% endfor %}
+{% else %}
+<div class="card card-body text-center py-5" style="color:var(--slate-400);">
+  <i class="bi bi-clock-history" style="font-size:2.5rem;display:block;margin-bottom:.75rem;"></i>
+  Nessuna timbratura registrata
+</div>
+{% endif %}
+{% endif %}
+
+<!-- ===== TAB: Ferie ===== -->
+{% if tab == 'ferie' %}
+<div class="card">
+  <div class="card-header" style="background:var(--slate-50);">
+    <span class="fw-semibold" style="font-size:.875rem;">Storico ferie e permessi</span>
+  </div>
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr><th>Tipo</th><th>Dal</th><th>Al</th><th>Giorni</th><th>Stato</th></tr>
+      </thead>
+      <tbody>
+        {% for r in storico_richieste %}
+        <tr>
+          <td style="font-size:.875rem;"><i class="bi bi-sun text-warning me-1"></i>Ferie</td>
+          <td style="font-size:.875rem;">{{ r.data_inizio|date:"d/m/Y" }}</td>
+          <td style="font-size:.875rem;">{{ r.data_fine|date:"d/m/Y" }}</td>
+          <td style="font-size:.875rem;">{{ r.giorni_richiesti|default:"—" }}</td>
+          <td>
+            {% if r.stato == 'approvata' %}
+              <span class="badge" style="background:var(--color-1-light);color:var(--color-1-dark);font-size:.7rem;">Approvata</span>
+            {% elif r.stato == 'rifiutata' %}
+              <span class="badge" style="background:var(--slate-200);color:var(--slate-600);font-size:.7rem;">Rifiutata</span>
+            {% else %}
+              <span class="badge" style="background:var(--color-4);color:var(--color-1-dark);font-size:.7rem;">In attesa</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" class="text-center py-4" style="color:var(--slate-400);">Nessuna richiesta trovata</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
   </div>
 </div>
+{% endif %}
+
+<!-- ===== TAB: Documenti ===== -->
+{% if tab == 'documenti' and request.user.is_staff %}
+<div class="row g-3">
+
+  <!-- Upload nuovo documento -->
+  <div class="col-md-4">
+    <div class="card card-body">
+      <h6 class="fw-semibold mb-3" style="font-size:.8rem;text-transform:uppercase;letter-spacing:.05em;color:var(--slate-500);">
+        <i class="bi bi-upload me-1"></i>Carica documento
+      </h6>
+      <form id="uploadForm">
+        {% csrf_token %}
+        <input type="hidden" id="up_ct" value="{{ content_type_id }}">
+        <input type="hidden" id="up_oid" value="{{ profile_user.pk }}">
+        <div class="mb-2">
+          <label class="form-label" style="font-size:.8rem;font-weight:500;">File</label>
+          <input type="file" id="up_file" class="form-control form-control-sm" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx,.txt">
+        </div>
+        <div class="mb-3">
+          <label class="form-label" style="font-size:.8rem;font-weight:500;">Descrizione</label>
+          <input type="text" id="up_desc" class="form-control form-control-sm" placeholder="Es. Carta d'identità…">
+        </div>
+        <button type="submit" class="btn btn-primary btn-sm w-100" id="up_btn">
+          <i class="bi bi-upload me-1"></i>Carica
+        </button>
+        <div id="up_msg" class="mt-2" style="font-size:.8rem;display:none;"></div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Lista documenti -->
+  <div class="col-md-8">
+    <div class="card">
+      <div class="card-header d-flex align-items-center justify-content-between py-2" style="background:var(--slate-50);">
+        <span class="fw-semibold" style="font-size:.875rem;">Documenti allegati</span>
+        <span class="badge" style="background:var(--slate-200);color:var(--slate-700);font-size:.72rem;" id="doc_count">
+          {{ allegati|length }}
+        </span>
+      </div>
+
+      {% if allegati %}
+      <div class="table-responsive">
+        <table class="table table-sm mb-0" id="docTable">
+          <tbody>
+            {% for a in allegati %}
+            <tr data-id="{{ a.pk }}">
+              <td style="width:32px;padding:.6rem .75rem;">
+                {% if a.tipo_file == 'application/pdf' or a.nome_originale|lower|slice:"-4:" == '.pdf' %}
+                  <i class="bi bi-file-earmark-pdf text-danger" style="font-size:1.1rem;"></i>
+                {% elif a.tipo_file|slice:":6:" == 'image/' %}
+                  <i class="bi bi-file-earmark-image text-success" style="font-size:1.1rem;"></i>
+                {% elif '.doc' in a.nome_originale|lower %}
+                  <i class="bi bi-file-earmark-word text-primary" style="font-size:1.1rem;"></i>
+                {% elif '.xls' in a.nome_originale|lower %}
+                  <i class="bi bi-file-earmark-excel" style="font-size:1.1rem;color:var(--color-1);"></i>
+                {% else %}
+                  <i class="bi bi-file-earmark text-muted" style="font-size:1.1rem;"></i>
+                {% endif %}
+              </td>
+              <td style="font-size:.82rem;">
+                <div class="fw-medium" style="color:var(--slate-800);">{{ a.nome_originale }}</div>
+                {% if a.descrizione %}
+                <div style="color:var(--slate-500);font-size:.75rem;">{{ a.descrizione }}</div>
+                {% endif %}
+                <div style="color:var(--slate-400);font-size:.72rem;">
+                  {{ a.created_at|date:"d/m/Y H:i" }}
+                  {% if a.uploaded_by %} · {{ a.uploaded_by.get_full_name|default:a.uploaded_by.username }}{% endif %}
+                  {% if a.dimensione %} · {{ a.get_size_display }}{% endif %}
+                </div>
+              </td>
+              <td class="text-end" style="width:80px;white-space:nowrap;">
+                <a href="{% url 'core:allegato_download' a.pk %}" class="btn btn-icon btn-sm" title="Scarica">
+                  <i class="bi bi-download" style="font-size:.8rem;"></i>
+                </a>
+                <button type="button" class="btn btn-icon btn-sm text-danger del-btn" data-id="{{ a.pk }}" title="Elimina">
+                  <i class="bi bi-trash" style="font-size:.8rem;"></i>
+                </button>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="card-body text-center py-4" id="emptyMsg" style="color:var(--slate-400);">
+        <i class="bi bi-folder2-open" style="font-size:2rem;display:block;margin-bottom:.5rem;"></i>
+        <span style="font-size:.83rem;">Nessun documento allegato</span>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function() {
+  const form   = document.getElementById('uploadForm');
+  const btn    = document.getElementById('up_btn');
+  const msg    = document.getElementById('up_msg');
+  const count  = document.getElementById('doc_count');
+  const table  = document.getElementById('docTable');
+  const empty  = document.getElementById('emptyMsg');
+  const CSRF   = '{{ csrf_token }}';
+
+  // Upload
+  form && form.addEventListener('submit', function(e) {
+    e.preventDefault();
+    const file = document.getElementById('up_file').files[0];
+    if (!file) { showMsg('Seleziona un file.', false); return; }
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('content_type', document.getElementById('up_ct').value);
+    fd.append('object_id', document.getElementById('up_oid').value);
+    fd.append('descrizione', document.getElementById('up_desc').value);
+    btn.disabled = true;
+    fetch('{% url "core:allegato_upload" %}', {
+      method: 'POST',
+      headers: { 'X-CSRFToken': CSRF },
+      body: fd,
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        showMsg('Documento caricato.', true);
+        document.getElementById('up_file').value = '';
+        document.getElementById('up_desc').value = '';
+        addRow(data.allegato);
+        updateCount(1);
+      } else {
+        showMsg(data.error || 'Errore caricamento.', false);
+      }
+      btn.disabled = false;
+    })
+    .catch(() => { showMsg('Errore di connessione.', false); btn.disabled = false; });
+  });
+
+  // Delete
+  document.addEventListener('click', function(e) {
+    const btn = e.target.closest('.del-btn');
+    if (!btn) return;
+    if (!confirm('Eliminare questo documento?')) return;
+    const id = btn.dataset.id;
+    fetch(`/core/allegati/${id}/delete/`, {
+      method: 'POST',
+      headers: { 'X-CSRFToken': CSRF },
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        const row = document.querySelector(`tr[data-id="${id}"]`);
+        if (row) row.remove();
+        updateCount(-1);
+      }
+    })
+    .catch(() => {});
+  });
+
+  function showMsg(text, ok) {
+    msg.style.display = '';
+    msg.className = ok ? 'mt-2 text-success' : 'mt-2 text-danger';
+    msg.textContent = text;
+    setTimeout(() => { msg.style.display = 'none'; }, 4000);
+  }
+
+  function updateCount(delta) {
+    const n = parseInt(count.textContent || '0') + delta;
+    count.textContent = n;
+    if (empty) empty.style.display = n > 0 ? 'none' : '';
+  }
+
+  function addRow(a) {
+    if (!table) {
+      // crea tbody se la tabella non esiste
+      const card = document.querySelector('#emptyMsg')?.closest('.card');
+      if (card) {
+        card.innerHTML = '<div class="table-responsive"><table class="table table-sm mb-0" id="docTable"><tbody></tbody></table></div>';
+      }
+    }
+    const tbody = document.querySelector('#docTable tbody');
+    if (!tbody) return;
+    const ext = a.nome ? a.nome.split('.').pop().toLowerCase() : '';
+    const icon = a.is_pdf ? 'bi-file-earmark-pdf text-danger'
+               : a.is_image ? 'bi-file-earmark-image text-success'
+               : 'bi-file-earmark text-muted';
+    const tr = document.createElement('tr');
+    tr.dataset.id = a.id;
+    tr.innerHTML = `
+      <td style="width:32px;padding:.6rem .75rem;"><i class="bi ${icon}" style="font-size:1.1rem;"></i></td>
+      <td style="font-size:.82rem;">
+        <div class="fw-medium" style="color:var(--slate-800);">${a.nome}</div>
+        <div style="color:var(--slate-400);font-size:.72rem;">${a.data} · ${a.dimensione}</div>
+      </td>
+      <td class="text-end" style="width:80px;white-space:nowrap;">
+        <a href="${a.url}" class="btn btn-icon btn-sm" title="Scarica"><i class="bi bi-download" style="font-size:.8rem;"></i></a>
+        <button type="button" class="btn btn-icon btn-sm text-danger del-btn" data-id="${a.id}" title="Elimina"><i class="bi bi-trash" style="font-size:.8rem;"></i></button>
+      </td>`;
+    tbody.prepend(tr);
+  }
+})();
+</script>
+{% endif %}
+
+<!-- ===== TAB: Payroll ===== -->
+{% if tab == 'payroll' and request.user.is_staff %}
+<div class="row g-3">
+  {% if perms.payroll.view_daticontrattualiPayroll %}
+  <div class="col-12">
+    <div class="card card-body">
+      <div class="d-flex align-items-center justify-content-between mb-3">
+        <h6 class="fw-semibold mb-0" style="font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--slate-500);">
+          <i class="bi bi-cash-coin me-1" style="color:var(--color-1);"></i>Dati Contrattuali Payroll
+        </h6>
+        {% if perms.payroll.change_daticontrattualiPayroll %}
+        <a href="{% url 'payroll:dati_payroll_form' profile_user.pk %}" class="btn btn-primary btn-sm">
+          <i class="bi bi-pencil me-1"></i>{% if profile_user.dati_payroll %}Modifica{% else %}Configura{% endif %}
+        </a>
+        {% endif %}
+      </div>
+      {% with dp=profile_user.dati_payroll %}
+      {% if dp %}
+      <dl class="row mb-3" style="font-size:.875rem;">
+        <dt class="col-sm-4 text-muted">CCNL</dt>
+        <dd class="col-sm-8 mb-2">{{ dp.ccnl|default:"—" }}</dd>
+        <dt class="col-sm-4 text-muted">Livello</dt>
+        <dd class="col-sm-8 mb-2">{{ dp.livello|default:"—" }}</dd>
+        <dt class="col-sm-4 text-muted">Tipo contratto</dt>
+        <dd class="col-sm-8 mb-2">{{ dp.get_tipo_contratto_display }}</dd>
+        <dt class="col-sm-4 text-muted">Ore settimanali</dt>
+        <dd class="col-sm-8 mb-0">{{ dp.ore_settimanali }}h ({{ dp.percentuale_part_time }}%)</dd>
+      </dl>
+      <div class="d-flex gap-2 flex-wrap">
+        {% if perms.payroll.view_bustapaga %}
+        <a href="{% url 'payroll:busta_paga_list' profile_user.pk %}" class="btn btn-outline-primary btn-sm">
+          <i class="bi bi-receipt-cutoff me-1"></i>Buste Paga
+        </a>
+        {% endif %}
+        {% if perms.payroll.view_feriepermessipayroll %}
+        <a href="{% url 'payroll:ferie_permessi_list' profile_user.pk %}" class="btn btn-outline-secondary btn-sm">
+          <i class="bi bi-calendar-check me-1"></i>Ferie &amp; Permessi Payroll
+        </a>
+        {% endif %}
+        {% if perms.payroll.add_bustapaga %}
+        <a href="{% url 'payroll:busta_paga_elabora' profile_user.pk %}" class="btn btn-outline-primary btn-sm">
+          <i class="bi bi-calculator me-1"></i>Elabora Busta
+        </a>
+        {% endif %}
+      </div>
+      {% else %}
+      <p class="text-muted mb-2" style="font-size:.875rem;">Nessun dato payroll configurato per questo dipendente.</p>
+      {% if perms.payroll.change_daticontrattualiPayroll %}
+      <a href="{% url 'payroll:dati_payroll_form' profile_user.pk %}" class="btn btn-primary btn-sm">
+        <i class="bi bi-plus-lg me-1"></i>Configura Dati Payroll
+      </a>
+      {% endif %}
+      {% endif %}
+      {% endwith %}
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+{% if tab == 'calendario' and profile_user.pk == request.user.pk %}
+<script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js'></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const calendar = new FullCalendar.Calendar(document.getElementById('calendario-personale'), {
+    locale: 'it',
+    initialView: 'dayGridMonth',
+    headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,listMonth' },
+    buttonText: { today: 'Oggi', month: 'Mese', week: 'Settimana', list: 'Lista' },
+    firstDay: 1,
+    height: 'auto',
+    navLinks: true,
+    dateClick: function (info) {
+      window.location.href = '{% url "users:evento_personale_create" %}?date=' + info.dateStr + 'T09:00';
+    },
+    eventSources: [{
+      url: '{% url "core:calendario_personale_eventi_api" %}',
+      failure: function () { console.error('Errore caricamento eventi'); }
+    }],
+    eventClick: function (info) {
+      if (info.event.url) { info.jsEvent.preventDefault(); window.location.href = info.event.url; }
+    },
+  });
+  calendar.render();
+});
+</script>
+{% endif %}
 {% endblock %}

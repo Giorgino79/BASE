@@ -2,21 +2,26 @@
 
 {% block title %}Giornate lavorative{% endblock %}
 
-{% block sidebar_nav %}
-  <li class="nav-section-title">Principale</li>
-  <li><a href="{% url 'dashboard' %}"><i class="bi bi-speedometer2"></i><span>Dashboard</span></a></li>
-  <li><a href="{% url 'users:user_list' %}"><i class="bi bi-people"></i><span>Dipendenti</span></a></li>
-  <li><a href="{% url 'users:timbratura_list' %}" class="active"><i class="bi bi-clock-history"></i><span>Timbrature</span></a></li>
-  <li class="nav-section-title">Presenze</li>
-  <li><a href="{% url 'users:richieste_ferie_list' %}"><i class="bi bi-calendar-check"></i><span>Ferie e Permessi</span></a></li>
-  {% if user.is_staff %}
-  <li><a href="{% url 'users:richieste_ferie_admin_list' %}"><i class="bi bi-clipboard2-check"></i><span>Gestione Richieste</span></a></li>
-  {% endif %}
-  <li><a href="{% url 'core:calendario_aziendale' %}"><i class="bi bi-calendar3"></i><span>Calendario</span></a></li>
-  {% if user.is_staff %}
-  <li class="nav-section-title">Amministrazione</li>
-  <li><a href="{% url 'core:amministrazione_dashboard' %}"><i class="bi bi-gear"></i><span>Impostazioni</span></a></li>
-  {% endif %}
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
+<style>
+  .select2-container--default .select2-selection--single {
+    height: 31px;
+    border: 1px solid #dee2e6;
+    border-radius: .25rem;
+    font-size: .875rem;
+  }
+  .select2-container--default .select2-selection--single .select2-selection__rendered {
+    line-height: 29px;
+    color: #212529;
+  }
+  .select2-container--default .select2-selection--single .select2-selection__arrow {
+    height: 29px;
+  }
+  .select2-container { width: 100% !important; }
+  .select2-dropdown { font-size: .875rem; }
+  .select2-search--dropdown .select2-search__field { font-size: .875rem; }
+</style>
 {% endblock %}
 
 {% block content %}
@@ -27,12 +32,13 @@
   </div>
 </div>
 
-<!-- Filters -->
+<!-- Filtri -->
 <div class="card card-body mb-3">
   <form method="get" class="row g-2 align-items-end">
-    <div class="col-md-3">
+    {% if user.is_staff %}
+    <div class="col-md-4">
       <label class="form-label-sm">Dipendente</label>
-      <select name="user" class="form-select form-select-sm">
+      <select name="user" id="select-dipendente" class="form-select form-select-sm">
         <option value="">Tutti</option>
         {% for u in tutti_utenti %}
         <option value="{{ u.pk }}" {% if request.GET.user == u.pk|stringformat:"s" %}selected{% endif %}>
@@ -41,28 +47,64 @@
         {% endfor %}
       </select>
     </div>
+    {% endif %}
     <div class="col-md-2">
       <label class="form-label-sm">Mese</label>
-      <input type="month" name="mese" class="form-control form-control-sm" value="{{ request.GET.mese }}">
+      <input type="month" name="mese" class="form-control form-control-sm" value="{{ mese }}">
+    </div>
+    <div class="col-md-2">
+      <label class="form-label-sm">Stato</label>
+      <select name="stato" class="form-select form-select-sm">
+        <option value="">Tutti</option>
+        <option value="conclusa" {% if request.GET.stato == "conclusa" %}selected{% endif %}>Chiuse</option>
+        <option value="in_corso" {% if request.GET.stato == "in_corso" %}selected{% endif %}>Aperte</option>
+      </select>
     </div>
     <div class="col-auto">
       <button type="submit" class="btn btn-primary btn-sm">Filtra</button>
       <a href="{% url 'users:giornata_list' %}" class="btn btn-outline-secondary btn-sm">Reset</a>
     </div>
-    <div class="col-auto ms-auto">
-      <a href="?{{ request.GET.urlencode }}&export=excel" class="btn btn-outline-success btn-sm d-flex align-items-center gap-1">
+    <div class="col-auto ms-auto d-flex gap-2">
+      <a href="{% url 'users:giornate_export_excel' %}?{{ request.GET.urlencode }}" class="btn btn-outline-primary btn-sm d-flex align-items-center gap-1">
         <i class="bi bi-file-earmark-excel"></i> Excel
+      </a>
+      <a href="{% url 'users:giornate_export_pdf' %}?{{ request.GET.urlencode }}" class="btn btn-outline-primary btn-sm d-flex align-items-center gap-1">
+        <i class="bi bi-file-earmark-pdf"></i> PDF
       </a>
     </div>
   </form>
 </div>
+
+<!-- Totali -->
+{% if giornate %}
+<div class="row g-2 mb-3">
+  <div class="col-6 col-md-3">
+    <div class="card card-body py-2 text-center">
+      <div class="fw-bold" style="font-size:1.1rem;color:var(--slate-800);">{{ ore_totali|floatformat:1 }}h</div>
+      <div class="text-muted" style="font-size:.75rem;">Ore totali</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card card-body py-2 text-center">
+      <div class="fw-bold" style="font-size:1.1rem;color:var(--color-2);">{{ straordinari|floatformat:1 }}h</div>
+      <div class="text-muted" style="font-size:.75rem;">Straordinari</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card card-body py-2 text-center">
+      <div class="fw-bold" style="font-size:1.1rem;color:var(--slate-800);">{{ media_ore|floatformat:1 }}h</div>
+      <div class="text-muted" style="font-size:.75rem;">Media/giorno</div>
+    </div>
+  </div>
+</div>
+{% endif %}
 
 <div class="card">
   <div class="table-responsive">
     <table class="table">
       <thead>
         <tr>
-          <th>Dipendente</th>
+          {% if user.is_staff %}<th>Dipendente</th>{% endif %}
           <th>Data</th>
           <th>Ore ordinarie</th>
           <th>Ore straordinarie</th>
@@ -73,32 +115,34 @@
       <tbody>
         {% for g in giornate %}
         <tr>
+          {% if user.is_staff %}
           <td>
             <a href="{% url 'users:user_detail' g.user.pk %}?tab=presenze" style="color:var(--indigo-600);font-size:.875rem;text-decoration:none;">
               {{ g.user.get_full_name|default:g.user.username }}
             </a>
           </td>
+          {% endif %}
           <td style="font-size:.875rem;">{{ g.data|date:"D d/m/Y" }}</td>
           <td style="font-size:.875rem;">{{ g.ore_ordinarie|floatformat:1|default:"—" }}h</td>
           <td style="font-size:.875rem;">
             {% if g.ore_straordinarie %}
-              <span style="color:#f59e0b;">{{ g.ore_straordinarie|floatformat:1 }}h</span>
+              <span style="color:var(--color-2);">{{ g.ore_straordinarie|floatformat:1 }}h</span>
             {% else %}—{% endif %}
           </td>
           <td>
             {% if g.stato == 'CHIUSA' %}
-              <span class="badge" style="background:#dcfce7;color:#166534;font-size:.7rem;">Chiusa</span>
+              <span class="badge" style="background:var(--color-1-light);color:var(--color-1-dark);font-size:.7rem;">Chiusa</span>
             {% elif g.stato == 'approvata' %}
-              <span class="badge" style="background:#dbeafe;color:#1e40af;font-size:.7rem;">Approvata</span>
+              <span class="badge" style="background:var(--color-1-light);color:var(--color-1);font-size:.7rem;">Approvata</span>
             {% else %}
-              <span class="badge" style="background:#f1f5f9;color:#64748b;font-size:.7rem;">Aperta</span>
+              <span class="badge" style="background:var(--slate-100);color:var(--slate-500);font-size:.7rem;">Aperta</span>
             {% endif %}
           </td>
           <td style="font-size:.75rem;color:var(--slate-400);">{{ g.note|default:"" }}</td>
         </tr>
         {% empty %}
         <tr>
-          <td colspan="6" class="text-center py-5" style="color:var(--slate-400);">
+          <td colspan="{% if user.is_staff %}6{% else %}5{% endif %}" class="text-center py-5" style="color:var(--slate-400);">
             <i class="bi bi-calendar-week" style="font-size:2.5rem;display:block;margin-bottom:.75rem;"></i>
             Nessuna giornata trovata
           </td>
@@ -108,4 +152,22 @@
     </table>
   </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+$(document).ready(function() {
+  $('#select-dipendente').select2({
+    placeholder: 'Tutti i dipendenti',
+    allowClear: true,
+    width: '100%',
+    language: {
+      noResults: function() { return 'Nessun dipendente trovato'; },
+      searching: function() { return 'Ricerca…'; }
+    }
+  });
+});
+</script>
 {% endblock %}

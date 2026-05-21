@@ -2,33 +2,22 @@
 
 {% block title %}Corrispondenza{% endblock %}
 
-{% block sidebar_nav %}
-  <div class="sidebar-section">Corrispondenza</div>
-  <nav class="sidebar-nav">
-    <ul class="nav flex-column">
-      <li class="nav-item">
-        <a href="{% url 'corrispondenza:lista' %}" class="nav-link active">
-          <i class="bi bi-envelope-paper"></i> Tutte
-        </a>
-      </li>
-      <li class="nav-item">
-        <a href="{% url 'corrispondenza:crea' %}" class="nav-link">
-          <i class="bi bi-plus-circle"></i> Nuova lettera
-        </a>
-      </li>
-    </ul>
-  </nav>
-{% endblock %}
-
 {% block content %}
 <div class="d-flex align-items-center justify-content-between mb-4">
   <div>
     <h1 class="h4 fw-bold mb-1" style="color:var(--slate-900);">Corrispondenza</h1>
     <p class="text-muted mb-0" style="font-size:.875rem;">Gestione lettere e comunicazioni formali</p>
   </div>
-  <a href="{% url 'corrispondenza:crea' %}" class="btn btn-primary btn-sm d-flex align-items-center gap-1">
-    <i class="bi bi-plus-lg"></i> Nuova
-  </a>
+  <div class="d-flex gap-2">
+    {% if request.user.is_staff %}
+    <a href="{% url 'corrispondenza:tipi_lista' %}" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1">
+      <i class="bi bi-tags"></i> Tipi
+    </a>
+    {% endif %}
+    <a href="{% url 'corrispondenza:crea' %}" class="btn btn-primary btn-sm d-flex align-items-center gap-1">
+      <i class="bi bi-plus-lg"></i> Nuova
+    </a>
+  </div>
 </div>
 
 <!-- Statistiche -->
@@ -53,7 +42,7 @@
   </div>
   <div class="col-6 col-xl-3">
     <div class="stat-card">
-      <div class="stat-card-icon" style="background:#f1f5f9;color:#64748b;"><i class="bi bi-archive-fill"></i></div>
+      <div class="stat-card-icon" style="background:var(--slate-100);color:var(--slate-500);"><i class="bi bi-archive-fill"></i></div>
       <div><div class="stat-card-value">{{ stats.archiviate }}</div><div class="stat-card-label">Archiviate</div></div>
     </div>
   </div>
@@ -73,9 +62,14 @@
         {{ search_form.priorita }}
       </div>
       <div class="col-6 col-md-2">
+        {{ search_form.tipo }}
+      </div>
+      <div class="col-6 col-md-1">
+        <label class="form-label form-label-sm mb-1" style="font-size:.72rem;color:var(--slate-500);">Dal</label>
         {{ search_form.data_da }}
       </div>
-      <div class="col-6 col-md-2">
+      <div class="col-6 col-md-1">
+        <label class="form-label form-label-sm mb-1" style="font-size:.72rem;color:var(--slate-500);">Al</label>
         {{ search_form.data_a }}
       </div>
       <div class="col-12 d-flex gap-2">
@@ -131,16 +125,16 @@
             <i class="bi bi-pencil"></i>
           </a>
           {% endif %}
-          <a href="{% url 'corrispondenza:pdf' corr.pk %}" class="btn btn-sm btn-outline-danger" title="PDF">
+          <a href="{% url 'corrispondenza:pdf' corr.pk %}" class="btn btn-sm btn-outline-primary" title="PDF">
             <i class="bi bi-file-earmark-pdf"></i>
           </a>
           {% if corr.stato == 'bozza' %}
-          <button type="button" class="btn btn-sm btn-outline-success"
+          <button type="button" class="btn btn-sm btn-outline-primary"
                   onclick="apriModalInvia('{{ corr.pk }}','{{ corr.oggetto|escapejs }}')" title="Invia">
             <i class="bi bi-send"></i>
           </button>
           {% endif %}
-          <a href="{% url 'corrispondenza:duplica' corr.pk %}" class="btn btn-sm btn-outline-warning" title="Duplica">
+          <a href="{% url 'corrispondenza:duplica' corr.pk %}" class="btn btn-sm btn-outline-primary" title="Duplica">
             <i class="bi bi-files"></i>
           </a>
           {% if corr.stato == 'inviata' %}
@@ -212,7 +206,7 @@
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Annulla</button>
-        <button type="button" class="btn btn-success btn-sm" id="btnConfermaInvia">
+        <button type="button" class="btn btn-primary btn-sm" id="btnConfermaInvia">
           <i class="bi bi-send me-1"></i>Conferma
         </button>
       </div>
@@ -233,7 +227,7 @@
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Annulla</button>
-        <button type="button" class="btn btn-warning btn-sm" id="btnConfermaArchivia">
+        <button type="button" class="btn btn-primary btn-sm" id="btnConfermaArchivia">
           <i class="bi bi-archive me-1"></i>Archivia
         </button>
       </div>

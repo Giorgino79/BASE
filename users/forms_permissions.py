@@ -5,6 +5,7 @@ Dinamicamente generato dal ModelPermissionRegistry.
 
 from django import forms
 from django.contrib.auth.models import Permission
+from crispy_forms.helper import FormHelper
 from core.permissions_registry import get_registry
 
 
@@ -33,6 +34,9 @@ class UserPermissionsForm(forms.Form):
 
         # Popola valori iniziali con permessi attuali utente
         self._set_initial_values()
+
+        self.helper = FormHelper()
+        self.helper.form_tag = False
 
     def _add_model_fields(self, model_info):
         """

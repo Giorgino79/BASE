@@ -1,92 +1,232 @@
-{% extends "base.html" %}
-{% load static %}
+{% extends 'components/detail_layout.html' %}
+{% load static allegati_tags %}
 
 {% block title %}Il mio profilo{% endblock %}
 
-{% block sidebar_nav %}
-  <li class="nav-section-title">Principale</li>
-  <li><a href="{% url 'dashboard' %}"><i class="bi bi-speedometer2"></i><span>Dashboard</span></a></li>
-  <li><a href="{% url 'users:user_list' %}"><i class="bi bi-people"></i><span>Dipendenti</span></a></li>
-  <li class="nav-section-title">Account</li>
-  <li><a href="{% url 'users:profilo' %}" class="active"><i class="bi bi-person-circle"></i><span>Il mio profilo</span></a></li>
-  <li><a href="{% url 'users:impostazioni' %}"><i class="bi bi-sliders"></i><span>Impostazioni</span></a></li>
-  <li><a href="{% url 'users:change_password' %}"><i class="bi bi-key"></i><span>Cambia password</span></a></li>
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css">
+<style>
+  #calendarioPersonale { min-height: 480px; }
+  .fc-toolbar-title { font-size: 1rem !important; }
+  .stat-box { background: var(--slate-50); border: 1px solid var(--slate-100); border-radius: .5rem; padding: 1rem; text-align: center; }
+  .stat-box .stat-val { font-size: 1.6rem; font-weight: 700; line-height: 1.1; }
+  .stat-box .stat-label { font-size: .72rem; color: var(--slate-500); margin-top: .25rem; }
+</style>
 {% endblock %}
 
-{% block content %}
-<h1 class="h4 fw-bold mb-4" style="color:var(--slate-900);">Il mio profilo</h1>
+{% block detail_title %}
+  <i class="bi bi-person-circle me-2" style="color:var(--color-1);"></i>Il mio profilo
+{% endblock %}
 
-<div class="row g-3">
-  <div class="col-lg-3">
-    {% with profile_user=request.user %}
-    {% include "users/includes/user_detail_sidebar.html" %}
-    {% endwith %}
+{% block detail_content %}
+
+<!-- ── Foto + nome + badge ─────────────────────────────── -->
+<div class="card card-body text-center mb-3">
+  {% if object.foto_profilo %}
+    <img src="{{ object.foto_profilo.url }}" alt="{{ object.get_full_name }}"
+         class="rounded-circle mx-auto d-block mb-3"
+         style="width:96px;height:96px;object-fit:cover;border:3px solid var(--color-1-light);">
+  {% else %}
+    <div class="rounded-circle mx-auto d-block mb-3 d-flex align-items-center justify-content-center"
+         style="width:96px;height:96px;background:var(--color-1-light);color:var(--color-1-dark);font-size:2.2rem;font-weight:700;">
+      {{ object.first_name|first|upper }}{{ object.last_name|first|upper }}
+    </div>
+  {% endif %}
+  <h5 class="fw-bold mb-0" style="color:var(--slate-900);">{{ object.get_full_name|default:object.username }}</h5>
+  <small style="color:var(--slate-500);">{{ object.qualifica|default:"Dipendente" }}</small>
+  <div class="mt-2 d-flex gap-1 justify-content-center flex-wrap">
+    {% if object.is_active %}
+      <span class="badge" style="background:var(--color-1-light);color:var(--color-1-dark);">Attivo</span>
+    {% else %}
+      <span class="badge" style="background:var(--slate-200);color:var(--slate-600);">Disattivato</span>
+    {% endif %}
+    {% if object.is_staff %}
+      <span class="badge" style="background:var(--color-2-light);color:var(--color-2-dark);">Staff</span>
+    {% endif %}
+    {% if object.reparto %}
+      <span class="badge border" style="background:var(--slate-100);color:var(--slate-600);">{{ object.reparto }}</span>
+    {% endif %}
   </div>
+</div>
 
-  <div class="col-lg-9">
-    <div class="row g-3">
-      <div class="col-md-6">
-        <div class="card card-body">
-          <h6 class="fw-semibold mb-3" style="font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--slate-500);">
-            Dati personali
-          </h6>
-          <dl class="row mb-0" style="font-size:.875rem;">
-            <dt class="col-5 text-muted">Nome completo</dt>
-            <dd class="col-7 mb-2">{{ request.user.get_full_name|default:"—" }}</dd>
-            <dt class="col-5 text-muted">Email</dt>
-            <dd class="col-7 mb-2">{{ request.user.email|default:"—" }}</dd>
-            <dt class="col-5 text-muted">Telefono</dt>
-            <dd class="col-7 mb-2">{{ request.user.telefono|default:"—" }}</dd>
-            <dt class="col-5 text-muted">Cod. fiscale</dt>
-            <dd class="col-7 mb-0">{{ request.user.codice_fiscale|default:"—" }}</dd>
-          </dl>
-        </div>
-      </div>
-      <div class="col-md-6">
-        <div class="card card-body">
-          <h6 class="fw-semibold mb-3" style="font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--slate-500);">
-            Dati lavorativi
-          </h6>
-          <dl class="row mb-0" style="font-size:.875rem;">
-            <dt class="col-5 text-muted">Mansione</dt>
-            <dd class="col-7 mb-2">{{ request.user.qualifica|default:"—" }}</dd>
-            <dt class="col-5 text-muted">Assunzione</dt>
-            <dd class="col-7 mb-2">{{ request.user.data_assunzione|date:"d/m/Y"|default:"—" }}</dd>
-            <dt class="col-5 text-muted">Username</dt>
-            <dd class="col-7 mb-0">{{ request.user.username }}</dd>
-          </dl>
-        </div>
-      </div>
+<!-- ── Dati personali + lavorativi ────────────────────── -->
+<div class="row g-3 mb-3">
+  <div class="col-md-6">
+    <div class="card card-body h-100">
+      <h6 class="fw-semibold mb-3" style="font-size:.75rem;text-transform:uppercase;letter-spacing:.06em;color:var(--slate-400);">
+        Dati personali
+      </h6>
+      <dl class="row mb-0" style="font-size:.875rem;">
+        <dt class="col-5" style="color:var(--slate-500);">Email</dt>
+        <dd class="col-7 mb-2 text-truncate">{{ object.email|default:"—" }}</dd>
+        <dt class="col-5" style="color:var(--slate-500);">Telefono</dt>
+        <dd class="col-7 mb-2">{{ object.telefono|default:"—" }}</dd>
+        <dt class="col-5" style="color:var(--slate-500);">Cod. fiscale</dt>
+        <dd class="col-7 mb-2 font-monospace" style="font-size:.8rem;">{{ object.codice_fiscale|default:"—" }}</dd>
+        <dt class="col-5" style="color:var(--slate-500);">Username</dt>
+        <dd class="col-7 mb-0">{{ object.username }}</dd>
+      </dl>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card card-body h-100">
+      <h6 class="fw-semibold mb-3" style="font-size:.75rem;text-transform:uppercase;letter-spacing:.06em;color:var(--slate-400);">
+        Dati lavorativi
+      </h6>
+      <dl class="row mb-0" style="font-size:.875rem;">
+        <dt class="col-5" style="color:var(--slate-500);">Qualifica</dt>
+        <dd class="col-7 mb-2">{{ object.qualifica|default:"—" }}</dd>
+        <dt class="col-5" style="color:var(--slate-500);">Reparto</dt>
+        <dd class="col-7 mb-2">{{ object.reparto|default:"—" }}</dd>
+        <dt class="col-5" style="color:var(--slate-500);">Assunzione</dt>
+        <dd class="col-7 mb-2">{{ object.data_assunzione|date:"d/m/Y"|default:"—" }}</dd>
+        {% if object.codice_dipendente %}
+        <dt class="col-5" style="color:var(--slate-500);">Codice dip.</dt>
+        <dd class="col-7 mb-0 font-monospace" style="font-size:.8rem;">{{ object.codice_dipendente }}</dd>
+        {% endif %}
+      </dl>
+    </div>
+  </div>
+</div>
 
-      <!-- Ferie stats -->
-      <div class="col-12">
-        <div class="card card-body">
-          <h6 class="fw-semibold mb-3" style="font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--slate-500);">
-            Riepilogo presenze — anno {{ oggi.year }}
-          </h6>
-          <div class="row g-3">
-            <div class="col-sm-4">
-              <div class="p-3 rounded text-center" style="background:var(--slate-50);border:1px solid var(--slate-100);">
-                <div class="fw-bold" style="font-size:1.5rem;color:#4f46e5;">{{ ferie_approvate|default:0 }}</div>
-                <div style="font-size:.75rem;color:var(--slate-500);">Giorni ferie approvati</div>
-              </div>
-            </div>
-            <div class="col-sm-4">
-              <div class="p-3 rounded text-center" style="background:var(--slate-50);border:1px solid var(--slate-100);">
-                <div class="fw-bold" style="font-size:1.5rem;color:#f59e0b;">{{ ferie_in_attesa|default:0 }}</div>
-                <div style="font-size:.75rem;color:var(--slate-500);">Richieste in attesa</div>
-              </div>
-            </div>
-            <div class="col-sm-4">
-              <div class="p-3 rounded text-center" style="background:var(--slate-50);border:1px solid var(--slate-100);">
-                <div class="fw-bold" style="font-size:1.5rem;color:#0ea5e9;">{{ ore_permesso|default:0 }}h</div>
-                <div style="font-size:.75rem;color:var(--slate-500);">Ore permesso usate</div>
-              </div>
-            </div>
-          </div>
-        </div>
+<!-- ── Riepilogo ferie & permessi ─────────────────────── -->
+<div class="card card-body mb-3">
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <h6 class="fw-semibold mb-0" style="font-size:.75rem;text-transform:uppercase;letter-spacing:.06em;color:var(--slate-400);">
+      Riepilogo anno {{ oggi.year }}
+    </h6>
+    <a href="{% url 'users:richiesta_ferie_create' %}" class="btn btn-primary btn-sm">
+      <i class="bi bi-sun me-1"></i>Richiedi Ferie
+    </a>
+  </div>
+  <div class="row g-2">
+    <div class="col-sm-4">
+      <div class="stat-box">
+        <div class="stat-val" style="color:var(--color-1);">{{ ferie_approvate }}</div>
+        <div class="stat-label">Giorni ferie approvati</div>
+      </div>
+    </div>
+    <div class="col-sm-4">
+      <div class="stat-box">
+        <div class="stat-val" style="color:var(--color-2);">{{ ferie_in_attesa }}</div>
+        <div class="stat-label">Richieste in attesa</div>
+      </div>
+    </div>
+    <div class="col-sm-4">
+      <div class="stat-box">
+        <div class="stat-val" style="color:var(--color-2);">{{ ore_permesso }}h</div>
+        <div class="stat-label">Ore permesso usate</div>
       </div>
     </div>
   </div>
 </div>
+
+<!-- ── Calendario personale ───────────────────────────── -->
+<div class="card card-body">
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <h6 class="fw-semibold mb-0" style="color:var(--slate-900);">
+      <i class="bi bi-calendar3 me-2" style="color:var(--color-1);"></i>Il Mio Calendario
+    </h6>
+    <a href="{% url 'users:evento_personale_create' %}" class="btn btn-primary btn-sm">
+      <i class="bi bi-plus-lg me-1"></i>Nuovo Evento
+    </a>
+  </div>
+  <div id="calendarioPersonale"></div>
+</div>
+
+<!-- Modal dettaglio evento -->
+<div class="modal fade" id="eventoModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="eventoModalTitolo"></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="eventoModalBody"></div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Chiudi</button>
+        <a href="#" class="btn btn-outline-primary btn-sm" id="eventoModalModifica">
+          <i class="bi bi-pencil me-1"></i>Modifica
+        </a>
+        <form method="post" id="eventoToggleForm" style="display:inline;">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-check-circle me-1"></i><span id="eventoToggleLabel">Segna completato</span>
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block detail_meta %}
+  {% if object.data_assunzione %}
+  <div class="d-flex justify-content-between py-1 border-bottom">
+    <span style="color:var(--slate-500);">In azienda da</span>
+    <span>{{ object.data_assunzione|date:"d/m/Y" }}</span>
+  </div>
+  {% endif %}
+  <div class="d-flex justify-content-between py-1 border-bottom">
+    <span style="color:var(--slate-500);">Ultimo accesso</span>
+    <span>{{ object.last_login|date:"d/m/Y H:i"|default:"—" }}</span>
+  </div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  var calendarEl = document.getElementById('calendarioPersonale');
+  if (!calendarEl) return;
+
+  var calendar = new FullCalendar.Calendar(calendarEl, {
+    initialView: 'dayGridMonth',
+    locale: 'it',
+    firstDay: 1,
+    headerToolbar: {
+      left: 'prev,next today',
+      center: 'title',
+      right: 'dayGridMonth,timeGridWeek,listWeek'
+    },
+    buttonText: { today: 'Oggi', month: 'Mese', week: 'Settimana', list: 'Lista' },
+    events: {
+      url: '{% url "users:calendario_personale_api" %}',
+      failure: function () { console.error('Errore caricamento eventi calendario'); }
+    },
+    eventClick: function (info) {
+      var props = info.event.extendedProps;
+      document.getElementById('eventoModalTitolo').textContent = info.event.title.replace(/^[^\w]+/, '');
+      var body = '';
+      if (props.tipo_display) body += '<p><strong>Tipo:</strong> ' + props.tipo_display + '</p>';
+      if (props.priorita)     body += '<p><strong>Priorità:</strong> ' + props.priorita + '</p>';
+      if (props.descrizione)  body += '<p><strong>Note:</strong> ' + props.descrizione + '</p>';
+      body += '<p><strong>Inizio:</strong> ' + info.event.start.toLocaleString('it-IT') + '</p>';
+      if (info.event.end) body += '<p><strong>Fine:</strong> ' + info.event.end.toLocaleString('it-IT') + '</p>';
+      if (props.completato) body += '<p><span class="badge" style="background:var(--color-1-light);color:var(--color-1-dark);">Completato</span></p>';
+      document.getElementById('eventoModalBody').innerHTML = body;
+      if (props.evento_id) {
+        document.getElementById('eventoModalModifica').href = '/calendario-personale/evento/' + props.evento_id + '/modifica/';
+        document.getElementById('eventoToggleForm').action = '/calendario-personale/evento/' + props.evento_id + '/toggle-completato/';
+      }
+      document.getElementById('eventoToggleLabel').textContent = props.completato ? 'Segna non completato' : 'Segna completato';
+      new bootstrap.Modal(document.getElementById('eventoModal')).show();
+    },
+    eventDidMount: function (info) {
+      if (info.event.extendedProps.completato) {
+        info.el.style.opacity = '0.6';
+        info.el.style.textDecoration = 'line-through';
+      }
+    },
+    height: 'auto',
+    editable: false,
+  });
+
+  calendar.render();
+
+  // Ricarica calendario dopo upload allegato (aggiorna badge)
+  document.addEventListener('allegatoUploaded', function () { calendar.refetchEvents(); });
+});
+</script>
 {% endblock %}

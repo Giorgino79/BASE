@@ -2,17 +2,6 @@
 
 {% block title %}I miei permessi{% endblock %}
 
-{% block sidebar_nav %}
-  <li class="nav-section-title">Principale</li>
-  <li><a href="{% url 'dashboard' %}"><i class="bi bi-speedometer2"></i><span>Dashboard</span></a></li>
-  <li><a href="{% url 'users:user_list' %}"><i class="bi bi-people"></i><span>Dipendenti</span></a></li>
-  <li class="nav-section-title">Presenze</li>
-  <li><a href="{% url 'users:richieste_ferie_list' %}" class="active"><i class="bi bi-calendar-check"></i><span>Ferie e Permessi</span></a></li>
-  {% if user.is_staff %}
-  <li><a href="{% url 'users:richieste_ferie_admin_list' %}"><i class="bi bi-clipboard2-check"></i><span>Gestione Richieste</span></a></li>
-  {% endif %}
-{% endblock %}
-
 {% block content %}
 <div class="d-flex align-items-center justify-content-between mb-4">
   <div>
@@ -45,11 +34,11 @@
           <td style="font-size:.75rem;color:var(--slate-500);">{{ r.motivazione|truncatechars:50|default:"—" }}</td>
           <td>
             {% if r.stato == 'approvata' %}
-              <span class="badge" style="background:#dcfce7;color:#166534;font-size:.7rem;">Approvata</span>
+              <span class="badge" style="background:var(--color-1-light);color:var(--color-1-dark);font-size:.7rem;">Approvata</span>
             {% elif r.stato == 'rifiutata' %}
-              <span class="badge" style="background:#fee2e2;color:#991b1b;font-size:.7rem;">Rifiutata</span>
+              <span class="badge" style="background:var(--slate-200);color:var(--slate-600);font-size:.7rem;">Rifiutata</span>
             {% else %}
-              <span class="badge" style="background:#fef3c7;color:#92400e;font-size:.7rem;">In attesa</span>
+              <span class="badge" style="background:var(--color-4);color:var(--color-1-dark);font-size:.7rem;">In attesa</span>
             {% endif %}
           </td>
         </tr>

@@ -1,0 +1,212 @@
+{% comment %}
+Modal gestione allegati (lista, download, elimina, preview).
+Richiede nel contesto: content_type_id, object_id
+I valori vengono iniettati da JS tramite dataset sul modal stesso.
+{% endcomment %}
+<div class="modal fade" id="allegatiGestioneModal" tabindex="-1" aria-labelledby="allegatiGestioneModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="allegatiGestioneModalLabel">
+          <i class="bi bi-folder2-open me-2"></i>Gestione Allegati
+          <span id="allegati-count-badge" class="badge ms-2 d-none" style="background:var(--color-1-light);color:var(--color-1-dark);"></span>
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Chiudi"></button>
+      </div>
+      <div class="modal-body p-0">
+        <div id="allegati-gestione-loading" class="text-center py-5">
+          <div class="spinner-border" style="color:var(--color-1);" role="status"></div>
+          <div class="mt-2" style="color:var(--slate-500);">Caricamento allegati…</div>
+        </div>
+        <div id="allegati-gestione-empty" class="text-center py-5 d-none">
+          <i class="bi bi-folder2 fs-1" style="color:var(--slate-400);"></i>
+          <div class="mt-2" style="color:var(--slate-500);">Nessun allegato presente.</div>
+        </div>
+        <div id="allegati-gestione-error" class="alert m-3 d-none" style="background:var(--slate-100);color:var(--slate-700);border-color:var(--slate-300);" role="alert"></div>
+
+        <table class="table table-hover align-middle mb-0" id="allegati-table" style="display:none;">
+          <thead class="table-light">
+            <tr>
+              <th style="width:2.5rem;"></th>
+              <th>Nome file</th>
+              <th>Descrizione</th>
+              <th>Dimensione</th>
+              <th>Caricato da</th>
+              <th>Data</th>
+              <th style="width:7rem;"></th>
+            </tr>
+          </thead>
+          <tbody id="allegati-table-body"></tbody>
+        </table>
+
+        <!-- Template riga (clonato da JS) -->
+        <template id="allegato-row-template">
+          <tr data-allegato-id="">
+            <td class="ps-3"><i class="bi fs-5 allegato-icon" style="color:var(--color-1);"></i></td>
+            <td class="allegato-nome fw-semibold"></td>
+            <td class="allegato-descrizione small" style="color:var(--slate-500);"></td>
+            <td class="allegato-dimensione text-nowrap"></td>
+            <td class="allegato-utente text-nowrap"></td>
+            <td class="allegato-data text-nowrap small" style="color:var(--slate-500);"></td>
+            <td class="text-end pe-3">
+              <div class="btn-group btn-group-sm">
+                <a href="#" class="btn btn-outline-secondary allegato-preview-btn" title="Preview" target="_blank">
+                  <i class="bi bi-eye"></i>
+                </a>
+                <a href="#" class="btn btn-outline-primary allegato-download-btn" title="Scarica">
+                  <i class="bi bi-download"></i>
+                </a>
+                <button type="button" class="btn btn-outline-primary allegato-delete-btn" title="Elimina">
+                  <i class="bi bi-trash3"></i>
+                </button>
+              </div>
+            </td>
+          </tr>
+        </template>
+      </div>
+      <div class="modal-footer justify-content-between">
+        <button type="button" class="btn btn-primary btn-sm"
+                data-bs-dismiss="modal"
+                data-bs-toggle="modal"
+                data-bs-target="#allegatoUploadModal">
+          <i class="bi bi-upload me-1"></i>Carica nuovo
+        </button>
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Chiudi</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  const gestioneModal = document.getElementById('allegatiGestioneModal');
+  if (!gestioneModal) return;
+
+  const tbody       = document.getElementById('allegati-table-body');
+  const table       = document.getElementById('allegati-table');
+  const loading     = document.getElementById('allegati-gestione-loading');
+  const emptyMsg    = document.getElementById('allegati-gestione-empty');
+  const errorMsg    = document.getElementById('allegati-gestione-error');
+  const countBadge  = document.getElementById('allegati-count-badge');
+  const rowTpl      = document.getElementById('allegato-row-template');
+
+  function getCsrf() {
+    return document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+  }
+
+  function iconClass(a) {
+    if (a.is_pdf)   return 'bi-file-earmark-pdf-fill';
+    if (a.is_image) return 'bi-file-earmark-image-fill';
+    const n = (a.nome || '').toLowerCase();
+    if (n.endsWith('.doc') || n.endsWith('.docx')) return 'bi-file-earmark-word-fill';
+    if (n.endsWith('.xls') || n.endsWith('.xlsx')) return 'bi-file-earmark-excel-fill';
+    if (n.endsWith('.zip') || n.endsWith('.rar'))  return 'bi-file-earmark-zip-fill';
+    return 'bi-file-earmark-fill';
+  }
+
+  function renderAllegati(allegati) {
+    tbody.innerHTML = '';
+    allegati.forEach(function (a) {
+      const row = rowTpl.content.cloneNode(true);
+      const tr  = row.querySelector('tr');
+      tr.dataset.allegatoId = a.id;
+
+      tr.querySelector('.allegato-icon').className    = 'bi fs-5 ' + iconClass(a);
+      tr.querySelector('.allegato-nome').textContent  = a.nome;
+      tr.querySelector('.allegato-descrizione').textContent = a.descrizione || '—';
+      tr.querySelector('.allegato-dimensione').textContent  = a.dimensione;
+      tr.querySelector('.allegato-utente').textContent      = a.uploaded_by;
+      tr.querySelector('.allegato-data').textContent        = a.data;
+
+      const previewBtn  = tr.querySelector('.allegato-preview-btn');
+      const downloadBtn = tr.querySelector('.allegato-download-btn');
+      const deleteBtn   = tr.querySelector('.allegato-delete-btn');
+
+      if (a.is_pdf || a.is_image) {
+        previewBtn.href = '/core/allegati/' + a.id + '/preview/';
+      } else {
+        previewBtn.classList.add('disabled');
+        previewBtn.setAttribute('aria-disabled', 'true');
+      }
+      downloadBtn.href = '/core/allegati/' + a.id + '/download/';
+
+      if (!a.can_delete) {
+        deleteBtn.disabled = true;
+        deleteBtn.classList.add('disabled');
+      } else {
+        deleteBtn.addEventListener('click', function () {
+          if (!confirm('Eliminare "' + a.nome + '"?')) return;
+          fetch('/core/allegati/' + a.id + '/delete/', {
+            method: 'POST',
+            headers: { 'X-CSRFToken': getCsrf() },
+          })
+          .then(r => r.json())
+          .then(function (data) {
+            if (data.success) {
+              tr.remove();
+              const remaining = tbody.querySelectorAll('tr').length;
+              countBadge.textContent = remaining;
+              if (remaining === 0) {
+                table.style.display = 'none';
+                emptyMsg.classList.remove('d-none');
+                countBadge.classList.add('d-none');
+              }
+              document.dispatchEvent(new CustomEvent('allegatoDeleted', { detail: { id: a.id } }));
+            } else {
+              alert(data.error || 'Errore durante l\'eliminazione.');
+            }
+          })
+          .catch(() => alert('Errore di rete.'));
+        });
+      }
+
+      tbody.appendChild(row);
+    });
+  }
+
+  function loadAllegati() {
+    const ctId  = gestioneModal.dataset.contentTypeId;
+    const objId = gestioneModal.dataset.objectId;
+    if (!ctId || !objId) return;
+
+    loading.classList.remove('d-none');
+    table.style.display = 'none';
+    emptyMsg.classList.add('d-none');
+    errorMsg.classList.add('d-none');
+    countBadge.classList.add('d-none');
+
+    fetch('{% url "core:allegati_list" %}?content_type=' + ctId + '&object_id=' + objId)
+      .then(r => r.json())
+      .then(function (data) {
+        loading.classList.add('d-none');
+        if (!data.success) {
+          errorMsg.textContent = data.error || 'Errore.';
+          errorMsg.classList.remove('d-none');
+          return;
+        }
+        if (data.count === 0) {
+          emptyMsg.classList.remove('d-none');
+        } else {
+          renderAllegati(data.allegati);
+          table.style.display = '';
+          countBadge.textContent = data.count;
+          countBadge.classList.remove('d-none');
+        }
+      })
+      .catch(function () {
+        loading.classList.add('d-none');
+        errorMsg.textContent = 'Errore di rete.';
+        errorMsg.classList.remove('d-none');
+      });
+  }
+
+  gestioneModal.addEventListener('show.bs.modal', loadAllegati);
+
+  // Ricarica dopo un upload
+  document.addEventListener('allegatoUploaded', function () {
+    if (gestioneModal.classList.contains('show')) loadAllegati();
+  });
+})();
+</script>

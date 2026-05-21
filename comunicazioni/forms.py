@@ -39,7 +39,10 @@ class NuovaConversazioneForm(forms.Form):
     TIPO_CHOICES = [('direct', 'Chat diretta'), ('group', 'Gruppo')]
 
     tipo = forms.ChoiceField(choices=TIPO_CHOICES, initial='direct', widget=forms.RadioSelect)
-    titolo = forms.CharField(max_length=200, required=False, label='Titolo gruppo (opzionale)')
+    titolo = forms.CharField(
+        max_length=200, required=False, label='Titolo gruppo (opzionale)',
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Es. Team marketing…'}),
+    )
     destinatari = forms.ModelMultipleChoiceField(
         queryset=None, label='Destinatari',
         widget=forms.CheckboxSelectMultiple,

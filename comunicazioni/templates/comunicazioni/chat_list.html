@@ -2,8 +2,6 @@
 
 {% block title %}Chat{% endblock %}
 
-{% block sidebar_nav %}{% endblock %}
-
 {% block content %}
 <div class="d-flex align-items-center justify-content-between mb-4">
   <div>
@@ -22,11 +20,11 @@
   {% for item in conversazioni %}
   <a href="{% url 'comunicazioni:chat_detail' item.conv.pk %}"
      class="card card-body text-decoration-none d-flex flex-row align-items-center gap-3 py-3"
-     style="{% if item.unread %}background:#f5f3ff;{% endif %}transition:box-shadow .15s;">
+     style="{% if item.unread %}background:var(--color-1-light);{% endif %}transition:box-shadow .15s;">
     <!-- Avatar -->
     <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
-         style="width:44px;height:44px;background:{% if item.conv.tipo == 'group' %}#dbeafe{% else %}#ede9fe{% endif %};
-                color:{% if item.conv.tipo == 'group' %}#1d4ed8{% else %}#6d28d9{% endif %};
+         style="width:44px;height:44px;background:{% if item.conv.tipo == 'group' %}var(--color-1-light){% else %}var(--color-2-light){% endif %};
+                color:{% if item.conv.tipo == 'group' %}var(--color-1){% else %}var(--color-2-dark){% endif %};
                 font-size:1.25rem;">
       <i class="bi bi-{% if item.conv.tipo == 'group' %}people-fill{% else %}person-fill{% endif %}"></i>
     </div>
@@ -37,7 +35,7 @@
           {{ item.title }}
         </span>
         {% if item.conv.tipo == 'group' %}
-          <span class="badge" style="background:#dbeafe;color:#1e40af;font-size:.65rem;">Gruppo</span>
+          <span class="badge" style="background:var(--color-1-light);color:var(--color-1);font-size:.65rem;">Gruppo</span>
         {% endif %}
       </div>
       {% if item.ultimo %}
@@ -55,7 +53,7 @@
       <span style="font-size:.72rem;color:var(--slate-400);">{{ item.ultimo.created_at|time:"H:i" }}</span>
       {% endif %}
       {% if item.unread %}
-      <span class="badge rounded-pill" style="background:#6366f1;color:#fff;font-size:.65rem;">{{ item.unread }}</span>
+      <span class="badge rounded-pill" style="background:var(--color-1);color:#fff;font-size:.65rem;">{{ item.unread }}</span>
       {% endif %}
     </div>
   </a>

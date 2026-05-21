@@ -1,0 +1,157 @@
+/*
+ * BASE — detail.css
+ * Stili per le pagine di dettaglio oggetto.
+ * Caricare con {% block extra_css %} nei template detail.
+ */
+
+/* ================================================================
+   SIDEBAR AZIONI (sticky a destra)
+   ================================================================ */
+
+.sidebar-actions {
+  position: sticky;
+  top: calc(var(--topbar-height) + 16px);
+  z-index: 10;
+  max-height: calc(100vh - var(--topbar-height) - 32px);
+  overflow-y: auto;
+}
+
+.sidebar-actions::-webkit-scrollbar { width: 4px; }
+.sidebar-actions::-webkit-scrollbar-thumb { background: var(--slate-300); border-radius: 2px; }
+
+.sidebar-actions .card { border: 1px solid var(--slate-200); margin-bottom: 1rem; }
+
+.sidebar-actions .card-header {
+  background: transparent;
+  border-bottom: 1px solid var(--slate-200);
+  font-weight: 600;
+  font-size: .85rem;
+  color: var(--slate-700);
+  padding: .75rem 1rem;
+}
+
+.sidebar-actions .list-group-item {
+  border-left: none;
+  border-right: none;
+  padding: .65rem 1rem;
+  font-size: .875rem;
+  transition: background .15s, padding-left .15s;
+  color: var(--slate-700);
+  text-decoration: none;
+}
+.sidebar-actions .list-group-item:first-child { border-top: none; }
+.sidebar-actions .list-group-item:hover {
+  background: var(--slate-50);
+  padding-left: 1.5rem;
+  color: var(--indigo-600);
+}
+.sidebar-actions .list-group-item i {
+  margin-right: .5rem;
+  width: 18px;
+  display: inline-block;
+  text-align: center;
+}
+.sidebar-actions .badge { float: right; }
+
+
+/* ================================================================
+   SEZIONI DETTAGLIO
+   ================================================================ */
+
+.detail-section { margin-bottom: 1.5rem; }
+
+.detail-section-title {
+  font-size: .7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  color: var(--slate-400);
+  margin-bottom: .75rem;
+  padding-bottom: .4rem;
+  border-bottom: 1px solid var(--slate-200);
+}
+
+/* Griglia campo-valore */
+.detail-field { margin-bottom: .85rem; }
+.detail-field-label {
+  font-size: .75rem;
+  font-weight: 600;
+  color: var(--slate-500);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  margin-bottom: .2rem;
+}
+.detail-field-value {
+  font-size: .9rem;
+  color: var(--slate-800);
+}
+.detail-field-value.empty { color: var(--slate-400); font-style: italic; }
+
+
+/* ================================================================
+   TABELLA ALLEGATI
+   ================================================================ */
+
+#allegatiTableContainer .table { font-size: .875rem; }
+#allegatiTableContainer .table thead { position: sticky; top: 0; z-index: 5; }
+#allegatiTableContainer .table td { vertical-align: middle; }
+#allegatiTableBody tr:hover { background: var(--slate-50); }
+
+.allegato-icon .bi { font-size: 1.4rem; }
+.allegato-descrizione { color: var(--slate-500); font-size: .82rem; font-style: italic; }
+
+
+/* ================================================================
+   STATI LOADING / EMPTY
+   ================================================================ */
+
+.state-loading,
+.state-empty {
+  min-height: 200px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  color: var(--slate-400);
+  gap: .75rem;
+}
+.state-empty .bi { font-size: 3rem; }
+.state-empty p { font-size: .9rem; margin: 0; }
+
+
+/* ================================================================
+   MODAL ALLEGATI
+   ================================================================ */
+
+#allegatoPreviewModal .modal-dialog { max-width: 800px; }
+#allegatoPreviewBody iframe { border: 1px solid var(--slate-200); border-radius: var(--radius-sm); }
+#allegatoPreviewBody img { max-width: 100%; height: auto; border-radius: var(--radius-sm); }
+
+#uploadProgress .progress { height: 22px; margin-bottom: .5rem; }
+#uploadProgress .progress-bar { font-size: .8rem; }
+
+
+/* ================================================================
+   RESPONSIVE
+   ================================================================ */
+
+@media (max-width: 991.98px) {
+  /* Sidebar azioni va in fondo, non sticky */
+  .sidebar-actions {
+    position: static;
+    max-height: none;
+    margin-top: 1.5rem;
+  }
+
+  /* Modal allegati a schermo intero su mobile */
+  #allegatiGestioneModal .modal-dialog { margin: 0; max-width: 100%; }
+  #allegatiGestioneModal .modal-content { height: 100vh; border-radius: 0; }
+}
+
+@media (max-width: 767.98px) {
+  /* Nascondi colonne meno importanti nella tabella allegati */
+  #allegatiTableContainer .table th:nth-child(3),
+  #allegatiTableContainer .table td:nth-child(3),
+  #allegatiTableContainer .table th:nth-child(4),
+  #allegatiTableContainer .table td:nth-child(4) { display: none; }
+}

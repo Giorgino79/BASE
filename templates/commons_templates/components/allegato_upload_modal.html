@@ -1,0 +1,134 @@
+{% comment %}
+Modal upload allegato.
+Richiede nel contesto: content_type_id, object_id
+{% endcomment %}
+<div class="modal fade" id="allegatoUploadModal" tabindex="-1" aria-labelledby="allegatoUploadModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="allegatoUploadModalLabel">
+          <i class="bi bi-paperclip me-2"></i>Carica Allegato
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Chiudi"></button>
+      </div>
+      <div class="modal-body">
+        <div id="allegato-upload-alert" class="alert d-none mb-3" role="alert"></div>
+
+        <div class="mb-3">
+          <label for="allegato-file-input" class="form-label fw-semibold">File <span style="color:var(--color-1);">*</span></label>
+          <input type="file" class="form-control" id="allegato-file-input"
+                 accept=".pdf,.jpg,.jpeg,.png,.gif,.bmp,.webp,.doc,.docx,.xls,.xlsx,.odt,.ods,.txt,.csv,.zip,.rar">
+          <div class="form-text">Max 10 MB. Formati: PDF, immagini, Word, Excel, testo, ZIP.</div>
+        </div>
+        <div class="mb-3">
+          <label for="allegato-descrizione-input" class="form-label">Descrizione</label>
+          <input type="text" class="form-control" id="allegato-descrizione-input" placeholder="Descrizione opzionale…" maxlength="255">
+        </div>
+
+        <!-- Progress bar -->
+        <div id="allegato-progress-wrap" class="d-none">
+          <div class="progress" style="height:6px;">
+            <div id="allegato-progress-bar" class="progress-bar bg-primary progress-bar-striped progress-bar-animated"
+                 role="progressbar" style="width:0%"></div>
+          </div>
+          <div class="small mt-1" style="color:var(--slate-500);">Caricamento in corso…</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Annulla</button>
+        <button type="button" class="btn btn-primary btn-sm" id="allegato-upload-btn">
+          <i class="bi bi-upload me-1"></i>Carica
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  const uploadModal = document.getElementById('allegatoUploadModal');
+  if (!uploadModal) return;
+
+  const fileInput   = document.getElementById('allegato-file-input');
+  const descInput   = document.getElementById('allegato-descrizione-input');
+  const uploadBtn   = document.getElementById('allegato-upload-btn');
+  const alertBox    = document.getElementById('allegato-upload-alert');
+  const progressWrap = document.getElementById('allegato-progress-wrap');
+  const progressBar  = document.getElementById('allegato-progress-bar');
+
+  function showAlert(msg, type) {
+    alertBox.className = `alert alert-${type}`;
+    alertBox.textContent = msg;
+    alertBox.classList.remove('d-none');
+  }
+
+  function resetModal() {
+    fileInput.value = '';
+    descInput.value = '';
+    alertBox.classList.add('d-none');
+    progressWrap.classList.add('d-none');
+    progressBar.style.width = '0%';
+    uploadBtn.disabled = false;
+  }
+
+  uploadModal.addEventListener('hidden.bs.modal', resetModal);
+
+  uploadBtn.addEventListener('click', function () {
+    const file = fileInput.files[0];
+    if (!file) { showAlert('Seleziona un file.', 'warning'); return; }
+
+    const ctId = uploadModal.dataset.contentTypeId;
+    const objId = uploadModal.dataset.objectId;
+    if (!ctId || !objId) { showAlert('Parametri mancanti.', 'danger'); return; }
+
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('content_type', ctId);
+    fd.append('object_id', objId);
+    fd.append('descrizione', descInput.value.trim());
+
+    uploadBtn.disabled = true;
+    alertBox.classList.add('d-none');
+    progressWrap.classList.remove('d-none');
+
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', '{% url "core:allegato_upload" %}');
+    xhr.setRequestHeader('X-CSRFToken', document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '');
+
+    xhr.upload.addEventListener('progress', function (e) {
+      if (e.lengthComputable) {
+        progressBar.style.width = Math.round(e.loaded / e.total * 100) + '%';
+      }
+    });
+
+    xhr.addEventListener('load', function () {
+      progressWrap.classList.add('d-none');
+      try {
+        const data = JSON.parse(xhr.responseText);
+        if (data.success) {
+          showAlert('File caricato con successo!', 'success');
+          // Notifica la pagina ospite
+          document.dispatchEvent(new CustomEvent('allegatoUploaded', { detail: data.allegato }));
+          setTimeout(() => { bootstrap.Modal.getInstance(uploadModal).hide(); }, 900);
+        } else {
+          showAlert(data.error || 'Errore durante il caricamento.', 'danger');
+          uploadBtn.disabled = false;
+        }
+      } catch {
+        showAlert('Risposta non valida dal server.', 'danger');
+        uploadBtn.disabled = false;
+      }
+    });
+
+    xhr.addEventListener('error', function () {
+      progressWrap.classList.add('d-none');
+      showAlert('Errore di rete.', 'danger');
+      uploadBtn.disabled = false;
+    });
+
+    xhr.send(fd);
+  });
+})();
+</script>

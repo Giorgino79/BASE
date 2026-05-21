@@ -2,24 +2,6 @@
 
 {% block title %}{{ corrispondenza.numero_protocollo }}{% endblock %}
 
-{% block sidebar_nav %}
-  <div class="sidebar-section">Corrispondenza</div>
-  <nav class="sidebar-nav">
-    <ul class="nav flex-column">
-      <li class="nav-item">
-        <a href="{% url 'corrispondenza:lista' %}" class="nav-link active">
-          <i class="bi bi-envelope-paper"></i> Tutte
-        </a>
-      </li>
-      <li class="nav-item">
-        <a href="{% url 'corrispondenza:crea' %}" class="nav-link">
-          <i class="bi bi-plus-circle"></i> Nuova lettera
-        </a>
-      </li>
-    </ul>
-  </nav>
-{% endblock %}
-
 {% block content %}
 <div class="d-flex align-items-center gap-3 mb-4">
   <a href="{% url 'corrispondenza:lista' %}" class="btn btn-sm btn-outline-secondary">
@@ -30,10 +12,10 @@
     <p class="text-muted mb-0" style="font-size:.8rem;">{{ corrispondenza.created_at|date:"d/m/Y H:i" }}</p>
   </div>
   <div class="ms-auto d-flex gap-2 flex-wrap">
-    <a href="{% url 'corrispondenza:pdf' corrispondenza.pk %}" class="btn btn-sm btn-outline-danger">
+    <a href="{% url 'corrispondenza:pdf' corrispondenza.pk %}" class="btn btn-sm btn-outline-primary">
       <i class="bi bi-file-earmark-pdf me-1"></i>PDF
     </a>
-    <a href="{% url 'corrispondenza:duplica' corrispondenza.pk %}" class="btn btn-sm btn-outline-warning">
+    <a href="{% url 'corrispondenza:duplica' corrispondenza.pk %}" class="btn btn-sm btn-outline-primary">
       <i class="bi bi-files me-1"></i>Duplica
     </a>
     {% if corrispondenza.can_edit %}
@@ -42,7 +24,7 @@
     </a>
     {% endif %}
     {% if corrispondenza.stato == 'bozza' %}
-    <button class="btn btn-sm btn-success" onclick="apriModalInvia()">
+    <button class="btn btn-sm btn-primary" onclick="apriModalInvia()">
       <i class="bi bi-send me-1"></i>Invia
     </button>
     {% endif %}
@@ -136,7 +118,7 @@
         Allegato
       </h6>
       <a href="{{ corrispondenza.allegato.url }}" target="_blank" class="d-flex align-items-center gap-2 text-decoration-none"
-         style="font-size:.875rem;color:#6366f1;">
+         style="font-size:.875rem;color:var(--color-1);">
         <i class="bi bi-paperclip"></i>
         {{ corrispondenza.allegato.name|slice:"30:" }}
       </a>
@@ -163,7 +145,7 @@
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Annulla</button>
-        <button type="button" class="btn btn-success btn-sm" id="btnConfermaInvia">
+        <button type="button" class="btn btn-primary btn-sm" id="btnConfermaInvia">
           <i class="bi bi-send me-1"></i>Conferma
         </button>
       </div>
@@ -181,7 +163,7 @@
       <div class="modal-body"><p>Archiviare questa corrispondenza?</p></div>
       <div class="modal-footer">
         <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Annulla</button>
-        <button type="button" class="btn btn-warning btn-sm" id="btnConfermaArchivia">
+        <button type="button" class="btn btn-primary btn-sm" id="btnConfermaArchivia">
           <i class="bi bi-archive me-1"></i>Archivia
         </button>
       </div>

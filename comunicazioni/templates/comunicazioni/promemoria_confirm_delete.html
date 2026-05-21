@@ -2,14 +2,12 @@
 
 {% block title %}Elimina promemoria{% endblock %}
 
-{% block sidebar_nav %}{% endblock %}
-
 {% block content %}
 <div class="row justify-content-center">
   <div class="col-lg-5">
     <div class="card border-danger">
       <div class="card-body p-4 text-center">
-        <div class="mb-3" style="color:#dc2626;font-size:3rem;">
+        <div class="mb-3" style="color:var(--color-1);font-size:3rem;">
           <i class="bi bi-trash"></i>
         </div>
         <h5 class="fw-bold mb-2">Elimina promemoria</h5>
@@ -23,7 +21,7 @@
           <a href="{% url 'comunicazioni:promemoria_list' %}" class="btn btn-outline-secondary">
             <i class="bi bi-x-lg me-1"></i>Annulla
           </a>
-          <button type="submit" class="btn btn-danger">
+          <button type="submit" class="btn btn-primary">
             <i class="bi bi-trash me-1"></i>Elimina
           </button>
         </form>

@@ -3,19 +3,6 @@
 
 {% block title %}{{ title }}{% endblock %}
 
-{% block sidebar_nav %}
-  <div class="sidebar-section">Corrispondenza</div>
-  <nav class="sidebar-nav">
-    <ul class="nav flex-column">
-      <li class="nav-item">
-        <a href="{% url 'corrispondenza:lista' %}" class="nav-link active">
-          <i class="bi bi-envelope-paper"></i> Tutte
-        </a>
-      </li>
-    </ul>
-  </nav>
-{% endblock %}
-
 {% block extra_css %}
 <style>
   #sezione-interno { display: none; }
@@ -67,7 +54,7 @@
     <a href="{% if corrispondenza %}{% url 'corrispondenza:dettaglio' corrispondenza.pk %}{% else %}{% url 'corrispondenza:lista' %}{% endif %}"
        class="btn btn-outline-secondary">Annulla</a>
     {% if corrispondenza and corrispondenza.can_edit %}
-    <a href="{% url 'corrispondenza:elimina' corrispondenza.pk %}" class="btn btn-outline-danger ms-auto">
+    <a href="{% url 'corrispondenza:elimina' corrispondenza.pk %}" class="btn btn-outline-primary ms-auto">
       <i class="bi bi-trash me-1"></i>Elimina
     </a>
     {% endif %}

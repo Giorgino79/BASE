@@ -287,9 +287,13 @@ class Allegato(TimestampMixin):
             if hasattr(self.file, "size"):
                 self.dimensione = self.file.size
 
-            # Salva tipo MIME
-            if hasattr(self.file, "content_type"):
-                self.tipo_file = self.file.content_type
+            # Salva tipo MIME — InMemoryUploadedFile è wrappato in FieldFile,
+            # quindi cerchiamo nell'inner file object
+            if not self.tipo_file:
+                inner = getattr(self.file, "file", None)
+                ct = getattr(inner, "content_type", None) or getattr(self.file, "content_type", None)
+                if ct:
+                    self.tipo_file = ct
 
         super().save(*args, **kwargs)
 

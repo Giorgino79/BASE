@@ -3,16 +3,6 @@
 
 {% block title %}Gestisci richiesta{% endblock %}
 
-{% block sidebar_nav %}
-  <li class="nav-section-title">Principale</li>
-  <li><a href="{% url 'dashboard' %}"><i class="bi bi-speedometer2"></i><span>Dashboard</span></a></li>
-  <li><a href="{% url 'users:user_list' %}"><i class="bi bi-people"></i><span>Dipendenti</span></a></li>
-  <li class="nav-section-title">Presenze</li>
-  <li><a href="{% url 'users:richieste_ferie_list' %}"><i class="bi bi-calendar-check"></i><span>Ferie e Permessi</span></a></li>
-  <li><a href="{% url 'users:richieste_ferie_admin_list' %}" class="active"><i class="bi bi-clipboard2-check"></i><span>Gestione Richieste</span></a></li>
-  <li><a href="{% url 'core:calendario_aziendale' %}"><i class="bi bi-calendar3"></i><span>Calendario</span></a></li>
-{% endblock %}
-
 {% block content %}
 <nav class="mb-3" style="font-size:.8rem;">
   <a href="{% url 'users:richieste_ferie_admin_list' %}" style="color:var(--indigo-600);text-decoration:none;">Gestione richieste</a>
@@ -28,7 +18,7 @@
 
       <div class="d-flex align-items-center gap-3 mb-4">
         <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
-             style="width:48px;height:48px;background:#e0e7ff;color:#4338ca;font-size:1.1rem;font-weight:700;">
+             style="width:48px;height:48px;background:var(--color-1-light);color:var(--color-1-dark);font-size:1.1rem;font-weight:700;">
           {{ richiesta.user.first_name|first|upper }}{{ richiesta.user.last_name|first|upper }}
         </div>
         <div>
@@ -55,11 +45,11 @@
         <dt class="col-5" style="color:var(--slate-400);font-weight:500;">Stato attuale</dt>
         <dd class="col-7 mb-0">
           {% if richiesta.stato == 'approvata' %}
-            <span class="badge" style="background:#dcfce7;color:#166534;">Approvata</span>
+            <span class="badge" style="background:var(--color-1-light);color:var(--color-1-dark);">Approvata</span>
           {% elif richiesta.stato == 'rifiutata' %}
-            <span class="badge" style="background:#fee2e2;color:#991b1b;">Rifiutata</span>
+            <span class="badge" style="background:var(--slate-200);color:var(--slate-600);">Rifiutata</span>
           {% else %}
-            <span class="badge" style="background:#fef3c7;color:#92400e;">In attesa</span>
+            <span class="badge" style="background:var(--color-4);color:var(--color-1-dark);">In attesa</span>
           {% endif %}
         </dd>
       </dl>
@@ -88,11 +78,11 @@
         {% crispy form %}
         <div class="d-flex gap-2 pt-3 mt-2" style="border-top:1px solid var(--slate-100);">
           <button type="submit" name="azione" value="approva"
-                  class="btn btn-success flex-fill d-flex align-items-center justify-content-center gap-1">
+                  class="btn btn-primary flex-fill d-flex align-items-center justify-content-center gap-1">
             <i class="bi bi-check-circle"></i> Approva
           </button>
           <button type="submit" name="azione" value="rifiuta"
-                  class="btn btn-danger flex-fill d-flex align-items-center justify-content-center gap-1">
+                  class="btn btn-primary flex-fill d-flex align-items-center justify-content-center gap-1">
             <i class="bi bi-x-circle"></i> Rifiuta
           </button>
           <a href="{% url 'users:richieste_ferie_admin_list' %}" class="btn btn-outline-secondary">

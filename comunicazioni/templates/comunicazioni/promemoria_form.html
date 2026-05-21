@@ -3,8 +3,6 @@
 
 {% block title %}{% if object %}Modifica promemoria{% else %}Nuovo promemoria{% endif %}{% endblock %}
 
-{% block sidebar_nav %}{% endblock %}
-
 {% block content %}
 <div class="d-flex align-items-center justify-content-between mb-4">
   <div>
@@ -35,7 +33,7 @@
             <a href="{% url 'comunicazioni:promemoria_list' %}" class="btn btn-outline-secondary">Annulla</a>
             {% if object %}
             <a href="{% url 'comunicazioni:promemoria_delete' object.pk %}"
-               class="btn btn-outline-danger ms-auto">
+               class="btn btn-outline-primary ms-auto">
               <i class="bi bi-trash me-1"></i>Elimina
             </a>
             {% endif %}

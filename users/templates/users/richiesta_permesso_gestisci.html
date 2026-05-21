@@ -3,15 +3,6 @@
 
 {% block title %}Gestisci permesso{% endblock %}
 
-{% block sidebar_nav %}
-  <li class="nav-section-title">Principale</li>
-  <li><a href="{% url 'dashboard' %}"><i class="bi bi-speedometer2"></i><span>Dashboard</span></a></li>
-  <li><a href="{% url 'users:user_list' %}"><i class="bi bi-people"></i><span>Dipendenti</span></a></li>
-  <li class="nav-section-title">Presenze</li>
-  <li><a href="{% url 'users:richieste_ferie_list' %}"><i class="bi bi-calendar-check"></i><span>Ferie e Permessi</span></a></li>
-  <li><a href="{% url 'users:richieste_permessi_admin_list' %}" class="active"><i class="bi bi-clipboard2-check"></i><span>Gestione Richieste</span></a></li>
-{% endblock %}
-
 {% block content %}
 <nav class="mb-3" style="font-size:.8rem;">
   <a href="{% url 'users:richieste_permessi_admin_list' %}" style="color:var(--indigo-600);text-decoration:none;">Gestione permessi</a>
@@ -25,7 +16,7 @@
       <h6 class="fw-semibold mb-3" style="color:var(--slate-900);">Dettaglio richiesta</h6>
       <div class="d-flex align-items-center gap-3 mb-4">
         <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
-             style="width:48px;height:48px;background:#e0e7ff;color:#4338ca;font-size:1.1rem;font-weight:700;">
+             style="width:48px;height:48px;background:var(--color-1-light);color:var(--color-1-dark);font-size:1.1rem;font-weight:700;">
           {{ richiesta.user.first_name|first|upper }}{{ richiesta.user.last_name|first|upper }}
         </div>
         <div>
@@ -52,10 +43,10 @@
         {% csrf_token %}
         {% crispy form %}
         <div class="d-flex gap-2 pt-3 mt-2" style="border-top:1px solid var(--slate-100);">
-          <button type="submit" name="azione" value="approva" class="btn btn-success flex-fill">
+          <button type="submit" name="azione" value="approva" class="btn btn-primary flex-fill">
             <i class="bi bi-check-circle me-1"></i>Approva
           </button>
-          <button type="submit" name="azione" value="rifiuta" class="btn btn-danger flex-fill">
+          <button type="submit" name="azione" value="rifiuta" class="btn btn-primary flex-fill">
             <i class="bi bi-x-circle me-1"></i>Rifiuta
           </button>
           <a href="{% url 'users:richieste_permessi_admin_list' %}" class="btn btn-outline-secondary">Annulla</a>

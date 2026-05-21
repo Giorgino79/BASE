@@ -64,18 +64,55 @@ class CorrispondenzaForm(forms.ModelForm):
         return cleaned
 
 
+class TipoCorrispondenzaForm(forms.ModelForm):
+    class Meta:
+        model = TipoCorrispondenza
+        fields = ['nome', 'descrizione', 'attivo']
+        widgets = {
+            'nome': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Es. Raccomandata, Circolare…'}),
+            'descrizione': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.helper = FormHelper()
+        self.helper.form_tag = False
+        self.helper.layout = Layout(
+            Field('nome'),
+            Field('descrizione'),
+            Field('attivo'),
+        )
+
+
 class CorrispondenzaSearchForm(forms.Form):
     q = forms.CharField(
         max_length=100, required=False,
-        widget=forms.TextInput(attrs={'placeholder': 'Cerca oggetto, protocollo, destinatario…'}),
+        widget=forms.TextInput(attrs={
+            'class': 'form-control form-control-sm',
+            'placeholder': 'Cerca oggetto, protocollo, destinatario…',
+        }),
     )
     stato = forms.ChoiceField(
         choices=[('', 'Tutti gli stati')] + list(Corrispondenza.Stato.choices),
         required=False,
+        widget=forms.Select(attrs={'class': 'form-select form-select-sm'}),
     )
     priorita = forms.ChoiceField(
         choices=[('', 'Tutte le priorità')] + list(Corrispondenza.Priorita.choices),
         required=False,
+        widget=forms.Select(attrs={'class': 'form-select form-select-sm'}),
     )
-    data_da = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date'}))
-    data_a = forms.DateField(required=False, widget=forms.DateInput(attrs={'type': 'date'}))
+    tipo = forms.ModelChoiceField(
+        queryset=TipoCorrispondenza.objects.filter(attivo=True),
+        required=False,
+        empty_label='Tutti i tipi',
+        widget=forms.Select(attrs={'class': 'form-select form-select-sm'}),
+    )
+    data_da = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control form-control-sm'}),
+    )
+    data_a = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control form-control-sm'}),
+    )

@@ -27,7 +27,7 @@ from .views_permissions import (
     permission_template_update_view,
     permission_template_delete_view,
 )
-from .admin_views import modules_dashboard, amministrazione_dashboard
+from .admin_views import modules_dashboard, amministrazione_dashboard, hr_dashboard_view
 from .views_tools import calcolatrice_view
 from .views_calendario import (
     CalendarioView,
@@ -73,6 +73,8 @@ urlpatterns = [
     path("admin/modules/", modules_dashboard, name="modules_dashboard"),
     # ========== AMMINISTRAZIONE HUB ==========
     path("amministrazione/", amministrazione_dashboard, name="amministrazione_dashboard"),
+    # ========== HR DASHBOARD ==========
+    path("hr/", hr_dashboard_view, name="hr_dashboard"),
     # ========== TOOLS ==========
     path("calcolatrice/", calcolatrice_view, name="calcolatrice"),
     # ========== CALENDARIO AZIENDALE ==========

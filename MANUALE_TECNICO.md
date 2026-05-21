@@ -1,8 +1,8 @@
 # Manuale Tecnico — Progetto Django BASE
 
-**Versione:** 1.0  
+**Versione:** 1.1  
 **Compatibilità:** Django 5.2, Python 3.12  
-**Ultimo aggiornamento:** 2026-05-13
+**Ultimo aggiornamento:** 2026-05-18
 
 ---
 
@@ -20,6 +20,8 @@
 10. [Management commands](#10-management-commands)
 11. [Deploy su Heroku](#11-deploy-su-heroku)
 12. [Convenzioni di codice](#12-convenzioni-di-codice)
+13. [Dress code UI — Regole ferree](#13-dress-code-ui--regole-ferree)
+14. [Template dettaglio oggetto](#14-template-dettaglio-oggetto)
 
 ---
 
@@ -1131,6 +1133,738 @@ def notifica_approvazione(sender, instance, created, **kwargs):
 def ready(self):
     import magazzino.signals  # noqa: F401
 ```
+
+---
+
+---
+
+## 13. Dress code UI — Regole ferree
+
+Queste regole si applicano a **tutti** i template HTML del progetto BASE e di qualsiasi app che vi si aggancia. Non esistono eccezioni. L'obiettivo è avere un'interfaccia visivamente coerente dove ogni elemento rispetti sempre la stessa palette.
+
+### 13.1 La palette ufficiale
+
+Tutti i colori provengono esclusivamente dalle variabili CSS definite in `static/css/main.css`. Non si usa mai un valore esadecimale diretto.
+
+| Variabile | Valore | Uso |
+|---|---|---|
+| `--color-1` | `#5585b5` | Colore brand principale (blu) — bottoni primari, accenti, bordi attivi |
+| `--color-1-dark` | `#3d6a94` | Hover/focus del brand, testi su sfondi chiari |
+| `--color-1-light` | `#dce8f4` | Sfondi tinted, badge positivi |
+| `--color-2` | `#53a8b6` | Colore brand secondario (teal) — bottoni secondari, icone accent |
+| `--color-2-dark` | `#3b8a96` | Hover del secondario |
+| `--color-2-light` | `#d5eff3` | Sfondi tinted secondari, badge staff/accent |
+| `--color-3` | `#79c2d0` | Decorativo, sfumature leggere |
+| `--color-4` | `#bbe4e9` | Il più chiaro — badge attesa, sfondi molto tenui |
+| `--slate-400` | `#94a3b8` | Etichette, label secondarie, section-title |
+| `--slate-500` | `#64748b` | Testo secondario, icone |
+| `--slate-600` | `#475569` | Testo normale |
+| `--slate-700` | `#334155` | Testo corpo principale |
+| `--slate-800` | `#1e293b` | Titoli |
+| `--slate-900` | `#0f172a` | Titoli principali, intestazioni card |
+| `--slate-200` | `#e2e8f0` | Bordi, divisori |
+| `--slate-100` | `#f1f5f9` | Sfondi card-header neutri |
+| `--slate-50` | `#f8fafc` | Sfondo pagina |
+
+### 13.2 Bottoni — regola assoluta
+
+**Un solo stile di bottone primario: blu con testo bianco (`btn-primary`).**
+
+| Caso d'uso | Classe corretta | Mai usare |
+|---|---|---|
+| Azione principale (Salva, Invia, Conferma, Elabora) | `btn btn-primary` | `btn-success`, `btn-warning`, `btn-danger`, `btn-info` |
+| Azione secondaria / alternativa | `btn btn-outline-secondary` | `btn-outline-success`, `btn-outline-warning`, `btn-outline-danger` |
+| Link secondario nella palette brand | `btn btn-outline-primary` | qualsiasi `btn-outline-*` colorato |
+| Export (Excel, PDF, CSV) | `btn btn-primary` o `btn btn-outline-primary` | bottoni verdi o rossi per tipo di file |
+| Torna indietro / Annulla | `btn btn-outline-secondary` | — |
+| Elimina (pagina di conferma) | `btn btn-primary` | `btn-danger` — anche eliminare usa il colore brand |
+
+```django
+{# CORRETTO #}
+<a href="{% url 'app:oggetto-update' pk=obj.pk %}" class="btn btn-primary btn-sm">
+  <i class="bi bi-pencil me-1"></i>Modifica
+</a>
+<a href="{% url 'app:export-excel' %}" class="btn btn-outline-primary btn-sm">
+  <i class="bi bi-file-earmark-excel me-1"></i>Excel
+</a>
+<a href="{% url 'app:oggetto-list' %}" class="btn btn-outline-secondary btn-sm">
+  <i class="bi bi-arrow-left me-1"></i>Torna alla lista
+</a>
+
+{# SBAGLIATO — vietato #}
+<a href="..." class="btn btn-success btn-sm">Excel</a>
+<a href="..." class="btn btn-outline-danger btn-sm">PDF</a>
+<button class="btn btn-danger">Elimina</button>
+```
+
+### 13.3 Badge e etichette di stato
+
+I badge non usano classi Bootstrap `bg-*` colorate. Usano le classi di stato definite in `main.css` oppure stili inline con variabili CSS.
+
+**Classi disponibili in `main.css`:**
+
+| Classe | Aspetto | Quando usarla |
+|---|---|---|
+| `badge-ok` | Blu chiaro / blu scuro | Approvata, Attivo, Confermata, Chiusa, Completato |
+| `badge-ko` | Grigio chiaro / grigio scuro | Rifiutata, Disattivato, Annullata |
+| `badge-wait` | Azzurrino / blu scuro | In attesa, Bozza, Da elaborare |
+| `badge-info` | Blu chiaro / blu | Informativa, Aperta, Pomeriggio |
+| `badge-staff` | Teal chiaro / teal scuro | Staff, Admin, Ruolo speciale |
+| `badge-urgent` | Blu brand / bianco | Urgente, Alert, Priorità alta |
+| `badge-accent` | Teal chiaro / teal scuro | Accent, Mattina, Notte (turni) |
+
+```django
+{# CORRETTO — usa le classi badge-* #}
+<span class="badge badge-ok">Approvata</span>
+<span class="badge badge-ko">Rifiutata</span>
+<span class="badge badge-wait">In attesa</span>
+<span class="badge badge-staff">Staff</span>
+
+{# CORRETTO — stile inline solo con variabili CSS #}
+<span class="badge" style="background:var(--color-1-light);color:var(--color-1-dark);font-size:.7rem;">
+  Approvata
+</span>
+
+{# SBAGLIATO — vietato qualsiasi hex diretto #}
+<span class="badge" style="background:#dcfce7;color:#166534;">Approvata</span>
+<span class="badge bg-success">Approvata</span>
+```
+
+### 13.4 Colori inline — regola assoluta
+
+Gli attributi `style=""` nei template possono contenere **solo** variabili CSS della palette. Zero valori esadecimali diretti.
+
+```django
+{# CORRETTO #}
+<div style="color:var(--slate-500);font-size:.875rem;">Testo secondario</div>
+<i class="bi bi-info-circle" style="color:var(--color-1);"></i>
+<div style="background:var(--color-1-light);border:1px solid var(--color-4);">Alert info</div>
+
+{# SBAGLIATO #}
+<div style="color:#64748b;font-size:.875rem;">Testo secondario</div>
+<i class="bi bi-info-circle" style="color:#3b82f6;"></i>
+<div style="background:#eff6ff;border:1px solid #bfdbfe;">Alert info</div>
+```
+
+**Corrispondenze veloci** per le situazioni più comuni:
+
+| Situazione | Variabile da usare |
+|---|---|
+| Testo principale di un paragrafo | `var(--slate-700)` |
+| Testo secondario / caption | `var(--slate-500)` |
+| Etichetta (label, th) | `var(--slate-400)` |
+| Titolo card o sezione | `var(--slate-900)` |
+| Icona brand | `var(--color-1)` |
+| Icona accent / teal | `var(--color-2)` |
+| Sfondo card-header neutro | `var(--slate-50)` |
+| Bordo divisore | `var(--slate-200)` |
+| Sfondo tinted brand | `var(--color-1-light)` |
+| Sfondo tinted teal | `var(--color-2-light)` |
+| Sfondo molto chiaro (attesa) | `var(--color-4)` |
+
+### 13.5 Icone nei contenitori (tile e stat-card)
+
+Usare le classi `icon-*` già definite nel CSS invece di stili inline con hex.
+
+```django
+{# CORRETTO #}
+<div class="stat-card-icon icon-primary"><i class="bi bi-people"></i></div>
+<div class="stat-card-icon icon-accent"><i class="bi bi-clock"></i></div>
+
+{# CORRETTO anche inline ma solo con variabili #}
+<div style="width:42px;height:42px;background:var(--color-1-light);color:var(--color-1);">
+  <i class="bi bi-people"></i>
+</div>
+
+{# SBAGLIATO #}
+<div style="width:42px;height:42px;background:#ede9fe;color:#7c3aed;">
+  <i class="bi bi-people"></i>
+</div>
+```
+
+Classi `icon-*` disponibili: `icon-primary`, `icon-accent`, `icon-sky`, `icon-emerald`, `icon-amber`, `icon-rose`, `icon-violet`, `icon-cyan`. Le ultime 6 esistono per retrocompatibilità con moduli easymod; nelle nuove app preferire `icon-primary` e `icon-accent`.
+
+### 13.6 Titoli di sezione (section-title)
+
+Il pattern per i titoli di sezione all'interno di una pagina (es. sopra una griglia di tile):
+
+```django
+{# Pattern standard — già usato in hr_dashboard e amministrazione_dashboard #}
+<div class="hr-section-title">Nome sezione</div>
+```
+
+La classe `.hr-section-title` è definita localmente nei template che la usano tramite `{% block extra_css %}`. Per le nuove app, aggiungere la definizione nel proprio blocco CSS oppure estrarne il contenuto in `main.css` se usata in più di un'app.
+
+### 13.7 Colori nei template PDF
+
+I template PDF (renderizzati con xhtml2pdf) non caricano `main.css` e devono usare CSS inline nel tag `<style>`. Qui sono ammessi i valori esadecimali — ma devono comunque corrispondere ai colori della palette:
+
+| Colore palette | Hex da usare nel PDF |
+|---|---|
+| `--color-1` (blu brand) | `#5585b5` |
+| `--color-1-dark` | `#3d6a94` |
+| `--color-1-light` | `#dce8f4` |
+| `--slate-700` | `#334155` |
+| `--slate-400` | `#94a3b8` |
+| `--slate-200` | `#e2e8f0` |
+
+### 13.8 Sidebar navigation
+
+Ogni nuova app che aggiunge voci alla sidebar usa `register_nav()` nel metodo `ready()` dell'`AppConfig`. Il campo `order` determina la posizione:
+
+| Ordine | Sezione |
+|---|---|
+| 5 | Amministrazione |
+| 10 | Human Resource |
+| 20 | Comunicazioni e Corrispondenza |
+| 30+ | App aggiuntive (moduli) |
+
+```python
+# miaapp/apps.py
+def ready(self):
+    from core.sidebar import register_nav
+    register_nav(
+        section_key   = "miaapp",
+        section_label = "Magazzino",
+        items = [
+            {
+                "label": "Magazzino",
+                "url":   "magazzino:index",
+                "icon":  "bi-box-seam",
+                "staff_only": False,
+                "permission": "magazzino.view_prodotto",  # opzionale
+                "active_app": "magazzino",
+            },
+        ],
+        order = 30,
+    )
+```
+
+### 13.9 Checklist dress code prima del commit
+
+Prima di fare commit su qualsiasi template HTML rispondere:
+
+- [ ] Nessun `btn-success`, `btn-danger`, `btn-warning`, `btn-info` nel file?
+- [ ] Nessun `btn-outline-success/danger/warning/info`?
+- [ ] Nessun colore esadecimale diretto in `style=""` (es. `#f59e0b`)?
+- [ ] I badge di stato usano le classi `badge-*` o variabili CSS?
+- [ ] Le icone brand usano `var(--color-1)`, non hex?
+- [ ] I titoli e i testi grigi usano `var(--slate-*)`, non hex?
+
+Verifica rapida da terminale (deve restituire output vuoto):
+
+```bash
+# Bottoni non conformi
+grep -r "btn-success\|btn-danger\|btn-warning\|btn-outline-success\|btn-outline-danger\|btn-outline-warning" \
+  --include="*.html" .
+
+# Colori inline hex (esclude variabili CSS)
+grep -r "style=" --include="*.html" . | grep "color:#\|background:#" | grep -v "var(--"
+```
+
+---
+
+## 14. Template dettaglio oggetto
+
+Il template di dettaglio è la pagina che mostra i dati di una singola istanza di un modello (es. un ordine, un dipendente, un documento). BASE definisce due layout standard: scegliere quello più adatto alla complessità dell'oggetto.
+
+### 14.1 Quando usare quale layout
+
+| Layout | Quando usarlo |
+|---|---|
+| **Layout A — due colonne** | Oggetti semplici con 1-3 sezioni di dati + azioni CRUD. È il default per la maggior parte delle nuove app. |
+| **Layout B — header card + tab** | Oggetti complessi con molte sezioni (es. dipendente con presenze, ferie, documenti, payroll). Usarlo solo se le sezioni sono 4 o più. |
+
+### 14.2 Layout A — due colonne (standard)
+
+```
+┌─────────────────────────────────────────────────────┐
+│  Breadcrumb                                         │
+│  Titolo oggetto                 [badge stato]       │
+├────────────────────────────┬────────────────────────┤
+│  CONTENUTO  col-lg-8       │  SIDEBAR  col-lg-4     │
+│                            │                        │
+│  ┌──────────────────────┐  │  ┌──────────────────┐  │
+│  │ card: dati principali│  │  │ Azioni CRUD      │  │
+│  └──────────────────────┘  │  │ [Modifica]       │  │
+│                            │  │ [Torna alla lista]│  │
+│  ┌──────────────────────┐  │  │ [Elimina]        │  │
+│  │ card: sezione extra  │  │  └──────────────────┘  │
+│  └──────────────────────┘  │                        │
+│                            │  ┌──────────────────┐  │
+│                            │  │ Metadati         │  │
+│                            │  │ (creato il, da)  │  │
+│                            │  └──────────────────┘  │
+└────────────────────────────┴────────────────────────┘
+```
+
+**Template:**
+
+```django
+{% extends "base.html" %}
+
+{% block title %}{{ oggetto }}{% endblock %}
+
+{% block content %}
+
+{# Breadcrumb #}
+<nav class="mb-3" style="font-size:.8rem;">
+  <a href="{% url 'miaapp:oggetto-list' %}" style="color:var(--color-1);text-decoration:none;">
+    Lista oggetti
+  </a>
+  <i class="bi bi-chevron-right mx-1" style="color:var(--slate-400);"></i>
+  <span style="color:var(--slate-500);">{{ oggetto }}</span>
+</nav>
+
+{# Intestazione #}
+<div class="d-flex align-items-center justify-content-between mb-4">
+  <div>
+    <h4 class="fw-bold mb-1" style="color:var(--slate-900);">
+      <i class="bi bi-box-seam me-2" style="color:var(--color-1);"></i>{{ oggetto }}
+    </h4>
+    <p class="text-muted mb-0" style="font-size:.875rem;">{{ oggetto.sottotitolo }}</p>
+  </div>
+  {# Badge stato — opzionale #}
+  {% if oggetto.stato == 'attivo' %}
+    <span class="badge badge-ok">Attivo</span>
+  {% elif oggetto.stato == 'in_attesa' %}
+    <span class="badge badge-wait">In attesa</span>
+  {% else %}
+    <span class="badge badge-ko">Chiuso</span>
+  {% endif %}
+</div>
+
+<div class="row g-3">
+
+  {# Colonna principale #}
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-header">
+        <span class="fw-semibold" style="font-size:.875rem;color:var(--slate-900);">
+          <i class="bi bi-info-circle me-2" style="color:var(--color-1);"></i>Dati principali
+        </span>
+      </div>
+      <div class="card-body">
+        <dl class="row mb-0" style="font-size:.875rem;">
+          <dt class="col-sm-4" style="color:var(--slate-400);font-weight:500;">Campo 1</dt>
+          <dd class="col-sm-8 mb-2" style="color:var(--slate-700);">{{ oggetto.campo1|default:"—" }}</dd>
+
+          <dt class="col-sm-4" style="color:var(--slate-400);font-weight:500;">Campo 2</dt>
+          <dd class="col-sm-8 mb-0" style="color:var(--slate-700);">{{ oggetto.campo2|default:"—" }}</dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+
+  {# Sidebar azioni #}
+  <div class="col-lg-4">
+
+    {# Card azioni CRUD #}
+    <div class="card mb-3">
+      <div class="card-header" style="background:var(--slate-50);">
+        <span class="fw-semibold" style="font-size:.875rem;color:var(--slate-900);">Azioni</span>
+      </div>
+      <div class="card-body d-flex flex-column gap-2">
+        {% if perms.miaapp.change_oggetto %}
+        <a href="{% url 'miaapp:oggetto-update' pk=oggetto.pk %}" class="btn btn-primary btn-sm w-100">
+          <i class="bi bi-pencil me-1"></i>Modifica
+        </a>
+        {% endif %}
+        <a href="{% url 'miaapp:oggetto-list' %}" class="btn btn-outline-secondary btn-sm w-100">
+          <i class="bi bi-arrow-left me-1"></i>Torna alla lista
+        </a>
+        {% if perms.miaapp.delete_oggetto %}
+        <a href="{% url 'miaapp:oggetto-delete' pk=oggetto.pk %}" class="btn btn-outline-secondary btn-sm w-100">
+          <i class="bi bi-trash me-1"></i>Elimina
+        </a>
+        {% endif %}
+      </div>
+    </div>
+
+    {# Card metadati — opzionale, includere se il modello ha created_at #}
+    <div class="card">
+      <div class="card-header" style="background:var(--slate-50);">
+        <span class="fw-semibold" style="font-size:.875rem;color:var(--slate-900);">Informazioni</span>
+      </div>
+      <div class="card-body">
+        <dl class="mb-0" style="font-size:.82rem;">
+          <dt style="color:var(--slate-400);font-weight:500;">Creato il</dt>
+          <dd style="color:var(--slate-700);" class="mb-2">{{ oggetto.created_at|date:"d/m/Y H:i" }}</dd>
+          <dt style="color:var(--slate-400);font-weight:500;">Modificato il</dt>
+          <dd style="color:var(--slate-700);" class="mb-0">{{ oggetto.updated_at|date:"d/m/Y H:i" }}</dd>
+        </dl>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+{% endblock %}
+```
+
+**View corrispondente:**
+
+```python
+# miaapp/views.py
+from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
+from django.views.generic import DetailView
+from .models import Oggetto
+
+
+class OggettoDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView):
+    model = Oggetto
+    template_name = "miaapp/oggetto_detail.html"
+    context_object_name = "oggetto"
+    permission_required = "miaapp.view_oggetto"
+```
+
+### 14.3 Layout B — header card + tab (per oggetti complessi)
+
+Usare questo layout solo quando l'oggetto ha 4 o più sezioni distinte di dati. Il modello di riferimento in BASE è `users/templates/users/user_detail.html`.
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│  HEADER — 4 card orizzontali (col-md-3 ciascuna)                 │
+│  ┌────────────┐  ┌────────────┐  ┌────────────┐  ┌────────────┐  │
+│  │ Identità   │  │ Dati rapidi│  │ Numeri/KPI │  │ Azioni     │  │
+│  │ (foto/nome)│  │            │  │            │  │            │  │
+│  └────────────┘  └────────────┘  └────────────┘  └────────────┘  │
+├──────────────────────────────────────────────────────────────────┤
+│  TAB NAVIGATION                                                  │
+│  [ Tab 1 ] [ Tab 2 ] [ Tab 3 ] [ Tab 4 ]                         │
+├──────────────────────────────────────────────────────────────────┤
+│  CONTENUTO DEL TAB ATTIVO (full width)                           │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+**Struttura di base:**
+
+```django
+{% extends "base.html" %}
+
+{% block content %}
+
+{# Breadcrumb #}
+<nav class="mb-3" style="font-size:.8rem;">
+  <a href="{% url 'miaapp:oggetto-list' %}" style="color:var(--color-1);text-decoration:none;">Lista</a>
+  <i class="bi bi-chevron-right mx-1" style="color:var(--slate-400);"></i>
+  <span style="color:var(--slate-500);">{{ oggetto }}</span>
+</nav>
+
+{# 4 card header #}
+<div class="row g-3 mb-4 align-items-stretch">
+
+  {# Card 1: Identità #}
+  <div class="col-md-3">
+    <div class="card card-body text-center h-100">
+      {# avatar / icona grande / immagine #}
+      <h6 class="fw-bold mb-0" style="color:var(--slate-900);">{{ oggetto }}</h6>
+      <small class="text-muted">{{ oggetto.sottotitolo }}</small>
+      <div class="mt-2">
+        <span class="badge badge-ok">Attivo</span>
+      </div>
+    </div>
+  </div>
+
+  {# Card 2: Dati rapidi #}
+  <div class="col-md-3">
+    <div class="card card-body h-100">
+      <h6 class="fw-semibold mb-3"
+          style="font-size:.75rem;text-transform:uppercase;letter-spacing:.05em;color:var(--slate-400);">
+        Dati
+      </h6>
+      <div class="d-flex flex-column gap-2" style="font-size:.84rem;">
+        <div class="d-flex align-items-center gap-2">
+          <i class="bi bi-tag" style="color:var(--slate-400);width:16px;flex-shrink:0;"></i>
+          <span style="color:var(--slate-600);">{{ oggetto.codice }}</span>
+        </div>
+        {# ... altri dati rapidi ... #}
+      </div>
+    </div>
+  </div>
+
+  {# Card 3: KPI / numeri #}
+  <div class="col-md-3">
+    <div class="card card-body h-100">
+      <h6 class="fw-semibold mb-3"
+          style="font-size:.75rem;text-transform:uppercase;letter-spacing:.05em;color:var(--slate-400);">
+        Statistiche
+      </h6>
+      <div class="d-flex flex-column gap-2" style="font-size:.84rem;">
+        <div class="d-flex justify-content-between">
+          <span style="color:var(--slate-500);">Voce 1</span>
+          <strong style="color:var(--slate-800);">{{ valore_1 }}</strong>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# Card 4: Azioni #}
+  <div class="col-md-3">
+    <div class="card card-body h-100 d-flex flex-column justify-content-center gap-2">
+      <h6 class="fw-semibold mb-1"
+          style="font-size:.75rem;text-transform:uppercase;letter-spacing:.05em;color:var(--slate-400);">
+        Azioni
+      </h6>
+      {% if perms.miaapp.change_oggetto %}
+      <a href="{% url 'miaapp:oggetto-update' oggetto.pk %}" class="btn btn-primary btn-sm w-100">
+        <i class="bi bi-pencil me-1"></i>Modifica
+      </a>
+      {% endif %}
+      <a href="{% url 'miaapp:oggetto-list' %}" class="btn btn-outline-secondary btn-sm w-100">
+        <i class="bi bi-arrow-left me-1"></i>Torna alla lista
+      </a>
+    </div>
+  </div>
+
+</div>
+
+{# Tab navigation — il tab attivo è passato dalla view come ?tab=nome #}
+<ul class="nav nav-tabs mb-3" style="border-bottom:2px solid var(--slate-100);">
+  <li class="nav-item">
+    <a class="nav-link {% if tab == 'info' or not tab %}active{% endif %}"
+       href="?tab=info" style="font-size:.875rem;">
+      <i class="bi bi-info-circle me-1"></i>Informazioni
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link {% if tab == 'sezione2' %}active{% endif %}"
+       href="?tab=sezione2" style="font-size:.875rem;">
+      <i class="bi bi-list-ul me-1"></i>Sezione 2
+    </a>
+  </li>
+</ul>
+
+{# Contenuto tab #}
+{% if tab == 'info' or not tab %}
+<div class="row g-3">
+  {# contenuto scheda info #}
+</div>
+{% endif %}
+
+{% if tab == 'sezione2' %}
+{# contenuto scheda sezione 2 #}
+{% endif %}
+
+{% endblock %}
+```
+
+**View per il layout B:**
+
+```python
+class OggettoDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView):
+    model = Oggetto
+    template_name = "miaapp/oggetto_detail.html"
+    context_object_name = "oggetto"
+    permission_required = "miaapp.view_oggetto"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["tab"] = self.request.GET.get("tab", "info")
+        # aggiungere dati necessari per i vari tab
+        return ctx
+```
+
+### 14.4 Pagina di conferma eliminazione
+
+Ogni `confirm_delete.html` segue questo schema fisso:
+
+```django
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center mt-4">
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header">
+        <span class="fw-semibold" style="color:var(--slate-900);">Conferma eliminazione</span>
+      </div>
+      <div class="card-body text-center py-4">
+        <div class="mb-3" style="color:var(--slate-400);font-size:3rem;">
+          <i class="bi bi-trash"></i>
+        </div>
+        <h5 class="fw-bold mb-2" style="color:var(--slate-900);">Elimina {{ object }}</h5>
+        <p class="text-muted mb-4" style="font-size:.875rem;">
+          Questa operazione è irreversibile.
+        </p>
+        <form method="post" class="d-flex justify-content-center gap-2">
+          {% csrf_token %}
+          <a href="{{ request.META.HTTP_REFERER|default:back_url }}"
+             class="btn btn-outline-secondary">
+            <i class="bi bi-x-lg me-1"></i>Annulla
+          </a>
+          <button type="submit" class="btn btn-primary">
+            <i class="bi bi-trash me-1"></i>Sì, elimina
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+```
+
+Nessun `btn-danger` nemmeno nella conferma eliminazione — il dress code è uniforme ovunque.
+
+### 14.5 Pagina lista (list view)
+
+Schema standard per le pagine lista:
+
+```django
+{% extends "base.html" %}
+
+{% block content %}
+
+{# Intestazione con pulsante aggiunta #}
+<div class="d-flex align-items-center justify-content-between mb-4">
+  <div>
+    <h4 class="fw-bold mb-1" style="color:var(--slate-900);">
+      <i class="bi bi-list-ul me-2" style="color:var(--color-1);"></i>Oggetti
+    </h4>
+    <p class="text-muted mb-0" style="font-size:.875rem;">{{ object_list.count }} record</p>
+  </div>
+  {% if perms.miaapp.add_oggetto %}
+  <a href="{% url 'miaapp:oggetto-create' %}" class="btn btn-primary btn-sm">
+    <i class="bi bi-plus-lg me-1"></i>Nuovo
+  </a>
+  {% endif %}
+</div>
+
+{# Filtri (opzionale) #}
+{# ... form di ricerca/filtro ... #}
+
+{# Tabella #}
+<div class="table-card">
+  <div class="table-responsive">
+    <table class="table mb-0">
+      <thead>
+        <tr>
+          <th>Campo 1</th>
+          <th>Stato</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for obj in object_list %}
+        <tr>
+          <td style="font-size:.875rem;">{{ obj }}</td>
+          <td><span class="badge badge-ok">{{ obj.stato }}</span></td>
+          <td class="text-end">
+            <a href="{{ obj.get_absolute_url }}" class="btn btn-outline-secondary btn-sm">
+              <i class="bi bi-eye me-1"></i>Dettaglio
+            </a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="3" class="text-center py-5" style="color:var(--slate-400);">
+            <i class="bi bi-inbox" style="font-size:2rem;display:block;margin-bottom:.5rem;"></i>
+            Nessun elemento trovato
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{# Paginazione (Bootstrap standard, funziona col CSS del progetto) #}
+{% if is_paginated %}
+<nav class="mt-3">
+  <ul class="pagination pagination-sm">
+    {% if page_obj.has_previous %}
+    <li class="page-item">
+      <a class="page-link" href="?page={{ page_obj.previous_page_number }}">‹</a>
+    </li>
+    {% endif %}
+    {% for num in page_obj.paginator.page_range %}
+    <li class="page-item {% if page_obj.number == num %}active{% endif %}">
+      <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+    </li>
+    {% endfor %}
+    {% if page_obj.has_next %}
+    <li class="page-item">
+      <a class="page-link" href="?page={{ page_obj.next_page_number }}">›</a>
+    </li>
+    {% endif %}
+  </ul>
+</nav>
+{% endif %}
+
+{% endblock %}
+```
+
+### 14.6 Form standard
+
+```django
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+
+    {# Intestazione #}
+    <div class="mb-4">
+      <h4 class="fw-bold mb-1" style="color:var(--slate-900);">
+        <i class="bi bi-pencil-square me-2" style="color:var(--color-1);"></i>
+        {% if object %}Modifica{% else %}Nuovo{% endif %} oggetto
+      </h4>
+    </div>
+
+    <div class="card">
+      <div class="card-body">
+        <form method="post" enctype="multipart/form-data" novalidate>
+          {% csrf_token %}
+
+          {% for field in form %}
+          <div class="mb-3">
+            <label for="{{ field.id_for_label }}" class="form-label">
+              {{ field.label }}{% if field.field.required %} *{% endif %}
+            </label>
+            {{ field }}
+            {% if field.errors %}
+            <div class="invalid-feedback d-block">{{ field.errors|join:", " }}</div>
+            {% endif %}
+            {% if field.help_text %}
+            <div class="form-text" style="color:var(--slate-400);">{{ field.help_text }}</div>
+            {% endif %}
+          </div>
+          {% endfor %}
+
+          <div class="d-flex gap-2 mt-4">
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-check-lg me-1"></i>Salva
+            </button>
+            <a href="{% url 'miaapp:oggetto-list' %}" class="btn btn-outline-secondary">
+              Annulla
+            </a>
+          </div>
+        </form>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+{% endblock %}
+```
+
+### 14.7 Checklist template per nuova app
+
+Prima di considerare completata l'integrazione dei template di una nuova app, verificare:
+
+- [ ] Tutti i template estendono `base.html`
+- [ ] Breadcrumb presente in `detail`, `form` e `confirm_delete`
+- [ ] Intestazione pagina con icona `bi-*` e `color:var(--color-1)`
+- [ ] Titoli con `color:var(--slate-900)`, testi con `color:var(--slate-700)`
+- [ ] Etichette/label con `color:var(--slate-400)` o `color:var(--slate-500)`
+- [ ] Nessun `btn-success / btn-danger / btn-warning` — solo `btn-primary` e `btn-outline-secondary`
+- [ ] Badge di stato con classi `badge-ok / badge-ko / badge-wait` o variabili CSS
+- [ ] Export (Excel/PDF) con `btn-primary` o `btn-outline-primary`
+- [ ] Pagina lista con stato vuoto (`{% empty %}`) gestito visivamente
+- [ ] Pagina `confirm_delete` con `btn-primary` (non `btn-danger`)
+- [ ] Dress code check da terminale (sezione 13.9) restituisce output vuoto
 
 ---
 

@@ -51,3 +51,11 @@ class UsersConfig(AppConfig):
         except Exception as e:
             import logging
             logging.getLogger(__name__).warning(f"Errore registrazione CalendarioRegistry (users): {e}")
+
+        # Sidebar navigation
+        from core.sidebar import register_nav
+        register_nav("hr", "Human Resource", [
+            {"label": "Human Resource", "url": "core:hr_dashboard",
+             "icon": "bi-people-fill", "staff_only": True,
+             "active_app": "core", "active_url_contains": "hr"},
+        ], order=10)

@@ -1,0 +1,245 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Busta Paga {{ busta.mese|stringformat:"02d" }}/{{ busta.anno }} - {{ busta.user.get_full_name }}{% endblock %}
+
+{% block content %}
+<nav class="mb-3" style="font-size:.8rem;">
+  <a href="{% url 'users:user_list' %}" style="color:var(--color-1);text-decoration:none;">Dipendenti</a>
+  <i class="bi bi-chevron-right mx-1" style="color:var(--slate-400);"></i>
+  <a href="{% url 'users:user_detail' busta.user.pk %}" style="color:var(--color-1);text-decoration:none;">{{ busta.user.get_full_name }}</a>
+  <i class="bi bi-chevron-right mx-1" style="color:var(--slate-400);"></i>
+  <a href="{% url 'payroll:busta_paga_list' busta.user.pk %}" style="color:var(--color-1);text-decoration:none;">Buste Paga</a>
+  <i class="bi bi-chevron-right mx-1" style="color:var(--slate-400);"></i>
+  <span style="color:var(--slate-500);">{{ busta.mese|stringformat:"02d" }}/{{ busta.anno }}</span>
+</nav>
+
+<div class="d-flex align-items-center justify-content-between mb-4">
+  <div>
+    <h1 class="h4 fw-bold mb-1" style="color:var(--slate-900);">
+      <i class="bi bi-receipt me-2" style="color:var(--color-1);"></i>Busta Paga {{ busta.mese|stringformat:"02d" }}/{{ busta.anno }}
+    </h1>
+    <p class="text-muted mb-0" style="font-size:.875rem;">
+      <strong>{{ busta.user.get_full_name }}</strong> &mdash; elaborata il {{ busta.data_elaborazione|date:"d/m/Y" }}
+    </p>
+  </div>
+  {% if busta.confermata %}
+  <span class="badge fs-6" style="background:var(--color-1-light);color:var(--color-1-dark);">Confermata</span>
+  {% else %}
+  <span class="badge fs-6" style="background:var(--color-4);color:var(--color-1-dark);">Bozza</span>
+  {% endif %}
+</div>
+
+<div class="row g-3">
+  <!-- Colonna sinistra -->
+  <div class="col-lg-4">
+    <!-- Ore -->
+    <div class="card card-body mb-3">
+      <h6 class="fw-semibold mb-3" style="font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--slate-500);">
+        <i class="bi bi-clock-history me-1" style="color:var(--color-1);"></i>Ore Lavorate
+      </h6>
+      <div class="d-flex justify-content-between mb-2">
+        <span style="font-size:.875rem;">Ordinarie:</span>
+        <strong>{{ busta.ore_ordinarie|floatformat:2 }}h</strong>
+      </div>
+      <div class="d-flex justify-content-between mb-2">
+        <span style="font-size:.875rem;">Straord. feriale:</span>
+        <strong style="color:var(--color-2);">{{ busta.ore_straordinario_feriale|floatformat:2 }}h</strong>
+      </div>
+      <div class="d-flex justify-content-between mb-2">
+        <span style="font-size:.875rem;">Straord. festivo:</span>
+        <strong style="color:var(--color-2);">{{ busta.ore_straordinario_festivo|floatformat:2 }}h</strong>
+      </div>
+      <div class="d-flex justify-content-between mb-3 pb-3" style="border-bottom:1px solid var(--slate-100);">
+        <span style="font-size:.875rem;">Straord. notturno:</span>
+        <strong style="color:var(--color-2);">{{ busta.ore_straordinario_notturno|floatformat:2 }}h</strong>
+      </div>
+      <div class="d-flex justify-content-between">
+        <strong style="font-size:.875rem;">Totale ore:</strong>
+        {% with tot=busta.ore_ordinarie|add:busta.ore_straordinario_feriale|add:busta.ore_straordinario_festivo|add:busta.ore_straordinario_notturno %}
+        <strong style="font-size:1.1rem;color:var(--color-1);">{{ tot|floatformat:2 }}h</strong>
+        {% endwith %}
+      </div>
+    </div>
+
+    <!-- Assenze -->
+    <div class="card card-body mb-3">
+      <h6 class="fw-semibold mb-3" style="font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--slate-500);">
+        <i class="bi bi-calendar-x me-1" style="color:var(--color-2);"></i>Assenze
+      </h6>
+      <div class="d-flex justify-content-between mb-2">
+        <span style="font-size:.875rem;">Ferie:</span>
+        <strong>{{ busta.ore_ferie|floatformat:2 }}h</strong>
+      </div>
+      <div class="d-flex justify-content-between mb-2">
+        <span style="font-size:.875rem;">ROL:</span>
+        <strong>{{ busta.ore_rol|floatformat:2 }}h</strong>
+      </div>
+      <div class="d-flex justify-content-between mb-2">
+        <span style="font-size:.875rem;">Permessi:</span>
+        <strong>{{ busta.ore_permessi|floatformat:2 }}h</strong>
+      </div>
+      <div class="d-flex justify-content-between">
+        <span style="font-size:.875rem;">Malattia:</span>
+        <strong>{{ busta.ore_malattia|floatformat:2 }}h</strong>
+      </div>
+    </div>
+
+    <!-- TFR -->
+    <div class="card card-body text-center" style="background:var(--color-1-light);border:1px solid var(--color-1-light);">
+      <small class="text-muted d-block mb-1">TFR Maturato (Art. 2120 C.C.)</small>
+      <h3 class="mb-0" style="color:var(--color-1-dark);">€ {{ busta.tfr_maturato|floatformat:2 }}</h3>
+    </div>
+  </div>
+
+  <!-- Colonna destra -->
+  <div class="col-lg-8">
+    <!-- Competenze -->
+    <div class="card card-body p-0 mb-3">
+      <div class="px-3 pt-3 pb-2" style="border-bottom:1px solid var(--slate-100);">
+        <h6 class="fw-semibold mb-0" style="font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--slate-500);">
+          <i class="bi bi-cash-stack me-1" style="color:var(--color-1);"></i>Competenze (Retribuzione Lorda)
+        </h6>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-sm mb-0">
+          <thead>
+            <tr>
+              <th>Descrizione</th>
+              <th class="text-center">Q.tà</th>
+              <th class="text-end">Imp. unit.</th>
+              <th class="text-end">Totale</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for voce in competenze %}
+            <tr>
+              <td>{{ voce.descrizione }}</td>
+              <td class="text-center">{% if voce.quantita %}{{ voce.quantita|floatformat:2 }}{% else %}—{% endif %}</td>
+              <td class="text-end">{% if voce.importo_unitario %}€ {{ voce.importo_unitario|floatformat:4 }}{% else %}—{% endif %}</td>
+              <td class="text-end"><strong>€ {{ voce.importo_totale|floatformat:2 }}</strong></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+          <tfoot style="background:var(--slate-50);">
+            <tr>
+              <th colspan="3" class="text-end">Imponibile Fiscale:</th>
+              <th class="text-end" style="color:var(--color-1);">€ {{ busta.imponibile_fiscale|floatformat:2 }}</th>
+            </tr>
+            <tr>
+              <th colspan="3" class="text-end">Imponibile Contributivo:</th>
+              <th class="text-end" style="color:var(--color-1);">€ {{ busta.imponibile_contributivo|floatformat:2 }}</th>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+
+    <!-- Trattenute -->
+    <div class="card card-body p-0 mb-3">
+      <div class="px-3 pt-3 pb-2" style="border-bottom:1px solid var(--slate-100);">
+        <h6 class="fw-semibold mb-0" style="font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--slate-500);">
+          <i class="bi bi-dash-circle me-1" style="color:var(--color-1);"></i>Trattenute
+        </h6>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-sm mb-0">
+          <thead>
+            <tr>
+              <th>Descrizione</th>
+              <th class="text-end">Importo</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for voce in trattenute %}
+            <tr>
+              <td>{{ voce.descrizione }}</td>
+              <td class="text-end" style="color:var(--color-1);"><strong>€ {{ voce.importo_totale|floatformat:2 }}</strong></td>
+            </tr>
+            {% endfor %}
+            {% if busta.altre_trattenute > 0 %}
+            <tr>
+              <td>Altre Trattenute</td>
+              <td class="text-end" style="color:var(--color-1);"><strong>€ {{ busta.altre_trattenute|floatformat:2 }}</strong></td>
+            </tr>
+            {% endif %}
+          </tbody>
+          <tfoot style="background:var(--slate-50);">
+            <tr>
+              {% with tot=busta.ritenute_previdenziali|add:busta.ritenute_irpef|add:busta.addizionale_regionale|add:busta.addizionale_comunale|add:busta.altre_trattenute %}
+              <th class="text-end">Totale Trattenute:</th>
+              <th class="text-end" style="color:var(--color-1);">€ {{ tot|floatformat:2 }}</th>
+              {% endwith %}
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+
+    <!-- Detrazioni -->
+    {% if detrazioni %}
+    <div class="card card-body p-0 mb-3">
+      <div class="px-3 pt-3 pb-2" style="border-bottom:1px solid var(--slate-100);">
+        <h6 class="fw-semibold mb-0" style="font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--slate-500);">
+          <i class="bi bi-plus-circle me-1" style="color:var(--color-2);"></i>Detrazioni
+        </h6>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-sm mb-0">
+          <thead>
+            <tr>
+              <th>Descrizione</th>
+              <th class="text-end">Importo</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for voce in detrazioni %}
+            <tr>
+              <td>{{ voce.descrizione }}</td>
+              <td class="text-end" style="color:var(--color-1);"><strong>€ {{ voce.importo_totale|floatformat:2 }}</strong></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+          <tfoot style="background:var(--slate-50);">
+            <tr>
+              <th class="text-end">Totale Detrazioni:</th>
+              <th class="text-end" style="color:var(--color-1);">€ {{ busta.detrazioni_fiscali|floatformat:2 }}</th>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Netto in Busta -->
+    <div class="card card-body" style="background:var(--color-1-light);border:2px solid var(--color-1);">
+      <div class="row align-items-center">
+        <div class="col-md-6">
+          <h4 class="mb-0" style="color:var(--color-1-dark);">
+            <i class="bi bi-wallet2 me-2"></i>Netto in Busta
+          </h4>
+        </div>
+        <div class="col-md-6 text-end">
+          <h2 class="mb-0" style="color:var(--color-1-dark);">€ {{ busta.netto_busta|floatformat:2 }}</h2>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="mt-4 d-flex justify-content-between">
+  <a href="{% url 'payroll:busta_paga_list' busta.user.pk %}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left me-1"></i>Torna alla Lista
+  </a>
+  <button class="btn btn-outline-secondary btn-sm" onclick="window.print()">
+    <i class="bi bi-printer me-1"></i>Stampa
+  </button>
+</div>
+
+<style>
+@media print {
+  #sidebar, #topbar, .btn, nav { display: none !important; }
+  .card { border: 1px solid #dee2e6 !important; box-shadow: none !important; }
+}
+</style>
+{% endblock %}

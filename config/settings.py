@@ -36,6 +36,7 @@ INSTALLED_APPS = [
     "users",
     "comunicazioni",
     "corrispondenza",
+    "payroll",
 ]
 
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
@@ -71,6 +72,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "core.context_processors.sidebar_nav",
             ],
         },
     },

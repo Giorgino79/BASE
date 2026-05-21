@@ -3,8 +3,6 @@
 
 {% block title %}Promemoria{% endblock %}
 
-{% block sidebar_nav %}{% endblock %}
-
 {% block content %}
 <div class="d-flex align-items-center justify-content-between mb-4">
   <div>
@@ -25,7 +23,7 @@
     Attivi
   </a>
   <a href="?stato=completato"
-     class="btn btn-sm {% if stato_filter == 'completato' %}btn-success{% else %}btn-outline-secondary{% endif %}">
+     class="btn btn-sm {% if stato_filter == 'completato' %}btn-primary{% else %}btn-outline-secondary{% endif %}">
     <i class="bi bi-check-circle me-1"></i>Completati
   </a>
   <a href="?stato="
@@ -55,20 +53,20 @@
         </span>
         <!-- Priorità badge -->
         {% if p.priorita == 'urgente' %}
-          <span class="badge" style="background:#fee2e2;color:#991b1b;font-size:.7rem;">Urgente</span>
+          <span class="badge" style="background:var(--slate-200);color:var(--slate-600);font-size:.7rem;">Urgente</span>
         {% elif p.priorita == 'alta' %}
-          <span class="badge" style="background:#fef3c7;color:#92400e;font-size:.7rem;">Alta</span>
+          <span class="badge" style="background:var(--color-4);color:var(--color-1-dark);font-size:.7rem;">Alta</span>
         {% elif p.priorita == 'media' %}
-          <span class="badge" style="background:#dbeafe;color:#1e40af;font-size:.7rem;">Media</span>
+          <span class="badge" style="background:var(--color-1-light);color:var(--color-1);font-size:.7rem;">Media</span>
         {% else %}
           <span class="badge" style="background:var(--slate-100);color:var(--slate-500);font-size:.7rem;">Bassa</span>
         {% endif %}
         {% if p.is_scaduto %}
-          <span class="badge" style="background:#fee2e2;color:#991b1b;font-size:.7rem;"><i class="bi bi-alarm me-1"></i>Scaduto</span>
+          <span class="badge" style="background:var(--slate-200);color:var(--slate-600);font-size:.7rem;"><i class="bi bi-alarm me-1"></i>Scaduto</span>
         {% endif %}
       </div>
       {% if p.descrizione %}
-      <p class="mb-0 mt-1" style="font-size:.8rem;color:var(--slate-500);">{{ p.descrizione|truncatechars:100 }}</p>
+      <p class="mb-0 mt-1" style="font-size:.8rem;color:var(--slate-500);white-space:pre-wrap;">{{ p.descrizione }}</p>
       {% endif %}
       <div class="d-flex gap-3 mt-1" style="font-size:.75rem;color:var(--slate-400);">
         {% if p.data_scadenza %}

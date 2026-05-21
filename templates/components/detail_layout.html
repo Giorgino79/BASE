@@ -1,0 +1,77 @@
+{% extends 'base.html' %}
+{# Layout base pagine detail: col-lg-8 + col-lg-4 sidebar (azioni, allegati, QR, metadata). #}
+{# Variabili view: object, content_type_id, object_id, edit_url, delete_url, list_url, extra_actions, page_title #}
+
+{% block content %}
+{% load allegati_tags %}
+
+{% block detail_breadcrumb %}{% endblock %}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h4 class="mb-0 fw-semibold" style="color:var(--slate-900);">
+    {% block detail_title %}{{ page_title|default:object }}{% endblock %}
+  </h4>
+  {% if list_url %}
+  <a href="{{ list_url }}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left me-1"></i>Lista
+  </a>
+  {% endif %}
+</div>
+
+<div class="row g-3">
+
+  <!-- Colonna principale (8/12) -->
+  <div class="col-lg-8">
+    {% block detail_content %}{% endblock %}
+  </div>
+
+  <!-- Sidebar destra (4/12) -->
+  <div class="col-lg-4">
+
+    {% block detail_extra_sidebar %}{% endblock %}
+
+    {% include 'commons_templates/components/sidebar_actions.html' %}
+
+    <!-- Metadata card -->
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-header bg-transparent fw-semibold small text-uppercase py-2"
+           style="color:var(--slate-500);">
+        <i class="bi bi-info-circle me-1"></i>Informazioni
+      </div>
+      <div class="card-body py-2 px-3 small">
+        {% if object.created_at %}
+        <div class="d-flex justify-content-between py-1 border-bottom">
+          <span style="color:var(--slate-500);">Creato</span>
+          <span style="color:var(--slate-700);">{{ object.created_at|date:"d/m/Y H:i" }}</span>
+        </div>
+        {% endif %}
+        {% if object.updated_at %}
+        <div class="d-flex justify-content-between py-1 border-bottom">
+          <span style="color:var(--slate-500);">Modificato</span>
+          <span style="color:var(--slate-700);">{{ object.updated_at|date:"d/m/Y H:i" }}</span>
+        </div>
+        {% endif %}
+        {% if object.created_by %}
+        <div class="d-flex justify-content-between py-1 border-bottom">
+          <span style="color:var(--slate-500);">Autore</span>
+          <span style="color:var(--slate-700);">{{ object.created_by.get_full_name|default:object.created_by.username }}</span>
+        </div>
+        {% endif %}
+        {% block detail_meta %}{% endblock %}
+        <div class="d-flex justify-content-between py-1">
+          <span style="color:var(--slate-500);">ID</span>
+          <span class="font-monospace" style="color:var(--slate-600);">{{ object.pk }}</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Modali allegati -->
+{% if object|has_allegati_mixin or show_allegati %}
+{% include 'commons_templates/components/allegato_upload_modal.html' %}
+{% include 'commons_templates/components/allegati_gestione_modal.html' %}
+{% endif %}
+
+{% endblock %}

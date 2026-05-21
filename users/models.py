@@ -334,6 +334,9 @@ class GiornataLavorativa(TimestampMixin):
     def __str__(self):
         return f"{self.user.get_full_name()} - {self.data} ({self.ore_totali}h)"
 
+    ORE_ORDINARIE_GIORNO = 8      # soglia giornaliera D.Lgs. 66/2003
+    ORE_ORDINARIE_SETTIMANA = 40  # soglia settimanale D.Lgs. 66/2003
+
     def calcola_ore(self):
         from datetime import datetime, timedelta
 
@@ -349,12 +352,44 @@ class GiornataLavorativa(TimestampMixin):
                     dt_uscita += timedelta(days=1)
                 ore = (dt_uscita - dt_ingresso).total_seconds() / 3600
                 ore_per_turno[turno] = round(ore, 2)
+
         self.ore_mattina = ore_per_turno["mattina"]
         self.ore_pomeriggio = ore_per_turno["pomeriggio"]
         self.ore_notte = ore_per_turno["notte"]
         self.ore_totali = sum(ore_per_turno.values())
-        self.ore_straordinarie = max(0, self.ore_totali - 8)
+        # Straordinario giornaliero: ore oltre la soglia di 8h (art. 3 D.Lgs. 66/2003)
+        self.ore_straordinarie = max(0, float(self.ore_totali) - self.ORE_ORDINARIE_GIORNO)
         self.save()
+
+    @property
+    def ore_ordinarie(self):
+        """Ore rientranti nell'orario normale (max 8h/giorno)."""
+        return min(float(self.ore_totali), self.ORE_ORDINARIE_GIORNO)
+
+    @classmethod
+    def calcola_straordinari_settimanali(cls, user, anno, settimana_iso):
+        """
+        Straordinario settimanale: ore > 40h/settimana che non sono già
+        conteggiate come straordinario giornaliero.
+        """
+        import datetime
+        lun = datetime.date.fromisocalendar(anno, settimana_iso, 1)
+        dom = datetime.date.fromisocalendar(anno, settimana_iso, 7)
+        giornate = cls.objects.filter(user=user, data__range=(lun, dom))
+
+        ore_settimana = sum(float(g.ore_totali) for g in giornate)
+        ore_straord_giorn = sum(float(g.ore_straordinarie) for g in giornate)
+        ore_ordinarie_sett = ore_settimana - ore_straord_giorn
+
+        # Straordinario settimanale = ore ordinarie oltre le 40h settimanali
+        strao_sett = max(0, ore_ordinarie_sett - cls.ORE_ORDINARIE_SETTIMANA)
+        return {
+            "ore_settimana": round(ore_settimana, 2),
+            "ore_ordinarie": round(min(ore_ordinarie_sett, cls.ORE_ORDINARIE_SETTIMANA), 2),
+            "straordinario_giornaliero": round(ore_straord_giorn, 2),
+            "straordinario_settimanale": round(strao_sett, 2),
+            "straordinario_totale": round(ore_straord_giorn + strao_sett, 2),
+        }
 
 
 # ============================================================================

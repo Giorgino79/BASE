@@ -1,74 +1,220 @@
 {% extends "base.html" %}
-{% load crispy_forms_tags %}
 
-{% block title %}Permessi — {{ profile_user.get_full_name }}{% endblock %}
+{% block title %}Permessi — {{ user_obj.get_full_name }}{% endblock %}
 
-{% block sidebar_nav %}
-  <li class="nav-section-title">Principale</li>
-  <li><a href="{% url 'dashboard' %}"><i class="bi bi-speedometer2"></i><span>Dashboard</span></a></li>
-  <li><a href="{% url 'users:user_list' %}" class="active"><i class="bi bi-people"></i><span>Dipendenti</span></a></li>
-  <li class="nav-section-title">Amministrazione</li>
-  <li><a href="{% url 'core:amministrazione_dashboard' %}"><i class="bi bi-gear"></i><span>Impostazioni</span></a></li>
+{% block extra_css %}
+<style>
+  .permission-card { border-left: 3px solid var(--color-1); }
+  .crud-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px,1fr)); gap:.5rem; }
+  .perm-box {
+    padding:.6rem .75rem; border:2px solid var(--slate-200); border-radius:.375rem;
+    cursor:pointer; transition:border-color .15s;
+  }
+  .perm-box:has(input:checked) { border-color:var(--color-1); background:var(--color-1-light); }
+  .perm-box:hover { border-color:var(--color-1); }
+  .category-bar {
+    background:var(--color-1); color:#fff; padding:.75rem 1rem;
+    border-radius:.5rem; margin-bottom:1.25rem;
+  }
+  .select-all-model { cursor:pointer; width:16px; height:16px; }
+</style>
 {% endblock %}
 
 {% block content %}
 <nav class="mb-3" style="font-size:.8rem;">
-  <a href="{% url 'users:user_list' %}" style="color:var(--indigo-600);text-decoration:none;">Dipendenti</a>
+  <a href="{% url 'users:user_list' %}" style="color:var(--color-1);text-decoration:none;">Dipendenti</a>
   <i class="bi bi-chevron-right mx-1" style="color:var(--slate-400);"></i>
-  <a href="{% url 'users:user_detail' profile_user.pk %}" style="color:var(--indigo-600);text-decoration:none;">
-    {{ profile_user.get_full_name }}
+  <a href="{% url 'users:user_detail' user_obj.pk %}" style="color:var(--color-1);text-decoration:none;">
+    {{ user_obj.get_full_name|default:user_obj.username }}
   </a>
   <i class="bi bi-chevron-right mx-1" style="color:var(--slate-400);"></i>
-  <span style="color:var(--slate-500);">Permessi</span>
+  <span style="color:var(--slate-500);">Gestione Permessi</span>
 </nav>
 
-<div class="row">
-  <div class="col-lg-8">
-    <div class="card">
-      <div class="card-header" style="background:var(--slate-50);">
-        <h5 class="fw-semibold mb-0" style="color:var(--slate-900);">
-          <i class="bi bi-shield-lock me-2" style="color:var(--indigo-600);"></i>
-          Permessi — {{ profile_user.get_full_name }}
-        </h5>
+<div class="d-flex justify-content-between align-items-start mb-4">
+  <div>
+    <h4 class="fw-bold mb-1" style="color:var(--slate-900);">
+      <i class="bi bi-shield-lock me-2" style="color:var(--color-1);"></i>Gestione Permessi
+    </h4>
+    <p class="text-muted mb-0" style="font-size:.875rem;">
+      Configura i permessi CRUD per <strong>{{ user_obj.get_full_name|default:user_obj.username }}</strong>
+      {% if user_obj.template_permessi_applicato %}
+        — ultimo template: <em>{{ user_obj.template_permessi_applicato.nome }}</em>
+      {% endif %}
+    </p>
+  </div>
+  <a href="{% url 'users:user_detail' user_obj.pk %}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left me-1"></i>Torna al profilo
+  </a>
+</div>
+
+<!-- Applica Template Rapido -->
+{% if perms.users.gestione_completa_users and available_templates %}
+<div class="card mb-4 border-0 shadow-sm">
+  <div class="card-header py-2" style="background:var(--color-1);color:#fff;">
+    <h6 class="mb-0"><i class="bi bi-lightning-fill me-2"></i>Applica Template Rapido</h6>
+  </div>
+  <div class="card-body">
+    <form method="post" action="{% url 'users:user_apply_template' user_obj.pk %}">
+      {% csrf_token %}
+      <div class="row g-3 align-items-end">
+        <div class="col-md-5">
+          <label class="form-label fw-semibold small">Seleziona Template</label>
+          <select name="template_id" id="template-select" class="form-select form-select-sm">
+            <option value="">-- Seleziona --</option>
+            {% for t in available_templates %}
+            <option value="{{ t.pk }}" data-desc="{{ t.descrizione }}" data-count="{{ t.get_permessi_count }}">
+              {{ t.nome }} ({{ t.get_permessi_count }} permessi)
+            </option>
+            {% endfor %}
+          </select>
+          <div class="form-text text-muted" id="template-desc"></div>
+        </div>
+        <div class="col-md-4">
+          <div class="form-check">
+            <input type="checkbox" name="sovrascrivi" id="sovrascrivi" value="1" class="form-check-input">
+            <label for="sovrascrivi" class="form-check-label small">
+              Rimuovi permessi esistenti prima di applicare
+            </label>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <button type="submit" class="btn btn-sm w-100" style="background:var(--color-1);color:#fff;"
+                  id="apply-template-btn" disabled>
+            <i class="bi bi-lightning-fill me-1"></i>Applica Template
+          </button>
+        </div>
       </div>
-      <div class="card-body">
-        <div class="alert mb-4 d-flex gap-2" style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;">
-          <i class="bi bi-info-circle-fill" style="color:#3b82f6;flex-shrink:0;margin-top:.1rem;"></i>
-          <div style="font-size:.8rem;color:#1e40af;">
-            Puoi applicare un template predefinito o impostare i permessi manualmente.
-            I permessi si accumulano: il template aggiunge i permessi definiti senza rimuovere quelli esistenti.
-          </div>
-        </div>
+    </form>
+  </div>
+</div>
+{% endif %}
 
-        {% if template_form %}
-        <div class="mb-4 p-3 rounded" style="background:var(--slate-50);border:1px solid var(--slate-100);">
-          <h6 class="fw-semibold mb-3" style="font-size:.8rem;color:var(--slate-600);text-transform:uppercase;letter-spacing:.06em;">
-            Applica template permessi
-          </h6>
-          <form method="post" action="{% url 'users:user_apply_template' profile_user.pk %}" novalidate>
-            {% csrf_token %}
-            <div class="d-flex gap-2 align-items-end">
-              <div class="flex-grow-1">{{ template_form.template_permessi|as_crispy_field }}</div>
-              <button type="submit" class="btn btn-outline-primary btn-sm mb-3">
-                <i class="bi bi-magic me-1"></i>Applica
-              </button>
+<!-- Info -->
+<div class="alert alert-info d-flex gap-2 mb-4 py-2" style="font-size:.8rem;">
+  <i class="bi bi-info-circle-fill flex-shrink-0 mt-1"></i>
+  <div>
+    Seleziona i permessi da assegnare. Ogni modello ha 4 azioni:
+    <span class="text-success fw-semibold">Crea</span>,
+    <span class="text-info fw-semibold">Visualizza</span>,
+    <span class="text-warning fw-semibold">Modifica</span>,
+    <span class="text-danger fw-semibold">Elimina</span>.
+    I permessi si <strong>sommano</strong> a quelli già presenti.
+  </div>
+</div>
+
+<!-- Form permessi -->
+<form method="post" id="permissions-form">
+  {% csrf_token %}
+
+  {% if form.non_field_errors %}
+  <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+  {% endif %}
+
+  {% for category, cat_data in fields_by_category.items %}
+  <div class="category-bar">
+    <h6 class="mb-0 fw-semibold">{{ category }}</h6>
+  </div>
+
+  <div class="row g-3 mb-5">
+    {% for model_name, model_data in cat_data.models.items %}
+    <div class="col-lg-6 col-xl-4">
+      <div class="card permission-card h-100 border shadow-sm">
+        <div class="card-header bg-light d-flex justify-content-between align-items-center py-2">
+          <div class="fw-semibold" style="font-size:.85rem;">
+            <i class="{{ model_data.info.icon }} me-1" style="color:var(--color-1);"></i>
+            {{ model_name }}
+          </div>
+          <button type="button" class="btn btn-outline-primary btn-sm py-0 px-2"
+                  style="font-size:.75rem;"
+                  onclick="toggleAll(this, '{{ model_data.info.app_label }}_{{ model_data.info.model_name }}')">
+            <i class="bi bi-check-all me-1"></i>Tutti
+          </button>
+        </div>
+        <div class="card-body py-2">
+          <div class="crud-grid" data-model="{{ model_data.info.app_label }}_{{ model_data.info.model_name }}">
+            {% for fd in model_data.fields %}
+            <div class="perm-box">
+              <div class="form-check mb-0">
+                {{ fd.field }}
+                <label class="form-check-label" for="id_{{ fd.name }}" style="font-size:.8rem;cursor:pointer;">
+                  {% if fd.permission_info.action == 'add' %}
+                    <i class="bi bi-plus-circle text-success me-1"></i>Crea
+                  {% elif fd.permission_info.action == 'view' %}
+                    <i class="bi bi-eye text-info me-1"></i>Visualizza
+                  {% elif fd.permission_info.action == 'change' %}
+                    <i class="bi bi-pencil text-warning me-1"></i>Modifica
+                  {% elif fd.permission_info.action == 'delete' %}
+                    <i class="bi bi-trash text-danger me-1"></i>Elimina
+                  {% endif %}
+                </label>
+              </div>
             </div>
-          </form>
-        </div>
-        {% endif %}
-
-        <form method="post" novalidate>
-          {% csrf_token %}
-          {% crispy form %}
-          <div class="d-flex gap-2 justify-content-end pt-3 mt-2" style="border-top:1px solid var(--slate-100);">
-            <a href="{% url 'users:user_detail' profile_user.pk %}" class="btn btn-outline-secondary">Annulla</a>
-            <button type="submit" class="btn btn-primary">
-              <i class="bi bi-check-lg me-1"></i>Salva permessi
-            </button>
+            {% endfor %}
           </div>
-        </form>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% empty %}
+  <div class="alert alert-warning">
+    <i class="bi bi-exclamation-triangle me-2"></i>Nessun modello registrato nel registry.
+  </div>
+  {% endfor %}
+
+  <!-- Sticky footer -->
+  <div class="card border-0 shadow" style="position:sticky;bottom:1rem;z-index:100;">
+    <div class="card-body py-2">
+      <div class="d-flex justify-content-between align-items-center">
+        <a href="{% url 'users:user_detail' user_obj.pk %}" class="btn btn-outline-secondary btn-sm">
+          <i class="bi bi-x-circle me-1"></i>Annulla
+        </a>
+        <div class="d-flex gap-2">
+          <button type="button" class="btn btn-outline-primary btn-sm" onclick="deselezionaTutto()">
+            <i class="bi bi-x-square me-1"></i>Deseleziona tutto
+          </button>
+          <button type="submit" class="btn btn-primary btn-sm">
+            <i class="bi bi-check-circle me-1"></i>Salva Permessi
+          </button>
+        </div>
       </div>
     </div>
   </div>
-</div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleAll(btn, modelKey) {
+  const grid = document.querySelector(`[data-model="${modelKey}"]`);
+  const cbs  = grid.querySelectorAll('input[type="checkbox"]');
+  const allChecked = [...cbs].every(c => c.checked);
+  cbs.forEach(c => c.checked = !allChecked);
+  btn.innerHTML = allChecked
+    ? '<i class="bi bi-check-all me-1"></i>Tutti'
+    : '<i class="bi bi-x-square me-1"></i>Nessuno';
+}
+
+function deselezionaTutto() {
+  if (!confirm('Deselezionare tutti i permessi?')) return;
+  document.querySelectorAll('#permissions-form input[type="checkbox"]').forEach(c => c.checked = false);
+  document.querySelectorAll('[data-model]').forEach(grid => {
+    const btn = grid.closest('.card').querySelector('button[onclick^="toggleAll"]');
+    if (btn) btn.innerHTML = '<i class="bi bi-check-all me-1"></i>Tutti';
+  });
+}
+
+// Template rapido
+const sel = document.getElementById('template-select');
+if (sel) {
+  sel.addEventListener('change', function () {
+    const btn  = document.getElementById('apply-template-btn');
+    const desc = document.getElementById('template-desc');
+    const opt  = this.options[this.selectedIndex];
+    btn.disabled = !this.value;
+    desc.textContent = this.value ? (opt.dataset.desc || '') : '';
+  });
+}
+</script>
 {% endblock %}

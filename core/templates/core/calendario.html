@@ -10,8 +10,8 @@
   .fc-toolbar-title { font-size: 1.1rem; font-weight: 600; color: var(--slate-900); }
   .fc-button { font-size: .8rem !important; padding: .3rem .65rem !important; }
   .fc-button-primary { background: var(--indigo-600) !important; border-color: var(--indigo-600) !important; }
-  .fc-button-primary:hover { background: #4338ca !important; border-color: #4338ca !important; }
-  .fc-button-primary:not(.fc-button-active):hover { background: #4338ca !important; }
+  .fc-button-primary:hover { background: var(--color-1-dark) !important; border-color: var(--color-1-dark) !important; }
+  .fc-button-primary:not(.fc-button-active):hover { background: var(--color-1-dark) !important; }
   .fc-button-active { background: #312e81 !important; border-color: #312e81 !important; }
   .fc-event { cursor: pointer; border: none !important; border-radius: 4px; font-size: .75rem; }
   .fc-event:hover { opacity: .85; }
@@ -41,24 +41,6 @@
     max-width: 260px; pointer-events: none; font-size: .8rem;
   }
 </style>
-{% endblock %}
-
-{% block sidebar_nav %}
-  <li class="nav-section-title">Principale</li>
-  <li><a href="{% url 'dashboard' %}"><i class="bi bi-speedometer2"></i><span>Dashboard</span></a></li>
-  <li><a href="{% url 'users:user_list' %}"><i class="bi bi-people"></i><span>Dipendenti</span></a></li>
-  <li><a href="{% url 'users:timbratura_list' %}"><i class="bi bi-clock-history"></i><span>Timbrature</span></a></li>
-  <li class="nav-section-title">Presenze</li>
-  <li><a href="{% url 'users:richieste_ferie_list' %}"><i class="bi bi-calendar-check"></i><span>Ferie e Permessi</span></a></li>
-  {% if user.is_staff %}
-  <li><a href="{% url 'users:richieste_ferie_admin_list' %}"><i class="bi bi-clipboard2-check"></i><span>Gestione Richieste</span></a></li>
-  {% endif %}
-  <li><a href="{% url 'core:calendario_aziendale' %}" class="active"><i class="bi bi-calendar3"></i><span>Calendario</span></a></li>
-  <li><a href="{% url 'core:calendario_personale' %}"><i class="bi bi-calendar-heart"></i><span>Il mio calendario</span></a></li>
-  {% if user.is_staff %}
-  <li class="nav-section-title">Amministrazione</li>
-  <li><a href="{% url 'core:amministrazione_dashboard' %}"><i class="bi bi-gear"></i><span>Impostazioni</span></a></li>
-  {% endif %}
 {% endblock %}
 
 {% block content %}

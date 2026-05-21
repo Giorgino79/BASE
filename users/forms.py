@@ -11,8 +11,15 @@ from django.contrib.auth.forms import (
 from django.core.exceptions import ValidationError
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
+from crispy_forms.helper import FormHelper
 from .models import User, Timbratura, RichiestaFerie, RichiestaPermesso, LetteraRichiamo, EventoPersonale
 from datetime import datetime, date, time
+
+
+def _no_form_tag():
+    h = FormHelper()
+    h.form_tag = False
+    return h
 
 
 class LoginForm(AuthenticationForm):
@@ -144,13 +151,13 @@ class UserCreateForm(UserCreationForm):
             "cap",
             "provincia",
             "data_assunzione",
-            "giorni_ferie_anno",
-            "ore_permesso_residue",
+            "data_cessazione",
             "foto_profilo",
             "foto_carta_identita",
             "foto_codice_fiscale",
             "foto_patente",
             "note",
+            "note_interne",
         ]
         widgets = {
             "username": forms.TextInput(attrs={"class": "form-control"}),
@@ -191,15 +198,15 @@ class UserCreateForm(UserCreationForm):
             "data_assunzione": forms.DateInput(
                 attrs={"class": "form-control", "type": "date"}
             ),
-            "giorni_ferie_anno": forms.NumberInput(attrs={"class": "form-control"}),
-            "ore_permesso_residue": forms.NumberInput(
-                attrs={"class": "form-control", "step": "0.25"}
+            "data_cessazione": forms.DateInput(
+                attrs={"class": "form-control", "type": "date"}
             ),
             "foto_profilo": forms.FileInput(attrs={"class": "form-control"}),
             "foto_carta_identita": forms.FileInput(attrs={"class": "form-control"}),
             "foto_codice_fiscale": forms.FileInput(attrs={"class": "form-control"}),
             "foto_patente": forms.FileInput(attrs={"class": "form-control"}),
             "note": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
+            "note_interne": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
         }
 
     def save(self, commit=True):
@@ -331,9 +338,6 @@ class UserUpdateForm(UserChangeForm):
             "provincia",
             "data_assunzione",
             "data_cessazione",
-            "giorni_ferie_anno",
-            "giorni_ferie_residui",
-            "ore_permesso_residue",
             "foto_profilo",
             "foto_carta_identita",
             "foto_codice_fiscale",
@@ -383,11 +387,6 @@ class UserUpdateForm(UserChangeForm):
             "data_cessazione": forms.DateInput(
                 attrs={"class": "form-control", "type": "date"}
             ),
-            "giorni_ferie_anno": forms.NumberInput(attrs={"class": "form-control"}),
-            "giorni_ferie_residui": forms.NumberInput(attrs={"class": "form-control"}),
-            "ore_permesso_residue": forms.NumberInput(
-                attrs={"class": "form-control", "step": "0.25"}
-            ),
             "foto_profilo": forms.FileInput(attrs={"class": "form-control"}),
             "foto_carta_identita": forms.FileInput(attrs={"class": "form-control"}),
             "foto_codice_fiscale": forms.FileInput(attrs={"class": "form-control"}),
@@ -410,6 +409,10 @@ class UserProfiloForm(forms.ModelForm):
         widgets = {
             "foto_profilo": forms.FileInput(attrs={"class": "form-control"}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.helper = _no_form_tag()
 
 
 # ============================================================================
@@ -435,6 +438,10 @@ class TimbraturaForm(forms.ModelForm):
             "turno": forms.Select(attrs={"class": "form-select"}),
             "note": forms.Textarea(attrs={"class": "form-control", "rows": 2}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.helper = _no_form_tag()
 
 
 class TimbraturaQuickForm(forms.Form):
@@ -508,6 +515,10 @@ class RichiestaFerieForm(forms.ModelForm):
 
         return cleaned_data
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.helper = _no_form_tag()
+
     def save(self, commit=True):
         """Salva con calcolo giorni e validazione model"""
         instance = super().save(commit=False)
@@ -563,6 +574,10 @@ class RichiestaFerieAdminForm(forms.ModelForm):
 
         return cleaned_data
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.helper = _no_form_tag()
+
     def save(self, commit=True):
         instance = super().save(commit=False)
         instance.giorni_richiesti = self.cleaned_data.get("giorni_richiesti", 0)
@@ -575,55 +590,56 @@ class RichiestaFerieAdminForm(forms.ModelForm):
 
 
 class RichiestaPermessoForm(forms.ModelForm):
-    """
-    Form richiesta permesso orario.
-
-    Features:
-    - Calcolo automatico ore
-    - Validazione ore disponibili
-    """
+    giornata_intera = forms.BooleanField(
+        required=False,
+        label="Giornata intera (8h)",
+        widget=forms.CheckboxInput(attrs={"class": "form-check-input", "id": "id_giornata_intera"}),
+    )
 
     class Meta:
         model = RichiestaPermesso
         fields = ["data", "ora_inizio", "ora_fine", "motivo"]
         widgets = {
             "data": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
-            "ora_inizio": forms.TimeInput(
-                attrs={"class": "form-control", "type": "time"}
-            ),
-            "ora_fine": forms.TimeInput(
-                attrs={"class": "form-control", "type": "time"}
-            ),
+            "ora_inizio": forms.TimeInput(attrs={"class": "form-control", "type": "time"}),
+            "ora_fine": forms.TimeInput(attrs={"class": "form-control", "type": "time"}),
             "motivo": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
         }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["ora_inizio"].required = False
+        self.fields["ora_fine"].required = False
+        self.helper = _no_form_tag()
+
     def clean(self):
-        """Valida range orario"""
         cleaned_data = super().clean()
+        giornata_intera = cleaned_data.get("giornata_intera")
         ora_inizio = cleaned_data.get("ora_inizio")
         ora_fine = cleaned_data.get("ora_fine")
 
-        if ora_inizio and ora_fine:
+        if giornata_intera:
+            from datetime import time as t
+            cleaned_data["ora_inizio"] = t(8, 0)
+            cleaned_data["ora_fine"] = t(16, 0)
+            cleaned_data["ore_richieste"] = 8.0
+        else:
+            if not ora_inizio or not ora_fine:
+                raise ValidationError("Inserisci ora inizio e ora fine, oppure seleziona 'Giornata intera'.")
             if ora_fine <= ora_inizio:
-                raise ValidationError("Ora fine deve essere successiva a ora inizio")
-
-            # Calcola ore
-            delta = datetime.combine(date.today(), ora_fine) - datetime.combine(
-                date.today(), ora_inizio
-            )
-            ore = delta.total_seconds() / 3600
-            cleaned_data["ore_richieste"] = round(ore, 2)
+                raise ValidationError("L'ora fine deve essere successiva all'ora di inizio.")
+            delta = datetime.combine(date.today(), ora_fine) - datetime.combine(date.today(), ora_inizio)
+            cleaned_data["ore_richieste"] = round(delta.total_seconds() / 3600, 2)
 
         return cleaned_data
 
     def save(self, commit=True):
-        """Salva con calcolo ore"""
         instance = super().save(commit=False)
         instance.ore_richieste = self.cleaned_data["ore_richieste"]
-
+        instance.ora_inizio = self.cleaned_data["ora_inizio"]
+        instance.ora_fine = self.cleaned_data["ora_fine"]
         if commit:
             instance.save()
-
         return instance
 
 
@@ -646,6 +662,10 @@ class ApprovaRifiutaForm(forms.Form):
         widget=forms.Textarea(attrs={"class": "form-control", "rows": 3}),
         help_text="Obbligatorio in caso di rifiuto",
     )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.helper = _no_form_tag()
 
     def clean(self):
         """Valida motivazione obbligatoria per rifiuto"""
@@ -685,8 +705,8 @@ class LetteraRichiamoForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Filtra solo users attivi
         self.fields["user"].queryset = User.objects.filter(stato="attivo")
+        self.helper = _no_form_tag()
 
 
 # ============================================================================

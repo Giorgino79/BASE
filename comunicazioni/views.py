@@ -91,28 +91,26 @@ def promemoria_toggle(request, pk):
 
 # ── CHAT ─────────────────────────────────────────────────────────────────────
 
+def _conv_sidebar_data(user):
+    qs = ChatConversazione.objects.filter(
+        partecipanti=user
+    ).prefetch_related('partecipanti').order_by('-last_message_at', '-created_at')
+    result = []
+    for conv in qs:
+        result.append({
+            'conv': conv,
+            'title': conv.get_title_for(user),
+            'unread': conv.unread_count_for(user),
+            'ultimo': conv.messaggi.select_related('mittente').last(),
+        })
+    return result
+
+
 @login_required
 def chat_list(request):
-    conversazioni = ChatConversazione.objects.filter(
-        partecipanti=request.user
-    ).prefetch_related('partecipanti').order_by('-last_message_at', '-created_at')
-
-    conv_data = []
-    total_unread = 0
-    for conv in conversazioni:
-        unread = conv.unread_count_for(request.user)
-        total_unread += unread
-        ultimo = conv.messaggi.last()
-        conv_data.append({
-            'conv': conv,
-            'title': conv.get_title_for(request.user),
-            'unread': unread,
-            'ultimo': ultimo,
-        })
-
-    return render(request, 'comunicazioni/chat_list.html', {
-        'conversazioni': conv_data,
-        'total_unread': total_unread,
+    return render(request, 'comunicazioni/chat.html', {
+        'conversazioni': _conv_sidebar_data(request.user),
+        'selected_conv': None,
     })
 
 
@@ -136,7 +134,7 @@ def chat_detail(request, pk):
                     'id': msg.pk,
                     'contenuto': msg.contenuto,
                     'mittente': msg.mittente.get_full_name() or msg.mittente.username,
-                    'created_at': msg.created_at.strftime('%H:%M'),
+                    'created_at': msg.created_at.strftime('%d/%m %H:%M'),
                     'mine': True,
                 })
         return redirect('comunicazioni:chat_detail', pk=pk)
@@ -145,9 +143,10 @@ def chat_detail(request, pk):
     for msg in messaggi.exclude(mittente=request.user):
         msg.letto_da.add(request.user)
 
-    return render(request, 'comunicazioni/chat_detail.html', {
-        'conv': conv,
-        'title': conv.get_title_for(request.user),
+    return render(request, 'comunicazioni/chat.html', {
+        'conversazioni': _conv_sidebar_data(request.user),
+        'selected_conv': conv,
+        'conv_title': conv.get_title_for(request.user),
         'messaggi': messaggi,
     })
 

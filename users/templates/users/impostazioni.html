@@ -2,13 +2,6 @@
 
 {% block title %}Impostazioni{% endblock %}
 
-{% block sidebar_nav %}
-  <li class="nav-section-title">Account</li>
-  <li><a href="{% url 'users:profilo' %}"><i class="bi bi-person-circle"></i><span>Il mio profilo</span></a></li>
-  <li><a href="{% url 'users:impostazioni' %}" class="active"><i class="bi bi-sliders"></i><span>Impostazioni</span></a></li>
-  <li><a href="{% url 'users:change_password' %}"><i class="bi bi-key"></i><span>Cambia password</span></a></li>
-{% endblock %}
-
 {% block content %}
 <h1 class="h4 fw-bold mb-4" style="color:var(--slate-900);">Impostazioni account</h1>
 

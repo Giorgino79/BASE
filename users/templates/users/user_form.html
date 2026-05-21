@@ -1,20 +1,14 @@
 {% extends "base.html" %}
 {% load crispy_forms_tags %}
 
-{% block title %}{% if object %}Modifica {{ object.get_full_name }}{% else %}Nuovo dipendente{% endif %}{% endblock %}
-
-{% block sidebar_nav %}
-  <li class="nav-section-title">Principale</li>
-  <li><a href="{% url 'dashboard' %}"><i class="bi bi-speedometer2"></i><span>Dashboard</span></a></li>
-  <li><a href="{% url 'users:user_list' %}" class="active"><i class="bi bi-people"></i><span>Dipendenti</span></a></li>
-{% endblock %}
+{% block title %}{% if user_obj %}Modifica {{ user_obj.get_full_name }}{% else %}Nuovo dipendente{% endif %}{% endblock %}
 
 {% block content %}
 <nav class="mb-3" style="font-size:.8rem;">
   <a href="{% url 'users:user_list' %}" style="color:var(--indigo-600);text-decoration:none;">Dipendenti</a>
   <i class="bi bi-chevron-right mx-1" style="color:var(--slate-400);"></i>
-  {% if object %}
-  <a href="{% url 'users:user_detail' object.pk %}" style="color:var(--indigo-600);text-decoration:none;">{{ object.get_full_name|default:object.username }}</a>
+  {% if user_obj %}
+  <a href="{% url 'users:user_detail' user_obj.pk %}" style="color:var(--indigo-600);text-decoration:none;">{{ user_obj.get_full_name|default:user_obj.username }}</a>
   <i class="bi bi-chevron-right mx-1" style="color:var(--slate-400);"></i>
   <span style="color:var(--slate-500);">Modifica</span>
   {% else %}
@@ -23,11 +17,11 @@
 </nav>
 
 <div class="row justify-content-center">
-  <div class="col-xl-9">
+  <div class="col-xl-10">
     <div class="card">
       <div class="card-header" style="background:var(--slate-50);border-bottom:1px solid var(--slate-100);">
         <h5 class="fw-semibold mb-0" style="color:var(--slate-900);">
-          {% if object %}
+          {% if user_obj %}
             <i class="bi bi-pencil me-2" style="color:var(--indigo-600);"></i>Modifica dipendente
           {% else %}
             <i class="bi bi-person-plus me-2" style="color:var(--indigo-600);"></i>Nuovo dipendente
@@ -47,7 +41,7 @@
             <h6 class="section-label">Credenziali di accesso</h6>
             <div class="row g-3">
               <div class="col-md-4">{{ form.username|as_crispy_field }}</div>
-              {% if not object %}
+              {% if not user_obj %}
               <div class="col-md-4">{{ form.password1|as_crispy_field }}</div>
               <div class="col-md-4">{{ form.password2|as_crispy_field }}</div>
               {% endif %}
@@ -65,6 +59,18 @@
               <div class="col-md-4">{{ form.data_nascita|as_crispy_field }}</div>
               <div class="col-md-4">{{ form.luogo_nascita|as_crispy_field }}</div>
               <div class="col-md-4">{{ form.telefono|as_crispy_field }}</div>
+              <div class="col-md-4">{{ form.telefono_emergenza|as_crispy_field }}</div>
+            </div>
+          </div>
+
+          <!-- Residenza -->
+          <div class="mb-4">
+            <h6 class="section-label">Residenza</h6>
+            <div class="row g-3">
+              <div class="col-md-6">{{ form.indirizzo|as_crispy_field }}</div>
+              <div class="col-md-3">{{ form.citta|as_crispy_field }}</div>
+              <div class="col-md-2">{{ form.cap|as_crispy_field }}</div>
+              <div class="col-md-1">{{ form.provincia|as_crispy_field }}</div>
             </div>
           </div>
 
@@ -76,15 +82,27 @@
               <div class="col-md-4">{{ form.reparto|as_crispy_field }}</div>
               <div class="col-md-4">{{ form.stato|as_crispy_field }}</div>
               <div class="col-md-4">{{ form.data_assunzione|as_crispy_field }}</div>
-              {% if form.giorni_ferie_anno %}
-              <div class="col-md-4">{{ form.giorni_ferie_anno|as_crispy_field }}</div>
-              {% endif %}
-              {% if form.ore_permesso_residue %}
-              <div class="col-md-4">{{ form.ore_permesso_residue|as_crispy_field }}</div>
-              {% endif %}
-              {% if form.template_permessi %}
+              <div class="col-md-4">{{ form.data_cessazione|as_crispy_field }}</div>
+              <div class="col-md-4">{{ form.posizione_inps|as_crispy_field }}</div>
+              <div class="col-md-4">{{ form.posizione_inail|as_crispy_field }}</div>
+              {% if not user_obj %}
               <div class="col-md-6">{{ form.template_permessi|as_crispy_field }}</div>
               {% endif %}
+            </div>
+          </div>
+
+          <!-- Documenti -->
+          <div class="mb-4">
+            <h6 class="section-label">Documenti</h6>
+            <div class="row g-3">
+              <div class="col-md-4">{{ form.carta_d_identita|as_crispy_field }}</div>
+              <div class="col-md-4">{{ form.data_scadenza_ci|as_crispy_field }}</div>
+              <div class="col-md-4">{{ form.foto_carta_identita|as_crispy_field }}</div>
+              <div class="col-md-4">{{ form.patente_di_guida|as_crispy_field }}</div>
+              <div class="col-md-4">{{ form.data_scadenza_patente|as_crispy_field }}</div>
+              <div class="col-md-4">{{ form.categorie_patente|as_crispy_field }}</div>
+              <div class="col-md-4">{{ form.foto_patente|as_crispy_field }}</div>
+              <div class="col-md-4">{{ form.foto_codice_fiscale|as_crispy_field }}</div>
             </div>
           </div>
 
@@ -92,24 +110,18 @@
           <div class="mb-4">
             <h6 class="section-label">Foto e note</h6>
             <div class="row g-3">
-              {% if form.foto_profilo %}
               <div class="col-md-6">{{ form.foto_profilo|as_crispy_field }}</div>
-              {% endif %}
-              {% if form.note %}
               <div class="col-12">{{ form.note|as_crispy_field }}</div>
-              {% endif %}
-              {% if form.note_interne %}
               <div class="col-12">{{ form.note_interne|as_crispy_field }}</div>
-              {% endif %}
             </div>
           </div>
 
           <div class="d-flex gap-2 justify-content-end pt-2" style="border-top:1px solid var(--slate-100);">
-            <a href="{% if object %}{% url 'users:user_detail' object.pk %}{% else %}{% url 'users:user_list' %}{% endif %}"
+            <a href="{% if user_obj %}{% url 'users:user_detail' user_obj.pk %}{% else %}{% url 'users:user_list' %}{% endif %}"
                class="btn btn-outline-secondary">Annulla</a>
             <button type="submit" class="btn btn-primary">
               <i class="bi bi-check-lg me-1"></i>
-              {% if object %}Salva modifiche{% else %}Crea dipendente{% endif %}
+              {% if user_obj %}Salva modifiche{% else %}Crea dipendente{% endif %}
             </button>
           </div>
         </form>

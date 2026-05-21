@@ -55,3 +55,11 @@ class CoreConfig(AppConfig):
         except Exception as e:
             import logging
             logging.getLogger(__name__).warning(f"Errore registrazione CalendarioRegistry (eventi manuali): {e}")
+
+        # Sidebar: voce Amministrazione (sopra HR)
+        from core.sidebar import register_nav
+        register_nav("amministrazione", "Amministrazione", [
+            {"label": "Amministrazione", "url": "core:amministrazione_dashboard",
+             "icon": "bi-gear-fill", "staff_only": True,
+             "active_app": "core", "active_url_contains": "amministrazione"},
+        ], order=5)

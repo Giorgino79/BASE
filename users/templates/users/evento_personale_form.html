@@ -3,14 +3,6 @@
 
 {% block title %}{% if object %}Modifica evento{% else %}Nuovo evento{% endif %}{% endblock %}
 
-{% block sidebar_nav %}
-  <li class="nav-section-title">Principale</li>
-  <li><a href="{% url 'dashboard' %}"><i class="bi bi-speedometer2"></i><span>Dashboard</span></a></li>
-  <li class="nav-section-title">Presenze</li>
-  <li><a href="{% url 'core:calendario_aziendale' %}"><i class="bi bi-calendar3"></i><span>Calendario</span></a></li>
-  <li><a href="{% url 'core:calendario_personale' %}" class="active"><i class="bi bi-calendar-heart"></i><span>Il mio calendario</span></a></li>
-{% endblock %}
-
 {% block content %}
 <nav class="mb-3" style="font-size:.8rem;">
   <a href="{% url 'core:calendario_personale' %}" style="color:var(--indigo-600);text-decoration:none;">Il mio calendario</a>
@@ -35,7 +27,7 @@
             <a href="{% url 'core:calendario_personale' %}" class="btn btn-outline-secondary">Annulla</a>
             {% if object %}
             <a href="{% url 'users:evento_personale_delete' object.pk %}"
-               class="btn btn-outline-danger me-auto"
+               class="btn btn-outline-primary me-auto"
                onclick="return confirm('Eliminare questo evento?')">
               <i class="bi bi-trash me-1"></i> Elimina
             </a>

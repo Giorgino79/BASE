@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Buste Paga - {{ user_obj.get_full_name }}{% endblock %}
+
+{% block content %}
+<nav class="mb-3" style="font-size:.8rem;">
+  <a href="{% url 'users:user_list' %}" style="color:var(--color-1);text-decoration:none;">Dipendenti</a>
+  <i class="bi bi-chevron-right mx-1" style="color:var(--slate-400);"></i>
+  <a href="{% url 'users:user_detail' user_obj.pk %}" style="color:var(--color-1);text-decoration:none;">{{ user_obj.get_full_name }}</a>
+  <i class="bi bi-chevron-right mx-1" style="color:var(--slate-400);"></i>
+  <span style="color:var(--slate-500);">Buste Paga</span>
+</nav>
+
+<div class="d-flex align-items-center justify-content-between mb-4">
+  <div>
+    <h1 class="h4 fw-bold mb-1" style="color:var(--slate-900);">
+      <i class="bi bi-receipt-cutoff me-2" style="color:var(--color-1);"></i>Buste Paga
+    </h1>
+    <p class="text-muted mb-0" style="font-size:.875rem;">Dipendente: <strong>{{ user_obj.get_full_name }}</strong></p>
+  </div>
+  {% if perms.payroll.add_bustapaga %}
+  <a href="{% url 'payroll:busta_paga_elabora' user_obj.pk %}" class="btn btn-primary btn-sm">
+    <i class="bi bi-plus-circle me-1"></i>Elabora Nuova Busta
+  </a>
+  {% endif %}
+</div>
+
+{% if buste %}
+<!-- Statistiche -->
+<div class="row g-3 mb-4">
+  <div class="col-sm-6 col-xl-3">
+    <div class="stat-card">
+      <div class="stat-card-icon icon-indigo"><i class="bi bi-receipt"></i></div>
+      <div class="stat-card-body">
+        <div class="stat-card-value">{{ buste.count }}</div>
+        <div class="stat-card-label">Buste totali</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-xl-3">
+    <div class="stat-card">
+      <div class="stat-card-icon" style="background:var(--color-2-light);color:var(--color-2);"><i class="bi bi-patch-check"></i></div>
+      <div class="stat-card-body">
+        <div class="stat-card-value">{{ buste_confermate_count }}</div>
+        <div class="stat-card-label">Confermate</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-xl-3">
+    <div class="stat-card">
+      <div class="stat-card-icon icon-sky"><i class="bi bi-wallet2"></i></div>
+      <div class="stat-card-body">
+        <div class="stat-card-value">{% if buste.first %}€ {{ buste.first.netto_busta|floatformat:0 }}{% else %}—{% endif %}</div>
+        <div class="stat-card-label">Ultimo netto</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-xl-3">
+    <div class="stat-card">
+      <div class="stat-card-icon icon-amber"><i class="bi bi-hourglass-split"></i></div>
+      <div class="stat-card-body">
+        <div class="stat-card-value">{{ buste.count|add:"-"|add:buste_confermate_count|default:0 }}</div>
+        <div class="stat-card-label">In bozza</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Tabella -->
+<div class="card card-body p-0">
+  <div class="table-responsive">
+    <table class="table table-hover mb-0">
+      <thead>
+        <tr>
+          <th>Periodo</th>
+          <th>Ore ordinarie</th>
+          <th>Straordinari</th>
+          <th>Imponibile</th>
+          <th>Contributi</th>
+          <th>IRPEF</th>
+          <th class="text-end">Netto</th>
+          <th>Stato</th>
+          <th class="text-center">Azioni</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for busta in buste %}
+        <tr>
+          <td>
+            <strong>{{ busta.mese|stringformat:"02d" }}/{{ busta.anno }}</strong>
+            <br><small class="text-muted">{{ busta.data_elaborazione|date:"d/m/Y" }}</small>
+          </td>
+          <td>{{ busta.ore_ordinarie|floatformat:2 }}h</td>
+          <td>
+            {% with tot=busta.ore_straordinario_feriale|add:busta.ore_straordinario_festivo|add:busta.ore_straordinario_notturno %}
+            {{ tot|floatformat:2 }}h
+            {% endwith %}
+          </td>
+          <td>€ {{ busta.imponibile_fiscale|floatformat:2 }}</td>
+          <td style="color:var(--color-1);">€ {{ busta.ritenute_previdenziali|floatformat:2 }}</td>
+          <td style="color:var(--color-1);">€ {{ busta.ritenute_irpef|floatformat:2 }}</td>
+          <td class="text-end">
+            <strong style="color:var(--color-1);font-size:1.05rem;">€ {{ busta.netto_busta|floatformat:2 }}</strong>
+          </td>
+          <td>
+            {% if busta.confermata %}
+            <span class="badge" style="background:var(--color-1-light);color:var(--color-1-dark);">Confermata</span>
+            {% else %}
+            <span class="badge" style="background:var(--color-4);color:var(--color-1-dark);">Bozza</span>
+            {% endif %}
+          </td>
+          <td class="text-center">
+            <a href="{% url 'payroll:busta_paga_detail' busta.pk %}" class="btn btn-sm btn-outline-primary" title="Visualizza">
+              <i class="bi bi-eye"></i>
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% else %}
+<div class="card card-body text-center py-5">
+  <i class="bi bi-receipt-cutoff" style="font-size:3rem;color:var(--slate-300);display:block;margin-bottom:1rem;"></i>
+  <p class="text-muted mb-3">Nessuna busta paga trovata per questo dipendente.</p>
+  {% if perms.payroll.add_bustapaga %}
+  <a href="{% url 'payroll:busta_paga_elabora' user_obj.pk %}" class="btn btn-primary btn-sm">
+    <i class="bi bi-plus-circle me-1"></i>Elabora la prima busta
+  </a>
+  {% endif %}
+</div>
+{% endif %}
+
+<div class="mt-4">
+  <a href="{% url 'users:user_detail' user_obj.pk %}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left me-1"></i>Torna al Profilo
+  </a>
+</div>
+{% endblock %}
