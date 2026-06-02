@@ -44,6 +44,9 @@ class User(AbstractUser, AllegatiMixin, TimestampMixin, SoftDeleteMixin):
         "Codice Fiscale",
         max_length=16,
         unique=True,
+        blank=True,
+        null=True,
+        default=None,
         help_text="Codice fiscale italiano (16 caratteri)",
     )
 
