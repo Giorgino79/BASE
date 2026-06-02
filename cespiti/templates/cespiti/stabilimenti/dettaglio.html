@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+{% load static %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/detail.css' %}">{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'cespiti:dashboard' %}">Cespiti</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'cespiti:stabilimento_list' %}">Stabilimenti</a></li>
+      <li class="breadcrumb-item active">{{ stabilimento.codice_stabilimento }}</li>
+    </ol>
+  </nav>
+  <h1>
+    <i class="bi bi-building me-2 text-brand"></i>{{ stabilimento.nome }}
+    <span class="badge badge-accent ms-2">{{ stabilimento.codice_stabilimento }}</span>
+    {% if stabilimento.attivo %}<span class="badge badge-ok ms-1">Attivo</span>
+    {% else %}<span class="badge badge-ko ms-1">Inattivo</span>{% endif %}
+  </h1>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-8">
+
+    <div class="card mb-3">
+      <div class="card-header card-header-primary"><i class="bi bi-geo-alt me-2"></i>Dati Stabilimento</div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-sm-6"><div class="detail-field"><div class="detail-field-label">Indirizzo</div><div class="detail-field-value">{{ stabilimento.get_indirizzo_completo }}</div></div></div>
+          <div class="col-sm-3"><div class="detail-field"><div class="detail-field-label">Telefono</div><div class="detail-field-value">{{ stabilimento.telefono|default:"—" }}</div></div></div>
+          <div class="col-sm-3"><div class="detail-field"><div class="detail-field-label">Email</div><div class="detail-field-value">{{ stabilimento.email_filiale|default:"—" }}</div></div></div>
+          <div class="col-sm-3"><div class="detail-field"><div class="detail-field-label">Superficie</div><div class="detail-field-value">{% if stabilimento.superficie_mq %}{{ stabilimento.superficie_mq }} mq{% else %}—{% endif %}</div></div></div>
+          <div class="col-sm-3"><div class="detail-field"><div class="detail-field-label">Piani</div><div class="detail-field-value">{{ stabilimento.numero_piani }}</div></div></div>
+          <div class="col-sm-3"><div class="detail-field"><div class="detail-field-label">Anno Costruzione</div><div class="detail-field-value">{{ stabilimento.anno_costruzione|default:"—" }}</div></div></div>
+          <div class="col-sm-3"><div class="detail-field"><div class="detail-field-label">Data Apertura</div><div class="detail-field-value">{{ stabilimento.data_apertura|date:"d/m/Y"|default:"—" }}</div></div></div>
+          <div class="col-sm-6"><div class="detail-field"><div class="detail-field-label">Resp. Operativo</div><div class="detail-field-value">{{ stabilimento.responsabile_operativo.get_full_name|default:"—" }}</div></div></div>
+          <div class="col-sm-6"><div class="detail-field"><div class="detail-field-label">Resp. Amministrativo</div><div class="detail-field-value">{{ stabilimento.responsabile_amministrativo.get_full_name|default:"—" }}</div></div></div>
+        </div>
+        {% if stabilimento.note_generali %}
+        <div class="detail-field mt-2"><div class="detail-field-label">Note</div><div class="detail-field-value">{{ stabilimento.note_generali }}</div></div>
+        {% endif %}
+      </div>
+    </div>
+
+    {% if scadenze_prossime %}
+    <div class="card mb-3">
+      <div class="card-header card-header-primary"><i class="bi bi-calendar-exclamation me-2"></i>Scadenze Prossime (30 giorni)</div>
+      <div class="table-responsive">
+        <table class="table mb-0">
+          <thead><tr><th>Scadenza</th><th>Pratica</th><th>Titolo</th><th>Giorni</th></tr></thead>
+          <tbody>
+            {% for c in scadenze_prossime %}
+            <tr>
+              <td>{{ c.data_scadenza_servizio|date:"d/m/Y" }}</td>
+              <td><a href="{% url 'cespiti:costo_detail' c.pk %}">{{ c.numero_pratica }}</a></td>
+              <td>{{ c.titolo|truncatechars:40 }}</td>
+              <td>
+                {% with g=c.giorni_alla_scadenza %}
+                {% if g <= 7 %}<span class="badge badge-ko">{{ g }}gg</span>
+                {% elif g <= 15 %}<span class="badge badge-wait">{{ g }}gg</span>
+                {% else %}<span class="badge badge-info">{{ g }}gg</span>{% endif %}
+                {% endwith %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Costi recenti -->
+    <div class="card mb-3">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-currency-euro me-2"></i>Costi Recenti</span>
+        <a href="{% url 'cespiti:costo_create' stabilimento.pk %}" class="btn btn-sm btn-primary"><i class="bi bi-plus-lg me-1"></i>Nuovo</a>
+      </div>
+      <div class="table-responsive">
+        <table class="table mb-0">
+          <thead><tr><th>Pratica</th><th>Titolo</th><th>Causale</th><th>Importo</th><th>Stato</th></tr></thead>
+          <tbody>
+            {% for c in costi_recenti %}
+            <tr>
+              <td><a href="{% url 'cespiti:costo_detail' c.pk %}">{{ c.numero_pratica }}</a></td>
+              <td>{{ c.titolo|truncatechars:35 }}</td>
+              <td class="text-muted small">{{ c.get_causale_display }}</td>
+              <td>€ {{ c.importo }}</td>
+              <td><span class="badge badge-info">{{ c.get_stato_display }}</span></td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="text-muted text-center py-2">Nessun costo</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Documenti recenti -->
+    <div class="card mb-3">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-folder me-2"></i>Documenti</span>
+        <a href="{% url 'cespiti:documento_create' stabilimento.pk %}" class="btn btn-sm btn-primary"><i class="bi bi-plus-lg me-1"></i>Carica</a>
+      </div>
+      <div class="table-responsive">
+        <table class="table mb-0">
+          <thead><tr><th>Nome</th><th>Tipo</th><th>Scadenza</th></tr></thead>
+          <tbody>
+            {% for d in documenti_recenti %}
+            <tr>
+              <td><a href="{{ d.file_documento.url }}" target="_blank">{{ d.nome_documento }}</a></td>
+              <td class="text-muted small">{{ d.get_tipo_documento_display }}</td>
+              <td>
+                {% if d.data_scadenza %}
+                  {{ d.data_scadenza|date:"d/m/Y" }}
+                  {% if d.is_scaduto %}<span class="badge badge-ko ms-1">Scaduto</span>{% endif %}
+                {% else %}—{% endif %}
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="3" class="text-muted text-center py-2">Nessun documento</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% if stabilimento.documenti.count > 5 %}
+      <div class="card-footer text-end">
+        <a href="{% url 'cespiti:documento_list' stabilimento.pk %}" class="btn btn-sm btn-outline-secondary">Tutti i documenti</a>
+      </div>
+      {% endif %}
+    </div>
+
+  </div>
+
+  <div class="col-lg-4">
+    <div class="sidebar-actions">
+      <div class="card mb-3">
+        <div class="card-header"><i class="bi bi-gear me-2"></i>Azioni</div>
+        <div class="list-group list-group-flush">
+          <a href="{{ edit_url }}" class="list-group-item list-group-item-action"><i class="bi bi-pencil"></i>Modifica</a>
+          <a href="{% url 'cespiti:costo_create' stabilimento.pk %}" class="list-group-item list-group-item-action"><i class="bi bi-currency-euro"></i>Nuovo Costo</a>
+          <a href="{% url 'cespiti:utenza_create' stabilimento.pk %}" class="list-group-item list-group-item-action"><i class="bi bi-lightning-charge"></i>Nuova Utenza</a>
+          <a href="{% url 'cespiti:documento_create' stabilimento.pk %}" class="list-group-item list-group-item-action"><i class="bi bi-folder-plus"></i>Carica Documento</a>
+          <form method="post" action="{% url 'cespiti:stabilimento_toggle_attivo' stabilimento.pk %}" class="d-inline w-100">
+            {% csrf_token %}
+            <button type="submit" class="list-group-item list-group-item-action {% if stabilimento.attivo %}text-warning{% else %}text-success{% endif %} border-0 text-start w-100">
+              <i class="bi {% if stabilimento.attivo %}bi-toggle-off{% else %}bi-toggle-on{% endif %} me-2"></i>
+              {% if stabilimento.attivo %}Disattiva{% else %}Attiva{% endif %}
+            </button>
+          </form>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><i class="bi bi-info-circle me-2"></i>Riepilogo Anno</div>
+        <div class="card-body">
+          <div class="detail-field"><div class="detail-field-label">Costi anno corrente</div><div class="detail-field-value fw-bold">€ {{ costi_anno }}</div></div>
+          <div class="detail-field"><div class="detail-field-label">Costi totali</div><div class="detail-field-value fw-bold">{{ stabilimento.costi.count }}</div></div>
+          <div class="detail-field mb-0"><div class="detail-field-label">Documenti totali</div><div class="detail-field-value fw-bold">{{ stabilimento.documenti.count }}</div></div>
+        </div>
+      </div>
+      {% include 'commons_templates/components/sidebar_allegati_qr.html' with object=stabilimento %}
+
+      <div class="mt-3">
+        <a href="{{ back_url }}" class="btn btn-outline-secondary btn-sm w-100"><i class="bi bi-arrow-left me-1"></i>Torna alla lista</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% load static %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/detail.css' %}">{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'cespiti:dashboard' %}">Cespiti</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'cespiti:stabilimento_list' %}">Stabilimenti</a></li>
+      <li class="breadcrumb-item"><a href="{{ stabilimento.get_absolute_url }}">{{ stabilimento.nome }}</a></li>
+      <li class="breadcrumb-item active">Documenti</li>
+    </ol>
+  </nav>
+  <div class="d-flex justify-content-between align-items-center">
+    <h1><i class="bi bi-folder me-2 text-brand"></i>Documenti — {{ stabilimento.nome }}</h1>
+    <a href="{% url 'cespiti:documento_create' stabilimento.pk %}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Carica Documento</a>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table mb-0">
+      <thead>
+        <tr><th>Nome</th><th>Tipo</th><th>Versione</th><th>Data</th><th>Scadenza</th><th>Caricato da</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for d in page_obj %}
+        <tr>
+          <td><a href="{{ d.file_documento.url }}" target="_blank">{{ d.nome_documento }}</a></td>
+          <td class="text-muted small">{{ d.get_tipo_documento_display }}</td>
+          <td>{{ d.versione }}</td>
+          <td>{{ d.data_documento|date:"d/m/Y"|default:"—" }}</td>
+          <td>
+            {% if d.data_scadenza %}
+              {{ d.data_scadenza|date:"d/m/Y" }}
+              {% if d.is_scaduto %}<span class="badge badge-ko ms-1">Scaduto</span>
+              {% elif d.giorni_alla_scadenza <= 30 %}<span class="badge badge-wait ms-1">{{ d.giorni_alla_scadenza }}gg</span>{% endif %}
+            {% else %}—{% endif %}
+          </td>
+          <td class="text-muted small">{{ d.caricato_da.get_full_name|default:"—" }}</td>
+          <td class="text-end">
+            <a href="{{ d.file_documento.url }}" class="btn btn-sm btn-outline-secondary" target="_blank"><i class="bi bi-download"></i></a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7">
+          <div class="state-empty py-3">
+            <i class="bi bi-folder"></i>
+            <p>Nessun documento trovato.</p>
+            <a href="{% url 'cespiti:documento_create' stabilimento.pk %}" class="btn btn-sm btn-primary"><i class="bi bi-upload me-1"></i>Carica il primo</a>
+          </div>
+        </td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if page_obj.has_other_pages %}
+  <div class="card-footer">
+    <nav><ul class="pagination pagination-sm mb-0">
+      {% if page_obj.has_previous %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">‹</a></li>{% endif %}
+      <li class="page-item disabled"><span class="page-link">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span></li>
+      {% if page_obj.has_next %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">›</a></li>{% endif %}
+    </ul></nav>
+  </div>
+  {% endif %}
+</div>
+
+<div class="mt-3">
+  <a href="{{ stabilimento.get_absolute_url }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i>Torna allo stabilimento</a>
+</div>
+{% endblock %}

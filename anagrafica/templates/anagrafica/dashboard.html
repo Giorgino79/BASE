@@ -1,0 +1,353 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Dashboard Anagrafica{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item active">Anagrafica</li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header Card -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm border-0">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <h3 class="mb-1">
+                                <i class="bi bi-people-fill me-2 text-primary"></i>Anagrafica
+                            </h3>
+                            <p class="text-muted mb-0">
+                                Gestione clienti e fornitori
+                                <span class="ms-2">
+                                    <span class="badge bg-primary">{{ clienti_totali }} Clienti</span>
+                                    <span class="badge bg-success">{{ fornitori_totali }} Fornitori</span>
+                                </span>
+                            </p>
+                        </div>
+                        <div class="d-none d-md-block">
+                            <div class="btn-group">
+                                <a href="{% url 'anagrafica:cliente_create' %}" class="btn btn-primary">
+                                    <i class="bi bi-person-plus me-1"></i> Nuovo Cliente
+                                </a>
+                                <a href="{% url 'anagrafica:fornitore_create' %}" class="btn btn-success">
+                                    <i class="bi bi-truck me-1"></i> Nuovo Fornitore
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Azioni rapide mobile -->
+    <div class="d-md-none mb-4">
+        <div class="row g-2">
+            <div class="col-6">
+                <a href="{% url 'anagrafica:cliente_create' %}" class="btn btn-primary w-100">
+                    <i class="bi bi-person-plus d-block mb-1" style="font-size: 1.5rem;"></i>
+                    <small>Nuovo Cliente</small>
+                </a>
+            </div>
+            <div class="col-6">
+                <a href="{% url 'anagrafica:fornitore_create' %}" class="btn btn-success w-100">
+                    <i class="bi bi-truck d-block mb-1" style="font-size: 1.5rem;"></i>
+                    <small>Nuovo Fornitore</small>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistiche -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-6 col-lg-3">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0">
+                            <i class="bi bi-people text-primary" style="font-size: 2rem;"></i>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="text-muted mb-1">Totale Clienti</h6>
+                            <h3 class="mb-0">{{ clienti_totali }}</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-lg-3">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0">
+                            <i class="bi bi-person-plus text-info" style="font-size: 2rem;"></i>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="text-muted mb-1">Nuovi (30gg)</h6>
+                            <h3 class="mb-0">{{ clienti_nuovi }}</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-lg-3">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0">
+                            <i class="bi bi-truck text-success" style="font-size: 2rem;"></i>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="text-muted mb-1">Totale Fornitori</h6>
+                            <h3 class="mb-0">{{ fornitori_totali }}</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-lg-3">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0">
+                            <i class="bi bi-tags text-warning" style="font-size: 2rem;"></i>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="text-muted mb-1">Categorie Fornitori</h6>
+                            <h3 class="mb-0">{{ fornitori_per_categoria|length }}</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Contenuto principale -->
+    <div class="row g-4 mb-4">
+        <!-- Azioni principali -->
+        <div class="col-lg-4">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="bi bi-list-check text-primary"></i> Azioni Principali
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush">
+                        <a href="{% url 'anagrafica:cliente_list' %}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                            <div>
+                                <i class="bi bi-people text-primary me-2"></i>
+                                Gestione Clienti
+                            </div>
+                            <span class="badge bg-primary rounded-pill">{{ clienti_totali }}</span>
+                        </a>
+
+                        <a href="{% url 'anagrafica:fornitore_list' %}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                            <div>
+                                <i class="bi bi-truck text-success me-2"></i>
+                                Gestione Fornitori
+                            </div>
+                            <span class="badge bg-success rounded-pill">{{ fornitori_totali }}</span>
+                        </a>
+
+                        <a href="{% url 'anagrafica:export_clienti_csv' %}" class="list-group-item list-group-item-action">
+                            <div>
+                                <i class="bi bi-file-earmark-spreadsheet text-info me-2"></i>
+                                Esporta Clienti CSV
+                            </div>
+                        </a>
+
+                        <a href="{% url 'anagrafica:export_fornitori_csv' %}" class="list-group-item list-group-item-action">
+                            <div>
+                                <i class="bi bi-file-earmark-spreadsheet text-info me-2"></i>
+                                Esporta Fornitori CSV
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Ultimi Clienti -->
+        <div class="col-lg-4">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center bg-light">
+                    <h5 class="mb-0">
+                        <i class="bi bi-clock-history text-primary"></i> Ultimi Clienti
+                    </h5>
+                    <span class="badge bg-primary">{{ ultimi_clienti|length }}</span>
+                </div>
+                <div class="card-body p-0">
+                    {% if ultimi_clienti %}
+                        <div class="list-group list-group-flush">
+                            {% for cliente in ultimi_clienti %}
+                                <a href="{% url 'anagrafica:cliente_detail' cliente.pk %}"
+                                   class="list-group-item list-group-item-action border-0 py-3 px-3"
+                                   style="transition: all 0.2s ease;">
+                                    <div class="d-flex align-items-center">
+                                        <!-- Avatar -->
+                                        <div class="flex-shrink-0">
+                                            <div class="rounded-circle bg-primary bg-opacity-10 d-flex align-items-center justify-content-center"
+                                                 style="width: 48px; height: 48px;">
+                                                <i class="bi bi-person-fill text-primary" style="font-size: 1.5rem;"></i>
+                                            </div>
+                                        </div>
+                                        <!-- Info -->
+                                        <div class="flex-grow-1 ms-3">
+                                            <div class="d-flex justify-content-between align-items-start mb-1">
+                                                <h6 class="mb-0 fw-semibold">{{ cliente.nome|truncatewords:4 }}</h6>
+                                                <span class="badge bg-light text-dark small">{{ cliente.created_at|date:"d/m" }}</span>
+                                            </div>
+                                            <div class="d-flex align-items-center text-muted small">
+                                                {% if cliente.citta %}
+                                                    <i class="bi bi-geo-alt me-1"></i>
+                                                    <span>{{ cliente.citta }}</span>
+                                                {% else %}
+                                                    <i class="bi bi-dash-circle me-1"></i>
+                                                    <span>Città non specificata</span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <!-- Arrow -->
+                                        <div class="flex-shrink-0 ms-2">
+                                            <i class="bi bi-chevron-right text-muted"></i>
+                                        </div>
+                                    </div>
+                                </a>
+                            {% endfor %}
+                        </div>
+                        <div class="card-footer bg-light text-center border-top">
+                            <a href="{% url 'anagrafica:cliente_list' %}" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-arrow-right me-1"></i> Vedi Tutti i Clienti
+                            </a>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="bi bi-inbox text-muted" style="font-size: 3rem;"></i>
+                            <p class="text-muted mt-3 mb-0">Nessun cliente registrato</p>
+                            <a href="{% url 'anagrafica:cliente_create' %}" class="btn btn-sm btn-primary mt-2">
+                                <i class="bi bi-plus-circle"></i> Aggiungi Cliente
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Ultimi Fornitori -->
+        <div class="col-lg-4">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center bg-light">
+                    <h5 class="mb-0">
+                        <i class="bi bi-clock-history text-success"></i> Ultimi Fornitori
+                    </h5>
+                    <span class="badge bg-success">{{ ultimi_fornitori|length }}</span>
+                </div>
+                <div class="card-body p-0">
+                    {% if ultimi_fornitori %}
+                        <div class="list-group list-group-flush">
+                            {% for fornitore in ultimi_fornitori %}
+                                <a href="{% url 'anagrafica:fornitore_detail' fornitore.pk %}"
+                                   class="list-group-item list-group-item-action border-0 py-3 px-3"
+                                   style="transition: all 0.2s ease;">
+                                    <div class="d-flex align-items-center">
+                                        <!-- Avatar -->
+                                        <div class="flex-shrink-0">
+                                            <div class="rounded-circle bg-success bg-opacity-10 d-flex align-items-center justify-content-center"
+                                                 style="width: 48px; height: 48px;">
+                                                <i class="bi bi-building text-success" style="font-size: 1.5rem;"></i>
+                                            </div>
+                                        </div>
+                                        <!-- Info -->
+                                        <div class="flex-grow-1 ms-3">
+                                            <div class="d-flex justify-content-between align-items-start mb-1">
+                                                <h6 class="mb-0 fw-semibold">{{ fornitore.ragione_sociale|truncatewords:3 }}</h6>
+                                                <span class="badge bg-light text-dark small">{{ fornitore.created_at|date:"d/m" }}</span>
+                                            </div>
+                                            <div class="d-flex align-items-center text-muted small">
+                                                {% if fornitore.categoria %}
+                                                    <i class="bi bi-tag me-1"></i>
+                                                    <span class="badge bg-secondary bg-opacity-10 text-secondary border-0 px-2 py-1">
+                                                        {{ fornitore.get_categoria_display }}
+                                                    </span>
+                                                {% else %}
+                                                    <i class="bi bi-dash-circle me-1"></i>
+                                                    <span>Categoria non specificata</span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <!-- Arrow -->
+                                        <div class="flex-shrink-0 ms-2">
+                                            <i class="bi bi-chevron-right text-muted"></i>
+                                        </div>
+                                    </div>
+                                </a>
+                            {% endfor %}
+                        </div>
+                        <div class="card-footer bg-light text-center border-top">
+                            <a href="{% url 'anagrafica:fornitore_list' %}" class="btn btn-sm btn-outline-success">
+                                <i class="bi bi-arrow-right me-1"></i> Vedi Tutti i Fornitori
+                            </a>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="bi bi-inbox text-muted" style="font-size: 3rem;"></i>
+                            <p class="text-muted mt-3 mb-0">Nessun fornitore registrato</p>
+                            <a href="{% url 'anagrafica:fornitore_create' %}" class="btn btn-sm btn-success mt-2">
+                                <i class="bi bi-plus-circle"></i> Aggiungi Fornitore
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Hover effects per gli item della lista */
+.list-group-item-action:hover {
+    background-color: #f8f9fa !important;
+    transform: translateX(4px);
+}
+
+.list-group-item-action:hover .bi-chevron-right {
+    transform: translateX(3px);
+    transition: transform 0.2s ease;
+}
+
+/* Avatar hover */
+.list-group-item-action:hover .rounded-circle {
+    transform: scale(1.05);
+    transition: transform 0.2s ease;
+}
+
+/* Card shadows on hover */
+.card:hover {
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1) !important;
+    transition: box-shadow 0.3s ease;
+}
+
+/* Smooth transitions */
+.list-group-item {
+    border-bottom: 1px solid #f0f0f0 !important;
+}
+
+.list-group-item:last-child {
+    border-bottom: none !important;
+}
+
+/* Badge styling improvement */
+.badge.bg-light {
+    font-weight: 500;
+}
+</style>
+{% endblock %}

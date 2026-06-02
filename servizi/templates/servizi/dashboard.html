@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-start mb-4">
+  <div>
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb"><li class="breadcrumb-item active">Servizi</li></ol>
+    </nav>
+    <h1><i class="bi bi-tools me-2 text-brand"></i>Servizi</h1>
+    <p>Contratti, ordini di servizio e catalogo interventi</p>
+  </div>
+  <div class="d-flex gap-2 flex-wrap">
+    <a href="{% url 'servizi:ods_create' %}" class="btn btn-primary btn-sm">
+      <i class="bi bi-plus-lg me-1"></i>Nuovo ODS
+    </a>
+    <a href="{% url 'servizi:contratto_create' %}" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-plus-lg me-1"></i>Nuovo Contratto
+    </a>
+  </div>
+</div>
+
+
+<div class="row g-3 mb-4">
+  <div class="col-md-4">
+    <a href="{% url 'servizi:servizio_list' %}" class="text-decoration-none">
+      <div class="card h-100 text-center py-4">
+        <div class="mb-2"><i class="bi bi-tools fs-1 text-brand"></i></div>
+        <div class="fw-semibold">Catalogo Servizi</div>
+        <div class="text-muted small">Gestione tipi di servizio e tariffe</div>
+      </div>
+    </a>
+  </div>
+  <div class="col-md-4">
+    <a href="{% url 'servizi:contratto_list' %}" class="text-decoration-none">
+      <div class="card h-100 text-center py-4">
+        <div class="mb-2"><i class="bi bi-file-earmark-text fs-1 text-brand"></i></div>
+        <div class="fw-semibold">Contratti</div>
+        <div class="text-muted small">Contratti attivi per cliente e sede</div>
+      </div>
+    </a>
+  </div>
+  <div class="col-md-4">
+    <a href="{% url 'servizi:ods_list' %}" class="text-decoration-none">
+      <div class="card h-100 text-center py-4">
+        <div class="mb-2"><i class="bi bi-clipboard-check fs-1 text-brand"></i></div>
+        <div class="fw-semibold">Ordini di Servizio</div>
+        <div class="text-muted small">Tutti gli interventi programmati e completati</div>
+      </div>
+    </a>
+  </div>
+  <div class="col-md-4">
+    <a href="{% url 'servizi:organizzazione_giri' %}" class="text-decoration-none">
+      <div class="card h-100 text-center py-4">
+        <div class="mb-2"><i class="bi bi-map fs-1 text-brand"></i></div>
+        <div class="fw-semibold">Organizzazione Giri</div>
+        <div class="text-muted small">Assegna tecnici e organizza i giri per zona</div>
+      </div>
+    </a>
+  </div>
+  <div class="col-md-4">
+    <a href="{% url 'servizi:distinta_list' %}" class="text-decoration-none">
+      <div class="card h-100 text-center py-4">
+        <div class="mb-2"><i class="bi bi-journal-check fs-1 text-brand"></i></div>
+        <div class="fw-semibold">Distinte</div>
+        <div class="text-muted small">Distinte servizi per tecnico</div>
+      </div>
+    </a>
+  </div>
+  <div class="col-md-4">
+    <a href="{% url 'servizi:condominio_list' %}" class="text-decoration-none">
+      <div class="card h-100 text-center py-4">
+        <div class="mb-2"><i class="bi bi-buildings fs-1 text-brand"></i></div>
+        <div class="fw-semibold">Condomini ODS</div>
+        <div class="text-muted small">Interventi cumulativi per condominio</div>
+      </div>
+    </a>
+  </div>
+</div>
+{% endblock %}

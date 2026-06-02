@@ -1,0 +1,245 @@
+{% extends "base.html" %}
+{% load static %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/detail.css' %}">{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'servizi:dashboard' %}">Servizi</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'servizi:condominio_list' %}">Condomini ODS</a></li>
+      <li class="breadcrumb-item active">{{ titolo }}</li>
+    </ol>
+  </nav>
+  <h1><i class="bi bi-buildings me-2 text-brand"></i>{{ titolo }}</h1>
+</div>
+
+<form method="post" id="main-form">
+  {% csrf_token %}
+
+  <div class="row g-3">
+    <div class="col-lg-8">
+
+      {# Dati principali #}
+      <div class="card mb-3">
+        <div class="card-header card-header-primary"><i class="bi bi-buildings me-2"></i>Dati condominio</div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label">{{ form.titolo.label }}</label>
+              {{ form.titolo }}
+              {% if form.titolo.errors %}<div class="invalid-feedback d-block">{{ form.titolo.errors }}</div>{% endif %}
+            </div>
+            <div class="col-12">
+              <label class="form-label">{{ form.indirizzo.label }}</label>
+              {{ form.indirizzo }}
+            </div>
+            <div class="col-sm-4">
+              <label class="form-label">{{ form.data.label }}</label>
+              {{ form.data }}
+            </div>
+            <div class="col-sm-4">
+              <label class="form-label">{{ form.ora.label }}</label>
+              {{ form.ora }}
+            </div>
+            <div class="col-sm-4">
+              <label class="form-label">{{ form.prezzo_base.label }} <span class="text-muted small">(per unità)</span></label>
+              <div class="input-group">
+                <span class="input-group-text">€</span>
+                {{ form.prezzo_base }}
+              </div>
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label">{{ form.tecnico.label }}</label>
+              {{ form.tecnico }}
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label">{{ form.assistente.label }}</label>
+              {{ form.assistente }}
+            </div>
+            <div class="col-sm-12">
+              <label class="form-label">{{ form.distinta.label }}</label>
+              {{ form.distinta }}
+            </div>
+            <div class="col-12">
+              <label class="form-label">{{ form.note.label }}</label>
+              {{ form.note }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {# Unità abitative #}
+      <div class="card mb-3">
+        <div class="card-header card-header-primary">
+          <i class="bi bi-door-open me-2"></i>Unità abitative
+        </div>
+        <div class="table-responsive">
+          {{ fs_unita.management_form }}
+          <table class="table mb-0 align-middle" id="unita-table">
+            <thead class="bg-brand text-white">
+              <tr>
+                <th>Nome / Intestatario</th>
+                <th class="text-center" style="width:90px">Servizio</th>
+                <th class="text-center" style="width:90px">Incassato</th>
+                <th style="width:160px">Importo (€)</th>
+                <th style="width:50px"></th>
+              </tr>
+            </thead>
+            <tbody id="unita-body">
+              {% for uf in fs_unita %}
+              <tr class="unita-row">
+                <td>
+                  {{ uf.id }}
+                  {% if uf.instance.pk %}{{ uf.DELETE }}{% endif %}
+                  {{ uf.nome }}
+                </td>
+                <td class="text-center">{{ uf.servizio_effettuato }}</td>
+                <td class="text-center">{{ uf.incasso_effettuato }}</td>
+                <td>{{ uf.importo_da_incassare }}</td>
+                <td class="text-center">
+                  {% if uf.instance.pk %}
+                  <button type="button" class="btn btn-sm btn-outline-danger btn-del-unita"><i class="bi bi-trash"></i></button>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <div class="card-footer">
+          <button type="button" class="btn btn-sm btn-outline-brand" id="btn-aggiungi-unita">
+            <i class="bi bi-plus-lg me-1"></i>Aggiungi unità
+          </button>
+        </div>
+        <div id="unita-empty-tpl" class="d-none">
+          <tr class="unita-row">
+            <td>
+              <input type="hidden" name="unita-__idx__-id" id="id_unita-__idx__-id">
+              <input type="text" name="unita-__idx__-nome" id="id_unita-__idx__-nome"
+                     class="form-control form-control-sm" placeholder="Es. Rossi Mario — Int. 3">
+            </td>
+            <td class="text-center">
+              <input type="checkbox" name="unita-__idx__-servizio_effettuato"
+                     id="id_unita-__idx__-servizio_effettuato" class="form-check-input">
+            </td>
+            <td class="text-center">
+              <input type="checkbox" name="unita-__idx__-incasso_effettuato"
+                     id="id_unita-__idx__-incasso_effettuato" class="form-check-input">
+            </td>
+            <td>
+              <input type="number" name="unita-__idx__-importo_da_incassare"
+                     id="id_unita-__idx__-importo_da_incassare"
+                     class="form-control form-control-sm" step="0.01" placeholder="Vuoto = base">
+            </td>
+            <td></td>
+          </tr>
+        </div>
+      </div>
+
+      {# Prodotti previsti #}
+      <div class="card mb-3">
+        <div class="card-header card-header-primary">
+          <i class="bi bi-box-seam me-2"></i>Prodotti previsti
+        </div>
+        <div class="table-responsive">
+          {{ fs_prodotti.management_form }}
+          <table class="table mb-0 align-middle" id="prodotti-table">
+            <thead class="bg-brand text-white">
+              <tr>
+                <th>Prodotto</th>
+                <th style="width:160px">Quantità</th>
+                <th style="width:50px"></th>
+              </tr>
+            </thead>
+            <tbody id="prodotti-body">
+              {% for pf in fs_prodotti %}
+              <tr class="prodotto-row">
+                <td>{{ pf.id }}{% if pf.instance.pk %}{{ pf.DELETE }}{% endif %}{{ pf.prodotto }}</td>
+                <td>{{ pf.quantita }}</td>
+                <td class="text-center">
+                  {% if pf.instance.pk %}
+                  <button type="button" class="btn btn-sm btn-outline-danger btn-del-prodotto"><i class="bi bi-trash"></i></button>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <div class="card-footer">
+          <button type="button" class="btn btn-sm btn-outline-brand" id="btn-aggiungi-prodotto">
+            <i class="bi bi-plus-lg me-1"></i>Aggiungi prodotto
+          </button>
+        </div>
+        <div id="prodotti-empty-tpl" class="d-none">
+          <tr class="prodotto-row">
+            <td>
+              <input type="hidden" name="prodotti-__idx__-id" id="id_prodotti-__idx__-id">
+              <select name="prodotti-__idx__-prodotto" id="id_prodotti-__idx__-prodotto" class="form-select form-select-sm">
+                {% for opt in fs_prodotti.empty_form.prodotto.field.choices %}<option value="{{ opt.0 }}">{{ opt.1 }}</option>{% endfor %}
+              </select>
+            </td>
+            <td>
+              <input type="number" name="prodotti-__idx__-quantita" id="id_prodotti-__idx__-quantita"
+                     class="form-control form-control-sm" step="0.001" value="1.000">
+            </td>
+            <td></td>
+          </tr>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="col-lg-4">
+      <div class="card">
+        <div class="card-header"><i class="bi bi-gear me-2"></i>Azioni</div>
+        <div class="list-group list-group-flush">
+          <button type="submit" form="main-form" class="list-group-item list-group-item-action text-brand fw-semibold">
+            <i class="bi bi-check-lg me-2"></i>Salva
+          </button>
+          <a href="{{ back_url }}" class="list-group-item list-group-item-action text-muted">
+            <i class="bi bi-arrow-left me-2"></i>Annulla
+          </a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  function addRowLogic(btnId, totalFormsId, bodyId, tplId) {
+    const btn = document.getElementById(btnId);
+    const totalInput = document.getElementById(totalFormsId);
+    const body = document.getElementById(bodyId);
+    const tpl = document.getElementById(tplId).querySelector('tr');
+    btn.addEventListener('click', function () {
+      const idx = parseInt(totalInput.value);
+      const row = tpl.cloneNode(true);
+      row.innerHTML = row.innerHTML.replaceAll('__idx__', idx);
+      body.appendChild(row);
+      totalInput.value = idx + 1;
+    });
+  }
+  addRowLogic('btn-aggiungi-unita',    'id_unita-TOTAL_FORMS',    'unita-body',    'unita-empty-tpl');
+  addRowLogic('btn-aggiungi-prodotto', 'id_prodotti-TOTAL_FORMS', 'prodotti-body', 'prodotti-empty-tpl');
+
+  function deleteRow(tableId, btnClass, deleteCheckSel) {
+    document.getElementById(tableId).addEventListener('click', function (e) {
+      const btn = e.target.closest(btnClass);
+      if (!btn) return;
+      const row = btn.closest('tr');
+      const chk = row.querySelector(deleteCheckSel);
+      if (chk) { chk.checked = true; row.classList.add('table-danger'); btn.closest('td').innerHTML = ''; }
+      else { row.remove(); }
+    });
+  }
+  deleteRow('unita-body',    '.btn-del-unita',    'input[name$="-DELETE"]');
+  deleteRow('prodotti-body', '.btn-del-prodotto', 'input[name$="-DELETE"]');
+})();
+</script>
+{% endblock %}

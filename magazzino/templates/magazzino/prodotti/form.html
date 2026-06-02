@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% load static %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/detail.css' %}">{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'magazzino:dashboard' %}">Magazzino</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'magazzino:prodotto_list' %}">Prodotti</a></li>
+      <li class="breadcrumb-item active">{{ titolo }}</li>
+    </ol>
+  </nav>
+  <h1><i class="bi bi-tag me-2 text-brand"></i>{{ titolo }}</h1>
+</div>
+
+<form method="post" enctype="multipart/form-data">
+  {% csrf_token %}
+  <div class="row g-3">
+    <div class="col-lg-8">
+      <div class="card mb-3">
+        <div class="card-header card-header-primary"><i class="bi bi-info-circle me-2"></i>Dati Prodotto</div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-sm-8">
+              <label class="form-label">{{ form.nome_prodotto.label }} <span class="text-danger">*</span></label>
+              {{ form.nome_prodotto }}
+              {% if form.nome_prodotto.errors %}<div class="invalid-feedback d-block">{{ form.nome_prodotto.errors.0 }}</div>{% endif %}
+            </div>
+            <div class="col-sm-4">
+              <label class="form-label">{{ form.categoria.label }} <span class="text-danger">*</span></label>
+              {{ form.categoria }}
+              {% if form.categoria.errors %}<div class="invalid-feedback d-block">{{ form.categoria.errors.0 }}</div>{% endif %}
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label">{{ form.fornitore_principale.label }}</label>
+              {{ form.fornitore_principale }}
+            </div>
+            <div class="col-sm-3">
+              <label class="form-label">{{ form.codice_interno.label }}</label>
+              {{ form.codice_interno }}
+            </div>
+            <div class="col-sm-3">
+              <label class="form-label">{{ form.codice_fornitore.label }}</label>
+              {{ form.codice_fornitore }}
+            </div>
+            <div class="col-sm-3">
+              <label class="form-label">{{ form.unita_misura.label }} <span class="text-danger">*</span></label>
+              {{ form.unita_misura }}
+            </div>
+            <div class="col-sm-3">
+              <label class="form-label">{{ form.quantita_per_confezione.label }}</label>
+              {{ form.quantita_per_confezione }}
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label">{{ form.formato_confezione.label }}</label>
+              {{ form.formato_confezione }}
+            </div>
+            <div class="col-12">
+              <label class="form-label">{{ form.descrizione.label }}</label>
+              {{ form.descrizione }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card mb-3">
+        <div class="card-header card-header-primary"><i class="bi bi-shield-check me-2"></i>Info Biocida</div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-12">
+              <div class="form-check">
+                {{ form.is_biocida }}
+                <label class="form-check-label" for="{{ form.is_biocida.id_for_label }}">{{ form.is_biocida.label }}</label>
+              </div>
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label">{{ form.principio_attivo.label }}</label>
+              {{ form.principio_attivo }}
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label">{{ form.numero_registrazione.label }}</label>
+              {{ form.numero_registrazione }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card mb-3">
+        <div class="card-header card-header-primary"><i class="bi bi-card-text me-2"></i>Note e Immagine</div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-sm-6">
+              <label class="form-label">{{ form.immagine.label }}</label>
+              {{ form.immagine }}
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label">{{ form.scheda_tecnica.label }}</label>
+              {{ form.scheda_tecnica }}
+            </div>
+            <div class="col-12">
+              <label class="form-label">{{ form.note_interne.label }}</label>
+              {{ form.note_interne }}
+            </div>
+            <div class="col-sm-3">
+              <div class="form-check mt-2">
+                {{ form.attivo }}
+                <label class="form-check-label" for="{{ form.attivo.id_for_label }}">{{ form.attivo.label }}</label>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Salva</button>
+        <a href="{{ back_url }}" class="btn btn-outline-secondary">Annulla</a>
+      </div>
+    </div>
+  </div>
+</form>
+{% endblock %}

@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% load static %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/detail.css' %}">{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'cespiti:dashboard' %}">Cespiti</a></li>
+      <li class="breadcrumb-item active">Scadenze</li>
+    </ol>
+  </nav>
+  <h1><i class="bi bi-calendar-exclamation me-2 text-brand"></i>Dashboard Scadenze</h1>
+</div>
+
+{% if scadute %}
+<div class="card mb-3 border-danger">
+  <div class="card-header bg-danger text-white"><i class="bi bi-exclamation-circle-fill me-2"></i>Documenti Scaduti ({{ scadute|length }})</div>
+  <div class="table-responsive">
+    <table class="table mb-0">
+      <thead><tr><th>Stabilimento</th><th>Documento</th><th>Tipo</th><th>Scadenza</th><th>Giorni</th></tr></thead>
+      <tbody>
+        {% for d in scadute %}
+        <tr class="table-danger">
+          <td><a href="{{ d.stabilimento.get_absolute_url }}">{{ d.stabilimento.nome }}</a></td>
+          <td>{{ d.nome_documento }}</td>
+          <td class="text-muted small">{{ d.get_tipo_documento_display }}</td>
+          <td>{{ d.data_scadenza|date:"d/m/Y" }}</td>
+          <td><span class="badge badge-ko">{{ d.giorni_alla_scadenza }}gg</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<div class="card mb-3">
+  <div class="card-header card-header-primary"><i class="bi bi-calendar-week me-2"></i>Scadenze Questa Settimana ({{ questa_settimana|length }})</div>
+  <div class="table-responsive">
+    <table class="table mb-0">
+      <thead><tr><th>Stabilimento</th><th>Documento</th><th>Tipo</th><th>Scadenza</th><th>Giorni</th></tr></thead>
+      <tbody>
+        {% for d in questa_settimana %}
+        <tr>
+          <td><a href="{{ d.stabilimento.get_absolute_url }}">{{ d.stabilimento.nome }}</a></td>
+          <td>{{ d.nome_documento }}</td>
+          <td class="text-muted small">{{ d.get_tipo_documento_display }}</td>
+          <td>{{ d.data_scadenza|date:"d/m/Y" }}</td>
+          <td><span class="badge badge-wait">{{ d.giorni_alla_scadenza }}gg</span></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" class="text-muted text-center py-2">Nessuna scadenza questa settimana</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card mb-3">
+  <div class="card-header card-header-primary"><i class="bi bi-calendar-month me-2"></i>Scadenze Prossimi 30 giorni ({{ prossimi_30|length }})</div>
+  <div class="table-responsive">
+    <table class="table mb-0">
+      <thead><tr><th>Stabilimento</th><th>Documento</th><th>Tipo</th><th>Scadenza</th><th>Giorni</th></tr></thead>
+      <tbody>
+        {% for d in prossimi_30 %}
+        <tr>
+          <td><a href="{{ d.stabilimento.get_absolute_url }}">{{ d.stabilimento.nome }}</a></td>
+          <td>{{ d.nome_documento }}</td>
+          <td class="text-muted small">{{ d.get_tipo_documento_display }}</td>
+          <td>{{ d.data_scadenza|date:"d/m/Y" }}</td>
+          <td><span class="badge badge-info">{{ d.giorni_alla_scadenza }}gg</span></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" class="text-muted text-center py-2">Nessuna scadenza nei prossimi 30 giorni</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% if scadenze_costi_urgenti %}
+<div class="card mb-3">
+  <div class="card-header card-header-primary"><i class="bi bi-currency-euro me-2"></i>Scadenze Servizi/Costi (30 giorni) ({{ scadenze_costi_urgenti|length }})</div>
+  <div class="table-responsive">
+    <table class="table mb-0">
+      <thead><tr><th>Stabilimento</th><th>Pratica</th><th>Titolo</th><th>Scadenza</th><th>Giorni</th></tr></thead>
+      <tbody>
+        {% for c in scadenze_costi_urgenti %}
+        <tr>
+          <td><a href="{{ c.stabilimento.get_absolute_url }}">{{ c.stabilimento.nome }}</a></td>
+          <td><a href="{% url 'cespiti:costo_detail' c.pk %}">{{ c.numero_pratica }}</a></td>
+          <td>{{ c.titolo|truncatechars:40 }}</td>
+          <td>{{ c.data_scadenza_servizio|date:"d/m/Y" }}</td>
+          <td>
+            {% with g=c.giorni_alla_scadenza %}
+            {% if g <= 7 %}<span class="badge badge-wait">{{ g }}gg</span>
+            {% else %}<span class="badge badge-info">{{ g }}gg</span>{% endif %}
+            {% endwith %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+{% if not scadute and not questa_settimana and not prossimi_30 and not scadenze_costi_urgenti %}
+<div class="state-empty py-5">
+  <i class="bi bi-calendar-check" style="font-size:3rem;color:var(--color-ok);"></i>
+  <p class="mt-2">Nessuna scadenza urgente. Tutto in ordine.</p>
+</div>
+{% endif %}
+{% endblock %}

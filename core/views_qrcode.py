@@ -185,6 +185,72 @@ def qrcode_delete(request, qrcode_id):
 
 @login_required
 @require_http_methods(["GET"])
+def qrcode_stampa(request, content_type_id, object_id):
+    """
+    Pagina di stampa etichetta QR Code.
+    Genera automaticamente il QR se non esiste ancora, poi mostra la pagina di stampa.
+
+    URL: /core/qrcode/<content_type_id>/<object_id>/stampa/
+    """
+    try:
+        content_type = ContentType.objects.get(pk=content_type_id)
+    except ContentType.DoesNotExist:
+        raise Http404("Tipo contenuto non valido")
+
+    try:
+        linked_obj = content_type.get_object_for_this_type(pk=object_id)
+    except Exception:
+        raise Http404("Oggetto non trovato")
+
+    qr_obj, created = QRCode.objects.get_or_create(
+        content_type=content_type,
+        object_id=object_id,
+        defaults={"created_by": request.user}
+    )
+
+    has_image = bool(qr_obj.qr_image) and qr_obj.qr_image.name
+
+    if created or not has_image:
+        if hasattr(linked_obj, 'get_absolute_url'):
+            obj_url = linked_obj.get_absolute_url()
+        else:
+            obj_url = reverse(
+                f'admin:{content_type.app_label}_{content_type.model}_change',
+                args=[object_id]
+            )
+
+        full_url = request.build_absolute_uri(obj_url)
+        qr_obj.url = full_url
+
+        qr = qrcode.QRCode(
+            version=1,
+            error_correction=qrcode.constants.ERROR_CORRECT_L,
+            box_size=10,
+            border=4,
+        )
+        qr.add_data(full_url)
+        qr.make(fit=True)
+
+        img = qr.make_image(fill_color="black", back_color="white")
+        buffer = BytesIO()
+        img.save(buffer, format='PNG')
+        buffer.seek(0)
+
+        filename = f"qr_{content_type.model}_{object_id}.png"
+        qr_obj.qr_image.save(filename, ContentFile(buffer.read()), save=False)
+        qr_obj.save()
+
+    from django.shortcuts import render
+    return render(request, 'core/qrcode_stampa.html', {
+        'qr_obj': qr_obj,
+        'linked_obj': linked_obj,
+        'object_label': str(linked_obj),
+        'content_type': content_type,
+    })
+
+
+@login_required
+@require_http_methods(["GET"])
 def qrcode_check(request):
     """
     Verifica se esiste un QR Code per un oggetto specifico.

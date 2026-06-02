@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/detail.css' %}">
+{% endblock %}
+
+{% block content %}
+
+<div class="page-header mb-4">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'anagrafica:dashboard' %}">Anagrafica</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'anagrafica:azienda_list' %}">Clienti</a></li>
+      <li class="breadcrumb-item active">{{ titolo }}</li>
+    </ol>
+  </nav>
+  <h1><i class="bi bi-building-add me-2 text-brand"></i>{{ titolo }}</h1>
+</div>
+
+{% if form.non_field_errors %}
+<div class="alert alert-danger mb-3">
+  {% for e in form.non_field_errors %}{{ e }}{% endfor %}
+</div>
+{% endif %}
+
+<form method="post" novalidate>
+  {% csrf_token %}
+
+  <div class="row g-3">
+    <div class="col-lg-8">
+
+      <!-- Sede legale -->
+      <div class="card mb-3">
+        <div class="card-header card-header-primary">
+          <i class="bi bi-geo-alt me-2"></i>Sede Legale
+        </div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label" for="{{ form.ragione_sociale.id_for_label }}">{{ form.ragione_sociale.label }} *</label>
+              {{ form.ragione_sociale }}
+              {% if form.ragione_sociale.errors %}<div class="invalid-feedback">{% for e in form.ragione_sociale.errors %}{{ e }}{% endfor %}</div>{% endif %}
+            </div>
+            <div class="col-12">
+              <label class="form-label" for="{{ form.indirizzo.id_for_label }}">{{ form.indirizzo.label }}</label>
+              {{ form.indirizzo }}
+            </div>
+            <div class="col-sm-4">
+              <label class="form-label" for="{{ form.citta.id_for_label }}">{{ form.citta.label }}</label>
+              {{ form.citta }}
+            </div>
+            <div class="col-sm-4">
+              <label class="form-label" for="{{ form.zona.id_for_label }}">{{ form.zona.label }} *</label>
+              {{ form.zona }}
+              {% if form.zona.errors %}<div class="invalid-feedback d-block">{{ form.zona.errors.0 }}</div>{% endif %}
+            </div>
+            <div class="col-sm-2">
+              <label class="form-label" for="{{ form.cap.id_for_label }}">{{ form.cap.label }}</label>
+              {{ form.cap }}
+            </div>
+            <div class="col-sm-2">
+              <label class="form-label" for="{{ form.provincia.id_for_label }}">{{ form.provincia.label }}</label>
+              {{ form.provincia }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Dati fiscali -->
+      <div class="card mb-3">
+        <div class="card-header">
+          <span class="card-title"><i class="bi bi-receipt me-2"></i>Dati Fiscali</span>
+        </div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-sm-6">
+              <label class="form-label" for="{{ form.partita_iva.id_for_label }}">{{ form.partita_iva.label }} *</label>
+              {{ form.partita_iva }}
+              {% if form.partita_iva.errors %}<div class="invalid-feedback">{% for e in form.partita_iva.errors %}{{ e }}{% endfor %}</div>{% endif %}
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label" for="{{ form.codice_fiscale.id_for_label }}">{{ form.codice_fiscale.label }}</label>
+              {{ form.codice_fiscale }}
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label" for="{{ form.codice_univoco.id_for_label }}">{{ form.codice_univoco.label }}</label>
+              {{ form.codice_univoco }}
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label" for="{{ form.pec.id_for_label }}">{{ form.pec.label }} *</label>
+              {{ form.pec }}
+              {% if form.pec.errors %}<div class="invalid-feedback">{% for e in form.pec.errors %}{{ e }}{% endfor %}</div>{% endif %}
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label" for="{{ form.tipo_pagamento.id_for_label }}">{{ form.tipo_pagamento.label }}</label>
+              {{ form.tipo_pagamento }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Referente e telefono -->
+      <div class="card mb-3">
+        <div class="card-header card-header-primary">
+          <i class="bi bi-person me-2"></i>Referente e Telefono
+        </div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-sm-6">
+              <label class="form-label" for="{{ form.referente.id_for_label }}">{{ form.referente.label }}</label>
+              {{ form.referente }}
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label" for="{{ form.telefono.id_for_label }}">{{ form.telefono.label }} *</label>
+              {{ form.telefono }}
+              {% if form.telefono.errors %}<div class="invalid-feedback">{% for e in form.telefono.errors %}{{ e }}{% endfor %}</div>{% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Email per funzione -->
+      <div class="card mb-3">
+        <div class="card-header">
+          <span class="card-title"><i class="bi bi-envelope me-2"></i>Email per Funzione</span>
+        </div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-sm-6">
+              <label class="form-label" for="{{ form.email_direzione.id_for_label }}">{{ form.email_direzione.label }}</label>
+              {{ form.email_direzione }}
+              {% if form.email_direzione.help_text %}<div class="form-text">{{ form.email_direzione.help_text }}</div>{% endif %}
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label" for="{{ form.email_amministrazione.id_for_label }}">{{ form.email_amministrazione.label }}</label>
+              {{ form.email_amministrazione }}
+              {% if form.email_amministrazione.help_text %}<div class="form-text">{{ form.email_amministrazione.help_text }}</div>{% endif %}
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label" for="{{ form.email_operativo.id_for_label }}">{{ form.email_operativo.label }} *</label>
+              {{ form.email_operativo }}
+              {% if form.email_operativo.help_text %}<div class="form-text">{{ form.email_operativo.help_text }}</div>{% endif %}
+              {% if form.email_operativo.errors %}<div class="invalid-feedback">{% for e in form.email_operativo.errors %}{{ e }}{% endfor %}</div>{% endif %}
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label" for="{{ form.email_operativo_2.id_for_label }}">{{ form.email_operativo_2.label }}</label>
+              {{ form.email_operativo_2 }}
+              {% if form.email_operativo_2.help_text %}<div class="form-text">{{ form.email_operativo_2.help_text }}</div>{% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Note -->
+      <div class="card mb-3">
+        <div class="card-header">
+          <span class="card-title"><i class="bi bi-chat-left-text me-2"></i>Note</span>
+        </div>
+        <div class="card-body">
+          {{ form.note }}
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Sidebar azioni -->
+    <div class="col-lg-4">
+      <div class="sidebar-actions">
+
+        <div class="card mb-3">
+          <div class="card-header"><i class="bi bi-gear me-2"></i>Azioni</div>
+          <div class="card-body">
+            <div class="d-grid gap-2">
+              <button type="submit" class="btn btn-primary">
+                <i class="bi bi-check-lg me-1"></i>{{ submit_text }}
+              </button>
+              <a href="{{ back_url }}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left me-1"></i>Annulla
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><i class="bi bi-toggle-on me-2"></i>Stato</div>
+          <div class="card-body">
+            <div class="form-check mb-2">
+              {{ form.attivo }}
+              <label class="form-check-label" for="{{ form.attivo.id_for_label }}">Cliente attivo</label>
+            </div>
+            <div class="form-check">
+              {{ form.installato }}
+              <label class="form-check-label" for="{{ form.installato.id_for_label }}">
+                Installazione completata
+              </label>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+</form>
+{% endblock %}

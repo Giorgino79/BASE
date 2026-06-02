@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+{% load static %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/detail.css' %}">{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'acquisti:dashboard' %}">Acquisti</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'acquisti:ordine_list' %}">Ordini</a></li>
+      <li class="breadcrumb-item active">{{ ordine.numero_ordine }}</li>
+    </ol>
+  </nav>
+  <h1>
+    <i class="bi bi-file-earmark-text me-2 text-brand"></i>{{ ordine.numero_ordine }}
+    {% if ordine.stato == "bozza" %}<span class="badge badge-wait ms-2">Bozza</span>
+    {% elif ordine.stato == "inviato" %}<span class="badge badge-info ms-2">Inviato</span>
+    {% elif ordine.stato == "ricevuto_parz" %}<span class="badge badge-accent ms-2">Ric. parz.</span>
+    {% elif ordine.stato == "ricevuto" %}<span class="badge badge-accent ms-2">Ricevuto</span>
+    {% elif ordine.stato == "fatturato" %}<span class="badge badge-ok ms-2">Fatturato</span>
+    {% elif ordine.stato == "pagato" %}<span class="badge badge-ok ms-2">Pagato</span>
+    {% elif ordine.stato == "annullato" %}<span class="badge badge-ko ms-2">Annullato</span>{% endif %}
+  </h1>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-8">
+
+    <div class="card mb-3">
+      <div class="card-header card-header-primary"><i class="bi bi-info-circle me-2"></i>Dati Ordine</div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-sm-4"><div class="detail-field"><div class="detail-field-label">Fornitore</div><div class="detail-field-value">{{ ordine.fornitore }}</div></div></div>
+          <div class="col-sm-4"><div class="detail-field"><div class="detail-field-label">Data ordine</div><div class="detail-field-value">{{ ordine.data_ordine|date:"d/m/Y" }}</div></div></div>
+          <div class="col-sm-4"><div class="detail-field"><div class="detail-field-label">Consegna richiesta</div><div class="detail-field-value">{{ ordine.data_consegna_richiesta|date:"d/m/Y"|default:"—" }}</div></div></div>
+          <div class="col-sm-4"><div class="detail-field"><div class="detail-field-label">Creato da</div><div class="detail-field-value">{{ ordine.created_by.get_full_name|default:"—" }}</div></div></div>
+          {% if ordine.note %}
+          <div class="col-12"><div class="detail-field"><div class="detail-field-label">Note</div><div class="detail-field-value">{{ ordine.note }}</div></div></div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="card mb-3">
+      <div class="card-header card-header-primary"><i class="bi bi-list-ul me-2"></i>Righe Ordine</div>
+      <div class="table-responsive">
+        <table class="table mb-0">
+          <thead class="bg-brand text-white">
+            <tr>
+              <th>Prodotto / Articolo</th><th>UM</th>
+              <th class="text-end">Qt. ord.</th><th class="text-end">Qt. ric.</th>
+              <th class="text-end">Prezzo unit.</th><th class="text-end">IVA %</th>
+              <th class="text-end">Imponibile</th><th class="text-end">IVA</th><th class="text-end">Totale</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in ordine.righe.all %}
+            <tr>
+              <td>{% if r.prodotto %}{{ r.prodotto }}{% else %}{{ r.descrizione }}{% endif %}</td>
+              <td>{{ r.unita_misura|default:"—" }}</td>
+              <td class="text-end">{{ r.quantita_ordinata }}</td>
+              <td class="text-end">{{ r.quantita_ricevuta }}</td>
+              <td class="text-end">€ {{ r.prezzo_unitario }}</td>
+              <td class="text-end text-muted small">{{ r.aliquota_iva }}%</td>
+              <td class="text-end">€ {{ r.imponibile }}</td>
+              <td class="text-end text-muted small">€ {{ r.importo_iva }}</td>
+              <td class="text-end fw-bold">€ {{ r.totale_riga }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="9" class="text-muted text-center py-2">Nessuna riga</td></tr>
+            {% endfor %}
+          </tbody>
+          {% if ordine.righe.exists %}
+          <tfoot class="table-light fw-bold">
+            <tr>
+              <td colspan="6">Totali</td>
+              <td class="text-end">€ {{ ordine.totale_imponibile }}</td>
+              <td class="text-end text-muted">€ {{ ordine.totale_iva }}</td>
+              <td class="text-end text-brand">€ {{ ordine.totale_ivato }}</td>
+            </tr>
+          </tfoot>
+          {% endif %}
+        </table>
+      </div>
+    </div>
+
+    {% if ordine.fatture.exists %}
+    <div class="card mb-3">
+      <div class="card-header card-header-primary"><i class="bi bi-receipt me-2"></i>Fatture Collegate</div>
+      <div class="table-responsive">
+        <table class="table mb-0">
+          <thead class="bg-brand text-white"><tr><th>Numero</th><th>Data</th><th>Totale</th><th>Stato</th></tr></thead>
+          <tbody>
+            {% for f in ordine.fatture.all %}
+            <tr>
+              <td><a href="{{ f.get_absolute_url }}">{{ f.numero_fattura }}</a></td>
+              <td>{{ f.data_fattura|date:"d/m/Y" }}</td>
+              <td>€ {{ f.totale }}</td>
+              <td>{{ f.get_stato_pagamento_display }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if ordine.ricezioni.exists %}
+    <div class="card mb-3">
+      <div class="card-header card-header-primary"><i class="bi bi-box-seam me-2"></i>Ricezioni</div>
+      <div class="table-responsive">
+        <table class="table mb-0">
+          <thead class="bg-brand text-white"><tr><th>Data</th><th>DDT</th><th></th></tr></thead>
+          <tbody>
+            {% for ric in ordine.ricezioni.all %}
+            <tr>
+              <td>{{ ric.data_ricezione|date:"d/m/Y" }}</td>
+              <td>{{ ric.numero_ddt|default:"—" }}</td>
+              <td><a href="{{ ric.get_absolute_url }}" class="btn btn-sm btn-outline-secondary">Dettaglio</a></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card mb-3">
+      <div class="card-header"><i class="bi bi-gear me-2"></i>Azioni</div>
+      <div class="list-group list-group-flush">
+        <a href="{{ edit_url }}" class="list-group-item list-group-item-action"><i class="bi bi-pencil me-2"></i>Modifica</a>
+        <a href="{% url 'acquisti:ordine_pdf' ordine.pk %}" class="list-group-item list-group-item-action" target="_blank"><i class="bi bi-file-earmark-pdf me-2"></i>Scarica PDF</a>
+        <form method="post" action="{% url 'acquisti:ordine_reinvia_mail' ordine.pk %}">
+          {% csrf_token %}
+          <button type="submit" class="list-group-item list-group-item-action text-start w-100"><i class="bi bi-envelope-arrow-up me-2"></i>Reinvia mail al fornitore</button>
+        </form>
+        <a href="{% url 'acquisti:fattura_create' %}" class="list-group-item list-group-item-action"><i class="bi bi-receipt me-2"></i>Registra Fattura</a>
+        {% if ordine.stato == 'ricevuto' or ordine.stato == 'fatturato' or ordine.stato == 'pagato' or ordine.stato == 'annullato' %}
+        <span class="list-group-item text-muted"><i class="bi bi-check-circle me-2 text-success"></i>Già ricevuto</span>
+        {% else %}
+        <a href="{% url 'magazzino:ricezione_da_ordine' ordine.pk %}" class="list-group-item list-group-item-action"><i class="bi bi-box-seam me-2"></i>Registra Ricezione</a>
+        {% endif %}
+        {% if request.user.is_staff %}
+        <a href="{% url 'acquisti:ordine_delete' ordine.pk %}" class="list-group-item list-group-item-action text-danger"><i class="bi bi-trash me-2"></i>Elimina</a>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card mb-3">
+      <div class="card-header"><i class="bi bi-arrow-repeat me-2"></i>Cambia Stato</div>
+      <div class="card-body">
+        <form method="post" action="{% url 'acquisti:ordine_set_stato' ordine.pk %}">
+          {% csrf_token %}
+          <select name="stato" class="form-select form-select-sm mb-2">
+            {% for val, label in stato_choices %}
+            <option value="{{ val }}" {% if ordine.stato == val %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+          <button type="submit" class="btn btn-sm btn-primary w-100">Aggiorna stato</button>
+        </form>
+      </div>
+    </div>
+
+    {% include 'commons_templates/components/sidebar_allegati_qr.html' with object=ordine %}
+
+    <div class="mt-3">
+      <a href="{{ back_url }}" class="btn btn-outline-secondary btn-sm w-100"><i class="bi bi-arrow-left me-1"></i>Torna alla lista</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

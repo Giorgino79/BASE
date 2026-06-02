@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% load static %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/detail.css' %}">{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'cespiti:dashboard' %}">Cespiti</a></li>
+      <li class="breadcrumb-item active">Costi Stabilimenti</li>
+    </ol>
+  </nav>
+  <h1><i class="bi bi-currency-euro me-2 text-brand"></i>Costi Stabilimenti</h1>
+</div>
+
+<div class="card mb-3">
+  <div class="card-body py-2">
+    <form method="get" class="row g-2 align-items-end">
+      {% for field in form %}
+      <div class="col-md-2">
+        {{ field }}
+      </div>
+      {% endfor %}
+      <div class="col-auto">
+        <button class="btn btn-outline-secondary btn-sm" type="submit"><i class="bi bi-search"></i></button>
+        <a href="{% url 'cespiti:costo_list' %}" class="btn btn-outline-secondary btn-sm">Reset</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table mb-0">
+      <thead>
+        <tr>
+          <th>N° Pratica</th><th>Stabilimento</th><th>Titolo</th><th>Causale</th><th>Importo</th><th>Stato</th><th>Scadenza</th><th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in page_obj %}
+        <tr>
+          <td class="fw-semibold">{{ c.numero_pratica }}</td>
+          <td><a href="{{ c.stabilimento.get_absolute_url }}" class="text-brand text-decoration-none">{{ c.stabilimento.nome }}</a></td>
+          <td>{{ c.titolo|truncatechars:35 }}</td>
+          <td class="text-muted small">{{ c.get_causale_display }}</td>
+          <td>€ {{ c.importo }}</td>
+          <td>
+            {% if c.stato == "pagato" %}<span class="badge badge-ok">Pagato</span>
+            {% elif c.stato == "fatturato" %}<span class="badge badge-info">Fatturato</span>
+            {% elif c.stato == "completato" %}<span class="badge badge-info">Completato</span>
+            {% elif c.stato == "in_corso" %}<span class="badge badge-wait">In corso</span>
+            {% elif c.stato == "approvato" %}<span class="badge badge-accent">Approvato</span>
+            {% else %}<span class="badge badge-wait">Preventivo</span>{% endif %}
+          </td>
+          <td>
+            {% if c.data_scadenza_servizio %}
+              {% if c.is_scaduto %}<span class="badge badge-ko">Scaduto</span>
+              {% elif c.is_in_scadenza %}
+                {{ c.data_scadenza_servizio|date:"d/m/Y" }}
+                <span class="badge badge-wait ms-1">{{ c.giorni_alla_scadenza }}gg</span>
+              {% else %}{{ c.data_scadenza_servizio|date:"d/m/Y" }}{% endif %}
+            {% else %}—{% endif %}
+          </td>
+          <td class="text-end">
+            <a href="{% url 'cespiti:costo_detail' c.pk %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-eye"></i></a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="8">
+          <div class="state-empty py-3">
+            <i class="bi bi-currency-euro"></i>
+            <p>Nessun costo trovato.</p>
+          </div>
+        </td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if page_obj.has_other_pages %}
+  <div class="card-footer">
+    <nav><ul class="pagination pagination-sm mb-0">
+      {% if page_obj.has_previous %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">‹</a></li>{% endif %}
+      <li class="page-item disabled"><span class="page-link">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span></li>
+      {% if page_obj.has_next %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">›</a></li>{% endif %}
+    </ul></nav>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

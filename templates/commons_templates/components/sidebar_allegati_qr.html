@@ -1,0 +1,99 @@
+{% load allegati_tags %}
+{% comment %}
+Blocco sidebar: card Allegati + card QR Code.
+Richiede nel contesto: content_type_id, object_id, object.
+{% endcomment %}
+
+<!-- ── Allegati ─────────────────────────────────────────── -->
+<div class="card mb-3">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <span><i class="bi bi-paperclip me-2"></i>Allegati</span>
+    {% with cnt=object.conta_allegati %}
+    {% if cnt %}<span class="badge badge-info">{{ cnt }}</span>{% endif %}
+    {% endwith %}
+  </div>
+  <div class="card-body">
+    {% include 'core/components/allegati_widget.html' with content_type_id=content_type_id object_id=object_id allegati_count=object.conta_allegati %}
+  </div>
+</div>
+
+<!-- ── QR Code ──────────────────────────────────────────── -->
+<div class="card mb-3">
+  <div class="card-header">
+    <i class="bi bi-qr-code me-2"></i>QR Code
+  </div>
+  <div class="card-body text-center py-3" id="qr-sidebar-body">
+    <img id="qr-sidebar-img" src="" alt="QR Code" class="img-fluid d-none mb-2" style="max-width:150px;">
+    <div class="d-grid gap-2">
+      <button type="button" class="btn btn-outline-secondary btn-sm" id="qr-generate-btn">
+        <i class="bi bi-qr-code-scan me-1"></i>Genera QR
+      </button>
+      <a href="#" id="qr-download-btn" class="btn btn-outline-secondary btn-sm d-none" download>
+        <i class="bi bi-download me-1"></i>Scarica
+      </a>
+      <a href="{% url 'core:qrcode_stampa' content_type_id object_id %}" id="qr-stampa-btn" class="btn btn-outline-secondary btn-sm d-none" target="_blank">
+        <i class="bi bi-printer me-1"></i>Stampa Etichetta
+      </a>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  const generateBtn = document.getElementById('qr-generate-btn');
+  const downloadBtn = document.getElementById('qr-download-btn');
+  const stampaBtn   = document.getElementById('qr-stampa-btn');
+  const qrImg       = document.getElementById('qr-sidebar-img');
+  if (!generateBtn) return;
+
+  const ctId  = '{{ content_type_id }}';
+  const objId = '{{ object_id }}';
+
+  function getCsrf() {
+    return document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+  }
+
+  function showQr(imgUrl) {
+    qrImg.src = imgUrl;
+    qrImg.classList.remove('d-none');
+    downloadBtn.href = imgUrl;
+    downloadBtn.classList.remove('d-none');
+    if (stampaBtn) stampaBtn.classList.remove('d-none');
+    generateBtn.classList.add('d-none');
+  }
+
+  fetch('{% url "core:qrcode_check" %}?content_type=' + ctId + '&object_id=' + objId)
+    .then(r => r.json())
+    .then(function (data) {
+      if (data.exists && data.qrcode && data.qrcode.image_url) showQr(data.qrcode.image_url);
+    })
+    .catch(() => {});
+
+  generateBtn.addEventListener('click', function () {
+    generateBtn.disabled = true;
+    generateBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Generazione…';
+    const fd = new FormData();
+    fd.append('content_type', ctId);
+    fd.append('object_id', objId);
+    fetch('{% url "core:qrcode_generate" %}', {
+      method: 'POST',
+      headers: { 'X-CSRFToken': getCsrf() },
+      body: fd,
+    })
+    .then(r => r.json())
+    .then(function (data) {
+      if (data.qrcode && data.qrcode.image_url) {
+        showQr(data.qrcode.image_url);
+      } else {
+        generateBtn.disabled = false;
+        generateBtn.innerHTML = '<i class="bi bi-qr-code-scan me-1"></i>Genera QR';
+      }
+    })
+    .catch(function () {
+      generateBtn.disabled = false;
+      generateBtn.innerHTML = '<i class="bi bi-qr-code-scan me-1"></i>Genera QR';
+    });
+  });
+})();
+</script>

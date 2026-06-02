@@ -37,6 +37,11 @@ INSTALLED_APPS = [
     "comunicazioni",
     "corrispondenza",
     "payroll",
+    "anagrafica_r2",
+    "cespiti",
+    "acquisti",
+    "magazzino",
+    "servizi",
 ]
 
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"

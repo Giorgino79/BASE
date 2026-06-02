@@ -33,10 +33,9 @@
     </button>
   </div>
 
-  {% for group in sidebar_nav %}
-  <div class="sidebar-section">{{ group.label }}</div>
   <nav class="sidebar-nav">
     <ul class="nav flex-column">
+      {% for group in sidebar_nav %}
       {% for item in group.items %}
       <li class="nav-item">
         <a href="{{ item.resolved_url }}"
@@ -45,9 +44,9 @@
         </a>
       </li>
       {% endfor %}
+      {% endfor %}
     </ul>
   </nav>
-  {% endfor %}
 
 </aside>
 
@@ -307,5 +306,8 @@
 })();
 </script>
 {% block extra_js %}{% endblock %}
+{% include 'commons_templates/components/allegato_upload_modal.html' %}
+{% include 'commons_templates/components/allegati_gestione_modal.html' %}
+{% block modals %}{% endblock %}
 </body>
 </html>

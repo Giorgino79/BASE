@@ -1,0 +1,301 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/detail.css' %}">
+{% endblock %}
+
+{% block content %}
+
+<div class="page-header mb-4">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'anagrafica:dashboard' %}">Anagrafica</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'anagrafica:fornitore_list' %}">Fornitori</a></li>
+      <li class="breadcrumb-item active">{{ fornitore.ragione_sociale }}</li>
+    </ol>
+  </nav>
+  <h1>
+    <i class="bi bi-truck me-2 text-brand"></i>{{ fornitore.ragione_sociale }}
+    <span class="badge badge-accent ms-2">{{ fornitore.get_categoria_display }}</span>
+    {% if fornitore.attivo %}
+      <span class="badge badge-ok ms-1">Attivo</span>
+    {% else %}
+      <span class="badge badge-ko ms-1">Inattivo</span>
+    {% endif %}
+  </h1>
+</div>
+
+<div class="row g-3">
+
+  <div class="col-lg-8">
+
+    <div class="card mb-3">
+      <div class="card-header card-header-primary">
+        <i class="bi bi-building me-2"></i>Dati Anagrafici
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-sm-6">
+            <div class="detail-field">
+              <div class="detail-field-label">Ragione Sociale</div>
+              <div class="detail-field-value">{{ fornitore.ragione_sociale }}</div>
+            </div>
+          </div>
+          <div class="col-sm-6">
+            <div class="detail-field">
+              <div class="detail-field-label">Indirizzo</div>
+              <div class="detail-field-value {% if not fornitore.indirizzo %}empty{% endif %}">
+                {{ fornitore.get_indirizzo_completo }}
+              </div>
+            </div>
+          </div>
+          <div class="col-sm-4">
+            <div class="detail-field">
+              <div class="detail-field-label">Provincia</div>
+              <div class="detail-field-value {% if not fornitore.provincia %}empty{% endif %}">
+                {{ fornitore.provincia|default:"—" }}
+              </div>
+            </div>
+          </div>
+          <div class="col-sm-8">
+            <div class="detail-field">
+              <div class="detail-field-label">Regione</div>
+              <div class="detail-field-value {% if not fornitore.regione %}empty{% endif %}">
+                {{ fornitore.regione|default:"—" }}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card mb-3">
+      <div class="card-header card-header-primary">
+        <i class="bi bi-telephone me-2"></i>Contatti
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-sm-6">
+            <div class="detail-field">
+              <div class="detail-field-label">Telefono</div>
+              <div class="detail-field-value">
+                <a href="tel:{{ fornitore.telefono }}" class="text-decoration-none">{{ fornitore.telefono }}</a>
+              </div>
+            </div>
+          </div>
+          <div class="col-sm-6">
+            <div class="detail-field">
+              <div class="detail-field-label">Email</div>
+              <div class="detail-field-value">
+                <a href="mailto:{{ fornitore.email }}" class="text-decoration-none">{{ fornitore.email }}</a>
+              </div>
+            </div>
+          </div>
+          {% if fornitore.pec %}
+          <div class="col-sm-6">
+            <div class="detail-field">
+              <div class="detail-field-label">PEC</div>
+              <div class="detail-field-value">
+                <a href="mailto:{{ fornitore.pec }}" class="text-decoration-none">{{ fornitore.pec }}</a>
+              </div>
+            </div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="card mb-3">
+      <div class="card-header">
+        <span class="card-title"><i class="bi bi-receipt me-2"></i>Dati Fiscali</span>
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-sm-4">
+            <div class="detail-field">
+              <div class="detail-field-label">Partita IVA</div>
+              <div class="detail-field-value">{{ fornitore.partita_iva }}</div>
+            </div>
+          </div>
+          <div class="col-sm-4">
+            <div class="detail-field">
+              <div class="detail-field-label">Codice Fiscale</div>
+              <div class="detail-field-value {% if not fornitore.codice_fiscale %}empty{% endif %}">
+                {{ fornitore.codice_fiscale|default:"—" }}
+              </div>
+            </div>
+          </div>
+          <div class="col-sm-4">
+            <div class="detail-field">
+              <div class="detail-field-label">Codice SDI</div>
+              <div class="detail-field-value {% if not fornitore.codice_destinatario %}empty{% endif %}">
+                {{ fornitore.codice_destinatario|default:"—" }}
+              </div>
+            </div>
+          </div>
+          {% if fornitore.iban %}
+          <div class="col-12">
+            <div class="detail-field mb-0">
+              <div class="detail-field-label">IBAN</div>
+              <div class="detail-field-value">{{ fornitore.iban }}</div>
+            </div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="card mb-3">
+      <div class="card-header">
+        <span class="card-title"><i class="bi bi-currency-euro me-2"></i>Dati Commerciali</span>
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-sm-4">
+            <div class="detail-field">
+              <div class="detail-field-label">Categoria</div>
+              <div class="detail-field-value">
+                <span class="badge badge-accent">{{ fornitore.get_categoria_display }}</span>
+              </div>
+            </div>
+          </div>
+          <div class="col-sm-4">
+            <div class="detail-field">
+              <div class="detail-field-label">Tipo Pagamento</div>
+              <div class="detail-field-value">
+                <span class="badge badge-info">{{ fornitore.get_tipo_pagamento_display }}</span>
+              </div>
+            </div>
+          </div>
+          <div class="col-sm-4">
+            <div class="detail-field">
+              <div class="detail-field-label">Priorità Pagamento</div>
+              <div class="detail-field-value">
+                <span class="badge badge-wait">{{ fornitore.get_priorita_pagamento_display }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {% if fornitore.has_referente %}
+    <div class="card mb-3">
+      <div class="card-header">
+        <span class="card-title"><i class="bi bi-person-badge me-2"></i>Referente</span>
+      </div>
+      <div class="card-body">
+        <div class="row">
+          {% if fornitore.referente_nome %}
+          <div class="col-sm-4">
+            <div class="detail-field">
+              <div class="detail-field-label">Nome</div>
+              <div class="detail-field-value">{{ fornitore.referente_nome }}</div>
+            </div>
+          </div>
+          {% endif %}
+          {% if fornitore.referente_telefono %}
+          <div class="col-sm-4">
+            <div class="detail-field">
+              <div class="detail-field-label">Telefono</div>
+              <div class="detail-field-value">
+                <a href="tel:{{ fornitore.referente_telefono }}" class="text-decoration-none">{{ fornitore.referente_telefono }}</a>
+              </div>
+            </div>
+          </div>
+          {% endif %}
+          {% if fornitore.referente_email %}
+          <div class="col-sm-4">
+            <div class="detail-field">
+              <div class="detail-field-label">Email</div>
+              <div class="detail-field-value">
+                <a href="mailto:{{ fornitore.referente_email }}" class="text-decoration-none">{{ fornitore.referente_email }}</a>
+              </div>
+            </div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if fornitore.note %}
+    <div class="card mb-3">
+      <div class="card-header">
+        <span class="card-title"><i class="bi bi-chat-left-text me-2"></i>Note</span>
+      </div>
+      <div class="card-body">
+        <p class="mb-0">{{ fornitore.note|linebreaksbr }}</p>
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+
+  <div class="col-lg-4">
+    <div class="sidebar-actions">
+
+      <div class="card mb-3">
+        <div class="card-header"><i class="bi bi-gear me-2"></i>Azioni</div>
+        <div class="list-group list-group-flush">
+          <a href="tel:{{ fornitore.telefono }}" class="list-group-item list-group-item-action text-success">
+            <i class="bi bi-telephone-fill me-2"></i>Chiama fornitore
+          </a>
+          {% if fornitore.indirizzo and fornitore.citta %}
+          {% with maps_q=fornitore.indirizzo|add:", "|add:fornitore.citta %}
+          <a href="https://www.google.com/maps/dir/?api=1&destination={{ maps_q|urlencode }}"
+             class="list-group-item list-group-item-action text-primary" target="_blank" rel="noopener">
+            <i class="bi bi-map-fill me-2"></i>Avvia navigatore
+          </a>
+          {% endwith %}
+          {% endif %}
+          <a href="{{ edit_url }}" class="list-group-item list-group-item-action">
+            <i class="bi bi-pencil"></i>Modifica
+          </a>
+          <a href="{{ pdf_url }}" class="list-group-item list-group-item-action" target="_blank">
+            <i class="bi bi-file-earmark-pdf"></i>Scarica PDF
+          </a>
+          <a href="{% url 'anagrafica:toggle_attivo' 'fornitore' fornitore.pk %}"
+             class="list-group-item list-group-item-action">
+            {% if fornitore.attivo %}
+              <i class="bi bi-eye-slash"></i>Disattiva
+            {% else %}
+              <i class="bi bi-eye"></i>Attiva
+            {% endif %}
+          </a>
+          {% if request.user.is_staff %}
+          <a href="{{ delete_url }}" class="list-group-item list-group-item-action text-danger">
+            <i class="bi bi-trash"></i>Elimina
+          </a>
+          {% endif %}
+        </div>
+      </div>
+
+      {% include 'commons_templates/components/sidebar_allegati_qr.html' with object=fornitore %}
+
+      <div class="card">
+        <div class="card-header"><i class="bi bi-info-circle me-2"></i>Informazioni</div>
+        <div class="card-body">
+          <div class="detail-field">
+            <div class="detail-field-label">Creato il</div>
+            <div class="detail-field-value">{{ fornitore.created_at|date:"d/m/Y H:i" }}</div>
+          </div>
+          <div class="detail-field mb-0">
+            <div class="detail-field-label">Aggiornato il</div>
+            <div class="detail-field-value">{{ fornitore.updated_at|date:"d/m/Y H:i" }}</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-3">
+        <a href="{{ back_url }}" class="btn btn-outline-secondary btn-sm w-100">
+          <i class="bi bi-arrow-left me-1"></i>Torna alla lista
+        </a>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+{% endblock %}

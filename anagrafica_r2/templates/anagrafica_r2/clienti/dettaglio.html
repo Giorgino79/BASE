@@ -1,0 +1,375 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/detail.css' %}">
+{% endblock %}
+
+{% block content %}
+
+<div class="page-header mb-4">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'anagrafica:dashboard' %}">Anagrafica</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'anagrafica:azienda_list' %}">Clienti</a></li>
+      <li class="breadcrumb-item active">{{ cliente.ragione_sociale }}</li>
+    </ol>
+  </nav>
+  <h1>
+    <i class="bi bi-building-fill me-2 text-brand"></i>{{ cliente.ragione_sociale }}
+    {% if cliente.attivo %}
+      <span class="badge badge-ok ms-2">Attivo</span>
+    {% else %}
+      <span class="badge badge-ko ms-2">Inattivo</span>
+    {% endif %}
+    {% if cliente.installato %}
+      <span class="badge badge-ok ms-1"><i class="bi bi-check-circle me-1"></i>Installato</span>
+    {% else %}
+      <span class="badge badge-wait ms-1"><i class="bi bi-clock me-1"></i>Da installare</span>
+    {% endif %}
+  </h1>
+</div>
+
+<div class="row g-3">
+
+  <!-- Colonna principale -->
+  <div class="col-lg-8">
+
+    <!-- Sede legale -->
+    <div class="card mb-3">
+      <div class="card-header card-header-primary">
+        <i class="bi bi-geo-alt me-2"></i>Sede Legale
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-sm-6">
+            <div class="detail-field">
+              <div class="detail-field-label">Ragione Sociale</div>
+              <div class="detail-field-value">{{ cliente.ragione_sociale }}</div>
+            </div>
+          </div>
+          <div class="col-sm-6">
+            <div class="detail-field">
+              <div class="detail-field-label">Indirizzo</div>
+              <div class="detail-field-value">{{ cliente.indirizzo }}</div>
+            </div>
+          </div>
+          <div class="col-sm-3">
+            <div class="detail-field">
+              <div class="detail-field-label">CAP</div>
+              <div class="detail-field-value">{{ cliente.cap }}</div>
+            </div>
+          </div>
+          <div class="col-sm-4">
+            <div class="detail-field">
+              <div class="detail-field-label">Città</div>
+              <div class="detail-field-value">{{ cliente.citta }}</div>
+            </div>
+          </div>
+          <div class="col-sm-4">
+            <div class="detail-field">
+              <div class="detail-field-label">Zona</div>
+              <div class="detail-field-value">{{ cliente.zona }}</div>
+            </div>
+          </div>
+          <div class="col-sm-4">
+            <div class="detail-field">
+              <div class="detail-field-label">Provincia</div>
+              <div class="detail-field-value {% if not cliente.provincia %}empty{% endif %}">
+                {{ cliente.provincia|default:"—" }}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Dati fiscali -->
+    <div class="card mb-3">
+      <div class="card-header">
+        <span class="card-title"><i class="bi bi-receipt me-2"></i>Dati Fiscali</span>
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-sm-4">
+            <div class="detail-field">
+              <div class="detail-field-label">Partita IVA</div>
+              <div class="detail-field-value">{{ cliente.partita_iva }}</div>
+            </div>
+          </div>
+          <div class="col-sm-4">
+            <div class="detail-field">
+              <div class="detail-field-label">Codice Fiscale</div>
+              <div class="detail-field-value {% if not cliente.codice_fiscale %}empty{% endif %}">
+                {{ cliente.codice_fiscale|default:"—" }}
+              </div>
+            </div>
+          </div>
+          <div class="col-sm-4">
+            <div class="detail-field">
+              <div class="detail-field-label">Codice Univoco SDI</div>
+              <div class="detail-field-value {% if not cliente.codice_univoco %}empty{% endif %}">
+                {{ cliente.codice_univoco|default:"—" }}
+              </div>
+            </div>
+          </div>
+          <div class="col-sm-6">
+            <div class="detail-field">
+              <div class="detail-field-label">PEC</div>
+              <div class="detail-field-value">
+                <a href="mailto:{{ cliente.pec }}" class="text-decoration-none">{{ cliente.pec }}</a>
+              </div>
+            </div>
+          </div>
+          <div class="col-sm-6">
+            <div class="detail-field">
+              <div class="detail-field-label">Modalità Pagamento</div>
+              <div class="detail-field-value">
+                <span class="badge badge-info">{{ cliente.get_tipo_pagamento_display }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Contatti e comunicazioni -->
+    <div class="card mb-3">
+      <div class="card-header card-header-primary">
+        <i class="bi bi-envelope me-2"></i>Contatti e Comunicazioni
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-sm-6">
+            <div class="detail-field">
+              <div class="detail-field-label">Referente Principale</div>
+              <div class="detail-field-value {% if not cliente.referente %}empty{% endif %}">
+                {{ cliente.referente|default:"—" }}
+              </div>
+            </div>
+          </div>
+          <div class="col-sm-6">
+            <div class="detail-field">
+              <div class="detail-field-label">Telefono</div>
+              <div class="detail-field-value">
+                <a href="tel:{{ cliente.telefono }}" class="text-decoration-none">{{ cliente.telefono }}</a>
+              </div>
+            </div>
+          </div>
+          {% if cliente.email_direzione %}
+          <div class="col-sm-6">
+            <div class="detail-field">
+              <div class="detail-field-label">Email Direzione</div>
+              <div class="detail-field-value">
+                <a href="mailto:{{ cliente.email_direzione }}" class="text-decoration-none">{{ cliente.email_direzione }}</a>
+              </div>
+            </div>
+          </div>
+          {% endif %}
+          {% if cliente.email_amministrazione %}
+          <div class="col-sm-6">
+            <div class="detail-field">
+              <div class="detail-field-label">Email Amministrazione</div>
+              <div class="detail-field-value">
+                <a href="mailto:{{ cliente.email_amministrazione }}" class="text-decoration-none">{{ cliente.email_amministrazione }}</a>
+              </div>
+            </div>
+          </div>
+          {% endif %}
+          <div class="col-sm-6">
+            <div class="detail-field">
+              <div class="detail-field-label">Email Operativo</div>
+              <div class="detail-field-value">
+                <a href="mailto:{{ cliente.email_operativo }}" class="text-decoration-none">{{ cliente.email_operativo }}</a>
+              </div>
+            </div>
+          </div>
+          {% if cliente.email_operativo_2 %}
+          <div class="col-sm-6">
+            <div class="detail-field">
+              <div class="detail-field-label">Email Operativo 2</div>
+              <div class="detail-field-value">
+                <a href="mailto:{{ cliente.email_operativo_2 }}" class="text-decoration-none">{{ cliente.email_operativo_2 }}</a>
+              </div>
+            </div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    {% if cliente.note %}
+    <div class="card mb-3">
+      <div class="card-header">
+        <span class="card-title"><i class="bi bi-chat-left-text me-2"></i>Note</span>
+      </div>
+      <div class="card-body">
+        <p class="mb-0">{{ cliente.note|linebreaksbr }}</p>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- ── SEDI / FILIALI ── -->
+    <div class="card mb-3">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span class="card-title">
+          <i class="bi bi-geo-alt-fill me-2 text-brand"></i>Sedi / Filiali
+          <span class="badge badge-info ms-2">{{ cliente.n_filiali }}</span>
+          {% if cliente.n_filiali_installate < cliente.n_filiali %}
+            <span class="badge badge-wait ms-1">
+              {{ cliente.n_filiali_installate }}/{{ cliente.n_filiali }} installate
+            </span>
+          {% elif cliente.n_filiali > 0 %}
+            <span class="badge badge-ok ms-1">Tutte installate</span>
+          {% endif %}
+        </span>
+        <a href="{{ nuova_filiale_url }}" class="btn btn-sm btn-primary">
+          <i class="bi bi-plus-lg me-1"></i>Aggiungi Sede
+        </a>
+      </div>
+      <div class="table-responsive">
+        <table class="table mb-0">
+          <thead>
+            <tr>
+              <th>Nome Sede</th>
+              <th>Tipo</th>
+              <th>Indirizzo</th>
+              <th>Telefono</th>
+              <th>Referente</th>
+              <th>Installato</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for f in filiali %}
+            <tr>
+              <td>
+                <a href="{{ f.get_absolute_url }}" class="text-brand fw-semibold text-decoration-none">
+                  {{ f.nome }}
+                </a>
+              </td>
+              <td>
+                <span class="badge badge-accent">{{ f.get_tipo_sede_display }}</span>
+              </td>
+              <td class="text-muted">{{ f.citta }}{% if f.provincia %} ({{ f.provincia }}){% endif %}</td>
+              <td>{{ f.telefono|default:"—" }}</td>
+              <td class="text-muted">{{ f.referente_nome|default:"—" }}</td>
+              <td>
+                {% if f.installato %}
+                  <span class="badge badge-ok"><i class="bi bi-check-lg"></i></span>
+                {% else %}
+                  <span class="badge badge-wait"><i class="bi bi-clock"></i></span>
+                {% endif %}
+              </td>
+              <td class="text-end">
+                <a href="{{ f.get_absolute_url }}" class="btn btn-sm btn-outline-secondary" title="Dettaglio">
+                  <i class="bi bi-eye"></i>
+                </a>
+                <a href="{% url 'anagrafica:filiale_update' f.pk %}" class="btn btn-sm btn-outline-secondary" title="Modifica">
+                  <i class="bi bi-pencil"></i>
+                </a>
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="7">
+                <div class="state-empty py-3">
+                  <i class="bi bi-geo-alt"></i>
+                  <p>Nessuna sede registrata per questo cliente.</p>
+                  <a href="{{ nuova_filiale_url }}" class="btn btn-sm btn-primary">
+                    <i class="bi bi-plus me-1"></i>Aggiungi la prima sede
+                  </a>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Sidebar azioni -->
+  <div class="col-lg-4">
+    <div class="sidebar-actions">
+
+      <div class="card mb-3">
+        <div class="card-header"><i class="bi bi-gear me-2"></i>Azioni</div>
+        <div class="list-group list-group-flush">
+          <a href="tel:{{ cliente.telefono }}" class="list-group-item list-group-item-action text-success">
+            <i class="bi bi-telephone-fill me-2"></i>Chiama cliente
+          </a>
+          {% with maps_q=cliente.indirizzo|add:", "|add:cliente.citta %}
+          <a href="https://www.google.com/maps/dir/?api=1&destination={{ maps_q|urlencode }}"
+             class="list-group-item list-group-item-action text-primary" target="_blank" rel="noopener">
+            <i class="bi bi-map-fill me-2"></i>Avvia navigatore
+          </a>
+          {% endwith %}
+          <a href="{{ edit_url }}" class="list-group-item list-group-item-action">
+            <i class="bi bi-pencil"></i>Modifica cliente
+          </a>
+          <a href="{{ nuova_filiale_url }}" class="list-group-item list-group-item-action">
+            <i class="bi bi-plus-circle"></i>Aggiungi sede
+          </a>
+          <a href="{% url 'anagrafica:toggle_attivo' 'cliente' cliente.pk %}"
+             class="list-group-item list-group-item-action">
+            {% if cliente.attivo %}
+              <i class="bi bi-eye-slash"></i>Disattiva cliente
+            {% else %}
+              <i class="bi bi-eye"></i>Attiva cliente
+            {% endif %}
+          </a>
+          {% if request.user.is_staff %}
+          <a href="{{ delete_url }}" class="list-group-item list-group-item-action text-danger">
+            <i class="bi bi-trash"></i>Elimina cliente
+          </a>
+          {% endif %}
+        </div>
+      </div>
+
+      {% include 'commons_templates/components/sidebar_allegati_qr.html' with object=cliente %}
+
+      <div class="card mb-3">
+        <div class="card-header"><i class="bi bi-bar-chart me-2"></i>Riepilogo</div>
+        <div class="card-body">
+          <div class="detail-field">
+            <div class="detail-field-label">Sedi totali</div>
+            <div class="detail-field-value fw-bold">{{ cliente.n_filiali }}</div>
+          </div>
+          <div class="detail-field">
+            <div class="detail-field-label">Sedi installate</div>
+            <div class="detail-field-value text-positive fw-bold">{{ cliente.n_filiali_installate }}</div>
+          </div>
+          <div class="detail-field mb-0">
+            <div class="detail-field-label">Sedi in attesa</div>
+            <div class="detail-field-value fw-bold">{{ n_filiali_da_installare }}</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><i class="bi bi-info-circle me-2"></i>Informazioni</div>
+        <div class="card-body">
+          <div class="detail-field">
+            <div class="detail-field-label">Creato il</div>
+            <div class="detail-field-value">{{ cliente.created_at|date:"d/m/Y H:i" }}</div>
+          </div>
+          <div class="detail-field mb-0">
+            <div class="detail-field-label">Aggiornato il</div>
+            <div class="detail-field-value">{{ cliente.updated_at|date:"d/m/Y H:i" }}</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-3">
+        <a href="{{ back_url }}" class="btn btn-outline-secondary btn-sm w-100">
+          <i class="bi bi-arrow-left me-1"></i>Torna alla lista
+        </a>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+{% endblock %}

@@ -13,12 +13,13 @@ from .views_allegati import (
     allegato_preview,
     global_search,
 )
-from .views import serve_qr_code
+from .views import serve_qr_code, test_email_view
 from .views_qrcode import (
     qrcode_generate,
     qrcode_download,
     qrcode_delete,
     qrcode_check,
+    qrcode_stampa,
 )
 from .views_permissions import (
     permission_template_list_view,
@@ -61,6 +62,7 @@ urlpatterns = [
     path("qrcode/check/", qrcode_check, name="qrcode_check"),
     path("qrcode/<int:qrcode_id>/download/", qrcode_download, name="qrcode_download"),
     path("qrcode/<int:qrcode_id>/delete/", qrcode_delete, name="qrcode_delete"),
+    path("qrcode/<int:content_type_id>/<int:object_id>/stampa/", qrcode_stampa, name="qrcode_stampa"),
     # ========== UTILITY QR CODE (Legacy) ==========
     path("qrcode/", serve_qr_code, name="serve_qr_code"),
     # ========== TEMPLATE PERMESSI ==========
@@ -87,4 +89,6 @@ urlpatterns = [
     path("calendario/evento/nuovo/", evento_calendario_create, name="evento_calendario_create"),
     path("calendario/evento/<int:pk>/modifica/", evento_calendario_edit, name="evento_calendario_update"),
     path("calendario/evento/<int:pk>/elimina/", evento_calendario_delete, name="evento_calendario_delete"),
+    # ========== TEST EMAIL ==========
+    path("test-mail/", test_email_view, name="test_email"),
 ]

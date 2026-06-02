@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% load static %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/detail.css' %}">{% endblock %}
+
+{% block content %}
+
+<div class="page-header mb-4">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'anagrafica:dashboard' %}">Anagrafica</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'anagrafica:privato_list' %}">Clienti Privati</a></li>
+      <li class="breadcrumb-item active">{{ titolo }}</li>
+    </ol>
+  </nav>
+  <h1><i class="bi bi-person me-2 text-brand"></i>{{ titolo }}</h1>
+</div>
+
+{% if form.non_field_errors %}
+<div class="alert alert-danger mb-3">
+  {% for e in form.non_field_errors %}{{ e }}{% endfor %}
+</div>
+{% endif %}
+
+<form method="post" novalidate>
+  {% csrf_token %}
+
+  <div class="row g-3">
+    <div class="col-lg-8">
+
+      <div class="card mb-3">
+        <div class="card-header card-header-primary">
+          <i class="bi bi-person me-2"></i>Dati Anagrafici
+        </div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-sm-6">
+              <label class="form-label" for="{{ form.cognome.id_for_label }}">{{ form.cognome.label }} <span class="text-danger">*</span></label>
+              {{ form.cognome }}
+              {% if form.cognome.errors %}<div class="invalid-feedback d-block">{% for e in form.cognome.errors %}{{ e }}{% endfor %}</div>{% endif %}
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label" for="{{ form.nome.id_for_label }}">{{ form.nome.label }} <span class="text-danger">*</span></label>
+              {{ form.nome }}
+              {% if form.nome.errors %}<div class="invalid-feedback d-block">{% for e in form.nome.errors %}{{ e }}{% endfor %}</div>{% endif %}
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label" for="{{ form.telefono.id_for_label }}">{{ form.telefono.label }} <span class="text-danger">*</span></label>
+              {{ form.telefono }}
+              {% if form.telefono.errors %}<div class="invalid-feedback d-block">{% for e in form.telefono.errors %}{{ e }}{% endfor %}</div>{% endif %}
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label" for="{{ form.email.id_for_label }}">{{ form.email.label }}</label>
+              {{ form.email }}
+            </div>
+            <div class="col-12">
+              <label class="form-label" for="{{ form.indirizzo.id_for_label }}">{{ form.indirizzo.label }} <span class="text-danger">*</span></label>
+              {{ form.indirizzo }}
+              {% if form.indirizzo.errors %}<div class="invalid-feedback d-block">{% for e in form.indirizzo.errors %}{{ e }}{% endfor %}</div>{% endif %}
+            </div>
+            <div class="col-sm-5">
+              <label class="form-label" for="{{ form.citta.id_for_label }}">{{ form.citta.label }} <span class="text-danger">*</span></label>
+              {{ form.citta }}
+              {% if form.citta.errors %}<div class="invalid-feedback d-block">{% for e in form.citta.errors %}{{ e }}{% endfor %}</div>{% endif %}
+            </div>
+            <div class="col-sm-4">
+              <label class="form-label" for="{{ form.zona.id_for_label }}">{{ form.zona.label }} <span class="text-danger">*</span></label>
+              {{ form.zona }}
+              {% if form.zona.errors %}<div class="invalid-feedback d-block">{% for e in form.zona.errors %}{{ e }}{% endfor %}</div>{% endif %}
+            </div>
+            <div class="col-sm-3">
+              <label class="form-label" for="{{ form.cap.id_for_label }}">{{ form.cap.label }}</label>
+              {{ form.cap }}
+            </div>
+            <div class="col-sm-4">
+              <label class="form-label" for="{{ form.provincia.id_for_label }}">{{ form.provincia.label }}</label>
+              {{ form.provincia }}
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label" for="{{ form.codice_fiscale.id_for_label }}">{{ form.codice_fiscale.label }}</label>
+              {{ form.codice_fiscale }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card mb-3">
+        <div class="card-header"><i class="bi bi-chat-left-text me-2"></i>Note</div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label" for="{{ form.note.id_for_label }}">{{ form.note.label }}</label>
+              {{ form.note }}
+            </div>
+            <div class="col-12">
+              <div class="form-check">
+                {{ form.attivo }}
+                <label class="form-check-label" for="{{ form.attivo.id_for_label }}">{{ form.attivo.label }}</label>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-brand"><i class="bi bi-check-lg me-1"></i>{{ submit_text }}</button>
+        <a href="{{ back_url }}" class="btn btn-outline-secondary">Annulla</a>
+      </div>
+
+    </div>
+  </div>
+</form>
+
+{% endblock %}

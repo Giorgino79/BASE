@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+{% load static %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/detail.css' %}">{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-start mb-4">
+  <div>
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'servizi:dashboard' %}">Servizi</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'servizi:condominio_list' %}">Condomini ODS</a></li>
+        <li class="breadcrumb-item active">{{ condominio.numero }}</li>
+      </ol>
+    </nav>
+    <h1><i class="bi bi-buildings me-2 text-brand"></i>{{ condominio.titolo }}</h1>
+    <p class="text-muted mb-0">{{ condominio.indirizzo }}</p>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-9">
+
+    {# Intestazione #}
+    <div class="card mb-3">
+      <div class="card-header card-header-primary"><i class="bi bi-info-circle me-2"></i>Dettaglio intervento</div>
+      <div class="card-body">
+        <div class="row g-2">
+          <div class="col-sm-3">
+            <div class="detail-field">
+              <div class="detail-field-label">Numero</div>
+              <div class="detail-field-value fw-bold">{{ condominio.numero }}</div>
+            </div>
+          </div>
+          <div class="col-sm-3">
+            <div class="detail-field">
+              <div class="detail-field-label">Data</div>
+              <div class="detail-field-value">{{ condominio.data|date:"d/m/Y" }}{% if condominio.ora %} — {{ condominio.ora|time:"H:i" }}{% endif %}</div>
+            </div>
+          </div>
+          <div class="col-sm-3">
+            <div class="detail-field">
+              <div class="detail-field-label">Tecnico</div>
+              <div class="detail-field-value {% if not condominio.tecnico %}empty{% endif %}">
+                {{ condominio.tecnico.get_full_name|default:"—" }}
+              </div>
+            </div>
+          </div>
+          <div class="col-sm-3">
+            <div class="detail-field">
+              <div class="detail-field-label">Assistente</div>
+              <div class="detail-field-value {% if not condominio.assistente %}empty{% endif %}">
+                {{ condominio.assistente.get_full_name|default:"—" }}
+              </div>
+            </div>
+          </div>
+          <div class="col-sm-3">
+            <div class="detail-field">
+              <div class="detail-field-label">Prezzo base / unità</div>
+              <div class="detail-field-value fw-bold text-brand">€ {{ condominio.prezzo_base }}</div>
+            </div>
+          </div>
+          {% if condominio.note %}
+          <div class="col-12">
+            <div class="detail-field">
+              <div class="detail-field-label">Note</div>
+              <div class="detail-field-value">{{ condominio.note|linebreaksbr }}</div>
+            </div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    {# Unità abitative #}
+    <div class="card mb-3">
+      <div class="card-header card-header-primary d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-door-open me-2"></i>Unità abitative ({{ condominio.unita.count }})</span>
+        <a href="{% url 'servizi:condominio_update' condominio.pk %}" class="btn btn-sm btn-outline-light">
+          <i class="bi bi-pencil me-1"></i>Modifica
+        </a>
+      </div>
+      <div class="table-responsive">
+        <table class="table mb-0 align-middle">
+          <thead class="bg-brand text-white">
+            <tr>
+              <th>Nome / Intestatario</th>
+              <th class="text-center">Servizio</th>
+              <th class="text-center">Incassato</th>
+              <th class="text-end">Importo</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for u in unita %}
+            <tr>
+              <td>{{ u.nome }}</td>
+              <td class="text-center">
+                {% if u.servizio_effettuato %}
+                  <span class="badge badge-ok"><i class="bi bi-check-lg"></i></span>
+                {% else %}
+                  <span class="badge badge-wait">—</span>
+                {% endif %}
+              </td>
+              <td class="text-center">
+                {% if u.incasso_effettuato %}
+                  <span class="badge badge-ok"><i class="bi bi-cash-coin"></i></span>
+                {% else %}
+                  <span class="badge badge-ko">—</span>
+                {% endif %}
+              </td>
+              <td class="text-end fw-semibold">
+                € {{ u.importo_effettivo }}
+                {% if not u.importo_da_incassare %}<span class="text-muted small">(base)</span>{% endif %}
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4" class="text-muted text-center py-3">Nessuna unità registrata</td></tr>
+            {% endfor %}
+          </tbody>
+          {% if unita %}
+          <tfoot class="table-light fw-bold">
+            <tr>
+              <td colspan="3" class="text-end">Totale da incassare (servizi effettuati)</td>
+              <td class="text-end text-brand">€ {{ condominio.totale_da_incassare }}</td>
+            </tr>
+            <tr>
+              <td colspan="3" class="text-end text-muted">Già incassato</td>
+              <td class="text-end text-success">€ {{ condominio.totale_incassato }}</td>
+            </tr>
+          </tfoot>
+          {% endif %}
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="col-lg-3">
+    <div class="card">
+      <div class="card-header"><i class="bi bi-gear me-2"></i>Azioni</div>
+      <div class="list-group list-group-flush">
+        {% if condominio.stato != "completato" %}
+        <a href="{% url 'servizi:condominio_esegui' condominio.pk %}" class="list-group-item list-group-item-action fw-semibold text-brand">
+          <i class="bi bi-play-circle me-2"></i>Esegui servizio
+        </a>
+        {% endif %}
+        <a href="{% url 'servizi:condominio_update' condominio.pk %}" class="list-group-item list-group-item-action">
+          <i class="bi bi-pencil me-2 text-brand"></i>Modifica
+        </a>
+        <a href="{% url 'servizi:condominio_list' %}" class="list-group-item list-group-item-action text-muted">
+          <i class="bi bi-arrow-left me-2"></i>Torna alla lista
+        </a>
+      </div>
+    </div>
+
+    <div class="card mt-3">
+      <div class="card-header"><i class="bi bi-bar-chart me-2"></i>Riepilogo</div>
+      <div class="list-group list-group-flush small">
+        <div class="list-group-item d-flex justify-content-between">
+          <span>Totale unità</span>
+          <strong>{{ unita|length }}</strong>
+        </div>
+        <div class="list-group-item d-flex justify-content-between">
+          <span>Servizi effettuati</span>
+          <strong class="text-success">{{ n_servizi }}</strong>
+        </div>
+        <div class="list-group-item d-flex justify-content-between">
+          <span>Incassi effettuati</span>
+          <strong class="text-brand">{{ n_incassi }}</strong>
+        </div>
+        <div class="list-group-item d-flex justify-content-between fw-bold">
+          <span>Da incassare</span>
+          <span class="text-brand">€ {{ condominio.totale_da_incassare }}</span>
+        </div>
+        <div class="list-group-item d-flex justify-content-between">
+          <span class="text-muted">Incassato</span>
+          <span class="text-success">€ {{ condominio.totale_incassato }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

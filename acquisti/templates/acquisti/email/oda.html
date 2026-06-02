@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  body { font-family: Arial, sans-serif; font-size: 14px; color: #333; margin: 0; padding: 0; background: #f5f5f5; }
+  .wrapper { max-width: 640px; margin: 30px auto; background: #fff; border-radius: 6px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+  .header { background: #5585b5; padding: 28px 32px; }
+  .header h1 { margin: 0; color: #fff; font-size: 20px; font-weight: 700; }
+  .header p { margin: 4px 0 0; color: rgba(255,255,255,.8); font-size: 13px; }
+  .body { padding: 28px 32px; }
+  .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px; }
+  .meta-item label { display: block; font-size: 11px; text-transform: uppercase; color: #888; letter-spacing: .5px; margin-bottom: 2px; }
+  .meta-item span { font-weight: 600; color: #222; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+  th { background: #f0f4f8; text-align: left; padding: 9px 12px; font-size: 12px; text-transform: uppercase; color: #666; border-bottom: 2px solid #dde3ea; }
+  td { padding: 9px 12px; border-bottom: 1px solid #eee; font-size: 13px; }
+  td.num { text-align: right; }
+  tr.total td { font-weight: 700; background: #f9fafb; border-top: 2px solid #dde3ea; }
+  .note-box { background: #f9fafb; border-left: 3px solid #5585b5; padding: 12px 16px; border-radius: 0 4px 4px 0; font-size: 13px; margin-bottom: 20px; }
+  .footer { padding: 18px 32px; background: #f9fafb; border-top: 1px solid #eee; font-size: 12px; color: #999; }
+</style>
+</head>
+<body>
+<div class="wrapper">
+
+  <div class="header">
+    <h1>Ordine di Acquisto {{ ordine.numero_ordine }}</h1>
+    <p>Del {{ ordine.data_ordine|date:"d/m/Y" }}</p>
+  </div>
+
+  <div class="body">
+
+    <div class="meta-grid">
+      <div class="meta-item">
+        <label>Numero ordine</label>
+        <span>{{ ordine.numero_ordine }}</span>
+      </div>
+      <div class="meta-item">
+        <label>Data ordine</label>
+        <span>{{ ordine.data_ordine|date:"d/m/Y" }}</span>
+      </div>
+      {% if ordine.data_consegna_richiesta %}
+      <div class="meta-item">
+        <label>Consegna richiesta entro</label>
+        <span>{{ ordine.data_consegna_richiesta|date:"d/m/Y" }}</span>
+      </div>
+      {% endif %}
+      <div class="meta-item">
+        <label>Fornitore</label>
+        <span>{{ ordine.fornitore }}</span>
+      </div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Articolo</th>
+          <th>UM</th>
+          <th style="text-align:right">Qtà</th>
+          <th style="text-align:right">Prezzo unit.</th>
+          <th style="text-align:right">Imponibile</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in righe %}
+        <tr>
+          <td>{% if r.prodotto %}{{ r.prodotto.nome_prodotto }}{% else %}{{ r.descrizione }}{% endif %}</td>
+          <td>{{ r.unita_misura|default:"—" }}</td>
+          <td class="num">{{ r.quantita_ordinata }}</td>
+          <td class="num">€ {{ r.prezzo_unitario }}</td>
+          <td class="num">€ {{ r.imponibile }}</td>
+        </tr>
+        {% endfor %}
+        <tr class="total">
+          <td colspan="4" style="text-align:right">Totale imponibile</td>
+          <td class="num">€ {{ ordine.totale }}</td>
+        </tr>
+      </tbody>
+    </table>
+
+    {% if ordine.note %}
+    <div class="note-box">
+      <strong>Note:</strong> {{ ordine.note }}
+    </div>
+    {% endif %}
+
+    <p style="font-size:13px; color:#555;">
+      Vi preghiamo di confermare la ricezione del presente ordine e la disponibilità alla consegna entro i termini indicati.
+    </p>
+
+  </div>
+
+  <div class="footer">
+    Questo messaggio è stato generato automaticamente dal sistema gestionale RATTUS26.
+  </div>
+
+</div>
+</body>
+</html>

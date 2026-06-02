@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/detail.css' %}">{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'cespiti:dashboard' %}">Cespiti</a></li>
+      <li class="breadcrumb-item active">Automezzi</li>
+    </ol>
+  </nav>
+  <div class="d-flex justify-content-between align-items-center">
+    <h1><i class="bi bi-truck me-2 text-brand"></i>Automezzi</h1>
+    <a href="{% url 'cespiti:automezzo_create' %}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Nuovo Automezzo</a>
+  </div>
+</div>
+
+<div class="card mb-3">
+  <div class="card-body py-2">
+    <form method="get" class="row g-2 align-items-end">
+      <div class="col-md-4">
+        <input type="text" name="q" value="{{ q }}" class="form-control form-control-sm" placeholder="Cerca targa, marca, modello…">
+      </div>
+      <div class="col-md-2">
+        <select name="attivo" class="form-select form-select-sm">
+          <option value="">Tutti</option>
+          <option value="si" {% if attivo_filter == "si" %}selected{% endif %}>Attivi</option>
+          <option value="no" {% if attivo_filter == "no" %}selected{% endif %}>Inattivi</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <select name="disponibile" class="form-select form-select-sm">
+          <option value="">Disponibilità</option>
+          <option value="si" {% if disponibile_filter == "si" %}selected{% endif %}>Disponibili</option>
+          <option value="no" {% if disponibile_filter == "no" %}selected{% endif %}>Non disponibili</option>
+        </select>
+      </div>
+      <div class="col-auto">
+        <button class="btn btn-outline-secondary btn-sm" type="submit"><i class="bi bi-search"></i></button>
+        <a href="{% url 'cespiti:automezzo_list' %}" class="btn btn-outline-secondary btn-sm">Reset</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table mb-0">
+      <thead>
+        <tr>
+          <th>N°</th><th>Targa</th><th>Marca/Modello</th><th>Anno</th>
+          <th>Km</th><th>Stato</th><th>Assegnato a</th><th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in automezzi %}
+        <tr>
+          <td>{{ a.numero_mezzo|default:"—" }}</td>
+          <td><a href="{{ a.get_absolute_url }}" class="text-brand fw-semibold text-decoration-none">{{ a.targa }}</a></td>
+          <td>{{ a.marca }} {{ a.modello }}</td>
+          <td>{{ a.anno_immatricolazione }}</td>
+          <td>{{ a.chilometri_attuali|floatformat:0 }} km</td>
+          <td>
+            {% if a.bloccata %}<span class="badge badge-ko">Bloccato</span>
+            {% elif a.attivo and a.disponibile %}<span class="badge badge-ok">Disponibile</span>
+            {% elif a.attivo %}<span class="badge badge-wait">Non disponibile</span>
+            {% else %}<span class="badge badge-ko">Inattivo</span>{% endif %}
+          </td>
+          <td class="text-muted small">{{ a.assegnato_a.get_full_name|default:"—" }}</td>
+          <td class="text-end">
+            <a href="{{ a.get_absolute_url }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-eye"></i></a>
+            <a href="{% url 'cespiti:automezzo_update' a.pk %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="8">
+          <div class="state-empty py-3">
+            <i class="bi bi-truck"></i>
+            <p>Nessun automezzo trovato.</p>
+            <a href="{% url 'cespiti:automezzo_create' %}" class="btn btn-sm btn-primary"><i class="bi bi-plus me-1"></i>Aggiungi il primo</a>
+          </div>
+        </td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if page_obj.has_other_pages %}
+  <div class="card-footer">
+    <nav><ul class="pagination pagination-sm mb-0">
+      {% if page_obj.has_previous %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}&q={{ q }}">‹</a></li>{% endif %}
+      <li class="page-item disabled"><span class="page-link">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span></li>
+      {% if page_obj.has_next %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}&q={{ q }}">›</a></li>{% endif %}
+    </ul></nav>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

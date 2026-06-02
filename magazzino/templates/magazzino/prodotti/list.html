@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% load static %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/detail.css' %}">{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'magazzino:dashboard' %}">Magazzino</a></li>
+      <li class="breadcrumb-item active">Prodotti</li>
+    </ol>
+  </nav>
+  <div class="d-flex justify-content-between align-items-center">
+    <h1><i class="bi bi-tag me-2 text-brand"></i>Prodotti</h1>
+    <a href="{% url 'magazzino:prodotto_create' %}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Nuovo Prodotto</a>
+  </div>
+</div>
+
+<div class="card mb-3">
+  <div class="card-body py-2">
+    <form method="get" class="row g-2 align-items-end">
+      <div class="col-md-4">
+        <input type="text" name="q" value="{{ request.GET.q }}" class="form-control form-control-sm" placeholder="Cerca nome, codice…">
+      </div>
+      <div class="col-md-3">
+        <select name="categoria" class="form-select form-select-sm">
+          <option value="">Tutte le categorie</option>
+          {% for c in categorie %}
+          <option value="{{ c.pk }}" {% if cat_sel == c.pk|stringformat:"s" %}selected{% endif %}>{{ c.nome }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2">
+        <select name="attivi" class="form-select form-select-sm">
+          <option value="1" {% if request.GET.attivi != "0" %}selected{% endif %}>Solo attivi</option>
+          <option value="0" {% if request.GET.attivi == "0" %}selected{% endif %}>Tutti</option>
+        </select>
+      </div>
+      <div class="col-auto">
+        <button class="btn btn-outline-secondary btn-sm" type="submit"><i class="bi bi-search"></i></button>
+        <a href="{% url 'magazzino:prodotto_list' %}" class="btn btn-outline-secondary btn-sm">Reset</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table mb-0">
+      <thead>
+        <tr><th>Codice</th><th>Nome</th><th>Categoria</th><th>UM</th><th>Biocida</th><th>Stato</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for p in prodotti %}
+        <tr>
+          <td class="text-muted small">{{ p.codice_interno|default:"—" }}</td>
+          <td><a href="{{ p.get_absolute_url }}">{{ p.nome_prodotto }}</a></td>
+          <td>{{ p.categoria }}</td>
+          <td>{{ p.get_unita_misura_display }}</td>
+          <td>{% if p.is_biocida %}<span class="badge badge-accent">Biocida</span>{% else %}—{% endif %}</td>
+          <td>{% if p.attivo %}<span class="badge badge-ok">Attivo</span>{% else %}<span class="badge badge-ko">Inattivo</span>{% endif %}</td>
+          <td class="text-end"><a href="{{ p.get_absolute_url }}" class="btn btn-sm btn-outline-secondary">Dettaglio</a></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7" class="text-muted text-center py-3">Nessun prodotto trovato.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% if is_paginated %}
+<nav class="mt-3">
+  <ul class="pagination pagination-sm justify-content-center">
+    {% if page_obj.has_previous %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}&q={{ request.GET.q }}&categoria={{ cat_sel }}">‹</a></li>{% endif %}
+    <li class="page-item disabled"><span class="page-link">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span></li>
+    {% if page_obj.has_next %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}&q={{ request.GET.q }}&categoria={{ cat_sel }}">›</a></li>{% endif %}
+  </ul>
+</nav>
+{% endif %}
+{% endblock %}

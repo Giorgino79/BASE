@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% load static %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/detail.css' %}">{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'cespiti:dashboard' %}">Cespiti</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'cespiti:manutenzione_list' %}">Manutenzioni</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'cespiti:manutenzione_detail' object.pk %}">{{ object.descrizione|truncatechars:30 }}</a></li>
+      <li class="breadcrumb-item active">Assegna Responsabile</li>
+    </ol>
+  </nav>
+  <h1><i class="bi bi-person-check me-2 text-brand"></i>Assegna Responsabile</h1>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-6">
+    <div class="card mb-3">
+      <div class="card-header card-header-primary"><i class="bi bi-info-circle me-2"></i>{{ object.automezzo.targa }} — {{ object.descrizione|truncatechars:50 }}</div>
+      <div class="card-body">
+        <form method="post">
+          {% csrf_token %}
+          <div class="row g-3">
+            {% for field in form %}
+            <div class="col-12">
+              <label class="form-label">{{ field.label }}</label>
+              {{ field }}
+              {% if field.errors %}<div class="invalid-feedback d-block">{{ field.errors.0 }}</div>{% endif %}
+            </div>
+            {% endfor %}
+          </div>
+          <div class="d-flex gap-2 mt-3">
+            <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Avvia Manutenzione</button>
+            <a href="{% url 'cespiti:manutenzione_detail' object.pk %}" class="btn btn-outline-secondary">Annulla</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

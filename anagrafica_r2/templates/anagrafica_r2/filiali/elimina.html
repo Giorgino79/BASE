@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+
+<div class="page-header mb-4">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'anagrafica:dashboard' %}">Anagrafica</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'anagrafica:azienda_list' %}">Clienti</a></li>
+      <li class="breadcrumb-item"><a href="{{ object.cliente.get_absolute_url }}">{{ object.cliente.ragione_sociale }}</a></li>
+      <li class="breadcrumb-item active">Elimina</li>
+    </ol>
+  </nav>
+  <h1 class="text-danger"><i class="bi bi-trash me-2"></i>Elimina Sede</h1>
+</div>
+
+<div class="row justify-content-center">
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header card-header-danger">
+        <i class="bi bi-exclamation-triangle me-2"></i>Conferma eliminazione
+      </div>
+      <div class="card-body">
+        <p class="mb-1">Stai per eliminare definitivamente la sede:</p>
+        <p class="fw-bold fs-5">{{ object.nome }}</p>
+        <p class="text-muted mb-3">
+          <i class="bi bi-building me-1"></i>{{ object.cliente.ragione_sociale }}
+          &mdash;
+          <span class="badge badge-accent">{{ object.get_tipo_sede_display }}</span>
+          &mdash;
+          {{ object.citta }}{% if object.provincia %} ({{ object.provincia }}){% endif %}
+        </p>
+        <div class="alert alert-danger">
+          <i class="bi bi-exclamation-triangle-fill me-2"></i>
+          Questa operazione è <strong>irreversibile</strong>.
+        </div>
+        <form method="post">
+          {% csrf_token %}
+          <div class="d-flex gap-2 justify-content-end">
+            <a href="{{ object.get_absolute_url }}" class="btn btn-outline-secondary">
+              <i class="bi bi-arrow-left me-1"></i>Annulla
+            </a>
+            <button type="submit" class="btn btn-danger">
+              <i class="bi bi-trash me-1"></i>Sì, elimina
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

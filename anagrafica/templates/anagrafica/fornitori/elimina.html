@@ -1,0 +1,537 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ page_title }} - Management System{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-2 py-md-4">
+    <!-- Header con alert -->
+    <div class="card shadow mb-4 border-danger">
+        <div class="card-header bg-danger text-white py-3">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h6 class="m-0 font-weight-bold">
+                        <i class="fas fa-exclamation-triangle me-2"></i>{{ page_title }}
+                    </h6>
+                    <small class="opacity-75">Questa operazione è irreversibile</small>
+                </div>
+                <div class="col-md-4 text-md-end mt-2 mt-md-0">
+                    <a href="{{ object.get_absolute_url }}" class="btn btn-light btn-sm me-2">
+                        <i class="fas fa-eye me-1"></i>Vedi Dettaglio
+                    </a>
+                    <a href="{% url 'anagrafica:fornitore_list' %}" class="btn btn-outline-light btn-sm">
+                        <i class="fas fa-arrow-left me-1"></i>Torna all'Elenco
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <!-- Card di conferma -->
+            <div class="card shadow">
+                <div class="card-body p-4">
+                    <!-- Informazioni fornitore -->
+                    <div class="text-center mb-4">
+                        <div class="d-inline-flex align-items-center justify-content-center bg-danger rounded-circle p-3 mb-3" style="width: 80px; height: 80px;">
+                            <i class="fas fa-truck-slash fa-2x text-white"></i>
+                        </div>
+                        <h4 class="text-danger mb-2">Conferma Eliminazione Fornitore</h4>
+                        <p class="text-muted mb-4">
+                            Stai per eliminare definitivamente il fornitore <strong>{{ object.nome }}</strong>.<br>
+                            Questa operazione non può essere annullata.
+                        </p>
+                    </div>
+
+                    <!-- Dettagli fornitore -->
+                    <div class="card bg-light mb-4">
+                        <div class="card-header">
+                            <h6 class="mb-0">
+                                <i class="fas fa-info-circle me-1"></i>Dettagli Fornitore
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <dl class="mb-2">
+                                        <dt class="text-muted">Nome/Ragione Sociale:</dt>
+                                        <dd class="fw-bold">{{ object.nome }}</dd>
+                                        
+                                        {% if object.indirizzo %}
+                                        <dt class="text-muted">Indirizzo:</dt>
+                                        <dd>{{ object.indirizzo }}</dd>
+                                        {% endif %}
+                                        
+                                        {% if object.citta %}
+                                        <dt class="text-muted">Città:</dt>
+                                        <dd>
+                                            {{ object.citta }}
+                                            {% if object.cap %} ({{ object.cap }}){% endif %}
+                                        </dd>
+                                        {% endif %}
+                                    </dl>
+                                </div>
+                                <div class="col-md-6">
+                                    <dl class="mb-2">
+                                        <dt class="text-muted">Telefono:</dt>
+                                        <dd>{{ object.telefono }}</dd>
+                                        
+                                        <dt class="text-muted">Email:</dt>
+                                        <dd>{{ object.email }}</dd>
+                                        
+                                        <dt class="text-muted">Fornitore dal:</dt>
+                                        <dd>{{ object.created_at|date:"d/m/Y" }}</dd>
+                                    </dl>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Warning sui dati fiscali -->
+                    {% if object.partita_iva or object.codice_fiscale %}
+                    <div class="alert alert-warning border-left-warning">
+                        <div class="row align-items-center">
+                            <div class="col-1">
+                                <i class="fas fa-file-invoice fa-2x text-warning"></i>
+                            </div>
+                            <div class="col">
+                                <h6 class="alert-heading mb-1">Attenzione: Fornitore con Dati Fiscali</h6>
+                                <p class="mb-2">
+                                    Questo fornitore ha dati fiscali registrati:
+                                    {% if object.partita_iva %}<strong>P.IVA {{ object.partita_iva }}</strong>{% endif %}
+                                    {% if object.codice_fiscale %}<strong>CF {{ object.codice_fiscale }}</strong>{% endif %}
+                                </p>
+                                <small class="text-muted">
+                                    Assicurati di aver regolarizzato tutti i rapporti commerciali e fiscali prima di procedere.
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Warning sull'IBAN -->
+                    {% if object.iban %}
+                    <div class="alert alert-info border-left-info">
+                        <div class="row align-items-center">
+                            <div class="col-1">
+                                <i class="fas fa-university fa-2x text-info"></i>
+                            </div>
+                            <div class="col">
+                                <h6 class="alert-heading mb-1">Dati Bancari Presenti</h6>
+                                <p class="mb-2">
+                                    Questo fornitore ha un IBAN registrato: <code class="bg-white p-1">{{ object.iban_formatted }}</code>
+                                </p>
+                                <small class="text-muted">
+                                    Verifica di non avere pagamenti pendenti verso questo fornitore.
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Warning sui dati collegati -->
+                    <div class="alert alert-primary border-left-primary">
+                        <div class="row align-items-center">
+                            <div class="col-1">
+                                <i class="fas fa-link fa-2x text-primary"></i>
+                            </div>
+                            <div class="col">
+                                <h6 class="alert-heading mb-1">Dati Collegati</h6>
+                                <p class="mb-1">L'eliminazione del fornitore comporterà anche l'eliminazione di:</p>
+                                <ul class="mb-2">
+                                    <li>Tutti i documenti e allegati associati</li>
+                                    <li>Lo storico degli ordini e acquisti</li>
+                                    <li>Eventuali note e promemoria collegati</li>
+                                    <li>Informazioni sui pagamenti e fatture</li>
+                                </ul>
+                                <small class="text-muted">
+                                    <strong>Consiglio:</strong> Considera di disattivare il fornitore invece di eliminarlo.
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Alternative: disattivazione -->
+                    {% if object.attivo %}
+                    <div class="card border-success mb-4">
+                        <div class="card-header bg-light">
+                            <h6 class="text-success mb-0">
+                                <i class="fas fa-lightbulb me-1"></i>Alternativa Consigliata
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <p class="mb-3">
+                                Invece di eliminare definitivamente il fornitore, potresti <strong>disattivarlo</strong>. 
+                                Questo mantiene tutti i dati storici ma rende il fornitore non più utilizzabile per nuove operazioni.
+                            </p>
+                            <a href="{% url 'anagrafica:toggle_attivo' 'fornitore' object.pk %}" 
+                               class="btn btn-outline-success"
+                               onclick="return confirm('Sei sicuro di voler disattivare questo fornitore?')">
+                                <i class="fas fa-ban me-1"></i>Disattiva Fornitore (Consigliato)
+                            </a>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Form di eliminazione -->
+                    <form method="post" class="text-center">
+                        {% csrf_token %}
+                        
+                        <!-- Checkbox di conferma multipli -->
+                        <div class="mb-4">
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" id="confermaEliminazione" required>
+                                <label class="form-check-label" for="confermaEliminazione">
+                                    <strong>Confermo di aver verificato tutti i rapporti commerciali con questo fornitore</strong>
+                                </label>
+                            </div>
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" id="confermaPagamenti" required>
+                                <label class="form-check-label" for="confermaPagamenti">
+                                    <strong>Confermo di non avere pagamenti pendenti verso questo fornitore</strong>
+                                </label>
+                            </div>
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" id="confermaDefinitiva" required>
+                                <label class="form-check-label" for="confermaDefinitiva">
+                                    <strong>Confermo di voler eliminare definitivamente questo fornitore</strong>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-center gap-3">
+                            <a href="{{ object.get_absolute_url }}" class="btn btn-outline-secondary btn-lg">
+                                <i class="fas fa-times me-1"></i>Annulla
+                            </a>
+                            <button type="submit" class="btn btn-danger btn-lg" id="btnElimina" disabled>
+                                <i class="fas fa-trash me-1"></i>Elimina Definitivamente
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Bordi colorati per alert */
+.border-left-warning { 
+    border-left: 4px solid #f39c12 !important; 
+}
+
+.border-left-info { 
+    border-left: 4px solid #17a2b8 !important; 
+}
+
+.border-left-primary { 
+    border-left: 4px solid #667eea !important; 
+}
+
+/* Styling per form di eliminazione */
+.btn-danger:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Alert styling */
+.alert {
+    border-radius: 8px;
+}
+
+.alert-heading {
+    font-weight: 600;
+}
+
+/* Card styling */
+.card {
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.card-header {
+    border-bottom: 1px solid rgba(0,0,0,0.125);
+}
+
+/* Icon circle styling */
+.bg-danger.rounded-circle {
+    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+}
+
+/* Checkbox personalizzati */
+.form-check-input:checked {
+    background-color: #dc3545;
+    border-color: #dc3545;
+}
+
+.form-check {
+    padding: 0.75rem;
+    background-color: #f8f9fa;
+    border-radius: 6px;
+    border: 1px solid #dee2e6;
+}
+
+.form-check:hover {
+    background-color: #e9ecef;
+}
+
+/* Button hover effects */
+.btn:hover {
+    transform: translateY(-1px);
+    transition: transform 0.2s ease-in-out;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .d-flex.justify-content-center.gap-3 {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .d-flex.justify-content-center.gap-3 .btn {
+        width: 100%;
+    }
+    
+    .card-body {
+        padding: 1.5rem 1rem;
+    }
+    
+    .alert {
+        margin-bottom: 1rem;
+    }
+    
+    .form-check {
+        text-align: left;
+    }
+}
+
+/* Animazioni */
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+}
+
+.btn-danger:hover:not(:disabled) {
+    animation: shake 0.5s ease-in-out;
+}
+
+/* Definition list styling */
+dl dt {
+    font-size: 0.875rem;
+    margin-bottom: 0.25rem;
+    color: #6c757d;
+    font-weight: 600;
+}
+
+dl dd {
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.25rem;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+dl dd:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+/* Code styling per IBAN */
+code {
+    font-family: 'Monaco', 'Consolas', monospace;
+    font-size: 0.85rem;
+}
+
+/* Progress indicator per checkbox */
+.form-check-input:checked + .form-check-label {
+    color: #28a745;
+    font-weight: 600;
+}
+
+/* Enhanced list styling */
+.alert ul {
+    margin-bottom: 0.5rem;
+    padding-left: 1.5rem;
+}
+
+.alert ul li {
+    margin-bottom: 0.25rem;
+}
+
+/* Focus states */
+.form-check-input:focus {
+    box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
+}
+
+/* Button loading state */
+.btn.loading {
+    position: relative;
+    color: transparent;
+}
+
+.btn.loading::after {
+    content: "";
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    top: 50%;
+    left: 50%;
+    margin-top: -8px;
+    margin-left: -8px;
+    border: 2px solid #ffffff;
+    border-radius: 50%;
+    border-top-color: transparent;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // Abilita/disabilita pulsante in base ai checkbox
+    function checkAllBoxes() {
+        const allChecked = $('#confermaEliminazione').is(':checked') && 
+                          $('#confermaPagamenti').is(':checked') && 
+                          $('#confermaDefinitiva').is(':checked');
+        
+        $('#btnElimina').prop('disabled', !allChecked);
+        
+        if (allChecked) {
+            $('#btnElimina').removeClass('btn-danger').addClass('btn-danger-enabled');
+        } else {
+            $('#btnElimina').removeClass('btn-danger-enabled').addClass('btn-danger');
+        }
+    }
+    
+    $('.form-check-input').on('change', checkAllBoxes);
+    
+    // Conferma aggiuntiva al submit
+    $('form').on('submit', function(e) {
+        e.preventDefault();
+        
+        const fornitoreNome = "{{ object.nome|escapejs }}";
+        
+        // Primo popup di conferma
+        const conferma1 = confirm(
+            `⚠️ ULTIMA CONFERMA ⚠️\n\n` +
+            `Stai per eliminare DEFINITIVAMENTE il fornitore:\n"${fornitoreNome}"\n\n` +
+            `Questa operazione NON può essere annullata.\n\n` +
+            `Sei ASSOLUTAMENTE sicuro di voler procedere?`
+        );
+        
+        if (conferma1) {
+            // Secondo popup per verifica dati
+            const hasIban = "{{ object.iban|yesno:'true,false' }}" === 'true';
+            const hasPiva = "{{ object.partita_iva|yesno:'true,false' }}" === 'true';
+            
+            let warningMessage = `ATTENZIONE: Il fornitore "${fornitoreNome}" ha:\n\n`;
+            if (hasPiva) warningMessage += `- Partita IVA registrata\n`;
+            if (hasIban) warningMessage += `- IBAN bancario registrato\n`;
+            warningMessage += `\nSei sicuro di aver controllato tutti i rapporti commerciali?`;
+            
+            const conferma2 = confirm(warningMessage);
+            
+            if (conferma2) {
+                // Prompt per inserimento testo di conferma
+                const testoConferma = prompt(
+                    `Per completare l'eliminazione, digita esattamente:\nELIMINA ${fornitoreNome.toUpperCase()}`
+                );
+                
+                if (testoConferma === `ELIMINA ${fornitoreNome.toUpperCase()}`) {
+                    // Mostra loading e procedi
+                    const submitBtn = $('#btnElimina');
+                    submitBtn.addClass('loading').prop('disabled', true);
+                    
+                    // Procedi con l'eliminazione
+                    this.submit();
+                } else {
+                    alert('Testo di conferma non corretto. Eliminazione annullata.');
+                }
+            }
+        }
+    });
+    
+    // Warning se l'utente cerca di lasciare la pagina
+    let formModified = false;
+    $('.form-check-input').on('change', function() {
+        formModified = true;
+    });
+    
+    window.addEventListener('beforeunload', function(e) {
+        if (formModified) {
+            e.preventDefault();
+            e.returnValue = '';
+        }
+    });
+    
+    // Reset warning dopo submit
+    $('form').on('submit', function() {
+        formModified = false;
+    });
+    
+    // Tooltip informativi
+    $('[data-bs-toggle="tooltip"]').tooltip();
+    
+    // Auto-focus sul primo checkbox quando la pagina si carica
+    setTimeout(function() {
+        $('#confermaEliminazione').focus();
+    }, 500);
+    
+    // Progress indicator
+    $('.form-check-input').on('change', function() {
+        const totalBoxes = $('.form-check-input').length;
+        const checkedBoxes = $('.form-check-input:checked').length;
+        const progress = Math.round((checkedBoxes / totalBoxes) * 100);
+        
+        // Aggiorna visual feedback
+        if (checkedBoxes === totalBoxes) {
+            $('.card-body').addClass('border-success');
+        } else {
+            $('.card-body').removeClass('border-success');
+        }
+    });
+    
+    // Keyboard navigation
+    $('.form-check-input').on('keydown', function(e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            $(this).click();
+        }
+    });
+    
+    // Enhanced checkbox styling
+    $('.form-check-input').on('change', function() {
+        const $parent = $(this).closest('.form-check');
+        if (this.checked) {
+            $parent.addClass('bg-light border-success');
+        } else {
+            $parent.removeClass('bg-light border-success');
+        }
+    });
+    
+    // Copy IBAN to clipboard
+    $('code').on('click', function() {
+        const text = $(this).text().replace(/\s/g, '');
+        navigator.clipboard.writeText(text).then(() => {
+            $(this).tooltip('dispose').tooltip({
+                title: 'IBAN copiato negli appunti!',
+                trigger: 'manual'
+            }).tooltip('show');
+            
+            setTimeout(() => {
+                $(this).tooltip('dispose');
+            }, 2000);
+        });
+    });
+});
+</script>
+{% endblock %}

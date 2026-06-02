@@ -1,0 +1,64 @@
+from django.urls import reverse
+
+
+def get_ods_eventi(user, start_date, end_date):
+    """
+    Restituisce gli ODS programmati/da espletare come eventi FullCalendar.
+    Mostra tutti gli ODS non ancora completati/annullati nel periodo.
+    """
+    from .models import ODS
+
+    qs = ODS.objects.select_related(
+        "filiale__cliente", "privato", "tecnico"
+    ).prefetch_related("righe__servizio").exclude(stato__in=["completato", "annullato"])
+
+    if start_date:
+        qs = qs.filter(data_servizio__gte=start_date.date())
+    if end_date:
+        qs = qs.filter(data_servizio__lte=end_date.date())
+
+    COLORI = {
+        "da_espletare": "#6c757d",
+        "programmato":  "#fd7e14",
+    }
+
+    eventi = []
+    for ods in qs.order_by("data_servizio")[:300]:
+        cliente = ods.cliente_display
+        tecnico = ods.tecnico.get_full_name() if ods.tecnico else ""
+        servizio = ods.servizio_principale
+        title = f"{servizio or 'N/D'} — {cliente}"
+        if tecnico:
+            title += f" [{tecnico}]"
+        if ods.incasso_al_servizio:
+            title += " 💰"
+
+        start = ods.data_servizio.isoformat()
+        if ods.ora_inizio:
+            from datetime import datetime
+            start = datetime.combine(ods.data_servizio, ods.ora_inizio).isoformat()
+        end = None
+        if ods.ora_fine:
+            from datetime import datetime
+            end = datetime.combine(ods.data_servizio, ods.ora_fine).isoformat()
+
+        eventi.append({
+            "id": f"ods-{ods.pk}",
+            "title": title,
+            "start": start,
+            "end": end,
+            "allDay": not ods.ora_inizio,
+            "color": COLORI.get(ods.stato, "#6c757d"),
+            "url": reverse("servizi:ods_detail", kwargs={"pk": ods.pk}),
+            "extendedProps": {
+                "tipo": "ods",
+                "numero": ods.numero,
+                "stato": ods.get_stato_display(),
+                "cliente": cliente,
+                "servizio": str(servizio) if servizio else "",
+                "tecnico": tecnico,
+                "incasso_al_servizio": ods.incasso_al_servizio,
+            },
+        })
+
+    return eventi

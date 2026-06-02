@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% load static %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/detail.css' %}">{% endblock %}
+{% block content %}
+<div class="page-header mb-4">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'servizi:dashboard' %}">Servizi</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'servizi:servizio_list' %}">Catalogo</a></li>
+      <li class="breadcrumb-item active">{{ titolo }}</li>
+    </ol>
+  </nav>
+  <h1><i class="bi bi-tools me-2 text-brand"></i>{{ titolo }}</h1>
+</div>
+<form method="post" novalidate>
+  {% csrf_token %}
+  <div class="row g-3">
+    <div class="col-lg-8">
+      <div class="card mb-3">
+        <div class="card-header card-header-primary"><i class="bi bi-tools me-2"></i>Dati Servizio</div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label">{{ form.nome.label }} <span class="text-danger">*</span></label>
+              {{ form.nome }}
+              {% if form.nome.errors %}<div class="invalid-feedback d-block">{{ form.nome.errors.0 }}</div>{% endif %}
+            </div>
+            <div class="col-sm-4">
+              <label class="form-label">{{ form.tariffa_cartello.label }}</label>
+              <div class="input-group">
+                <span class="input-group-text">€</span>{{ form.tariffa_cartello }}
+              </div>
+            </div>
+            <div class="col-12">
+              <label class="form-label">{{ form.descrizione.label }}</label>
+              {{ form.descrizione }}
+            </div>
+            <div class="col-12">
+              <div class="form-check">
+                {{ form.attivo }}
+                <label class="form-check-label">{{ form.attivo.label }}</label>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-brand"><i class="bi bi-check-lg me-1"></i>Salva</button>
+        <a href="{{ back_url }}" class="btn btn-outline-secondary">Annulla</a>
+      </div>
+    </div>
+  </div>
+</form>
+{% endblock %}

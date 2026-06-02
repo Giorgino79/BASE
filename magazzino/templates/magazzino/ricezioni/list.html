@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+{% load static %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/detail.css' %}">{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'magazzino:dashboard' %}">Magazzino</a></li>
+      <li class="breadcrumb-item active">Ricezioni</li>
+    </ol>
+  </nav>
+  <h1><i class="bi bi-box-seam me-2 text-brand"></i>Ricezioni</h1>
+</div>
+
+<div class="row g-3">
+
+  {# ── Colonna principale ──────────────────────────────────────── #}
+  <div class="col-lg-9">
+
+    {# Filtro #}
+    <form method="get" class="card mb-3">
+      <div class="card-body d-flex gap-3 align-items-end flex-wrap">
+        <div>
+          <label class="form-label mb-1">Cerca (DDT / fornitore)</label>
+          <input type="text" name="q" value="{{ q }}" class="form-control form-control-sm" style="width:220px" placeholder="es. Syngenta, DDT-001…">
+        </div>
+        <div>
+          <label class="form-label mb-1">Dal</label>
+          <input type="date" name="data_da" value="{{ data_da }}" class="form-control form-control-sm" style="width:150px">
+        </div>
+        <div>
+          <label class="form-label mb-1">Al</label>
+          <input type="date" name="data_a" value="{{ data_a }}" class="form-control form-control-sm" style="width:150px">
+        </div>
+        <button type="submit" class="btn btn-sm btn-brand">
+          <i class="bi bi-search me-1"></i>Cerca
+        </button>
+        {% if filtro_attivo %}
+        <a href="{% url 'magazzino:ricezione_list' %}" class="btn btn-sm btn-outline-secondary">
+          <i class="bi bi-x me-1"></i>Azzera
+        </a>
+        {% endif %}
+      </div>
+    </form>
+
+    {# ODA da ricevere #}
+    <div class="card mb-3">
+      <div class="card-header card-header-primary d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-hourglass-split me-2"></i>Ordini d'acquisto da ricevere</span>
+        {% if da_ricevere %}<span class="badge bg-white text-brand">{{ da_ricevere|length }}</span>{% endif %}
+      </div>
+      <div class="table-responsive">
+        <table class="table mb-0 align-middle">
+          <thead class="bg-brand text-white">
+            <tr>
+              <th>Data ordine</th>
+              <th>N° ordine</th>
+              <th>Fornitore</th>
+              <th>Prodotti attesi</th>
+              <th>Stato</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for oda in da_ricevere %}
+            <tr>
+              <td class="text-nowrap small text-muted">{{ oda.data_ordine|date:"d/m/Y" }}</td>
+              <td class="fw-semibold">
+                <a href="{{ oda.get_absolute_url }}" class="text-brand text-decoration-none">{{ oda.numero_ordine }}</a>
+              </td>
+              <td>{{ oda.fornitore }}</td>
+              <td class="small">
+                {% for r in oda.righe.all %}
+                  <div>{{ r.prodotto.nome_prodotto }} <span class="text-muted">× {{ r.quantita_ordinata }} {{ r.prodotto.unita_misura }}</span></div>
+                {% empty %}—{% endfor %}
+              </td>
+              <td>
+                {% if oda.stato == "bozza" %}<span class="badge bg-secondary">Bozza</span>
+                {% elif oda.stato == "inviato" %}<span class="badge bg-primary">Inviato</span>
+                {% elif oda.stato == "ricevuto_parz" %}<span class="badge bg-warning text-dark">Parz. ricevuto</span>
+                {% endif %}
+              </td>
+              <td class="text-end">
+                <a href="{% url 'magazzino:ricezione_da_ordine' oda.pk %}" class="btn btn-sm btn-brand">
+                  <i class="bi bi-box-arrow-in-down me-1"></i>Ricevi
+                </a>
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6" class="text-muted text-center py-4">
+              <i class="bi bi-check-circle me-2 text-success"></i>Nessun ordine in attesa di ricezione.
+            </td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    {# Tabella ricezioni #}
+    <div class="card">
+      <div class="card-header card-header-primary d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-box-seam me-2"></i>Ricezioni</span>
+        {% if not filtro_attivo %}
+        <span class="badge bg-white text-brand">Ultime 10</span>
+        {% endif %}
+      </div>
+      <div class="table-responsive">
+        <table class="table mb-0 align-middle">
+          <thead class="bg-brand text-white">
+            <tr>
+              <th>Data</th>
+              <th>Fornitore</th>
+              <th>N° DDT</th>
+              <th>ODA</th>
+              <th>Stabilimento</th>
+              <th>Prodotti ricevuti</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in ricezioni %}
+            <tr>
+              <td class="text-nowrap">{{ r.data_ricezione|date:"d/m/Y" }}</td>
+              <td class="fw-semibold">{{ r.fornitore }}</td>
+              <td class="small text-muted">{{ r.numero_ddt|default:"—" }}</td>
+              <td class="small">
+                {% if r.ordine %}<a href="{{ r.ordine.get_absolute_url }}" class="text-brand text-decoration-none">{{ r.ordine.numero_ordine }}</a>{% else %}—{% endif %}
+              </td>
+              <td class="small text-muted">{{ r.stabilimento|default:"—" }}</td>
+              <td class="small">
+                {% for riga in r.righe.all %}
+                  <div>{{ riga.prodotto.nome_prodotto }} <span class="text-muted">× {{ riga.quantita_ricevuta }} {{ riga.prodotto.unita_misura }}</span></div>
+                {% empty %}—{% endfor %}
+              </td>
+              <td class="text-end">
+                <a href="{{ r.get_absolute_url }}" class="btn btn-sm btn-outline-secondary">
+                  <i class="bi bi-eye"></i>
+                </a>
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="7" class="text-muted text-center py-4">
+              <i class="bi bi-inbox me-2"></i>Nessuna ricezione trovata.
+            </td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  {# ── Sidebar azioni ──────────────────────────────────────────── #}
+  <div class="col-lg-3">
+    <div class="card">
+      <div class="card-header"><i class="bi bi-gear me-2"></i>Azioni</div>
+      <div class="list-group list-group-flush">
+        <a href="{% url 'magazzino:ricezione_create' %}" class="list-group-item list-group-item-action">
+          <i class="bi bi-plus-circle me-2"></i>Nuova ricezione
+        </a>
+        <a href="{% url 'magazzino:dashboard' %}" class="list-group-item list-group-item-action text-muted">
+          <i class="bi bi-arrow-left me-2"></i>Dashboard Magazzino
+        </a>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

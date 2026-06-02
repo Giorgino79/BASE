@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% load static %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/detail.css' %}">{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'magazzino:dashboard' %}">Magazzino</a></li>
+      <li class="breadcrumb-item active">Categorie</li>
+    </ol>
+  </nav>
+  <div class="d-flex justify-content-between align-items-center">
+    <h1><i class="bi bi-tags me-2 text-brand"></i>Categorie Prodotti</h1>
+    <a href="{% url 'magazzino:categoria_create' %}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Nuova Categoria</a>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table mb-0">
+      <thead><tr><th>Nome</th><th>Descrizione</th><th>Stato</th><th></th></tr></thead>
+      <tbody>
+        {% for c in categorie %}
+        <tr>
+          <td>{{ c.nome }}</td>
+          <td class="text-muted small">{{ c.descrizione|truncatechars:60|default:"—" }}</td>
+          <td>{% if c.attiva %}<span class="badge badge-ok">Attiva</span>{% else %}<span class="badge badge-ko">Inattiva</span>{% endif %}</td>
+          <td class="text-end"><a href="{% url 'magazzino:categoria_update' c.pk %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></a></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4" class="text-muted text-center py-3">Nessuna categoria.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

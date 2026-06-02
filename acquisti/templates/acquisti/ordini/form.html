@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+{% load static %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/detail.css' %}">{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'acquisti:dashboard' %}">Acquisti</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'acquisti:ordine_list' %}">Ordini</a></li>
+      <li class="breadcrumb-item active">{{ titolo }}</li>
+    </ol>
+  </nav>
+  <h1><i class="bi bi-file-earmark-text me-2 text-brand"></i>{{ titolo }}</h1>
+</div>
+
+<form method="post">
+  {% csrf_token %}
+  <div class="row g-3">
+    <div class="col-lg-9">
+
+      <div class="card mb-3">
+        <div class="card-header card-header-primary"><i class="bi bi-info-circle me-2"></i>Dati Ordine</div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-sm-6">
+              <label class="form-label">{{ form.fornitore.label }} <span class="text-danger">*</span></label>
+              {{ form.fornitore }}
+              {% if form.fornitore.errors %}<div class="invalid-feedback d-block">{{ form.fornitore.errors.0 }}</div>{% endif %}
+            </div>
+            <div class="col-sm-3">
+              <label class="form-label">{{ form.data_ordine.label }}</label>
+              {{ form.data_ordine }}
+            </div>
+            <div class="col-sm-3">
+              <label class="form-label">{{ form.data_consegna_richiesta.label }}</label>
+              {{ form.data_consegna_richiesta }}
+            </div>
+            <div class="col-sm-3">
+              <label class="form-label">{{ form.stato.label }}</label>
+              {{ form.stato }}
+            </div>
+            <div class="col-12">
+              <label class="form-label">{{ form.note.label }}</label>
+              {{ form.note }}
+            </div>
+          </div>
+          {% if form.non_field_errors %}<div class="alert mt-2">{{ form.non_field_errors }}</div>{% endif %}
+        </div>
+      </div>
+
+      <div class="card mb-3">
+        <div class="card-header card-header-primary"><i class="bi bi-list-ul me-2"></i>Righe Ordine</div>
+        <div class="card-body p-0">
+          {{ formset.management_form }}
+          <div class="table-responsive">
+            <table class="table mb-0" id="tabellaRighe">
+              <thead>
+                <tr>
+                  <th style="width:22%">Prodotto</th>
+                  <th style="width:20%">Descrizione</th>
+                  <th style="width:8%">UM</th>
+                  <th style="width:9%">Qt. ord.</th>
+                  <th style="width:11%">Prezzo unit.</th>
+                  <th style="width:7%">IVA %</th>
+                  <th style="width:10%">Imponibile</th>
+                  <th style="width:7%">Elimina</th>
+                </tr>
+              </thead>
+              <tbody id="righeBody">
+                {% for f in formset %}
+                <tr class="riga-form {% if f.instance.pk %}riga-esistente{% endif %} align-middle">
+                  {{ f.id }}
+                  <td>{{ f.prodotto }}</td>
+                  <td>{{ f.descrizione }}</td>
+                  <td>{{ f.unita_misura }}</td>
+                  <td>{{ f.quantita_ordinata }}</td>
+                  <td>{{ f.prezzo_unitario }}</td>
+                  <td>{{ f.aliquota_iva }}</td>
+                  <td class="text-end fw-bold text-success imponibile-cell">
+                    {% if f.instance.pk %}{{ f.instance.imponibile }}{% endif %}
+                  </td>
+                  <td class="text-center">
+                    {% if f.instance.pk %}
+                      <div class="form-check d-inline-block">{{ f.DELETE }}</div>
+                    {% else %}
+                      <button type="button" class="btn btn-sm btn-outline-danger btn-rimuovi"><i class="bi bi-trash"></i></button>
+                    {% endif %}
+                  </td>
+                </tr>
+                {% if f.errors %}<tr><td colspan="8"><div class="text-danger small px-2">{{ f.errors }}</div></td></tr>{% endif %}
+                {% endfor %}
+              </tbody>
+              <tfoot>
+                <tr class="table-light fw-semibold">
+                  <td colspan="6" class="text-end">Totale imponibile</td>
+                  <td class="text-end" id="totImponibile">—</td>
+                  <td></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+          <div class="p-3 border-top">
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="btnAggiungiRiga">
+              <i class="bi bi-plus-circle me-1"></i>Aggiungi riga
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-brand"><i class="bi bi-check-lg me-1"></i>Salva</button>
+        <a href="{{ back_url }}" class="btn btn-outline-secondary">Annulla</a>
+      </div>
+    </div>
+  </div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  const UM_MAP = {{ prodotti_um_json|safe }};
+  const tbody  = document.getElementById("righeBody");
+  const totalForms = document.getElementById("id_righe-TOTAL_FORMS");
+
+  // UM auto-fill when product selected
+  function onProdottoChange(sel) {
+    const row = sel.closest("tr.riga-form");
+    if (!row) return;
+    const umInput = row.querySelector('input[name$="-unita_misura"]');
+    if (!umInput) return;
+    const pk = parseInt(sel.value);
+    if (pk && UM_MAP[pk]) {
+      umInput.value = UM_MAP[pk];
+    }
+  }
+
+  // Live imponibile per riga
+  function aggiornaImponibile(row) {
+    const qty   = parseFloat(row.querySelector('input[name$="-quantita_ordinata"]')?.value) || 0;
+    const price = parseFloat(row.querySelector('input[name$="-prezzo_unitario"]')?.value)   || 0;
+    const cell  = row.querySelector(".imponibile-cell");
+    if (cell) cell.textContent = (qty * price).toFixed(2);
+  }
+
+  function aggiornaTotale() {
+    let tot = 0;
+    tbody.querySelectorAll("tr.riga-form").forEach(row => {
+      const del = row.querySelector('input[name$="-DELETE"]');
+      if (del && del.checked) return;
+      const qty   = parseFloat(row.querySelector('input[name$="-quantita_ordinata"]')?.value) || 0;
+      const price = parseFloat(row.querySelector('input[name$="-prezzo_unitario"]')?.value)   || 0;
+      tot += qty * price;
+    });
+    document.getElementById("totImponibile").textContent = tot.toFixed(2);
+  }
+
+  tbody.addEventListener("change", function (e) {
+    const row = e.target.closest("tr.riga-form");
+    if (!row) return;
+    if (e.target.tagName === "SELECT" && e.target.name.endsWith("-prodotto")) {
+      onProdottoChange(e.target);
+    }
+    aggiornaImponibile(row);
+    aggiornaTotale();
+  });
+
+  tbody.addEventListener("input", function (e) {
+    const row = e.target.closest("tr.riga-form");
+    if (!row) return;
+    aggiornaImponibile(row);
+    aggiornaTotale();
+  });
+
+  // Add row
+  document.getElementById("btnAggiungiRiga").addEventListener("click", function () {
+    const idx = parseInt(totalForms.value);
+    const tpl = tbody.querySelector("tr.riga-form:not(.riga-esistente)");
+    if (!tpl) return;
+    const clone = tpl.cloneNode(true);
+    clone.querySelectorAll("[name],[id],[for]").forEach(el => {
+      ["name", "id", "for"].forEach(attr => {
+        const v = el.getAttribute(attr);
+        if (v) el.setAttribute(attr, v.replace(/-\d+-/, `-${idx}-`));
+      });
+      if (el.tagName === "INPUT" || el.tagName === "SELECT") el.value = "";
+    });
+    clone.querySelector(".imponibile-cell") && (clone.querySelector(".imponibile-cell").textContent = "");
+    tbody.appendChild(clone);
+    totalForms.value = idx + 1;
+  });
+
+  tbody.addEventListener("click", function (e) {
+    if (e.target.closest(".btn-rimuovi")) {
+      e.target.closest("tr").remove();
+      aggiornaTotale();
+    }
+  });
+
+  // Init totals on load
+  tbody.querySelectorAll("tr.riga-form").forEach(row => aggiornaImponibile(row));
+  aggiornaTotale();
+})();
+</script>
+{% endblock %}

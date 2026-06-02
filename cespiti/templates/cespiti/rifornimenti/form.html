@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% load static %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/detail.css' %}">{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'cespiti:dashboard' %}">Cespiti</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'cespiti:rifornimento_list' %}">Rifornimenti</a></li>
+      <li class="breadcrumb-item active">{% if object %}Modifica{% else %}Nuovo Rifornimento{% endif %}</li>
+    </ol>
+  </nav>
+  <h1>
+    <i class="bi bi-fuel-pump me-2 text-brand"></i>
+    {% if object %}Modifica Rifornimento{% else %}Nuovo Rifornimento{% endif %}
+  </h1>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-6">
+    <form method="post" enctype="multipart/form-data">
+      {% csrf_token %}
+      <div class="card mb-3">
+        <div class="card-header card-header-primary"><i class="bi bi-info-circle me-2"></i>Dati Rifornimento</div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-sm-6">
+              <label class="form-label">{{ form.automezzo.label }} <span class="text-danger">*</span></label>
+              {{ form.automezzo }}
+              {% if form.automezzo.errors %}<div class="invalid-feedback d-block">{{ form.automezzo.errors.0 }}</div>{% endif %}
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label">{{ form.data.label }} <span class="text-danger">*</span></label>
+              {{ form.data }}
+              {% if form.data.errors %}<div class="invalid-feedback d-block">{{ form.data.errors.0 }}</div>{% endif %}
+            </div>
+            <div class="col-sm-4">
+              <label class="form-label">{{ form.litri.label }} <span class="text-danger">*</span></label>
+              {{ form.litri }}
+              {% if form.litri.errors %}<div class="invalid-feedback d-block">{{ form.litri.errors.0 }}</div>{% endif %}
+            </div>
+            <div class="col-sm-4">
+              <label class="form-label">{{ form.costo_totale.label }} <span class="text-danger">*</span></label>
+              {{ form.costo_totale }}
+              {% if form.costo_totale.errors %}<div class="invalid-feedback d-block">{{ form.costo_totale.errors.0 }}</div>{% endif %}
+            </div>
+            <div class="col-sm-4">
+              <label class="form-label">{{ form.chilometri.label }} <span class="text-danger">*</span></label>
+              {{ form.chilometri }}
+              {% if form.chilometri.errors %}<div class="invalid-feedback d-block">{{ form.chilometri.errors.0 }}</div>{% endif %}
+            </div>
+            <div class="col-12">
+              <label class="form-label">{{ form.scontrino.label }}</label>
+              {{ form.scontrino }}
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Salva</button>
+        <a href="{% if object %}{% url 'cespiti:rifornimento_detail' object.pk %}{% else %}{% url 'cespiti:rifornimento_list' %}{% endif %}" class="btn btn-outline-secondary">Annulla</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

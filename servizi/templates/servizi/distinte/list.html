@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% load static %}
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-start mb-4">
+  <div>
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'servizi:dashboard' %}">Servizi</a></li>
+        <li class="breadcrumb-item active">Distinte</li>
+      </ol>
+    </nav>
+    <h1><i class="bi bi-journal-check me-2 text-brand"></i>Distinte Servizi</h1>
+  </div>
+  <a href="{% url 'servizi:situazione_incassi' %}" class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-cash-stack me-1"></i>Situazione incassi
+  </a>
+</div>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table mb-0 align-middle">
+      <thead class="bg-brand text-white">
+        <tr>
+          <th>Data</th>
+          <th>Tecnico</th>
+          <th>Mezzo</th>
+          <th class="text-center">ODS</th>
+          <th>Stato</th>
+          <th class="text-end">Incasso</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for d in distinte %}
+        <tr>
+          <td class="fw-semibold text-nowrap">{{ d.data|date:"d/m/Y" }}</td>
+          <td>{{ d.tecnico.get_full_name|default:d.tecnico.username }}</td>
+          <td class="small text-muted">{{ d.mezzo|default:"—" }}</td>
+          <td class="text-center">
+            <span class="badge bg-secondary">{{ d.n_ods }}</span>
+          </td>
+          <td>
+            {% if d.stato == "aperta" %}<span class="badge badge-wait">Aperta</span>
+            {% else %}<span class="badge badge-ok">Chiusa</span>{% endif %}
+          </td>
+          <td class="text-end fw-semibold">
+            {% if d.importo_ricevuto is not None %}€ {{ d.importo_ricevuto }}
+            {% elif d.stato == "chiusa" %}<span class="text-muted small">—</span>
+            {% else %}<span class="text-muted small">In corso</span>{% endif %}
+          </td>
+          <td class="text-end">
+            <a href="{{ d.get_absolute_url }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-eye"></i></a>
+            {% if d.stato == "aperta" %}
+            <a href="{% url 'servizi:chiudi_distinta_ufficio' d.pk %}" class="btn btn-sm btn-brand ms-1" title="Chiudi distinta">
+              <i class="bi bi-lock"></i>
+            </a>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" class="text-center text-muted py-4"><i class="bi bi-inbox me-2"></i>Nessuna distinta</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

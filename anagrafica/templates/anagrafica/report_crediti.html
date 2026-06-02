@@ -1,0 +1,619 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Report Crediti - Management System{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-2 py-md-4">
+    <!-- Header -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-chart-line me-2"></i>Report Crediti Clienti
+                        <span class="badge bg-primary ms-2">{{ stats.clienti_con_credito }} clienti</span>
+                    </h6>
+                </div>
+                <div class="col-md-6 text-md-end mt-2 mt-md-0">
+                    <a href="{% url 'anagrafica:dashboard' %}" class="btn btn-outline-secondary me-2">
+                        <i class="fas fa-chart-pie me-1"></i>Dashboard
+                    </a>
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-success dropdown-toggle" data-bs-toggle="dropdown">
+                            <i class="fas fa-download me-1"></i>Esporta
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="?export=pdf"><i class="fas fa-file-pdf text-danger me-2"></i>Esporta PDF</a></li>
+                            <li><a class="dropdown-item" href="?export=excel"><i class="fas fa-file-excel text-success me-2"></i>Esporta Excel</a></li>
+                            <li><a class="dropdown-item" href="?export=csv"><i class="fas fa-file-csv text-info me-2"></i>Esporta CSV</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Filtri -->
+        <div class="card-body border-bottom">
+            <form method="GET" class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label small text-muted">Stato credito</label>
+                    <select name="stato" class="form-select">
+                        <option value="">Tutti gli stati</option>
+                        <option value="ok" {% if request.GET.stato == "ok" %}selected{% endif %}>🟢 Credito OK</option>
+                        <option value="attenzione" {% if request.GET.stato == "attenzione" %}selected{% endif %}>🟡 Attenzione</option>
+                        <option value="critico" {% if request.GET.stato == "critico" %}selected{% endif %}>🔴 Critico</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small text-muted">Limite minimo</label>
+                    <div class="input-group">
+                        <span class="input-group-text">€</span>
+                        <input type="number" class="form-control" name="limite_min" 
+                               value="{{ request.GET.limite_min }}" min="0" step="100">
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small text-muted">Limite massimo</label>
+                    <div class="input-group">
+                        <span class="input-group-text">€</span>
+                        <input type="number" class="form-control" name="limite_max" 
+                               value="{{ request.GET.limite_max }}" min="0" step="100">
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small text-muted">Ordinamento</label>
+                    <select name="ordine" class="form-select">
+                        <option value="-limite_credito" {% if request.GET.ordine == "-limite_credito" %}selected{% endif %}>Limite DESC</option>
+                        <option value="limite_credito" {% if request.GET.ordine == "limite_credito" %}selected{% endif %}>Limite ASC</option>
+                        <option value="-percentuale_uso" {% if request.GET.ordine == "-percentuale_uso" %}selected{% endif %}>% Uso DESC</option>
+                        <option value="nome" {% if request.GET.ordine == "nome" %}selected{% endif %}>Nome A-Z</option>
+                    </select>
+                </div>
+                <div class="col-md-3 d-flex align-items-end gap-2">
+                    <button type="submit" class="btn btn-outline-primary flex-grow-1">
+                        <i class="fas fa-filter me-1"></i>Applica Filtri
+                    </button>
+                    <a href="{% url 'anagrafica:report_crediti' %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-times"></i>
+                    </a>
+                </div>
+            </form>
+        </div>
+
+        <!-- Statistiche generali -->
+        <div class="card-footer bg-light">
+            <div class="row text-center">
+                <div class="col-6 col-lg-3">
+                    <div class="border-end">
+                        <strong class="text-primary d-block h4">{{ stats.totale_limiti|floatformat:0 }}€</strong>
+                        <small class="text-muted">Totale Limiti</small>
+                    </div>
+                </div>
+                <div class="col-6 col-lg-3">
+                    <div class="border-end">
+                        <strong class="text-warning d-block h4">{{ stats.totale_utilizzato|floatformat:0 }}€</strong>
+                        <small class="text-muted">Totale Utilizzato</small>
+                    </div>
+                </div>
+                <div class="col-6 col-lg-3">
+                    <div class="border-end">
+                        <strong class="text-success d-block h4">{{ stats.totale_disponibile|floatformat:0 }}€</strong>
+                        <small class="text-muted">Totale Disponibile</small>
+                    </div>
+                </div>
+                <div class="col-6 col-lg-3">
+                    <strong class="text-info d-block h4">{{ stats.percentuale_uso|floatformat:1 }}%</strong>
+                    <small class="text-muted">% Uso Medio</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Grafici e overview -->
+    <div class="row mb-4">
+        <!-- Distribuzione per stato -->
+        <div class="col-lg-4 mb-4">
+            <div class="card shadow h-100">
+                <div class="card-header">
+                    <h6 class="m-0 font-weight-bold text-info">
+                        <i class="fas fa-pie-chart me-1"></i>Distribuzione per Stato
+                    </h6>
+                </div>
+                <div class="card-body text-center">
+                    <canvas id="chartStati" width="200" height="200"></canvas>
+                    <div class="mt-3">
+                        <div class="row">
+                            <div class="col-4">
+                                <div class="text-success">
+                                    <strong>{{ stats.stato_ok }}</strong><br>
+                                    <small>OK</small>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="text-warning">
+                                    <strong>{{ stats.stato_attenzione }}</strong><br>
+                                    <small>Attenzione</small>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="text-danger">
+                                    <strong>{{ stats.stato_critico }}</strong><br>
+                                    <small>Critico</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Top 5 clienti per limite -->
+        <div class="col-lg-4 mb-4">
+            <div class="card shadow h-100">
+                <div class="card-header">
+                    <h6 class="m-0 font-weight-bold text-warning">
+                        <i class="fas fa-trophy me-1"></i>Top 5 Limiti
+                    </h6>
+                </div>
+                <div class="card-body">
+                    {% for cliente in stats.top_limiti %}
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <div class="flex-grow-1">
+                            <a href="{{ cliente.get_absolute_url }}" class="text-decoration-none">
+                                <small class="fw-bold">{{ cliente.nome|truncatechars:20 }}</small>
+                            </a>
+                        </div>
+                        <div class="text-end">
+                            <strong class="text-primary">€{{ cliente.limite_credito|floatformat:0 }}</strong>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <p class="text-muted text-center">Nessun cliente con limite credito</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Alert critici -->
+        <div class="col-lg-4 mb-4">
+            <div class="card shadow h-100 border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h6 class="m-0 font-weight-bold">
+                        <i class="fas fa-exclamation-triangle me-1"></i>Situazioni Critiche
+                    </h6>
+                </div>
+                <div class="card-body">
+                    {% for cliente in stats.clienti_critici %}
+                    <div class="alert alert-danger py-2 mb-2">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <a href="{{ cliente.get_absolute_url }}" class="text-danger fw-bold text-decoration-none">
+                                    {{ cliente.nome|truncatechars:15 }}
+                                </a>
+                                <br><small>{{ cliente.percentuale_uso|floatformat:0 }}% usato</small>
+                            </div>
+                            <div class="text-end">
+                                <strong>€{{ cliente.credito_disponibile|floatformat:0 }}</strong><br>
+                                <small>disponibile</small>
+                            </div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="text-center text-success">
+                        <i class="fas fa-check-circle fa-3x mb-2"></i>
+                        <p class="mb-0">Nessuna situazione critica</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabella dettagliata -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header">
+                    <h6 class="m-0 font-weight-bold text-secondary">
+                        <i class="fas fa-table me-1"></i>Dettaglio Clienti con Limite Credito
+                        <small class="text-muted">({{ clienti.count }} clienti trovati)</small>
+                    </h6>
+                </div>
+                <div class="card-body p-0">
+                    {% if clienti %}
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Cliente</th>
+                                    <th>Contatti</th>
+                                    <th class="text-end">Limite Credito</th>
+                                    <th class="text-end">Utilizzato</th>
+                                    <th class="text-end">Disponibile</th>
+                                    <th class="text-center">% Uso</th>
+                                    <th class="text-center">Stato</th>
+                                    <th class="text-center">Azioni</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for cliente in clienti %}
+                                {% with stato=cliente.stato_credito %}
+                                <tr class="{% if stato.stato == 'critico' %}table-danger{% elif stato.stato == 'attenzione' %}table-warning{% endif %}">
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="avatar-circle bg-primary text-white me-2">
+                                                {{ cliente.nome|first|upper }}
+                                            </div>
+                                            <div>
+                                                <a href="{{ cliente.get_absolute_url }}" class="fw-bold text-decoration-none">
+                                                    {{ cliente.nome|truncatechars:25 }}
+                                                </a>
+                                                {% if cliente.citta %}
+                                                <br><small class="text-muted">{{ cliente.citta }}</small>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        {% if cliente.telefono %}
+                                        <div><i class="fas fa-phone text-success me-1"></i>{{ cliente.telefono }}</div>
+                                        {% endif %}
+                                        {% if cliente.email %}
+                                        <div><i class="fas fa-envelope text-primary me-1"></i>{{ cliente.email|truncatechars:20 }}</div>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end">
+                                        <strong class="text-primary">€{{ cliente.limite_credito|floatformat:0 }}</strong>
+                                    </td>
+                                    <td class="text-end">
+                                        <span class="text-warning">€{{ cliente.credito_utilizzato|floatformat:0 }}</span>
+                                    </td>
+                                    <td class="text-end">
+                                        <strong class="{{ stato.classe_css }}">€{{ cliente.credito_disponibile|floatformat:0 }}</strong>
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="progress" style="height: 20px;">
+                                            <div class="progress-bar {% if stato.stato == 'critico' %}bg-danger{% elif stato.stato == 'attenzione' %}bg-warning{% else %}bg-success{% endif %}" 
+                                                 role="progressbar" 
+                                                 style="width: {{ stato.percentuale_uso }}%"
+                                                 title="{{ stato.percentuale_uso|floatformat:1 }}%">
+                                                <small class="fw-bold">{{ stato.percentuale_uso|floatformat:0 }}%</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge {% if stato.stato == 'critico' %}bg-danger{% elif stato.stato == 'attenzione' %}bg-warning{% else %}bg-success{% endif %}">
+                                            {{ stato.messaggio }}
+                                        </span>
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="btn-group btn-group-sm" role="group">
+                                            <a href="{{ cliente.get_absolute_url }}" class="btn btn-outline-info" title="Dettagli">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <a href="{% url 'anagrafica:cliente_update' pk=cliente.pk %}" class="btn btn-outline-warning" title="Modifica">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endwith %}
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-search fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">Nessun cliente trovato</h5>
+                        <p class="text-muted">
+                            {% if request.GET.stato or request.GET.limite_min or request.GET.limite_max %}
+                                Prova a modificare i filtri di ricerca
+                            {% else %}
+                                Nessun cliente ha un limite credito configurato
+                            {% endif %}
+                        </p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Avatar circle */
+.avatar-circle {
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 0.9rem;
+}
+
+/* Progress bar styling */
+.progress {
+    border-radius: 10px;
+    background-color: #f1f3f4;
+}
+
+.progress-bar {
+    border-radius: 10px;
+    transition: width 0.6s ease;
+}
+
+/* Table styling */
+.table th {
+    border-top: none;
+    font-weight: 600;
+    color: #5a5c69;
+    font-size: 0.85rem;
+}
+
+.table td {
+    vertical-align: middle;
+    font-size: 0.9rem;
+}
+
+.table-hover tbody tr:hover {
+    background-color: rgba(0, 0, 0, 0.02);
+}
+
+/* Badge styling */
+.badge {
+    font-size: 0.7rem;
+    font-weight: 500;
+    padding: 0.4em 0.6em;
+}
+
+/* Card styling */
+.card {
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.border-end {
+    border-right: 1px solid #dee2e6 !important;
+}
+
+/* Button group styling */
+.btn-group-sm .btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+}
+
+/* Form control focus */
+.form-control:focus, .form-select:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+}
+
+/* Alert styling per tabella */
+.table-danger {
+    --bs-table-bg: rgba(220, 53, 69, 0.1);
+}
+
+.table-warning {
+    --bs-table-bg: rgba(255, 193, 7, 0.1);
+}
+
+/* Chart container */
+#chartStati {
+    max-width: 200px;
+    margin: 0 auto;
+}
+
+/* Responsive improvements */
+@media (max-width: 768px) {
+    .border-end {
+        border-right: none !important;
+        border-bottom: 1px solid #dee2e6 !important;
+        margin-bottom: 0.5rem;
+        padding-bottom: 0.5rem;
+    }
+    
+    .border-end:last-child {
+        border-bottom: none !important;
+        margin-bottom: 0;
+        padding-bottom: 0;
+    }
+    
+    .table-responsive {
+        font-size: 0.8rem;
+    }
+    
+    .avatar-circle {
+        width: 30px;
+        height: 30px;
+        font-size: 0.8rem;
+    }
+}
+
+/* Animation for loading states */
+.loading {
+    position: relative;
+    color: transparent !important;
+}
+
+.loading::after {
+    content: "";
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    top: 50%;
+    left: 50%;
+    margin-left: -8px;
+    margin-top: -8px;
+    border: 2px solid #ffffff;
+    border-radius: 50%;
+    border-top-color: transparent;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Hover effects */
+.card:hover {
+    transform: translateY(-2px);
+    transition: transform 0.2s ease-in-out;
+}
+
+.btn:hover {
+    transform: translateY(-1px);
+    transition: transform 0.2s ease-in-out;
+}
+
+/* Print styles */
+@media print {
+    .btn, .dropdown, .navbar { display: none !important; }
+    .card { border: 1px solid #000 !important; box-shadow: none !important; }
+    .table { font-size: 0.8rem; }
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+$(document).ready(function() {
+    // Grafico a torta per distribuzione stati
+    const ctx = document.getElementById('chartStati').getContext('2d');
+    new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['OK', 'Attenzione', 'Critico'],
+            datasets: [{
+                data: [{{ stats.stato_ok }}, {{ stats.stato_attenzione }}, {{ stats.stato_critico }}],
+                backgroundColor: ['#28a745', '#ffc107', '#dc3545'],
+                borderWidth: 2,
+                borderColor: '#ffffff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            }
+        }
+    });
+    
+    // Auto-submit filtri quando cambia l'ordinamento
+    $('select[name="ordine"]').on('change', function() {
+        $(this).closest('form').submit();
+    });
+    
+    // Tooltip per progress bar
+    $('.progress-bar').each(function() {
+        const percentage = $(this).attr('title');
+        $(this).tooltip({
+            title: `Utilizzo: ${percentage}`,
+            placement: 'top'
+        });
+    });
+    
+    // Funzione di export
+    $('.dropdown-item[href*="export"]').on('click', function(e) {
+        e.preventDefault();
+        const exportType = $(this).attr('href').split('=')[1];
+        const currentUrl = new URL(window.location);
+        currentUrl.searchParams.set('export', exportType);
+        
+        // Mostra loading
+        const originalText = $(this).html();
+        $(this).html('<i class="fas fa-spinner fa-spin me-2"></i>Generando...');
+        
+        // Apri in nuova finestra
+        window.open(currentUrl.toString(), '_blank');
+        
+        // Ripristina testo dopo 2 secondi
+        setTimeout(() => {
+            $(this).html(originalText);
+        }, 2000);
+    });
+    
+    // Refresh automatico ogni 5 minuti
+    setInterval(function() {
+        // Aggiorna solo le statistiche principali
+        $.ajax({
+            url: '{% url "anagrafica:report_crediti" %}',
+            data: { 'ajax': 'stats', ...{{ request.GET.dict|safe }} },
+            success: function(data) {
+                if (data.stats) {
+                    // Aggiorna le statistiche nel header
+                    $('.card-footer .h4').each(function(index) {
+                        const values = [
+                            data.stats.totale_limiti,
+                            data.stats.totale_utilizzato,
+                            data.stats.totale_disponibile,
+                            data.stats.percentuale_uso
+                        ];
+                        $(this).text(values[index] + (index === 3 ? '%' : '€'));
+                    });
+                }
+            }
+        });
+    }, 300000);
+    
+    // Filtro rapido per stato critico
+    $('#filtro-critico').on('click', function() {
+        $('select[name="stato"]').val('critico');
+        $(this).closest('form').submit();
+    });
+    
+    // Search in table
+    $('#search-table').on('input', function() {
+        const searchTerm = $(this).val().toLowerCase();
+        $('tbody tr').each(function() {
+            const text = $(this).text().toLowerCase();
+            $(this).toggle(text.includes(searchTerm));
+        });
+    });
+    
+    // Keyboard shortcuts
+    $(document).on('keydown', function(e) {
+        if (e.ctrlKey || e.metaKey) {
+            switch(e.key) {
+                case 'p':
+                    e.preventDefault();
+                    window.print();
+                    break;
+                case 'e':
+                    e.preventDefault();
+                    $('.dropdown-toggle').click();
+                    break;
+            }
+        }
+    });
+    
+    // Auto-refresh warning per situazioni critiche
+    const criticiCount = {{ stats.stato_critico }};
+    if (criticiCount > 0) {
+        // Notifica ogni 10 minuti se ci sono situazioni critiche
+        setInterval(function() {
+            if (criticiCount > 0) {
+                new Notification('Attenzione: Situazioni creditizie critiche', {
+                    body: `Ci sono ${criticiCount} clienti in situazione critica`,
+                    icon: '/static/favicon.ico'
+                });
+            }
+        }, 600000);
+    }
+    
+    // Request notification permission
+    if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission();
+    }
+});
+</script>
+{% endblock %}

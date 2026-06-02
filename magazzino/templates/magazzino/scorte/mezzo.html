@@ -1,0 +1,236 @@
+{% extends "base.html" %}
+{% load static %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/detail.css' %}">{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'magazzino:dashboard' %}">Magazzino</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'magazzino:scorte_dashboard' %}">Scorte</a></li>
+      <li class="breadcrumb-item active">{{ mezzo.targa }}</li>
+    </ol>
+  </nav>
+  <div class="d-flex justify-content-between align-items-start">
+    <div>
+      <h1><i class="bi bi-truck me-2 text-brand"></i>{{ mezzo.targa }} — {{ mezzo.marca }} {{ mezzo.modello }}</h1>
+      <p class="text-muted mb-0">Prodotti attualmente a bordo e operazioni rapide</p>
+    </div>
+    <a href="{% url 'magazzino:carico_mezzo_create' %}" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-arrow-left-right me-1"></i>Movimento completo
+    </a>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-9">
+    <div class="card">
+      <div class="card-header card-header-primary d-flex justify-content-between align-items-center gap-2">
+        <span><i class="bi bi-box-seam me-2"></i>Prodotti a bordo</span>
+        <div class="d-flex align-items-center gap-2 ms-auto">
+          <div class="input-group input-group-sm" style="width:220px">
+            <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+            <input type="search" id="cercaProdotto" class="form-control border-start-0 ps-0"
+                   placeholder="Cerca prodotto…" autocomplete="off">
+          </div>
+          <span class="badge bg-secondary" id="contatoreRighe">{{ scorte_con_disp|length }}</span>
+        </div>
+      </div>
+      <div class="table-responsive">
+        <table class="table align-middle mb-0" id="tabellaScorte">
+          <thead>
+            <tr>
+              <th>Prodotto</th>
+              <th class="text-end">A bordo</th>
+              <th class="text-end">Disp. stabilimenti</th>
+              <th class="text-center">Ultimo movimento</th>
+              <th class="text-center" style="width:160px">Azioni</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for s, disp_mag in scorte_con_disp %}
+            <tr class="riga-prodotto" data-cerca="{{ s.prodotto.nome_prodotto|lower }} {{ s.prodotto.categoria|lower }} {{ s.prodotto.codice_interno|lower }}">
+              <td>
+                <a href="{% url 'magazzino:prodotto_detail' s.prodotto.pk %}" class="fw-semibold text-decoration-none">
+                  {{ s.prodotto.nome_prodotto }}
+                </a>
+                <div class="text-muted small">{{ s.prodotto.categoria }} · {{ s.prodotto.get_unita_misura_display }}</div>
+              </td>
+              <td class="text-end">
+                <span class="fw-bold {% if s.quantita <= 0 %}text-danger{% elif s.quantita < 3 %}text-warning{% else %}text-success{% endif %}">
+                  {{ s.quantita }}
+                </span>
+              </td>
+              <td class="text-end text-muted small">{{ disp_mag }}</td>
+              <td class="text-center text-muted small">
+                {{ s.ultimo_movimento|date:"d/m/Y"|default:"—" }}
+              </td>
+              <td class="text-center">
+                <button type="button"
+                  class="btn btn-sm btn-outline-brand me-1"
+                  data-prodotto-id="{{ s.prodotto.pk }}"
+                  data-prodotto-nome="{{ s.prodotto.nome_prodotto }}"
+                  data-um="{{ s.prodotto.get_unita_misura_display }}"
+                  data-bordo="{{ s.quantita }}"
+                  data-disp="{{ disp_mag }}"
+                  data-tipo="carico"
+                  onclick="apriModal(this)"
+                  title="Carica sul mezzo">
+                  <i class="bi bi-arrow-up-circle"></i> Carica
+                </button>
+                <button type="button"
+                  class="btn btn-sm btn-outline-secondary"
+                  data-prodotto-id="{{ s.prodotto.pk }}"
+                  data-prodotto-nome="{{ s.prodotto.nome_prodotto }}"
+                  data-um="{{ s.prodotto.get_unita_misura_display }}"
+                  data-bordo="{{ s.quantita }}"
+                  data-disp="{{ disp_mag }}"
+                  data-tipo="scarico"
+                  onclick="apriModal(this)"
+                  title="Scarica dal mezzo">
+                  <i class="bi bi-arrow-down-circle"></i> Scarica
+                </button>
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="5" class="text-muted text-center py-4">
+                <i class="bi bi-inbox display-6 d-block mb-2"></i>
+                Nessun prodotto a bordo.
+                <a href="{% url 'magazzino:carico_mezzo_create' %}">Registra un carico</a>.
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-3">
+    <div class="card mb-3">
+      <div class="card-header"><i class="bi bi-truck me-2"></i>Info mezzo</div>
+      <div class="card-body">
+        <div class="detail-field">
+          <div class="detail-field-label">Targa</div>
+          <div class="detail-field-value fw-bold">{{ mezzo.targa }}</div>
+        </div>
+        <div class="detail-field">
+          <div class="detail-field-label">Veicolo</div>
+          <div class="detail-field-value">{{ mezzo.marca }} {{ mezzo.modello }}</div>
+        </div>
+        {% if mezzo.assegnato_a %}
+        <div class="detail-field">
+          <div class="detail-field-label">Assegnato a</div>
+          <div class="detail-field-value">
+            {% if mezzo.assegnato_a.get_full_name %}{{ mezzo.assegnato_a.get_full_name }}{% else %}{{ mezzo.assegnato_a.username }}{% endif %}
+          </div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+    <div class="card mb-3">
+      <div class="card-header"><i class="bi bi-clock-history me-2"></i>Movimenti</div>
+      <div class="list-group list-group-flush">
+        <a href="{% url 'magazzino:carico_mezzo_list' %}?mezzo={{ mezzo.pk }}" class="list-group-item list-group-item-action small">
+          <i class="bi bi-list-ul me-2"></i>Storico movimenti mezzo
+        </a>
+      </div>
+    </div>
+    <a href="{{ back_url }}" class="btn btn-outline-secondary btn-sm w-100">
+      <i class="bi bi-arrow-left me-1"></i>Torna alle scorte
+    </a>
+  </div>
+</div>
+{% endblock %}
+
+{% block modals %}
+<div class="modal fade" id="modalOperazione" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header" id="modalHeader">
+        <h5 class="modal-title" id="modalTitolo"></h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" action="{% url 'magazzino:mezzo_operazione_rapida' mezzo.pk %}">
+        {% csrf_token %}
+        <input type="hidden" name="prodotto_id" id="inputProdottoId">
+        <input type="hidden" name="tipo" id="inputTipo">
+        <div class="modal-body">
+          <p class="mb-1"><strong id="modalProdottoNome"></strong></p>
+          <p class="text-muted small mb-3" id="modalInfo"></p>
+          <div class="mb-3" id="rowStabilimento">
+            <label class="form-label fw-semibold">Stabilimento <span class="text-danger">*</span></label>
+            <select name="stabilimento_id" id="inputStabilimentoId" class="form-select" required>
+              <option value="">— seleziona —</option>
+              {% for stab in stabilimenti %}
+              <option value="{{ stab.pk }}">{{ stab.nome }} — {{ stab.citta }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <label class="form-label fw-semibold">Quantità <span id="modalUm" class="text-muted fw-normal"></span></label>
+          <input type="number" name="quantita" id="inputQuantita"
+                 class="form-control form-control-lg text-center"
+                 min="0.001" step="0.001" required>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annulla</button>
+          <button type="submit" class="btn btn-brand" id="btnConferma">Conferma</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  const input     = document.getElementById("cercaProdotto");
+  const contatore = document.getElementById("contatoreRighe");
+  const tbody     = document.querySelector("#tabellaScorte tbody");
+
+  input.addEventListener("input", function () {
+    const q = this.value.trim().toLowerCase();
+    let visibili = 0;
+    tbody.querySelectorAll("tr.riga-prodotto").forEach(row => {
+      const testo = row.dataset.cerca;
+      const match = !q || testo.includes(q);
+      row.classList.toggle("d-none", !match);
+      if (match) visibili++;
+    });
+    contatore.textContent = q ? visibili + " / {{ scorte_con_disp|length }}" : "{{ scorte_con_disp|length }}";
+  });
+})();
+
+function apriModal(btn) {
+  const tipo   = btn.dataset.tipo;
+  const nome   = btn.dataset.prodottoNome;
+  const um     = btn.dataset.um;
+  const bordo  = parseFloat(btn.dataset.bordo);
+  const disp   = parseFloat(btn.dataset.disp);
+
+  document.getElementById("inputProdottoId").value = btn.dataset.prodottoId;
+  document.getElementById("inputTipo").value = tipo;
+  document.getElementById("inputQuantita").value = "";
+  document.getElementById("modalProdottoNome").textContent = nome;
+  document.getElementById("modalUm").textContent = "(" + um + ")";
+
+  const header = document.getElementById("modalHeader");
+  if (tipo === "carico") {
+    document.getElementById("modalTitolo").textContent = "Carica sul mezzo";
+    document.getElementById("modalInfo").textContent = "A bordo: " + bordo + "  ·  Disponibile magazzino: " + disp;
+    header.style.cssText = "background:var(--color-1);color:#fff";
+    document.getElementById("inputQuantita").max = disp;
+  } else {
+    document.getElementById("modalTitolo").textContent = "Scarica dal mezzo";
+    document.getElementById("modalInfo").textContent = "A bordo: " + bordo;
+    header.style.cssText = "background:#6c757d;color:#fff";
+    document.getElementById("inputQuantita").max = bordo;
+  }
+
+  bootstrap.Modal.getOrCreateInstance(document.getElementById("modalOperazione")).show();
+  setTimeout(() => document.getElementById("inputQuantita").focus(), 300);
+}
+</script>
+{% endblock %}

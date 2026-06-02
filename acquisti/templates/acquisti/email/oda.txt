@@ -1,0 +1,18 @@
+ORDINE DI ACQUISTO {{ ordine.numero_ordine }}
+Del {{ ordine.data_ordine|date:"d/m/Y" }}
+
+Fornitore: {{ ordine.fornitore }}
+{% if ordine.data_consegna_richiesta %}Consegna richiesta entro: {{ ordine.data_consegna_richiesta|date:"d/m/Y" }}{% endif %}
+
+ARTICOLI ORDINATI
+-----------------
+{% for r in righe %}{% if r.prodotto %}{{ r.prodotto.nome_prodotto }}{% else %}{{ r.descrizione }}{% endif %} | {{ r.unita_misura|default:"—" }} | Qtà {{ r.quantita_ordinata }} | € {{ r.prezzo_unitario }} | Imponibile € {{ r.imponibile }}
+{% endfor %}
+TOTALE IMPONIBILE: € {{ ordine.totale }}
+{% if ordine.note %}
+NOTE: {{ ordine.note }}
+{% endif %}
+Vi preghiamo di confermare la ricezione del presente ordine e la disponibilità alla consegna entro i termini indicati.
+
+--
+Messaggio generato automaticamente da RATTUS26.

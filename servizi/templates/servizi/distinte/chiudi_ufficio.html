@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+{% load static %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/detail.css' %}">{% endblock %}
+{% block content %}
+<div class="page-header mb-4">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'servizi:dashboard' %}">Servizi</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'servizi:distinta_list' %}">Distinte</a></li>
+      <li class="breadcrumb-item"><a href="{{ distinta.get_absolute_url }}">{{ distinta }}</a></li>
+      <li class="breadcrumb-item active">Chiusura ufficio</li>
+    </ol>
+  </nav>
+  <h1><i class="bi bi-lock me-2 text-brand"></i>Chiusura Distinta — Ufficio</h1>
+</div>
+
+<form method="post">
+{% csrf_token %}
+<div class="row g-3">
+  <div class="col-lg-8">
+
+    {# Info distinta #}
+    <div class="card mb-3">
+      <div class="card-header card-header-primary"><i class="bi bi-info-circle me-2"></i>Distinta</div>
+      <div class="card-body">
+        <div class="row g-3">
+          <div class="col-sm-4">
+            <div class="detail-field">
+              <div class="detail-field-label">Tecnico</div>
+              <div class="detail-field-value fw-semibold">{{ distinta.tecnico.get_full_name|default:distinta.tecnico.username }}</div>
+            </div>
+          </div>
+          <div class="col-sm-3">
+            <div class="detail-field">
+              <div class="detail-field-label">Data</div>
+              <div class="detail-field-value">{{ distinta.data|date:"d/m/Y" }}</div>
+            </div>
+          </div>
+          <div class="col-sm-3">
+            <div class="detail-field">
+              <div class="detail-field-label">Mezzo</div>
+              <div class="detail-field-value {% if not distinta.mezzo %}empty{% endif %}">{{ distinta.mezzo|default:"—" }}</div>
+            </div>
+          </div>
+          <div class="col-sm-2">
+            <div class="detail-field">
+              <div class="detail-field-label">Completati</div>
+              <div class="detail-field-value">{{ distinta.n_completati }} / {{ distinta.n_totale }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {# Tabella ODS #}
+    <div class="card mb-3">
+      <div class="card-header card-header-primary"><i class="bi bi-list-task me-2"></i>Servizi — verifica e riapertura</div>
+      <div class="table-responsive">
+        <table class="table mb-0 align-middle">
+          <thead class="bg-brand text-white">
+            <tr>
+              <th>Numero</th>
+              <th>Cliente</th>
+              <th>Servizio</th>
+              <th>Stato</th>
+              <th class="text-end">Incasso</th>
+              <th class="text-center" title="Riapri come 'Da espletare' e scollega dalla distinta">Riapri</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for o in ods_list %}
+            <tr class="{% if o.stato == 'completato' %}table-success bg-opacity-25{% elif o.stato == 'annullato' %}table-secondary{% else %}table-warning bg-opacity-25{% endif %}">
+              <td class="fw-semibold">
+                <a href="{{ o.get_absolute_url }}" class="text-brand text-decoration-none">{{ o.numero }}</a>
+              </td>
+              <td class="small">{{ o.cliente_display }}</td>
+              <td class="small">{{ o.servizio_principale|default:"—" }}</td>
+              <td>
+                {% if o.stato == "completato" %}
+                  <span class="badge badge-ok"><i class="bi bi-check-circle me-1"></i>Completato</span>
+                {% elif o.stato == "annullato" %}
+                  <span class="badge bg-secondary">Annullato</span>
+                {% else %}
+                  <span class="badge badge-ko"><i class="bi bi-exclamation-circle me-1"></i>Non completato</span>
+                {% endif %}
+              </td>
+              <td class="text-end">
+                {% if o.incassato %}
+                  <span class="fw-semibold text-success">€ {{ o.importo_incassato|default:"—" }}</span>
+                {% elif o.incasso_al_servizio %}
+                  <span class="text-danger small"><i class="bi bi-exclamation-triangle me-1"></i>Da incassare</span>
+                {% else %}
+                  <span class="text-muted small">Da fatturare</span>
+                {% endif %}
+              </td>
+              <td class="text-center">
+                <div class="form-check d-flex justify-content-center m-0">
+                  <input class="form-check-input ods-riapri" type="checkbox"
+                         name="riapri_{{ o.pk }}" id="riapri_{{ o.pk }}"
+                         {% if o.stato != "completato" %}checked{% endif %}>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="col-lg-4">
+
+    {# Riepilogo incasso #}
+    <div class="card mb-3">
+      <div class="card-header card-header-primary"><i class="bi bi-cash-coin me-2"></i>Riconciliazione incasso</div>
+      <div class="card-body">
+        <div class="detail-field">
+          <div class="detail-field-label">Incasso calcolato dal sistema</div>
+          <div class="detail-field-value fw-bold text-brand" id="val-previsto">€ {{ totale_previsto }}</div>
+        </div>
+        <input type="hidden" id="totale-previsto-hidden" value="{{ totale_previsto }}">
+
+        <label class="form-label mt-2">Importo ricevuto dal tecnico <span class="text-danger">*</span></label>
+        <div class="input-group mb-3">
+          <span class="input-group-text">€</span>
+          <input type="number" name="importo_ricevuto" id="importo-ricevuto"
+                 step="0.01" min="0" value="{{ totale_previsto }}"
+                 class="form-control fw-semibold" required>
+        </div>
+
+        <div class="detail-field mb-0">
+          <div class="detail-field-label">Differenza</div>
+          <div class="detail-field-value fw-bold" id="val-differenza">€ 0,00</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="d-grid gap-2">
+      <button type="submit" class="btn btn-brand"
+              onclick="return confirm('Chiudere definitivamente questa distinta e inviare il promemoria al tecnico?')">
+        <i class="bi bi-lock me-2"></i>Chiudi e invia promemoria
+      </button>
+      <a href="{{ distinta.get_absolute_url }}" class="btn btn-outline-secondary">Annulla</a>
+    </div>
+
+  </div>
+</div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  const inputRicevuto  = document.getElementById("importo-ricevuto");
+  const valDifferenza  = document.getElementById("val-differenza");
+  const previsto       = parseFloat(document.getElementById("totale-previsto-hidden").value) || 0;
+
+  function aggiornaDiff() {
+    const ricevuto = parseFloat(inputRicevuto.value) || 0;
+    const diff = ricevuto - previsto;
+    const fmt = diff.toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    if (diff < 0) {
+      valDifferenza.textContent = "− € " + Math.abs(diff).toLocaleString("it-IT", { minimumFractionDigits: 2 });
+      valDifferenza.className = "detail-field-value fw-bold text-danger";
+    } else if (diff > 0) {
+      valDifferenza.textContent = "+ € " + fmt;
+      valDifferenza.className = "detail-field-value fw-bold text-warning";
+    } else {
+      valDifferenza.textContent = "€ 0,00 — tutto corrisponde";
+      valDifferenza.className = "detail-field-value fw-bold text-success";
+    }
+  }
+
+  inputRicevuto.addEventListener("input", aggiornaDiff);
+  aggiornaDiff();
+})();
+</script>
+{% endblock %}

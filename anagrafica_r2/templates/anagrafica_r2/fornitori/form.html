@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/detail.css' %}">
+{% endblock %}
+
+{% block content %}
+
+<div class="page-header mb-4">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'anagrafica:dashboard' %}">Anagrafica</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'anagrafica:fornitore_list' %}">Fornitori</a></li>
+      <li class="breadcrumb-item active">{{ titolo }}</li>
+    </ol>
+  </nav>
+  <h1><i class="bi bi-truck me-2 text-brand"></i>{{ titolo }}</h1>
+</div>
+
+{% if form.non_field_errors %}
+<div class="alert alert-danger mb-3">
+  {% for e in form.non_field_errors %}{{ e }}{% endfor %}
+</div>
+{% endif %}
+
+<form method="post" novalidate>
+  {% csrf_token %}
+
+  <div class="row g-3">
+    <div class="col-lg-8">
+
+      <div class="card mb-3">
+        <div class="card-header card-header-primary">
+          <i class="bi bi-building me-2"></i>Dati Anagrafici
+        </div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label" for="{{ form.ragione_sociale.id_for_label }}">{{ form.ragione_sociale.label }} *</label>
+              {{ form.ragione_sociale }}
+              {% if form.ragione_sociale.errors %}<div class="invalid-feedback d-block">{% for e in form.ragione_sociale.errors %}{{ e }}{% endfor %}</div>{% endif %}
+            </div>
+            <div class="col-12">
+              <label class="form-label" for="{{ form.indirizzo.id_for_label }}">{{ form.indirizzo.label }}</label>
+              {{ form.indirizzo }}
+            </div>
+            <div class="col-sm-5">
+              <label class="form-label" for="{{ form.citta.id_for_label }}">{{ form.citta.label }}</label>
+              {{ form.citta }}
+            </div>
+            <div class="col-sm-2">
+              <label class="form-label" for="{{ form.cap.id_for_label }}">{{ form.cap.label }}</label>
+              {{ form.cap }}
+            </div>
+            <div class="col-sm-2">
+              <label class="form-label" for="{{ form.provincia.id_for_label }}">{{ form.provincia.label }}</label>
+              {{ form.provincia }}
+            </div>
+            <div class="col-sm-3">
+              <label class="form-label" for="{{ form.regione.id_for_label }}">{{ form.regione.label }}</label>
+              {{ form.regione }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card mb-3">
+        <div class="card-header card-header-primary">
+          <i class="bi bi-telephone me-2"></i>Contatti
+        </div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-sm-6">
+              <label class="form-label" for="{{ form.telefono.id_for_label }}">{{ form.telefono.label }} *</label>
+              {{ form.telefono }}
+              {% if form.telefono.errors %}<div class="invalid-feedback d-block">{% for e in form.telefono.errors %}{{ e }}{% endfor %}</div>{% endif %}
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label" for="{{ form.email.id_for_label }}">{{ form.email.label }} *</label>
+              {{ form.email }}
+              {% if form.email.errors %}<div class="invalid-feedback d-block">{% for e in form.email.errors %}{{ e }}{% endfor %}</div>{% endif %}
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label" for="{{ form.pec.id_for_label }}">{{ form.pec.label }}</label>
+              {{ form.pec }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card mb-3">
+        <div class="card-header">
+          <span class="card-title"><i class="bi bi-receipt me-2"></i>Dati Fiscali</span>
+        </div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-sm-6">
+              <label class="form-label" for="{{ form.partita_iva.id_for_label }}">{{ form.partita_iva.label }} *</label>
+              {{ form.partita_iva }}
+              {% if form.partita_iva.errors %}<div class="invalid-feedback d-block">{% for e in form.partita_iva.errors %}{{ e }}{% endfor %}</div>{% endif %}
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label" for="{{ form.codice_fiscale.id_for_label }}">{{ form.codice_fiscale.label }}</label>
+              {{ form.codice_fiscale }}
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label" for="{{ form.codice_destinatario.id_for_label }}">{{ form.codice_destinatario.label }}</label>
+              {{ form.codice_destinatario }}
+              {% if form.codice_destinatario.help_text %}<div class="form-text">{{ form.codice_destinatario.help_text }}</div>{% endif %}
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label" for="{{ form.iban.id_for_label }}">{{ form.iban.label }}</label>
+              {{ form.iban }}
+              {% if form.iban.help_text %}<div class="form-text">{{ form.iban.help_text }}</div>{% endif %}
+              {% if form.iban.errors %}<div class="invalid-feedback d-block">{% for e in form.iban.errors %}{{ e }}{% endfor %}</div>{% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card mb-3">
+        <div class="card-header">
+          <span class="card-title"><i class="bi bi-currency-euro me-2"></i>Dati Commerciali</span>
+        </div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-sm-4">
+              <label class="form-label" for="{{ form.categoria.id_for_label }}">{{ form.categoria.label }}</label>
+              {{ form.categoria }}
+            </div>
+            <div class="col-sm-4">
+              <label class="form-label" for="{{ form.tipo_pagamento.id_for_label }}">{{ form.tipo_pagamento.label }}</label>
+              {{ form.tipo_pagamento }}
+            </div>
+            <div class="col-sm-4">
+              <label class="form-label" for="{{ form.priorita_pagamento.id_for_label }}">{{ form.priorita_pagamento.label }}</label>
+              {{ form.priorita_pagamento }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card mb-3">
+        <div class="card-header">
+          <span class="card-title"><i class="bi bi-person-badge me-2"></i>Referente</span>
+        </div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-sm-4">
+              <label class="form-label" for="{{ form.referente_nome.id_for_label }}">{{ form.referente_nome.label }}</label>
+              {{ form.referente_nome }}
+            </div>
+            <div class="col-sm-4">
+              <label class="form-label" for="{{ form.referente_telefono.id_for_label }}">{{ form.referente_telefono.label }}</label>
+              {{ form.referente_telefono }}
+            </div>
+            <div class="col-sm-4">
+              <label class="form-label" for="{{ form.referente_email.id_for_label }}">{{ form.referente_email.label }}</label>
+              {{ form.referente_email }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card mb-3">
+        <div class="card-header">
+          <span class="card-title"><i class="bi bi-chat-left-text me-2"></i>Note</span>
+        </div>
+        <div class="card-body">
+          {{ form.note }}
+        </div>
+      </div>
+
+    </div>
+
+    <div class="col-lg-4">
+      <div class="sidebar-actions">
+
+        <div class="card mb-3">
+          <div class="card-header"><i class="bi bi-gear me-2"></i>Azioni</div>
+          <div class="card-body">
+            <div class="d-grid gap-2">
+              <button type="submit" class="btn btn-primary">
+                <i class="bi bi-check-lg me-1"></i>{{ submit_text }}
+              </button>
+              <a href="{{ back_url }}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left me-1"></i>Annulla
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><i class="bi bi-toggle-on me-2"></i>Stato</div>
+          <div class="card-body">
+            <div class="form-check">
+              {{ form.attivo }}
+              <label class="form-check-label" for="{{ form.attivo.id_for_label }}">Fornitore attivo</label>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+</form>
+{% endblock %}

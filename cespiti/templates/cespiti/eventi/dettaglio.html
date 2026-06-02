@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% load static %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/detail.css' %}">{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'cespiti:dashboard' %}">Cespiti</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'cespiti:evento_list' %}">Eventi</a></li>
+      <li class="breadcrumb-item active">{{ evento.get_tipo_display }}</li>
+    </ol>
+  </nav>
+  <h1>
+    <i class="bi bi-exclamation-triangle me-2 text-brand"></i>{{ evento.get_tipo_display }}
+    <span class="badge badge-accent ms-2">{{ evento.automezzo.targa }}</span>
+    {% if evento.risolto %}<span class="badge badge-ok ms-1">Risolto</span>
+    {% else %}<span class="badge badge-ko ms-1">Aperto</span>{% endif %}
+  </h1>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-8">
+    <div class="card mb-3">
+      <div class="card-header card-header-primary"><i class="bi bi-info-circle me-2"></i>Dettagli Evento</div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-sm-4"><div class="detail-field"><div class="detail-field-label">Automezzo</div><div class="detail-field-value"><a href="{{ evento.automezzo.get_absolute_url }}">{{ evento.automezzo.targa }}</a></div></div></div>
+          <div class="col-sm-4"><div class="detail-field"><div class="detail-field-label">Data Evento</div><div class="detail-field-value fw-bold">{{ evento.data_evento|date:"d/m/Y" }}</div></div></div>
+          <div class="col-sm-4"><div class="detail-field"><div class="detail-field-label">Tipo</div><div class="detail-field-value"><span class="badge badge-wait">{{ evento.get_tipo_display }}</span></div></div></div>
+          <div class="col-sm-4"><div class="detail-field"><div class="detail-field-label">Costo</div><div class="detail-field-value">{% if evento.costo %}€ {{ evento.costo }}{% else %}—{% endif %}</div></div></div>
+          <div class="col-sm-4"><div class="detail-field"><div class="detail-field-label">Dipendente Coinvolto</div><div class="detail-field-value">{{ evento.dipendente_coinvolto.get_full_name|default:"—" }}</div></div></div>
+          <div class="col-sm-4"><div class="detail-field"><div class="detail-field-label">Risolto</div><div class="detail-field-value">{% if evento.risolto %}<span class="badge badge-ok">Sì</span>{% else %}<span class="badge badge-ko">No</span>{% endif %}</div></div></div>
+        </div>
+        {% if evento.descrizione %}
+        <div class="detail-field mt-2"><div class="detail-field-label">Descrizione</div><div class="detail-field-value">{{ evento.descrizione }}</div></div>
+        {% endif %}
+        {% if evento.file_allegato %}
+        <div class="mt-2">
+          <a href="{{ evento.file_allegato.url }}" class="btn btn-sm btn-outline-secondary" target="_blank"><i class="bi bi-paperclip me-1"></i>Allegato</a>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="sidebar-actions">
+      <div class="card mb-3">
+        <div class="card-header"><i class="bi bi-gear me-2"></i>Azioni</div>
+        <div class="list-group list-group-flush">
+          <a href="{{ edit_url }}" class="list-group-item list-group-item-action"><i class="bi bi-pencil"></i>Modifica</a>
+          {% if request.user.is_staff %}
+          <a href="{{ delete_url }}" class="list-group-item list-group-item-action text-danger"><i class="bi bi-trash"></i>Elimina</a>
+          {% endif %}
+        </div>
+      </div>
+      {% include 'commons_templates/components/sidebar_allegati_qr.html' with object=evento %}
+
+      <div class="mt-3">
+        <a href="{{ back_url }}" class="btn btn-outline-secondary btn-sm w-100"><i class="bi bi-arrow-left me-1"></i>Torna alla lista</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

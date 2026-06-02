@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% load static %}
+{% block content %}
+<div class="page-header mb-4">
+  <h1><i class="bi bi-boxes me-2 text-brand"></i>Magazzino</h1>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-sm-6">
+    <a href="{% url 'magazzino:scorte_dashboard' %}" class="text-decoration-none">
+      <div class="card h-100 card-hover border-2">
+        <div class="card-body d-flex align-items-center gap-4 p-4">
+          <div class="fs-1 text-brand"><i class="bi bi-building"></i></div>
+          <div>
+            <div class="fw-bold fs-5">Scorte Magazzino e Mezzi</div>
+            <div class="text-muted small">Giacenze per stabilimento e furgoni</div>
+          </div>
+        </div>
+      </div>
+    </a>
+  </div>
+  <div class="col-sm-6">
+    <a href="{% url 'magazzino:ricezione_list' %}" class="text-decoration-none">
+      <div class="card h-100 card-hover border-2">
+        <div class="card-body d-flex align-items-center gap-4 p-4">
+          <div class="fs-1 text-brand"><i class="bi bi-box-arrow-in-down"></i></div>
+          <div>
+            <div class="fw-bold fs-5">Ricezioni</div>
+            <div class="text-muted small">Carichi da fornitore</div>
+          </div>
+        </div>
+      </div>
+    </a>
+  </div>
+</div>
+
+{% if scorte_basse %}
+<div class="card border-warning">
+  <div class="card-header bg-warning bg-opacity-10 d-flex align-items-center gap-2">
+    <i class="bi bi-exclamation-triangle-fill text-warning fs-5"></i>
+    <span class="fw-semibold">Scorte basse ({{ scorte_basse|length }} prodott{{ scorte_basse|length|pluralize:"o,i" }})</span>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-sm mb-0 align-middle">
+      <thead class="table-light">
+        <tr>
+          <th>Prodotto</th>
+          <th>Categoria</th>
+          <th class="text-end">Giacenza totale</th>
+          <th class="text-end">Scorta minima</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in scorte_basse %}
+        <tr>
+          <td class="fw-semibold">{{ p.nome_prodotto }}</td>
+          <td class="small text-muted">{{ p.categoria }}</td>
+          <td class="text-end">
+            {% if p.totale_scorta is not None %}
+              <span class="text-danger fw-bold">{{ p.totale_scorta }} {{ p.unita_misura }}</span>
+            {% else %}
+              <span class="text-danger fw-bold">0 {{ p.unita_misura }}</span>
+            {% endif %}
+          </td>
+          <td class="text-end text-muted">{{ p.scorta_minima }} {{ p.unita_misura }}</td>
+          <td class="text-end">
+            <a href="{{ p.get_absolute_url }}" class="btn btn-sm btn-outline-secondary">
+              <i class="bi bi-eye"></i>
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

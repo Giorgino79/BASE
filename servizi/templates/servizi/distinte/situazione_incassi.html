@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% load static %}
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-start mb-4">
+  <div>
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'servizi:dashboard' %}">Servizi</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'servizi:distinta_list' %}">Distinte</a></li>
+        <li class="breadcrumb-item active">Situazione incassi</li>
+      </ol>
+    </nav>
+    <h1><i class="bi bi-cash-stack me-2 text-brand"></i>Situazione Incassi</h1>
+  </div>
+</div>
+
+{# Filtro tecnico #}
+<form method="get" class="card mb-4">
+  <div class="card-body d-flex gap-3 align-items-end flex-wrap">
+    <div>
+      <label class="form-label mb-1">Filtra per tecnico</label>
+      <select name="tecnico" class="form-select form-select-sm" style="width:220px">
+        <option value="">— Tutti i tecnici —</option>
+        {% for u in utenti %}
+        <option value="{{ u.pk }}" {% if tecnico_sel and tecnico_sel.pk == u.pk %}selected{% endif %}>
+          {{ u.get_full_name|default:u.username }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="submit" class="btn btn-sm btn-brand">
+      <i class="bi bi-funnel me-1"></i>Applica
+    </button>
+    {% if tecnico_sel %}
+    <a href="{% url 'servizi:situazione_incassi' %}" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-x me-1"></i>Rimuovi filtro
+    </a>
+    {% endif %}
+  </div>
+</form>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table mb-0 align-middle">
+      <thead class="bg-brand text-white">
+        <tr>
+          <th>Numero</th>
+          <th>Data</th>
+          <th>Tecnico</th>
+          <th>Mezzo</th>
+          <th class="text-center">ODS</th>
+          <th class="text-end">Previsto</th>
+          <th class="text-end">Ricevuto</th>
+          <th class="text-end">Differenza</th>
+          <th>Chiusa da</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in distinte %}
+        <tr>
+          <td class="fw-semibold text-nowrap">{{ row.obj.numero }}</td>
+          <td class="text-nowrap">{{ row.obj.data|date:"d/m/Y" }}</td>
+          <td>{{ row.obj.tecnico.get_full_name|default:row.obj.tecnico.username }}</td>
+          <td class="small text-muted">{{ row.obj.mezzo|default:"—" }}</td>
+          <td class="text-center">
+            <span class="badge bg-secondary">{{ row.obj.n_ods|default:"—" }}</span>
+          </td>
+          <td class="text-end fw-semibold">
+            {% if row.previsto %}€ {{ row.previsto }}{% else %}<span class="text-muted">—</span>{% endif %}
+          </td>
+          <td class="text-end fw-semibold">
+            {% if row.obj.importo_ricevuto is not None %}
+              € {{ row.obj.importo_ricevuto }}
+            {% else %}
+              {% if row.obj.stato == "aperta" %}
+                <span class="badge badge-wait">Aperta</span>
+              {% else %}
+                <span class="text-muted">—</span>
+              {% endif %}
+            {% endif %}
+          </td>
+          <td class="text-end fw-semibold">
+            {% if row.obj.importo_ricevuto is not None %}
+              {% if row.diff < 0 %}
+                <span class="text-danger">− € {{ row.diff_abs }}</span>
+              {% elif row.diff > 0 %}
+                <span class="text-warning">+ € {{ row.diff }}</span>
+              {% else %}
+                <span class="text-success"><i class="bi bi-check-circle me-1"></i>OK</span>
+              {% endif %}
+            {% else %}
+              <span class="text-muted">—</span>
+            {% endif %}
+          </td>
+          <td class="small text-muted">
+            {% if row.obj.chiusa_da %}{{ row.obj.chiusa_da.get_full_name|default:row.obj.chiusa_da.username }}{% else %}—{% endif %}
+            {% if row.obj.chiusa_il %}
+            <br><span class="text-muted" style="font-size:.75rem">{{ row.obj.chiusa_il|date:"d/m H:i" }}</span>
+            {% endif %}
+          </td>
+          <td class="text-end">
+            <a href="{{ row.obj.get_absolute_url }}" class="btn btn-sm btn-outline-secondary">
+              <i class="bi bi-eye"></i>
+            </a>
+            {% if row.obj.stato == "aperta" %}
+            <a href="{% url 'servizi:chiudi_distinta_ufficio' row.obj.pk %}" class="btn btn-sm btn-brand ms-1">
+              <i class="bi bi-lock"></i>
+            </a>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="9" class="text-center text-muted py-4">
+          <i class="bi bi-inbox me-2"></i>Nessuna distinta trovata.
+        </td></tr>
+        {% endfor %}
+      </tbody>
+      {% if distinte %}
+      <tfoot class="table-light fw-bold">
+        <tr>
+          <td colspan="5" class="text-end text-muted">Totali</td>
+          <td class="text-end">€ {{ grand_previsto }}</td>
+          <td class="text-end">€ {{ grand_ricevuto }}</td>
+          <td class="text-end {% if grand_diff < 0 %}text-danger{% elif grand_diff > 0 %}text-warning{% else %}text-success{% endif %}">
+            {% if grand_diff < 0 %}− € {{ grand_diff_abs }}{% elif grand_diff > 0 %}+ € {{ grand_diff }}{% else %}OK{% endif %}
+          </td>
+          <td colspan="2"></td>
+        </tr>
+      </tfoot>
+      {% endif %}
+    </table>
+  </div>
+</div>
+{% endblock %}

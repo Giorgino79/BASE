@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+
+<div class="page-header mb-4">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'anagrafica:dashboard' %}">Anagrafica</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'anagrafica:fornitore_list' %}">Fornitori</a></li>
+      <li class="breadcrumb-item"><a href="{{ fornitore.get_absolute_url }}">{{ fornitore.ragione_sociale }}</a></li>
+      <li class="breadcrumb-item active">Elimina</li>
+    </ol>
+  </nav>
+  <h1><i class="bi bi-trash me-2 text-danger"></i>Elimina Fornitore</h1>
+</div>
+
+<div class="row justify-content-center">
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header card-header-danger">
+        <i class="bi bi-exclamation-triangle me-2"></i>Conferma Eliminazione
+      </div>
+      <div class="card-body">
+        <p>Stai per eliminare definitivamente il fornitore:</p>
+        <p class="fw-bold fs-5">{{ fornitore.ragione_sociale }}</p>
+        <p class="text-muted">Questa operazione non può essere annullata.</p>
+        <form method="post">
+          {% csrf_token %}
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-danger">
+              <i class="bi bi-trash me-1"></i>Elimina definitivamente
+            </button>
+            <a href="{{ fornitore.get_absolute_url }}" class="btn btn-outline-secondary">
+              <i class="bi bi-arrow-left me-1"></i>Annulla
+            </a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

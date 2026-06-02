@@ -1,0 +1,341 @@
+{% extends "base.html" %}
+{% load static %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/detail.css' %}">{% endblock %}
+{% block content %}
+<div class="page-header mb-4">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'servizi:dashboard' %}">Servizi</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'servizi:ods_list' %}">Ordini di Servizio</a></li>
+      <li class="breadcrumb-item active">{{ titolo }}</li>
+    </ol>
+  </nav>
+  <h1><i class="bi bi-clipboard-check me-2 text-brand"></i>{{ titolo }}</h1>
+</div>
+<form method="post" novalidate>
+  {% csrf_token %}
+  <div class="row g-3">
+    <div class="col-lg-9">
+
+      <div class="card mb-3">
+        <div class="card-header card-header-primary"><i class="bi bi-person me-2"></i>Cliente</div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-sm-6">
+              <label class="form-label">{{ form.filiale.label }}</label>
+              {{ form.filiale }}
+              {% if form.filiale.errors %}<div class="invalid-feedback d-block">{{ form.filiale.errors.0 }}</div>{% endif %}
+              <div class="form-text">Sede di un cliente aziendale</div>
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label">{{ form.privato.label }}</label>
+              {{ form.privato }}
+              {% if form.privato.errors %}<div class="invalid-feedback d-block">{{ form.privato.errors.0 }}</div>{% endif %}
+              <div class="form-text">Cliente privato</div>
+            </div>
+            {% if form.non_field_errors %}
+            <div class="col-12"><div class="alert alert-danger py-1 small">{{ form.non_field_errors.0 }}</div></div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <div class="card mb-3">
+        <div class="card-header card-header-primary"><i class="bi bi-list-task me-2"></i>Servizi</div>
+        <div class="card-body">
+          {{ formset.management_form }}
+          {% if formset.non_form_errors %}
+          <div class="alert alert-danger py-1 small mb-2">{{ formset.non_form_errors.0 }}</div>
+          {% endif %}
+          <div id="righe-container">
+            {% for form_riga, previsti in formset_data %}
+            <div class="riga-form border rounded p-2 mb-2{% if form_riga.errors %} border-danger{% endif %}">
+              <div class="row g-2 align-items-end">
+                <div class="col-sm-4">
+                  <label class="form-label small mb-1">Servizio <span class="text-danger">*</span></label>
+                  {{ form_riga.servizio }}
+                  {% if form_riga.servizio.errors %}<div class="invalid-feedback d-block small">{{ form_riga.servizio.errors.0 }}</div>{% endif %}
+                </div>
+                <div class="col-sm-3">
+                  <label class="form-label small mb-1">Prezzo</label>
+                  <div class="input-group input-group-sm">
+                    <span class="input-group-text">€</span>
+                    {{ form_riga.prezzo }}
+                    <button type="button" class="btn btn-outline-secondary btn-autoprezzo" title="Carica da contratto">
+                      <i class="bi bi-arrow-repeat"></i>
+                    </button>
+                  </div>
+                </div>
+                <div class="col-sm-4">
+                  <label class="form-label small mb-1">Note riga</label>
+                  {{ form_riga.note }}
+                </div>
+                <div class="col-sm-1 d-flex align-items-end justify-content-end pb-1">
+                  {% if form_riga.instance.pk %}
+                    <div class="form-check form-check-inline m-0" title="Elimina questa riga">
+                      {{ form_riga.DELETE }}
+                      <label class="form-check-label text-danger" for="{{ form_riga.DELETE.id_for_label }}">
+                        <i class="bi bi-trash"></i>
+                      </label>
+                    </div>
+                  {% else %}
+                    <button type="button" class="btn btn-sm btn-outline-danger btn-rimuovi-riga" title="Rimuovi">
+                      <i class="bi bi-trash"></i>
+                    </button>
+                  {% endif %}
+                </div>
+              </div>
+              {# Prodotti previsti per questa riga #}
+              <div class="cp-sezione mt-2 pt-2 border-top">
+                <input type="hidden" name="cp-{{ form_riga.prefix }}-TOTAL_FORMS"
+                       value="{{ previsti|length }}" class="cp-total-forms">
+                <div class="cp-prodotti-rows">
+                  {% for c in previsti %}
+                  <div class="cp-prod-row d-flex gap-1 align-items-center mb-1">
+                    <select name="cp-{{ form_riga.prefix }}-{{ forloop.counter0 }}-prodotto"
+                            class="form-select form-select-sm flex-grow-1">
+                      <option value="">— Prodotto —</option>
+                      {% for p in prodotti %}
+                      <option value="{{ p.pk }}" {% if p.pk == c.prodotto_id %}selected{% endif %}>{{ p }}</option>
+                      {% endfor %}
+                    </select>
+                    <input type="number"
+                           name="cp-{{ form_riga.prefix }}-{{ forloop.counter0 }}-quantita"
+                           value="{{ c.quantita }}" step="0.001" min="0.001"
+                           class="form-control form-control-sm" style="width:90px">
+                    <button type="button" class="btn btn-sm btn-outline-danger btn-rimuovi-prodotto py-0 px-1">
+                      <i class="bi bi-trash" style="font-size:.7rem"></i>
+                    </button>
+                  </div>
+                  {% endfor %}
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-secondary mt-1 btn-aggiungi-prodotto"
+                        style="font-size:.8rem;padding:2px 8px">
+                  <i class="bi bi-plus-sm me-1"></i>Prodotto previsto
+                </button>
+              </div>
+              {{ form_riga.id }}
+              {{ form_riga.contratto_filiale }}
+            </div>
+            {% endfor %}
+          </div>
+          <button type="button" class="btn btn-sm btn-outline-success mt-1" id="btn-aggiungi-riga">
+            <i class="bi bi-plus-lg me-1"></i>Aggiungi servizio
+          </button>
+        </div>
+      </div>
+
+      <div class="card mb-3">
+        <div class="card-header card-header-primary"><i class="bi bi-calendar me-2"></i>Programmazione</div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-sm-4">
+              <label class="form-label">{{ form.data_servizio.label }} <span class="text-danger">*</span></label>
+              {{ form.data_servizio }}
+            </div>
+            <div class="col-sm-4">
+              <label class="form-label">{{ form.ora_inizio.label }}</label>
+              {{ form.ora_inizio }}
+            </div>
+            <div class="col-sm-4">
+              <label class="form-label">{{ form.ora_fine.label }}</label>
+              {{ form.ora_fine }}
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label">{{ form.stato.label }}</label>
+              {{ form.stato }}
+            </div>
+            <div class="col-12">
+              <div class="form-check">
+                {{ form.incasso_al_servizio }}
+                <label class="form-check-label">{{ form.incasso_al_servizio.label }}</label>
+                <div class="form-text">Spunta se il pagamento va riscosso al momento del servizio.</div>
+              </div>
+            </div>
+            <div class="col-12">
+              <label class="form-label">{{ form.note_intervento.label }}</label>
+              {{ form.note_intervento }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-brand"><i class="bi bi-check-lg me-1"></i>Salva</button>
+        <a href="{{ back_url }}" class="btn btn-outline-secondary">Annulla</a>
+      </div>
+    </div>
+  </div>
+</form>
+
+{# Template riga vuota per l'aggiunta dinamica #}
+<div id="empty-riga-template" style="display:none">
+  <div class="riga-form border rounded p-2 mb-2">
+    <div class="row g-2 align-items-end">
+      <div class="col-sm-4">
+        <label class="form-label small mb-1">Servizio <span class="text-danger">*</span></label>
+        {{ formset.empty_form.servizio }}
+      </div>
+      <div class="col-sm-3">
+        <label class="form-label small mb-1">Prezzo</label>
+        <div class="input-group input-group-sm">
+          <span class="input-group-text">€</span>
+          {{ formset.empty_form.prezzo }}
+          <button type="button" class="btn btn-outline-secondary btn-autoprezzo" title="Carica da contratto">
+            <i class="bi bi-arrow-repeat"></i>
+          </button>
+        </div>
+      </div>
+      <div class="col-sm-4">
+        <label class="form-label small mb-1">Note riga</label>
+        {{ formset.empty_form.note }}
+      </div>
+      <div class="col-sm-1 d-flex align-items-end justify-content-end pb-1">
+        <button type="button" class="btn btn-sm btn-outline-danger btn-rimuovi-riga" title="Rimuovi">
+          <i class="bi bi-trash"></i>
+        </button>
+      </div>
+    </div>
+    <div class="cp-sezione mt-2 pt-2 border-top">
+      <input type="hidden" name="cp-righe-__prefix__-TOTAL_FORMS" value="0" class="cp-total-forms">
+      <div class="cp-prodotti-rows"></div>
+      <button type="button" class="btn btn-sm btn-outline-secondary mt-1 btn-aggiungi-prodotto"
+              style="font-size:.8rem;padding:2px 8px">
+        <i class="bi bi-plus-sm me-1"></i>Prodotto previsto
+      </button>
+    </div>
+    {{ formset.empty_form.id }}
+    {{ formset.empty_form.contratto_filiale }}
+  </div>
+</div>
+
+{# Template riga prodotto vuota per clonazione JS #}
+<div id="empty-prodotto-template" style="display:none">
+  <div class="cp-prod-row d-flex gap-1 align-items-center mb-1">
+    {{ prodotto_form_vuoto.prodotto }}
+    {{ prodotto_form_vuoto.quantita }}
+    <button type="button" class="btn btn-sm btn-outline-danger btn-rimuovi-prodotto py-0 px-1">
+      <i class="bi bi-trash" style="font-size:.7rem"></i>
+    </button>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  const apiUrl = "{{ api_prezzo_url }}";
+  const filialeSelect  = document.getElementById("id_filiale");
+  const privatoSelect  = document.getElementById("id_privato");
+  const totalFormsEl   = document.getElementById("id_righe-TOTAL_FORMS");
+  const container      = document.getElementById("righe-container");
+  const emptyTemplate  = document.getElementById("empty-riga-template");
+
+  // ── Mutua esclusione filiale / privato ───────────────────────────────────────
+  if (filialeSelect && privatoSelect) {
+    filialeSelect.addEventListener("change", function () {
+      if (this.value) {
+        privatoSelect.value = "";
+        privatoSelect.dispatchEvent(new Event("change"));
+      }
+    });
+    privatoSelect.addEventListener("change", function () {
+      if (this.value) filialeSelect.value = "";
+    });
+  }
+
+  // ── Auto-prezzo da contratto ─────────────────────────────────────────────────
+  function loadPrezzo(rigaEl) {
+    const filialeId  = filialeSelect ? filialeSelect.value : "";
+    const servizioEl = rigaEl.querySelector(".riga-servizio");
+    const prezzoEl   = rigaEl.querySelector(".riga-prezzo");
+    const cfEl       = rigaEl.querySelector(".riga-contratto-filiale");
+    if (!filialeId || !servizioEl || !servizioEl.value) return;
+    fetch(`${apiUrl}?filiale=${filialeId}&servizio=${servizioEl.value}`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.prezzo !== null) {
+          if (prezzoEl) prezzoEl.value = data.prezzo;
+          if (cfEl) cfEl.value = data.contratto_filiale_id || "";
+        }
+      })
+      .catch(() => {});
+  }
+
+  // Applica listener autoprezzo alle righe già presenti
+  function initRiga(rigaEl) {
+    const servizioEl = rigaEl.querySelector(".riga-servizio");
+    if (servizioEl) {
+      servizioEl.addEventListener("change", function () { loadPrezzo(rigaEl); });
+    }
+    const btnAuto = rigaEl.querySelector(".btn-autoprezzo");
+    if (btnAuto) {
+      btnAuto.addEventListener("click", function () { loadPrezzo(rigaEl); });
+    }
+    const btnRimuovi = rigaEl.querySelector(".btn-rimuovi-riga");
+    if (btnRimuovi) {
+      btnRimuovi.addEventListener("click", function () {
+        rigaEl.remove();
+        totalFormsEl.value = parseInt(totalFormsEl.value) - 1;
+      });
+    }
+  }
+
+  container.querySelectorAll(".riga-form").forEach(initRiga);
+
+  // ── Aggiungi riga ─────────────────────────────────────────────────────────────
+  document.getElementById("btn-aggiungi-riga").addEventListener("click", function () {
+    const idx  = parseInt(totalFormsEl.value);
+    const html = emptyTemplate.innerHTML.replaceAll("__prefix__", idx);
+    const tmp  = document.createElement("div");
+    tmp.innerHTML = html;
+    const nuovaRiga = tmp.firstElementChild;
+    container.appendChild(nuovaRiga);
+    totalFormsEl.value = idx + 1;
+    initRiga(nuovaRiga);
+  });
+
+  // ── Prodotti previsti per riga ────────────────────────────────────────────────
+  const emptyProdTemplate = document.getElementById("empty-prodotto-template");
+
+  function aggiungiProdotto(rigaEl) {
+    const tfEl = rigaEl.querySelector(".cp-total-forms");
+    const rows = rigaEl.querySelector(".cp-prodotti-rows");
+    const rigaPrefix = tfEl.name.replace(/^cp-/, "").replace(/-TOTAL_FORMS$/, "");
+    const idx = parseInt(tfEl.value);
+    const cpPrefix = "cp-" + rigaPrefix + "-" + idx;
+    const html = emptyProdTemplate.innerHTML.replaceAll("__cp_prefix__", cpPrefix);
+    const tmp = document.createElement("div");
+    tmp.innerHTML = html.trim();
+    rows.appendChild(tmp.firstElementChild);
+    tfEl.value = idx + 1;
+  }
+
+  function rimuoviProdottoRow(rowEl) {
+    const rigaEl = rowEl.closest(".riga-form");
+    const tfEl = rigaEl.querySelector(".cp-total-forms");
+    const rows = rigaEl.querySelector(".cp-prodotti-rows");
+    rowEl.remove();
+    const rigaPrefix = tfEl.name.replace(/^cp-/, "").replace(/-TOTAL_FORMS$/, "");
+    rows.querySelectorAll(".cp-prod-row").forEach(function(r, i) {
+      r.querySelectorAll("select[name], input[name]").forEach(function(el) {
+        el.name = el.name.replace(/-\d+-([^-]+)$/, "-" + i + "-$1");
+      });
+    });
+    tfEl.value = rows.querySelectorAll(".cp-prod-row").length;
+  }
+
+  document.addEventListener("click", function(e) {
+    const addBtn = e.target.closest(".btn-aggiungi-prodotto");
+    if (addBtn) {
+      aggiungiProdotto(addBtn.closest(".riga-form"));
+      return;
+    }
+    const removeBtn = e.target.closest(".btn-rimuovi-prodotto");
+    if (removeBtn) {
+      rimuoviProdottoRow(removeBtn.closest(".cp-prod-row"));
+    }
+  });
+})();
+</script>
+{% endblock %}

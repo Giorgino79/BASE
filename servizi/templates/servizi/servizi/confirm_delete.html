@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header mb-4">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'servizi:dashboard' %}">Servizi</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'servizi:servizio_list' %}">Catalogo</a></li>
+      <li class="breadcrumb-item active">Elimina</li>
+    </ol>
+  </nav>
+  <h1><i class="bi bi-trash me-2 text-danger"></i>Elimina Servizio</h1>
+</div>
+<div class="card">
+  <div class="card-body">
+    <p>Confermi l'eliminazione del servizio <strong>{{ object.nome }}</strong>?</p>
+    <p class="text-muted small">Non è possibile eliminare un servizio che ha contratti o ODS associati.</p>
+    <form method="post">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-danger"><i class="bi bi-trash me-1"></i>Elimina</button>
+      <a href="{{ object.get_absolute_url }}" class="btn btn-outline-secondary ms-2">Annulla</a>
+    </form>
+  </div>
+</div>
+{% endblock %}

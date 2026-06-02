@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% load static %}
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-start mb-4">
+  <div>
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'servizi:dashboard' %}">Servizi</a></li>
+        <li class="breadcrumb-item active">Catalogo Servizi</li>
+      </ol>
+    </nav>
+    <h1><i class="bi bi-tools me-2 text-brand"></i>Catalogo Servizi</h1>
+  </div>
+  {% if request.user.is_staff %}
+  <a href="{% url 'servizi:servizio_create' %}" class="btn btn-primary btn-sm">
+    <i class="bi bi-plus-lg me-1"></i>Nuovo Servizio
+  </a>
+  {% endif %}
+</div>
+
+<div class="card mb-3">
+  <div class="card-body py-2">
+    <form method="get" class="row g-2 align-items-end">
+      <div class="col-md-3">
+        <select name="stato" class="form-select form-select-sm">
+          <option value="attivi" {% if stato_sel == "attivi" %}selected{% endif %}>Solo attivi</option>
+          <option value="tutti" {% if stato_sel == "tutti" %}selected{% endif %}>Tutti</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <button type="submit" class="btn btn-sm btn-outline-secondary w-100">Filtra</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table mb-0">
+      <thead class="bg-brand text-white">
+        <tr><th>Nome</th><th class="text-end">Tariffa cartello</th><th>Contratti attivi</th><th>Stato</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for s in servizi %}
+        <tr>
+          <td><a href="{{ s.get_absolute_url }}" class="text-brand fw-semibold text-decoration-none">{{ s.nome }}</a></td>
+          <td class="text-end">€ {{ s.tariffa_cartello }}</td>
+          <td><span class="badge badge-info">{{ s.contratti.count }}</span></td>
+          <td>{% if s.attivo %}<span class="badge badge-ok">Attivo</span>{% else %}<span class="badge badge-ko">Inattivo</span>{% endif %}</td>
+          <td class="text-end">
+            <a href="{{ s.get_absolute_url }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-eye"></i></a>
+            {% if request.user.is_staff %}
+            <a href="{% url 'servizi:servizio_update' s.pk %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></a>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" class="text-center text-muted py-3"><i class="bi bi-inbox me-2"></i>Nessun servizio presente</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

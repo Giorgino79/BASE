@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/detail.css' %}">{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'magazzino:dashboard' %}">Magazzino</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'magazzino:scorte_dashboard' %}">Scorte</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'magazzino:carico_mezzo_list' %}">Operazioni</a></li>
+      <li class="breadcrumb-item active">{{ titolo }}</li>
+    </ol>
+  </nav>
+  <h1><i class="bi bi-arrow-left-right me-2 text-brand"></i>{{ titolo }}</h1>
+</div>
+
+<form method="post">
+  {% csrf_token %}
+  <div class="row g-3">
+    <div class="col-lg-8">
+      {% if form.non_field_errors %}
+      <div class="alert alert-danger">
+        {% for e in form.non_field_errors %}{{ e }}{% endfor %}
+      </div>
+      {% endif %}
+
+      <div class="card mb-3">
+        <div class="card-header card-header-primary"><i class="bi bi-info-circle me-2"></i>Operazione</div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-sm-6">
+              <label class="form-label">{{ form.mezzo.label }}</label>
+              {{ form.mezzo }}
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label">{{ form.stabilimento.label }} <span class="text-danger">*</span></label>
+              {{ form.stabilimento }}
+              {% if form.stabilimento.errors %}<div class="text-danger small">{{ form.stabilimento.errors.0 }}</div>{% endif %}
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label">{{ form.tipo.label }}</label>
+              {{ form.tipo }}
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label">{{ form.note.label }}</label>
+              {{ form.note }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card mb-3">
+        <div class="card-header card-header-primary d-flex justify-content-between align-items-center">
+          <span><i class="bi bi-list-ul me-2"></i>Prodotti</span>
+          <button type="button" class="btn btn-sm btn-outline-light" id="btnAggiungiRiga">
+            <i class="bi bi-plus-circle me-1"></i>Aggiungi riga
+          </button>
+        </div>
+        <div class="card-body p-0">
+          {{ formset.management_form }}
+          <div class="table-responsive">
+            <table class="table mb-0" id="tabRighe">
+              <thead>
+                <tr>
+                  <th style="width:45%">Prodotto</th>
+                  <th style="width:20%" class="col-disponibile d-none">Disponibile</th>
+                  <th style="width:20%">Quantità</th>
+                  <th style="width:15%">Elimina</th>
+                </tr>
+              </thead>
+              <tbody id="righeBody">
+                {% for rf in formset %}
+                <tr class="riga-form {% if rf.instance.pk %}riga-esistente{% endif %}">
+                  {{ rf.id }}
+                  <td>{{ rf.prodotto }}</td>
+                  <td class="col-disponibile d-none">
+                    <span class="badge bg-secondary disp-badge">—</span>
+                  </td>
+                  <td>{{ rf.quantita }}</td>
+                  <td class="text-center">
+                    {% if rf.instance.pk %}
+                      <div class="form-check d-inline-block">{{ rf.DELETE }}</div>
+                    {% else %}
+                      <button type="button" class="btn btn-sm btn-outline-danger btn-rimuovi">
+                        <i class="bi bi-trash"></i>
+                      </button>
+                    {% endif %}
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-4">
+      <div class="card mb-3">
+        <div class="card-header"><i class="bi bi-info-circle me-2"></i>Info</div>
+        <div class="card-body small text-muted">
+          <p><strong>Carico mezzo</strong>: i prodotti escono dallo stabilimento selezionato e vengono caricati sul mezzo.</p>
+          <p><strong>Scarico mezzo</strong>: i prodotti rientrano dal mezzo allo stabilimento selezionato.</p>
+          <p>Le scorte negative sono bloccate: non è possibile caricare più di quanto disponibile.</p>
+        </div>
+      </div>
+      <div class="d-grid gap-2">
+        <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Registra operazione</button>
+        <a href="{{ back_url }}" class="btn btn-outline-secondary"><i class="bi bi-x me-1"></i>Annulla</a>
+      </div>
+    </div>
+  </div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  const tbody = document.getElementById("righeBody");
+  const totalForms = document.getElementById("id_righe-TOTAL_FORMS");
+  const tipoSelect = document.getElementById("id_tipo");
+  const stabSelect = document.getElementById("id_stabilimento");
+  const API_URL = "{% url 'magazzino:api_scorta_prodotto' 0 %}".replace("/0/", "/");
+
+  function isCarico() {
+    return tipoSelect && tipoSelect.value === "carico";
+  }
+
+  function toggleColDisponibile() {
+    document.querySelectorAll(".col-disponibile").forEach(el => {
+      el.classList.toggle("d-none", !isCarico());
+    });
+    if (isCarico()) {
+      tbody.querySelectorAll("tr.riga-form").forEach(refreshDisponibile);
+    }
+  }
+
+  function refreshDisponibile(row) {
+    const sel = row.querySelector("select");
+    const badge = row.querySelector(".disp-badge");
+    if (!badge) return;
+    const pk = sel ? sel.value : "";
+    const stabPk = stabSelect ? stabSelect.value : "";
+    if (!pk) { badge.textContent = "—"; badge.className = "badge bg-secondary disp-badge"; return; }
+    const url = API_URL + pk + "/" + (stabPk ? "?stabilimento=" + stabPk : "");
+    fetch(url)
+      .then(r => r.json())
+      .then(data => {
+        if (!data.ok) { badge.textContent = "?"; badge.className = "badge bg-secondary disp-badge"; return; }
+        const q = parseFloat(data.quantita);
+        badge.textContent = q + " " + data.um;
+        badge.className = "badge disp-badge " + (q <= 0 ? "bg-danger" : q < 5 ? "bg-warning text-dark" : "bg-success");
+      })
+      .catch(() => { badge.textContent = "?"; badge.className = "badge bg-secondary disp-badge"; });
+  }
+
+  tipoSelect && tipoSelect.addEventListener("change", toggleColDisponibile);
+  stabSelect && stabSelect.addEventListener("change", function () {
+    if (isCarico()) tbody.querySelectorAll("tr.riga-form").forEach(refreshDisponibile);
+  });
+
+  tbody.addEventListener("change", function (e) {
+    if (e.target.tagName === "SELECT") {
+      const row = e.target.closest("tr.riga-form");
+      if (row && isCarico()) refreshDisponibile(row);
+    }
+  });
+
+  function getRowCount() { return parseInt(totalForms.value); }
+
+  function buildRow(idx) {
+    const tpl = tbody.querySelector("tr.riga-form:not(.riga-esistente)");
+    if (!tpl) return null;
+    const clone = tpl.cloneNode(true);
+    clone.querySelectorAll("[name],[id]").forEach(el => {
+      ["name", "id", "for"].forEach(attr => {
+        if (el.getAttribute(attr))
+          el.setAttribute(attr, el.getAttribute(attr).replace(/-\d+-/, `-${idx}-`));
+      });
+      if (el.tagName === "INPUT" || el.tagName === "SELECT") el.value = "";
+    });
+    const badge = clone.querySelector(".disp-badge");
+    if (badge) { badge.textContent = "—"; badge.className = "badge bg-secondary disp-badge"; }
+    return clone;
+  }
+
+  document.getElementById("btnAggiungiRiga").addEventListener("click", function () {
+    const idx = getRowCount();
+    const row = buildRow(idx);
+    if (row) { tbody.appendChild(row); totalForms.value = idx + 1; }
+  });
+
+  tbody.addEventListener("click", function (e) {
+    const btn = e.target.closest(".btn-rimuovi");
+    if (btn) btn.closest("tr").remove();
+  });
+
+  // Init on load
+  toggleColDisponibile();
+})();
+</script>
+{% endblock %}

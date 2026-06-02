@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header mb-4">
+  <h1><i class="bi bi-trash me-2 text-brand"></i>Elimina Ordine</h1>
+</div>
+<div class="card">
+  <div class="card-body">
+    <p>Confermi l'eliminazione dell'ordine <strong>{{ object.numero_ordine }}</strong> ({{ object.fornitore }})?</p>
+    <p class="text-muted small">Verranno eliminate anche tutte le righe associate.</p>
+    <form method="post">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-primary">Elimina</button>
+      <a href="{{ object.get_absolute_url }}" class="btn btn-outline-secondary ms-2">Annulla</a>
+    </form>
+  </div>
+</div>
+{% endblock %}

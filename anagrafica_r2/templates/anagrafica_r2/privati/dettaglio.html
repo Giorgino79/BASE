@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+{% load static %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/detail.css' %}">{% endblock %}
+
+{% block content %}
+
+<div class="page-header mb-4">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'anagrafica:dashboard' %}">Anagrafica</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'anagrafica:privato_list' %}">Clienti Privati</a></li>
+      <li class="breadcrumb-item active">{{ privato.nome_completo }}</li>
+    </ol>
+  </nav>
+  <h1>
+    <i class="bi bi-person-fill me-2 text-brand"></i>{{ privato.nome_completo }}
+    {% if privato.attivo %}
+      <span class="badge badge-ok ms-2">Attivo</span>
+    {% else %}
+      <span class="badge badge-ko ms-2">Inattivo</span>
+    {% endif %}
+  </h1>
+</div>
+
+<div class="row g-3">
+
+  <div class="col-lg-8">
+
+    <div class="card mb-3">
+      <div class="card-header card-header-primary">
+        <i class="bi bi-person me-2"></i>Dati Anagrafici
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-sm-6">
+            <div class="detail-field">
+              <div class="detail-field-label">Cognome e Nome</div>
+              <div class="detail-field-value">{{ privato.nome_completo }}</div>
+            </div>
+          </div>
+          <div class="col-sm-6">
+            <div class="detail-field">
+              <div class="detail-field-label">Codice Fiscale</div>
+              <div class="detail-field-value {% if not privato.codice_fiscale %}empty{% endif %}">
+                {{ privato.codice_fiscale|default:"—" }}
+              </div>
+            </div>
+          </div>
+          <div class="col-12">
+            <div class="detail-field">
+              <div class="detail-field-label">Indirizzo</div>
+              <div class="detail-field-value">{{ privato.indirizzo }}</div>
+            </div>
+          </div>
+          <div class="col-sm-5">
+            <div class="detail-field">
+              <div class="detail-field-label">Città</div>
+              <div class="detail-field-value">{{ privato.citta }}</div>
+            </div>
+          </div>
+          <div class="col-sm-4">
+            <div class="detail-field">
+              <div class="detail-field-label">Zona</div>
+              <div class="detail-field-value">{{ privato.zona }}</div>
+            </div>
+          </div>
+          {% if privato.cap %}
+          <div class="col-sm-3">
+            <div class="detail-field">
+              <div class="detail-field-label">CAP</div>
+              <div class="detail-field-value">{{ privato.cap }}</div>
+            </div>
+          </div>
+          {% endif %}
+          {% if privato.provincia %}
+          <div class="col-sm-4">
+            <div class="detail-field">
+              <div class="detail-field-label">Provincia</div>
+              <div class="detail-field-value">{{ privato.provincia }}</div>
+            </div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="card mb-3">
+      <div class="card-header card-header-primary">
+        <i class="bi bi-telephone me-2"></i>Contatti
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-sm-6">
+            <div class="detail-field">
+              <div class="detail-field-label">Telefono</div>
+              <div class="detail-field-value">
+                <a href="tel:{{ privato.telefono }}" class="text-decoration-none">{{ privato.telefono }}</a>
+              </div>
+            </div>
+          </div>
+          {% if privato.email %}
+          <div class="col-sm-6">
+            <div class="detail-field">
+              <div class="detail-field-label">Email</div>
+              <div class="detail-field-value">
+                <a href="mailto:{{ privato.email }}" class="text-decoration-none">{{ privato.email }}</a>
+              </div>
+            </div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    {% if privato.note %}
+    <div class="card mb-3">
+      <div class="card-header">
+        <span class="card-title"><i class="bi bi-chat-left-text me-2"></i>Note</span>
+      </div>
+      <div class="card-body">
+        <p class="mb-0">{{ privato.note|linebreaksbr }}</p>
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+
+  <div class="col-lg-4">
+    <div class="sidebar-actions">
+
+      <div class="card mb-3">
+        <div class="card-header"><i class="bi bi-gear me-2"></i>Azioni</div>
+        <div class="list-group list-group-flush">
+          <a href="tel:{{ privato.telefono }}" class="list-group-item list-group-item-action text-success">
+            <i class="bi bi-telephone-fill me-2"></i>Chiama cliente
+          </a>
+          {% with maps_q=privato.indirizzo|add:", "|add:privato.citta %}
+          <a href="https://www.google.com/maps/dir/?api=1&destination={{ maps_q|urlencode }}"
+             class="list-group-item list-group-item-action text-primary" target="_blank" rel="noopener">
+            <i class="bi bi-map-fill me-2"></i>Avvia navigatore
+          </a>
+          {% endwith %}
+          <a href="{{ edit_url }}" class="list-group-item list-group-item-action">
+            <i class="bi bi-pencil me-2"></i>Modifica
+          </a>
+          <a href="{% url 'anagrafica:toggle_attivo' 'privato' privato.pk %}"
+             class="list-group-item list-group-item-action">
+            {% if privato.attivo %}
+              <i class="bi bi-eye-slash me-2"></i>Disattiva
+            {% else %}
+              <i class="bi bi-eye me-2"></i>Attiva
+            {% endif %}
+          </a>
+          {% if request.user.is_staff %}
+          <a href="{{ delete_url }}" class="list-group-item list-group-item-action text-danger">
+            <i class="bi bi-trash me-2"></i>Elimina
+          </a>
+          {% endif %}
+        </div>
+      </div>
+
+      {% include 'commons_templates/components/sidebar_allegati_qr.html' with object=privato %}
+
+      <div class="card">
+        <div class="card-header"><i class="bi bi-info-circle me-2"></i>Informazioni</div>
+        <div class="card-body">
+          <div class="detail-field">
+            <div class="detail-field-label">Creato il</div>
+            <div class="detail-field-value">{{ privato.created_at|date:"d/m/Y H:i" }}</div>
+          </div>
+          <div class="detail-field mb-0">
+            <div class="detail-field-label">Aggiornato il</div>
+            <div class="detail-field-value">{{ privato.updated_at|date:"d/m/Y H:i" }}</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-3">
+        <a href="{{ back_url }}" class="btn btn-outline-secondary btn-sm w-100">
+          <i class="bi bi-arrow-left me-1"></i>Torna alla lista
+        </a>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+{% endblock %}

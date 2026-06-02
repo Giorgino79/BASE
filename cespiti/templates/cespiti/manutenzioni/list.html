@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% load static %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/detail.css' %}">{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'cespiti:dashboard' %}">Cespiti</a></li>
+      <li class="breadcrumb-item active">Manutenzioni</li>
+    </ol>
+  </nav>
+  <div class="d-flex justify-content-between align-items-center">
+    <h1><i class="bi bi-wrench me-2 text-brand"></i>Manutenzioni</h1>
+    <a href="{% url 'cespiti:manutenzione_create' %}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Nuova Manutenzione</a>
+  </div>
+</div>
+
+<div class="card mb-3">
+  <div class="card-body py-2">
+    <form method="get" class="row g-2 align-items-end">
+      <div class="col-md-4">
+        <input type="text" name="q" value="{{ q }}" class="form-control form-control-sm" placeholder="Cerca targa, descrizione…">
+      </div>
+      <div class="col-md-3">
+        <select name="stato" class="form-select form-select-sm">
+          <option value="">Tutti gli stati</option>
+          {% for val, label in stato_choices %}
+          <option value="{{ val }}" {% if stato_filter == val %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-auto">
+        <button class="btn btn-outline-secondary btn-sm" type="submit"><i class="bi bi-search"></i></button>
+        <a href="{% url 'cespiti:manutenzione_list' %}" class="btn btn-outline-secondary btn-sm">Reset</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table mb-0">
+      <thead>
+        <tr>
+          <th>Data Prevista</th><th>Mezzo</th><th>Descrizione</th><th>Stato</th><th>Responsabile</th><th>Costo</th><th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in manutenzioni %}
+        <tr>
+          <td>{{ m.data_prevista|date:"d/m/Y" }}</td>
+          <td><a href="{{ m.automezzo.get_absolute_url }}" class="text-brand text-decoration-none">{{ m.automezzo.targa }}</a></td>
+          <td>{{ m.descrizione|truncatechars:50 }}</td>
+          <td>
+            {% if m.stato == "terminata" %}<span class="badge badge-ok">Terminata</span>
+            {% elif m.stato == "in_corso" %}<span class="badge badge-info">In corso</span>
+            {% else %}<span class="badge badge-wait">Aperta</span>{% endif %}
+          </td>
+          <td class="text-muted small">{{ m.responsabile.get_full_name|default:"—" }}</td>
+          <td>{% if m.costo %}€ {{ m.costo }}{% else %}—{% endif %}</td>
+          <td class="text-end">
+            <a href="{% url 'cespiti:manutenzione_detail' m.pk %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-eye"></i></a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7">
+          <div class="state-empty py-3">
+            <i class="bi bi-wrench"></i>
+            <p>Nessuna manutenzione trovata.</p>
+          </div>
+        </td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if page_obj.has_other_pages %}
+  <div class="card-footer">
+    <nav><ul class="pagination pagination-sm mb-0">
+      {% if page_obj.has_previous %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}&q={{ q }}&stato={{ stato_filter }}">‹</a></li>{% endif %}
+      <li class="page-item disabled"><span class="page-link">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span></li>
+      {% if page_obj.has_next %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}&q={{ q }}&stato={{ stato_filter }}">›</a></li>{% endif %}
+    </ul></nav>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

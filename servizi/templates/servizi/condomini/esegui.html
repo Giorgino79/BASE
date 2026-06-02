@@ -1,0 +1,228 @@
+{% extends "base.html" %}
+{% load static %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/detail.css' %}">{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'servizi:dashboard' %}">Servizi</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'servizi:condominio_list' %}">Condomini ODS</a></li>
+      <li class="breadcrumb-item"><a href="{{ condominio.get_absolute_url }}">{{ condominio.numero }}</a></li>
+      <li class="breadcrumb-item active">Esecuzione</li>
+    </ol>
+  </nav>
+  <h1><i class="bi bi-buildings me-2 text-brand"></i>{{ condominio.titolo }}</h1>
+  <p class="text-muted mb-0">
+    <i class="bi bi-geo-alt me-1"></i>{{ condominio.indirizzo }}
+    &nbsp;|&nbsp;<i class="bi bi-calendar me-1"></i>{{ condominio.data|date:"d/m/Y" }}{% if condominio.ora %} {{ condominio.ora|time:"H:i" }}{% endif %}
+    &nbsp;|&nbsp;Prezzo base: <strong>€ {{ condominio.prezzo_base }}</strong>
+    {% if condominio.tecnico %}&nbsp;|&nbsp;<i class="bi bi-person me-1"></i><strong>{{ condominio.tecnico.get_full_name|default:condominio.tecnico.username }}</strong>{% endif %}
+    {% if condominio.assistente %}&nbsp;+&nbsp;{{ condominio.assistente.get_full_name|default:condominio.assistente.username }}{% endif %}
+  </p>
+</div>
+
+<form method="post" id="esegui-form">
+  {% csrf_token %}
+  {{ fs_prodotti.management_form }}
+  <input type="hidden" name="action" id="action-input" value="salva">
+
+  <div class="row g-3">
+    <div class="col-lg-9">
+
+      {# Unità abitative #}
+      <div class="card mb-3">
+        <div class="card-header card-header-primary d-flex justify-content-between align-items-center">
+          <span><i class="bi bi-door-open me-2"></i>Unità abitative</span>
+          <button type="button" class="btn btn-sm btn-outline-light" id="btn-aggiungi-unita">
+            <i class="bi bi-plus-lg me-1"></i>Aggiungi unità
+          </button>
+        </div>
+        <div class="table-responsive">
+          {{ fs_unita.management_form }}
+          <table class="table mb-0 align-middle" id="unita-table">
+            <thead class="bg-brand text-white">
+              <tr>
+                <th>Nome / Intestatario</th>
+                <th class="text-center" style="width:100px">Servizio</th>
+                <th class="text-center" style="width:100px">Incassato</th>
+                <th style="width:170px">Importo (€)</th>
+              </tr>
+            </thead>
+            <tbody id="unita-body">
+              {% for uf in fs_unita %}
+              <tr class="unita-row">
+                <td>
+                  {{ uf.id }}
+                  {{ uf.nome }}
+                </td>
+                <td class="text-center">{{ uf.servizio_effettuato }}</td>
+                <td class="text-center">{{ uf.incasso_effettuato }}</td>
+                <td>
+                  <div class="input-group input-group-sm">
+                    <span class="input-group-text">€</span>
+                    {{ uf.importo_da_incassare }}
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+            <tfoot class="table-light fw-bold">
+              <tr>
+                <td colspan="2" class="text-end">Totale incassato</td>
+                <td colspan="2" class="text-brand fw-bold fs-5" id="totale-incassato">€ 0,00</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+        {# Riga template per JS — clonata da btn-aggiungi-unita #}
+        <div id="unita-empty-tpl" class="d-none">
+          <tr class="unita-row">
+            <td>
+              <input type="hidden" name="unita-__idx__-id" id="id_unita-__idx__-id">
+              <input type="text" name="unita-__idx__-nome" id="id_unita-__idx__-nome"
+                     class="form-control form-control-sm" placeholder="Nome / intestatario">
+            </td>
+            <td class="text-center">
+              <input type="checkbox" name="unita-__idx__-servizio_effettuato"
+                     id="id_unita-__idx__-servizio_effettuato" class="form-check-input">
+            </td>
+            <td class="text-center">
+              <input type="checkbox" name="unita-__idx__-incasso_effettuato"
+                     id="id_unita-__idx__-incasso_effettuato" class="form-check-input">
+            </td>
+            <td>
+              <div class="input-group input-group-sm">
+                <span class="input-group-text">€</span>
+                <input type="number" name="unita-__idx__-importo_da_incassare"
+                       id="id_unita-__idx__-importo_da_incassare"
+                       value="{{ condominio.prezzo_base }}"
+                       class="form-control" step="0.01">
+              </div>
+            </td>
+          </tr>
+        </div>
+      </div>
+
+      {# Prodotti consumati #}
+      {% if fs_prodotti.initial_form_count %}
+      <div class="card mb-3">
+        <div class="card-header card-header-primary">
+          <i class="bi bi-box-seam me-2"></i>Prodotti consumati
+        </div>
+        <div class="table-responsive">
+          <table class="table mb-0 align-middle">
+            <thead class="bg-brand text-white">
+              <tr>
+                <th>Prodotto</th>
+                <th style="width:200px">Quantità effettiva</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for pf in fs_prodotti %}
+              <tr>
+                <td>
+                  {{ pf.id }}
+                  <strong>{{ pf.instance.prodotto.nome_prodotto }}</strong>
+                  <span class="text-muted small ms-1">{{ pf.instance.prodotto.unita_misura }}</span>
+                </td>
+                <td>
+                  <div class="input-group input-group-sm" style="max-width:160px">
+                    {{ pf.quantita }}
+                    <span class="input-group-text">{{ pf.instance.prodotto.unita_misura }}</span>
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {% endif %}
+
+    </div>
+
+    <div class="col-lg-3">
+      <div class="card mb-3">
+        <div class="card-header card-header-primary"><i class="bi bi-cash-coin me-2"></i>Riepilogo incassi</div>
+        <div class="card-body text-center py-4">
+          <div class="text-muted small mb-1">Totale incassato</div>
+          <div class="fw-bold text-brand" id="totale-sidebar" style="font-size:2rem">€ 0,00</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><i class="bi bi-gear me-2"></i>Azioni</div>
+        <div class="list-group list-group-flush">
+          <button type="button" class="list-group-item list-group-item-action fw-semibold text-brand"
+                  onclick="submitAction('salva')">
+            <i class="bi bi-floppy me-2"></i>Salva progresso
+          </button>
+          <button type="button" class="list-group-item list-group-item-action fw-semibold text-success"
+                  onclick="if(confirm('Chiudere il servizio come completato?')) submitAction('chiudi')">
+            <i class="bi bi-check-circle me-2"></i>Chiudi servizio
+          </button>
+          <a href="{{ condominio.get_absolute_url }}" class="list-group-item list-group-item-action text-muted">
+            <i class="bi bi-arrow-left me-2"></i>Torna al dettaglio
+          </a>
+        </div>
+      </div>
+
+      {% if condominio.tecnico %}
+      <div class="card mt-3">
+        <div class="card-body small text-muted">
+          <div><i class="bi bi-person me-1"></i>Tecnico: <strong>{{ condominio.tecnico.get_full_name }}</strong></div>
+          {% if condominio.assistente %}
+          <div><i class="bi bi-person me-1"></i>Assistente: <strong>{{ condominio.assistente.get_full_name }}</strong></div>
+          {% endif %}
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  function aggiornaTotale() {
+    let somma = 0;
+    document.querySelectorAll('#unita-body .unita-row').forEach(function (row) {
+      const chk = row.querySelector('input[type=checkbox][name$="-incasso_effettuato"]');
+      const imp = row.querySelector('input[name$="-importo_da_incassare"]');
+      if (chk && chk.checked && imp) {
+        somma += parseFloat(imp.value) || 0;
+      }
+    });
+    const fmt = '€ ' + somma.toFixed(2).replace('.', ',');
+    const el = document.getElementById('totale-incassato');
+    const el2 = document.getElementById('totale-sidebar');
+    if (el) el.textContent = fmt;
+    if (el2) el2.textContent = fmt;
+  }
+
+  document.getElementById('unita-body').addEventListener('change', aggiornaTotale);
+  document.getElementById('unita-body').addEventListener('input', aggiornaTotale);
+  aggiornaTotale();
+
+  // Aggiungi nuove unità
+  const totalInput = document.getElementById('id_unita-TOTAL_FORMS');
+  const body = document.getElementById('unita-body');
+  const tpl = document.getElementById('unita-empty-tpl').querySelector('tr');
+  document.getElementById('btn-aggiungi-unita').addEventListener('click', function () {
+    const idx = parseInt(totalInput.value);
+    const row = tpl.cloneNode(true);
+    row.innerHTML = row.innerHTML.replaceAll('__idx__', idx);
+    body.appendChild(row);
+    totalInput.value = idx + 1;
+    aggiornaTotale();
+  });
+})();
+
+function submitAction(action) {
+  document.getElementById('action-input').value = action;
+  document.getElementById('esegui-form').submit();
+}
+</script>
+{% endblock %}

@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% load static %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/detail.css' %}">{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'cespiti:dashboard' %}">Cespiti</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'cespiti:costo_list' %}">Costi</a></li>
+      {% if stabilimento %}<li class="breadcrumb-item"><a href="{{ stabilimento.get_absolute_url }}">{{ stabilimento.nome }}</a></li>{% endif %}
+      <li class="breadcrumb-item active">{{ action }}</li>
+    </ol>
+  </nav>
+  <h1><i class="bi bi-currency-euro me-2 text-brand"></i>{{ action }}</h1>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-9">
+    <form method="post" enctype="multipart/form-data">
+      {% csrf_token %}
+
+      <div class="card mb-3">
+        <div class="card-header card-header-primary"><i class="bi bi-info-circle me-2"></i>Dati Pratica</div>
+        <div class="card-body">
+          <div class="row g-3">
+            {% if form.stabilimento %}
+            <div class="col-sm-6">
+              <label class="form-label">{{ form.stabilimento.label }} <span class="text-danger">*</span></label>
+              {{ form.stabilimento }}
+              {% if form.stabilimento.errors %}<div class="invalid-feedback d-block">{{ form.stabilimento.errors.0 }}</div>{% endif %}
+            </div>
+            {% endif %}
+            <div class="col-sm-6">
+              <label class="form-label">{{ form.fornitore.label }} <span class="text-danger">*</span></label>
+              {{ form.fornitore }}
+              {% if form.fornitore.errors %}<div class="invalid-feedback d-block">{{ form.fornitore.errors.0 }}</div>{% endif %}
+            </div>
+            <div class="col-12">
+              <label class="form-label">{{ form.titolo.label }} <span class="text-danger">*</span></label>
+              {{ form.titolo }}
+              {% if form.titolo.errors %}<div class="invalid-feedback d-block">{{ form.titolo.errors.0 }}</div>{% endif %}
+            </div>
+            <div class="col-sm-4">
+              <label class="form-label">{{ form.causale.label }} <span class="text-danger">*</span></label>
+              {{ form.causale }}
+            </div>
+            <div class="col-sm-4">
+              <label class="form-label">{{ form.stato.label }}</label>
+              {{ form.stato }}
+            </div>
+            <div class="col-sm-2">
+              <label class="form-label">{{ form.importo.label }} <span class="text-danger">*</span></label>
+              {{ form.importo }}
+              {% if form.importo.errors %}<div class="invalid-feedback d-block">{{ form.importo.errors.0 }}</div>{% endif %}
+            </div>
+            <div class="col-sm-2">
+              <label class="form-label">{{ form.iva_percentuale.label }}</label>
+              {{ form.iva_percentuale }}
+            </div>
+            <div class="col-12">
+              <label class="form-label">{{ form.descrizione.label }} <span class="text-danger">*</span></label>
+              {{ form.descrizione }}
+              {% if form.descrizione.errors %}<div class="invalid-feedback d-block">{{ form.descrizione.errors.0 }}</div>{% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card mb-3">
+        <div class="card-header card-header-primary"><i class="bi bi-calendar me-2"></i>Date e Scadenze</div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-sm-3">
+              <label class="form-label">{{ form.data_richiesta.label }}</label>
+              {{ form.data_richiesta }}
+            </div>
+            <div class="col-sm-3">
+              <label class="form-label">{{ form.data_inizio_lavori.label }}</label>
+              {{ form.data_inizio_lavori }}
+            </div>
+            <div class="col-sm-3">
+              <label class="form-label">{{ form.data_fine_lavori.label }}</label>
+              {{ form.data_fine_lavori }}
+            </div>
+            <div class="col-sm-3">
+              <label class="form-label">{{ form.data_fattura.label }}</label>
+              {{ form.data_fattura }}
+            </div>
+            <div class="col-sm-4">
+              <label class="form-label">{{ form.data_scadenza_servizio.label }}</label>
+              {{ form.data_scadenza_servizio }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card mb-3">
+        <div class="card-header card-header-primary"><i class="bi bi-paperclip me-2"></i>Documenti</div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-sm-6">
+              <label class="form-label">{{ form.fattura.label }}</label>
+              {{ form.fattura }}
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label">{{ form.preventivo.label }}</label>
+              {{ form.preventivo }}
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label">{{ form.certificato.label }}</label>
+              {{ form.certificato }}
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label">{{ form.allegato1.label }}</label>
+              {{ form.allegato1 }}
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label">{{ form.allegato2.label }}</label>
+              {{ form.allegato2 }}
+            </div>
+            <div class="col-12">
+              <label class="form-label">{{ form.note_interne.label }}</label>
+              {{ form.note_interne }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Salva</button>
+        <a href="{% if costo %}{% url 'cespiti:costo_detail' costo.pk %}{% elif stabilimento %}{{ stabilimento.get_absolute_url }}{% else %}{% url 'cespiti:costo_list' %}{% endif %}" class="btn btn-outline-secondary">Annulla</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

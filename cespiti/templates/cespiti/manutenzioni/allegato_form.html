@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% load static %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/detail.css' %}">{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'cespiti:dashboard' %}">Cespiti</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'cespiti:manutenzione_list' %}">Manutenzioni</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'cespiti:manutenzione_detail' manutenzione.pk %}">{{ manutenzione.descrizione|truncatechars:30 }}</a></li>
+      <li class="breadcrumb-item active">Aggiungi Allegato</li>
+    </ol>
+  </nav>
+  <h1><i class="bi bi-paperclip me-2 text-brand"></i>Aggiungi Allegato</h1>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-header card-header-primary"><i class="bi bi-file-earmark me-2"></i>{{ manutenzione.automezzo.targa }} — {{ manutenzione.descrizione|truncatechars:40 }}</div>
+      <div class="card-body">
+        <form method="post" enctype="multipart/form-data">
+          {% csrf_token %}
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label">{{ form.nome.label }} <span class="text-danger">*</span></label>
+              {{ form.nome }}
+              {% if form.nome.errors %}<div class="invalid-feedback d-block">{{ form.nome.errors.0 }}</div>{% endif %}
+            </div>
+            <div class="col-12">
+              <label class="form-label">{{ form.file.label }} <span class="text-danger">*</span></label>
+              {{ form.file }}
+              {% if form.file.errors %}<div class="invalid-feedback d-block">{{ form.file.errors.0 }}</div>{% endif %}
+            </div>
+          </div>
+          <div class="d-flex gap-2 mt-3">
+            <button type="submit" class="btn btn-primary"><i class="bi bi-upload me-1"></i>Carica</button>
+            <a href="{% url 'cespiti:manutenzione_detail' manutenzione.pk %}" class="btn btn-outline-secondary">Annulla</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+{% load static %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/detail.css' %}">{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'acquisti:dashboard' %}">Acquisti</a></li>
+      <li class="breadcrumb-item active">Autofatturazione</li>
+    </ol>
+  </nav>
+  <h1><i class="bi bi-send me-2 text-brand"></i>Autofatturazione</h1>
+  <p class="text-muted">Seleziona un fornitore per visualizzare gli ordini ricevuti senza fattura, genera il documento e invialo.</p>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-9">
+
+    {# Step 1 — selezione fornitore #}
+    <div class="card mb-3">
+      <div class="card-header card-header-primary"><i class="bi bi-building me-2"></i>Seleziona fornitore</div>
+      <div class="card-body">
+        <form method="get" class="d-flex gap-3 align-items-end flex-wrap">
+          <div>
+            <label class="form-label mb-1">Fornitore</label>
+            <select name="fornitore" class="form-select form-select-sm" style="width:280px" onchange="this.form.submit()">
+              <option value="">— seleziona fornitore —</option>
+              {% for f in fornitori %}
+              <option value="{{ f.pk }}" {% if fornitore_pk == f.pk|stringformat:"s" %}selected{% endif %}>
+                {{ f.ragione_sociale }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    {% if fornitore %}
+    {# Step 2 — ODA da fatturare #}
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="fornitore" value="{{ fornitore.pk }}">
+
+      <div class="card mb-3">
+        <div class="card-header card-header-primary d-flex justify-content-between align-items-center">
+          <span><i class="bi bi-file-earmark-text me-2"></i>Ordini ricevuti senza fattura — {{ fornitore.ragione_sociale }}</span>
+          {% if oda_qs %}
+          <button type="button" class="btn btn-sm btn-outline-light" id="btn-seleziona-tutti">Seleziona tutti</button>
+          {% endif %}
+        </div>
+        <div class="table-responsive">
+          <table class="table mb-0 align-middle">
+            <thead class="bg-brand text-white">
+              <tr>
+                <th style="width:40px"></th>
+                <th>N° Ordine</th>
+                <th>Data</th>
+                <th>Prodotti</th>
+                <th class="text-end">Totale</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for oda in oda_qs %}
+              <tr>
+                <td class="text-center">
+                  <input class="form-check-input oda-check" type="checkbox" name="oda_pks" value="{{ oda.pk }}" checked>
+                </td>
+                <td class="fw-semibold">
+                  <a href="{{ oda.get_absolute_url }}" class="text-brand text-decoration-none" target="_blank">{{ oda.numero_ordine }}</a>
+                </td>
+                <td class="small text-muted text-nowrap">{{ oda.data_ordine|date:"d/m/Y" }}</td>
+                <td class="small">
+                  {% for r in oda.righe.all %}
+                    <div>{{ r.prodotto.nome_prodotto|default:r.descrizione }} <span class="text-muted">× {{ r.quantita_ordinata }} {{ r.prodotto.unita_misura|default:r.unita_misura }}</span></div>
+                  {% empty %}—{% endfor %}
+                </td>
+                <td class="text-end fw-semibold text-nowrap">€ {{ oda.totale }}</td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="5" class="text-center text-muted py-4">
+                <i class="bi bi-check-circle me-2 text-success"></i>Nessun ordine in attesa di fattura per questo fornitore.
+              </td></tr>
+              {% endfor %}
+            </tbody>
+            {% if oda_qs %}
+            <tfoot class="table-light fw-bold">
+              <tr>
+                <td colspan="4" class="text-end">Totale selezionati</td>
+                <td class="text-end" id="totale-selezionati">—</td>
+              </tr>
+            </tfoot>
+            {% endif %}
+          </table>
+        </div>
+      </div>
+
+      {% if oda_qs %}
+      <div class="d-flex gap-2 flex-wrap">
+        <button type="submit" name="action" value="excel" class="btn btn-success">
+          <i class="bi bi-file-earmark-excel me-1"></i>Scarica Excel
+        </button>
+        <button type="submit" name="action" value="pdf" class="btn btn-danger">
+          <i class="bi bi-file-earmark-pdf me-1"></i>Scarica PDF
+        </button>
+        <button type="submit" name="action" value="invia"
+                class="btn btn-brand"
+                onclick="return confirm('Inviare l\'autofatturazione a {{ fornitore.email|default:fornitore.referente_email }}?')">
+          <i class="bi bi-envelope me-1"></i>Invia al fornitore
+          {% if fornitore.email or fornitore.referente_email %}
+          <span class="badge bg-white text-brand ms-1 small">{{ fornitore.email|default:fornitore.referente_email }}</span>
+          {% else %}
+          <span class="badge bg-warning text-dark ms-1 small">Nessuna email</span>
+          {% endif %}
+        </button>
+      </div>
+      {% endif %}
+
+    </form>
+    {% endif %}
+
+  </div>
+
+  <div class="col-lg-3">
+    <div class="card">
+      <div class="card-header"><i class="bi bi-info-circle me-2"></i>Info</div>
+      <div class="card-body small text-muted">
+        <p>Questa funzione mostra gli ordini di acquisto già ricevuti per cui <strong>non è ancora stata registrata una fattura</strong>.</p>
+        <p>Puoi selezionare gli ordini, generare un documento Excel o PDF e inviarlo direttamente al fornitore come sollecito di fatturazione.</p>
+        <p class="mb-0">L'email verrà inviata all'indirizzo registrato in anagrafica fornitore.</p>
+      </div>
+    </div>
+    {% if fornitore %}
+    <div class="card mt-3">
+      <div class="card-header"><i class="bi bi-building me-2"></i>{{ fornitore.ragione_sociale }}</div>
+      <div class="list-group list-group-flush small">
+        {% if fornitore.email %}
+        <div class="list-group-item"><i class="bi bi-envelope me-2 text-brand"></i>{{ fornitore.email }}</div>
+        {% endif %}
+        {% if fornitore.referente_email %}
+        <div class="list-group-item"><i class="bi bi-person me-2 text-brand"></i>{{ fornitore.referente_email }}</div>
+        {% endif %}
+        {% if not fornitore.email and not fornitore.referente_email %}
+        <div class="list-group-item text-warning"><i class="bi bi-exclamation-triangle me-2"></i>Nessuna email registrata</div>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  const totali = {
+    {% for oda in oda_qs %}
+    "{{ oda.pk }}": {{ oda.totale }},
+    {% endfor %}
+  };
+
+  function aggiornaTotale() {
+    let somma = 0;
+    document.querySelectorAll('.oda-check:checked').forEach(cb => {
+      somma += totali[cb.value] || 0;
+    });
+    const el = document.getElementById('totale-selezionati');
+    if (el) el.textContent = '€ ' + somma.toFixed(2).replace('.', ',');
+  }
+
+  document.querySelectorAll('.oda-check').forEach(cb => cb.addEventListener('change', aggiornaTotale));
+  aggiornaTotale();
+
+  const btnTutti = document.getElementById('btn-seleziona-tutti');
+  if (btnTutti) {
+    btnTutti.addEventListener('click', function () {
+      const tutti = document.querySelectorAll('.oda-check');
+      const tuttiChecked = [...tutti].every(c => c.checked);
+      tutti.forEach(c => { c.checked = !tuttiChecked; });
+      this.textContent = tuttiChecked ? 'Seleziona tutti' : 'Deseleziona tutti';
+      aggiornaTotale();
+    });
+  }
+})();
+</script>
+{% endblock %}

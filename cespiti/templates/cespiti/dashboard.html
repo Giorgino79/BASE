@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/detail.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4">
+  <h1><i class="bi bi-speedometer2 me-2 text-brand"></i>Cespiti</h1>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <a href="{% url 'cespiti:automezzo_list' %}" class="text-decoration-none">
+      <div class="card text-center h-100">
+        <div class="card-body py-3">
+          <div style="font-size:2rem;color:var(--color-1);">{{ automezzi_count }}</div>
+          <div class="small text-muted">Automezzi totali</div>
+          <div class="small text-positive">{{ automezzi_disponibili }} disponibili</div>
+        </div>
+      </div>
+    </a>
+  </div>
+  <div class="col-6 col-md-3">
+    <a href="{% url 'cespiti:manutenzione_list' %}?stato=aperta" class="text-decoration-none">
+      <div class="card text-center h-100">
+        <div class="card-body py-3">
+          <div style="font-size:2rem;color:var(--color-1);">{{ manutenzioni_aperte }}</div>
+          <div class="small text-muted">Manutenzioni aperte</div>
+          <div class="small text-warning">{{ manutenzioni_in_corso }} in corso</div>
+        </div>
+      </div>
+    </a>
+  </div>
+  <div class="col-6 col-md-3">
+    <a href="{% url 'cespiti:stabilimento_list' %}" class="text-decoration-none">
+      <div class="card text-center h-100">
+        <div class="card-body py-3">
+          <div style="font-size:2rem;color:var(--color-1);">{{ stabilimenti_count }}</div>
+          <div class="small text-muted">Stabilimenti totali</div>
+          <div class="small text-positive">{{ stabilimenti_attivi }} attivi</div>
+        </div>
+      </div>
+    </a>
+  </div>
+  <div class="col-6 col-md-3">
+    <a href="{% url 'cespiti:scadenze' %}" class="text-decoration-none">
+      <div class="card text-center h-100">
+        <div class="card-body py-3">
+          <div style="font-size:2rem;color:{% if scadenze_urgenti %}var(--color-ko){% else %}var(--color-1){% endif %};">{{ scadenze_urgenti }}</div>
+          <div class="small text-muted">Scadenze urgenti</div>
+          <div class="small text-muted">prossimi 7 gg</div>
+        </div>
+      </div>
+    </a>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-header card-header-primary"><i class="bi bi-fuel-pump me-2"></i>Ultimi Rifornimenti</div>
+      <div class="table-responsive">
+        <table class="table mb-0">
+          <thead><tr><th>Data</th><th>Mezzo</th><th>Litri</th><th>Costo</th></tr></thead>
+          <tbody>
+            {% for r in ultimi_rifornimenti %}
+            <tr>
+              <td>{{ r.data|date:"d/m/Y" }}</td>
+              <td><a href="{{ r.automezzo.get_absolute_url }}">{{ r.automezzo.targa }}</a></td>
+              <td>{{ r.litri }} L</td>
+              <td>€ {{ r.costo_totale }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4" class="text-muted text-center py-3">Nessun rifornimento</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-header card-header-primary"><i class="bi bi-exclamation-triangle me-2"></i>Eventi Aperti</div>
+      <div class="table-responsive">
+        <table class="table mb-0">
+          <thead><tr><th>Data</th><th>Mezzo</th><th>Tipo</th></tr></thead>
+          <tbody>
+            {% for e in eventi_recenti %}
+            <tr>
+              <td>{{ e.data_evento|date:"d/m/Y" }}</td>
+              <td><a href="{{ e.automezzo.get_absolute_url }}">{{ e.automezzo.targa }}</a></td>
+              <td><span class="badge badge-wait">{{ e.get_tipo_display }}</span></td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="3" class="text-muted text-center py-3">Nessun evento aperto</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

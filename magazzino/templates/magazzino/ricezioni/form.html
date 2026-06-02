@@ -1,0 +1,232 @@
+{% extends "base.html" %}
+{% load static %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/detail.css' %}">{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'magazzino:dashboard' %}">Magazzino</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'magazzino:ricezione_list' %}">Ricezioni</a></li>
+      <li class="breadcrumb-item active">{{ titolo }}</li>
+    </ol>
+  </nav>
+  <h1><i class="bi bi-box-seam me-2 text-brand"></i>{{ titolo }}</h1>
+</div>
+
+{% if not righe_mancanti %}
+<form method="post" enctype="multipart/form-data">
+  {% csrf_token %}
+  <div class="row g-3">
+    <div class="col-lg-8">
+      <div class="card mb-3">
+        <div class="card-header card-header-primary"><i class="bi bi-info-circle me-2"></i>Dati Ricezione</div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-sm-6">
+              <label class="form-label">{{ form.fornitore.label }} <span class="text-danger">*</span></label>
+              {{ form.fornitore }}
+              {% if form.fornitore.errors %}<div class="invalid-feedback d-block">{{ form.fornitore.errors.0 }}</div>{% endif %}
+            </div>
+            <div class="col-sm-3">
+              <label class="form-label">{{ form.data_ricezione.label }} <span class="text-danger">*</span></label>
+              {{ form.data_ricezione }}
+              {% if form.data_ricezione.errors %}<div class="invalid-feedback d-block">{{ form.data_ricezione.errors.0 }}</div>{% endif %}
+            </div>
+            <div class="col-sm-3">
+              <label class="form-label">{{ form.numero_ddt.label }}</label>
+              {{ form.numero_ddt }}
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label">{{ form.ordine.label }}</label>
+              {{ form.ordine }}
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-semibold">Destinatario merce <span class="text-danger">*</span></label>
+              <div class="d-flex gap-4 mb-2">
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" name="dest_tipo" id="dest_stab" value="stab"
+                    {% if not form.instance.mezzo_id %}checked{% endif %}>
+                  <label class="form-check-label" for="dest_stab">Stabilimento</label>
+                </div>
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" name="dest_tipo" id="dest_mezzo" value="mezzo"
+                    {% if form.instance.mezzo_id %}checked{% endif %}>
+                  <label class="form-check-label" for="dest_mezzo">Mezzo (ritiro diretto)</label>
+                </div>
+              </div>
+              <div id="wrap-stabilimento">
+                {{ form.stabilimento }}
+                {% if form.stabilimento.errors %}<div class="text-danger small">{{ form.stabilimento.errors.0 }}</div>{% endif %}
+              </div>
+              <div id="wrap-mezzo" class="d-none">
+                {{ form.mezzo }}
+                {% if form.mezzo.errors %}<div class="text-danger small">{{ form.mezzo.errors.0 }}</div>{% endif %}
+              </div>
+              {% if form.non_field_errors %}
+              <div class="text-danger small mt-1">{{ form.non_field_errors.0 }}</div>
+              {% endif %}
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label">{{ form.bolla_firmata.label }}</label>
+              {{ form.bolla_firmata }}
+              {% if form.bolla_firmata.errors %}<div class="text-danger small">{{ form.bolla_firmata.errors.0 }}</div>{% endif %}
+            </div>
+            <div class="col-12">
+              <label class="form-label">{{ form.note.label }}</label>
+              {{ form.note }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card mb-3">
+        <div class="card-header card-header-primary"><i class="bi bi-list-ul me-2"></i>Articoli Ricevuti</div>
+        <div class="card-body">
+          {{ formset.management_form }}
+          {% for f in formset %}
+          <div class="row g-2 mb-2 align-items-start border-bottom pb-2">
+            {{ f.id }}
+            <div class="col-sm-3">
+              <label class="form-label small">Prodotto <span class="text-danger">*</span></label>
+              {{ f.prodotto }}
+              {% if f.prodotto.errors %}<div class="text-danger small">{{ f.prodotto.errors.0 }}</div>{% endif %}
+            </div>
+            <div class="col-sm-2">
+              <label class="form-label small">Riga ODA</label>
+              {{ f.riga_ordine }}
+            </div>
+            <div class="col-sm-2">
+              <label class="form-label small">Qt. ricevuta</label>
+              {{ f.quantita_ricevuta }}
+            </div>
+            <div class="col-sm-2">
+              <label class="form-label small">Prezzo unit.</label>
+              {{ f.prezzo_unitario }}
+            </div>
+            <div class="col-sm-1">
+              <label class="form-label small">Nr. colli ric.</label>
+              {{ f.nr_colli }}
+            </div>
+            <div class="col-sm-2">
+              <label class="form-label small">N° lotto</label>
+              {{ f.numero_lotto }}
+            </div>
+            <div class="col-sm-1 d-flex align-items-end">
+              <div class="form-check mt-4">
+                {{ f.DELETE }}
+                <label class="form-check-label small text-danger" for="{{ f.DELETE.id_for_label }}">Elimina</label>
+              </div>
+            </div>
+            {% if f.errors %}<div class="col-12"><div class="text-danger small">{{ f.errors }}</div></div>{% endif %}
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Salva</button>
+        <a href="{{ back_url }}" class="btn btn-outline-secondary">Annulla</a>
+      </div>
+    </div>
+  </div>
+</form>
+{% endif %}
+{% endblock %}
+
+{% block modals %}
+{% if righe_mancanti %}
+{# Modal bloccante server-side — auto-aperto al caricamento #}
+<div class="modal fade" id="modalProdottiMancanti" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title"><i class="bi bi-exclamation-triangle me-2"></i>Ricezione non avviabile</h5>
+      </div>
+      <div class="modal-body">
+        <p>I seguenti articoli dell'ODA <strong>{{ ordine.numero_ordine }}</strong> non sono ancora presenti in anagrafica prodotti:</p>
+        <ul class="mb-3">
+          {% for r in righe_mancanti %}<li>{{ r }}</li>{% endfor %}
+        </ul>
+        <p class="mb-0 text-muted small">Inserire prima ogni prodotto in <strong>Magazzino → Prodotti</strong>, poi selezionarlo nelle righe dell'ODA.</p>
+      </div>
+      <div class="modal-footer">
+        <a href="{% url 'acquisti:ordine_update' ordine.pk %}" class="btn btn-secondary btn-sm"><i class="bi bi-pencil me-1"></i>Modifica ODA</a>
+        <a href="{% url 'magazzino:prodotto_create' %}" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg me-1"></i>Nuovo prodotto</a>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('modalProdottiMancanti')).show();
+</script>
+
+{% else %}
+{# Modal bloccante client-side — triggered da JS quando si seleziona un ODA con prodotti mancanti #}
+<div class="modal fade" id="modalProdottiMancanti" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title"><i class="bi bi-exclamation-triangle me-2"></i>Ricezione non avviabile</h5>
+      </div>
+      <div class="modal-body">
+        <p>I seguenti articoli dell'ODA selezionato non sono ancora presenti in anagrafica prodotti:</p>
+        <ul id="listaProdottiMancanti" class="mb-3"></ul>
+        <p class="mb-0 text-muted small">Inserire prima ogni prodotto in <strong>Magazzino → Prodotti</strong>, poi selezionarlo nelle righe dell'ODA.</p>
+      </div>
+      <div class="modal-footer">
+        <a id="btnModificaOda" href="#" class="btn btn-secondary btn-sm"><i class="bi bi-pencil me-1"></i>Modifica ODA</a>
+        <a href="{% url 'magazzino:prodotto_create' %}" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg me-1"></i>Nuovo prodotto</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  // Toggle stabilimento / mezzo
+  const wrapStab  = document.getElementById('wrap-stabilimento');
+  const wrapMezzo = document.getElementById('wrap-mezzo');
+  const selStab   = document.getElementById('id_stabilimento');
+  const selMezzo  = document.getElementById('id_mezzo');
+
+  function aggiornaDest() {
+    const mezzo = document.getElementById('dest_mezzo').checked;
+    wrapStab.classList.toggle('d-none', mezzo);
+    wrapMezzo.classList.toggle('d-none', !mezzo);
+    if (mezzo) { selStab.value = ''; } else { selMezzo.value = ''; }
+  }
+
+  document.querySelectorAll('input[name="dest_tipo"]').forEach(r => r.addEventListener('change', aggiornaDest));
+  aggiornaDest();
+})();
+
+(function () {
+  const odaSelect = document.getElementById('id_ordine');
+  if (!odaSelect) return;
+
+  const modalEl = document.getElementById('modalProdottiMancanti');
+  const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+  const btnModificaOda = document.getElementById('btnModificaOda');
+
+  odaSelect.addEventListener('change', function () {
+    const pk = this.value;
+    if (!pk) return;
+
+    fetch(`{% url 'magazzino:api_oda_righe' 0 %}`.replace('/0/', `/${pk}/`))
+      .then(r => r.json())
+      .then(data => {
+        if (!data.ok) {
+          document.getElementById('listaProdottiMancanti').innerHTML =
+            data.righe_mancanti.map(m => `<li>${m}</li>`).join('');
+          btnModificaOda.href = `{% url 'acquisti:ordine_update' 0 %}`.replace('/0/', `/${pk}/`);
+          modal.show();
+        } else {
+          window.location.href = `{% url 'magazzino:ricezione_da_ordine' 0 %}`.replace('/0/', `/${pk}/`);
+        }
+      });
+  });
+})();
+</script>
+{% endif %}
+{% endblock %}

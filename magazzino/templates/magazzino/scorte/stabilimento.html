@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+{% load static %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/detail.css' %}">{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'magazzino:dashboard' %}">Magazzino</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'magazzino:scorte_dashboard' %}">Scorte</a></li>
+      <li class="breadcrumb-item active">{{ stabilimento.nome }}</li>
+    </ol>
+  </nav>
+  <h1><i class="bi bi-building me-2 text-brand"></i>Scorte — {{ stabilimento.nome }}</h1>
+  <p class="text-muted mb-0">{{ stabilimento.indirizzo }}, {{ stabilimento.citta }} ({{ stabilimento.provincia }})</p>
+</div>
+
+<div class="card">
+  <div class="card-header card-header-primary d-flex justify-content-between align-items-center gap-2">
+    <span><i class="bi bi-boxes me-2"></i>Giacenze</span>
+    <div class="d-flex align-items-center gap-2 ms-auto">
+      <div class="input-group input-group-sm" style="width:220px">
+        <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+        <input type="search" id="cercaProdotto" class="form-control border-start-0 ps-0"
+               placeholder="Cerca prodotto…" autocomplete="off">
+      </div>
+      <span class="badge bg-secondary" id="contatoreRighe">{{ scorte|length }}</span>
+    </div>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table align-middle mb-0" id="tabellaScorte">
+      <thead>
+        <tr>
+          <th>Prodotto</th>
+          <th>Categoria</th>
+          <th class="text-end">Giacenza</th>
+          <th>U.M.</th>
+          <th class="text-center">Stato</th>
+          <th class="text-center" style="width:120px">Azioni</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in scorte %}
+        <tr class="riga-prodotto" data-cerca="{{ s.prodotto.nome_prodotto|lower }} {{ s.prodotto.categoria|lower }} {{ s.prodotto.codice_interno|lower }}">
+          <td>
+            <a href="{% url 'magazzino:prodotto_detail' s.prodotto.pk %}" class="fw-semibold text-decoration-none">
+              {{ s.prodotto.nome_prodotto }}
+            </a>
+            {% if s.prodotto.codice_interno %}
+            <div class="text-muted small">{{ s.prodotto.codice_interno }}</div>
+            {% endif %}
+          </td>
+          <td class="text-muted small">{{ s.prodotto.categoria }}</td>
+          <td class="text-end fw-bold
+            {% if s.quantita <= 0 %}text-danger
+            {% elif s.quantita < 5 %}text-warning
+            {% else %}text-success{% endif %}">
+            {{ s.quantita }}
+          </td>
+          <td class="text-muted small">{{ s.prodotto.get_unita_misura_display }}</td>
+          <td class="text-center">
+            {% if s.quantita <= 0 %}
+              <span class="badge bg-danger">Esaurito</span>
+            {% elif s.quantita < 5 %}
+              <span class="badge bg-warning text-dark">Basso</span>
+            {% else %}
+              <span class="badge bg-success">OK</span>
+            {% endif %}
+          </td>
+          <td class="text-center">
+            <button type="button"
+              class="btn btn-sm btn-outline-secondary"
+              data-scorta-pk="{{ s.pk }}"
+              data-prodotto-nome="{{ s.prodotto.nome_prodotto }}"
+              data-um="{{ s.prodotto.get_unita_misura_display }}"
+              data-quantita="{{ s.quantita }}"
+              onclick="apriRettifica(this)"
+              title="Rettifica giacenza">
+              <i class="bi bi-pencil-square"></i> Rettifica
+            </button>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="6" class="text-muted text-center py-4">
+            <i class="bi bi-inbox display-6 d-block mb-2"></i>
+            Nessuna scorta registrata per questo stabilimento. Le giacenze si aggiornano con le ricezioni.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="mt-3">
+  <a href="{{ back_url }}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left me-1"></i>Torna alle scorte
+  </a>
+</div>
+{% endblock %}
+
+{% block modals %}
+<div class="modal fade" id="modalRettifica" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header card-header-primary">
+        <h5 class="modal-title"><i class="bi bi-pencil-square me-2"></i>Rettifica giacenza</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" id="formRettifica" action="">
+        {% csrf_token %}
+        <div class="modal-body">
+          <p class="fw-semibold mb-1" id="rettificaNome"></p>
+          <p class="text-muted small mb-3">Giacenza attuale: <strong id="rettificaAttuale"></strong> <span id="rettificaUm"></span></p>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Nuova giacenza <span id="rettificaUm2" class="text-muted fw-normal"></span></label>
+            <input type="number" name="nuova_quantita" id="inputNuovaQty"
+                   class="form-control form-control-lg text-center"
+                   min="0" step="0.001" required>
+          </div>
+          <div class="mb-1">
+            <label class="form-label fw-semibold">Motivo <span class="text-danger">*</span></label>
+            <textarea name="motivo" class="form-control" rows="2"
+                      placeholder="Es. inventario fisico, merce danneggiata…" required minlength="5"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annulla</button>
+          <button type="submit" class="btn btn-brand">Salva rettifica</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  const input     = document.getElementById("cercaProdotto");
+  const contatore = document.getElementById("contatoreRighe");
+  const totale    = {{ scorte|length }};
+
+  input.addEventListener("input", function () {
+    const q = this.value.trim().toLowerCase();
+    let visibili = 0;
+    document.querySelectorAll("#tabellaScorte tbody tr.riga-prodotto").forEach(row => {
+      const match = !q || row.dataset.cerca.includes(q);
+      row.classList.toggle("d-none", !match);
+      if (match) visibili++;
+    });
+    contatore.textContent = q ? visibili + " / " + totale : totale;
+  });
+})();
+
+function apriRettifica(btn) {
+  document.getElementById("rettificaNome").textContent   = btn.dataset.prodottoNome;
+  document.getElementById("rettificaAttuale").textContent = btn.dataset.quantita;
+  document.getElementById("rettificaUm").textContent     = btn.dataset.um;
+  document.getElementById("rettificaUm2").textContent    = "(" + btn.dataset.um + ")";
+  document.getElementById("inputNuovaQty").value         = btn.dataset.quantita;
+  document.getElementById("formRettifica").action        = "{% url 'magazzino:rettifica_scorta' 0 %}".replace("/0/", "/" + btn.dataset.scortaPk + "/");
+  bootstrap.Modal.getOrCreateInstance(document.getElementById("modalRettifica")).show();
+  setTimeout(() => document.getElementById("inputNuovaQty").select(), 300);
+}
+</script>
+{% endblock %}

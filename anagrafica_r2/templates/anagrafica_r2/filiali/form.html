@@ -1,0 +1,220 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/detail.css' %}">
+{% endblock %}
+
+{% block content %}
+
+<div class="page-header mb-4">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'anagrafica:dashboard' %}">Anagrafica</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'anagrafica:azienda_list' %}">Clienti</a></li>
+      <li class="breadcrumb-item"><a href="{{ cliente.get_absolute_url }}">{{ cliente.ragione_sociale }}</a></li>
+      <li class="breadcrumb-item active">{{ titolo }}</li>
+    </ol>
+  </nav>
+  <h1><i class="bi bi-geo-alt me-2 text-brand"></i>{{ titolo }}</h1>
+</div>
+
+{% if form.non_field_errors %}
+<div class="alert alert-danger mb-3">
+  {% for e in form.non_field_errors %}{{ e }}{% endfor %}
+</div>
+{% endif %}
+
+<form method="post" novalidate>
+  {% csrf_token %}
+
+  <div class="row g-3">
+    <div class="col-lg-8">
+
+      <!-- Identificazione -->
+      <div class="card mb-3">
+        <div class="card-header card-header-primary">
+          <i class="bi bi-tag me-2"></i>Identificazione
+        </div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-sm-8">
+              <label class="form-label" for="{{ form.nome.id_for_label }}">{{ form.nome.label }} *</label>
+              {{ form.nome }}
+              {% if form.nome.errors %}<div class="invalid-feedback">{% for e in form.nome.errors %}{{ e }}{% endfor %}</div>{% endif %}
+            </div>
+            <div class="col-sm-4">
+              <label class="form-label" for="{{ form.tipo_sede.id_for_label }}">{{ form.tipo_sede.label }}</label>
+              {{ form.tipo_sede }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Indirizzo sede -->
+      <div class="card mb-3">
+        <div class="card-header">
+          <span class="card-title"><i class="bi bi-geo-alt me-2"></i>Indirizzo Sede</span>
+        </div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label" for="{{ form.indirizzo.id_for_label }}">{{ form.indirizzo.label }} *</label>
+              {{ form.indirizzo }}
+              {% if form.indirizzo.errors %}<div class="invalid-feedback">{% for e in form.indirizzo.errors %}{{ e }}{% endfor %}</div>{% endif %}
+            </div>
+            <div class="col-sm-3">
+              <label class="form-label" for="{{ form.cap.id_for_label }}">{{ form.cap.label }}</label>
+              {{ form.cap }}
+            </div>
+            <div class="col-sm-5">
+              <label class="form-label" for="{{ form.citta.id_for_label }}">{{ form.citta.label }} *</label>
+              {{ form.citta }}
+              {% if form.citta.errors %}<div class="invalid-feedback">{% for e in form.citta.errors %}{{ e }}{% endfor %}</div>{% endif %}
+            </div>
+            <div class="col-sm-4">
+              <label class="form-label" for="{{ form.zona.id_for_label }}">{{ form.zona.label }} *</label>
+              {{ form.zona }}
+              {% if form.zona.errors %}<div class="invalid-feedback d-block">{{ form.zona.errors.0 }}</div>{% endif %}
+            </div>
+            <div class="col-sm-2">
+              <label class="form-label" for="{{ form.provincia.id_for_label }}">{{ form.provincia.label }}</label>
+              {{ form.provincia }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Contatti sede -->
+      <div class="card mb-3">
+        <div class="card-header card-header-primary">
+          <i class="bi bi-telephone me-2"></i>Contatti Sede
+        </div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-sm-6">
+              <label class="form-label" for="{{ form.telefono.id_for_label }}">{{ form.telefono.label }}</label>
+              {{ form.telefono }}
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label" for="{{ form.email.id_for_label }}">{{ form.email.label }}</label>
+              {{ form.email }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Referente sede -->
+      <div class="card mb-3">
+        <div class="card-header">
+          <span class="card-title"><i class="bi bi-person me-2"></i>Referente Sede</span>
+        </div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-sm-4">
+              <label class="form-label" for="{{ form.referente_nome.id_for_label }}">{{ form.referente_nome.label }}</label>
+              {{ form.referente_nome }}
+            </div>
+            <div class="col-sm-4">
+              <label class="form-label" for="{{ form.referente_tel.id_for_label }}">{{ form.referente_tel.label }}</label>
+              {{ form.referente_tel }}
+            </div>
+            <div class="col-sm-4">
+              <label class="form-label" for="{{ form.referente_email.id_for_label }}">{{ form.referente_email.label }}</label>
+              {{ form.referente_email }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Logistica servizio -->
+      <div class="card mb-3">
+        <div class="card-header">
+          <span class="card-title"><i class="bi bi-clock me-2"></i>Logistica Servizio</span>
+        </div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-sm-6">
+              <label class="form-label" for="{{ form.orario_apertura.id_for_label }}">{{ form.orario_apertura.label }}</label>
+              {{ form.orario_apertura }}
+              {% if form.orario_apertura.help_text %}<div class="form-text">{{ form.orario_apertura.help_text }}</div>{% endif %}
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label" for="{{ form.giorno_chiusura.id_for_label }}">{{ form.giorno_chiusura.label }}</label>
+              {{ form.giorno_chiusura }}
+            </div>
+            <div class="col-12">
+              <label class="form-label" for="{{ form.note_accesso.id_for_label }}">{{ form.note_accesso.label }}</label>
+              {{ form.note_accesso }}
+              {% if form.note_accesso.help_text %}<div class="form-text">{{ form.note_accesso.help_text }}</div>{% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Note -->
+      <div class="card mb-3">
+        <div class="card-header">
+          <span class="card-title"><i class="bi bi-chat-left-text me-2"></i>Note</span>
+        </div>
+        <div class="card-body">
+          {{ form.note }}
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Sidebar azioni -->
+    <div class="col-lg-4">
+      <div class="sidebar-actions">
+
+        <div class="card mb-3">
+          <div class="card-header"><i class="bi bi-gear me-2"></i>Azioni</div>
+          <div class="card-body">
+            <div class="d-grid gap-2">
+              <button type="submit" class="btn btn-primary">
+                <i class="bi bi-check-lg me-1"></i>{{ submit_text }}
+              </button>
+              <a href="{{ back_url }}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left me-1"></i>Annulla
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <div class="card mb-3">
+          <div class="card-header"><i class="bi bi-toggle-on me-2"></i>Stato</div>
+          <div class="card-body">
+            <div class="form-check mb-2">
+              {{ form.attivo }}
+              <label class="form-check-label" for="{{ form.attivo.id_for_label }}">Sede attiva</label>
+            </div>
+            <div class="form-check">
+              {{ form.installato }}
+              <label class="form-check-label" for="{{ form.installato.id_for_label }}">
+                Installazione completata
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><i class="bi bi-building me-2"></i>Cliente</div>
+          <div class="card-body">
+            <div class="detail-field mb-0">
+              <div class="detail-field-label">Ragione Sociale</div>
+              <div class="detail-field-value">
+                <a href="{{ cliente.get_absolute_url }}" class="text-brand fw-semibold text-decoration-none">
+                  {{ cliente.ragione_sociale }}
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+</form>
+{% endblock %}

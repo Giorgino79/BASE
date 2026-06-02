@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<style>
+  @page { size: A4 portrait; margin: 2cm; }
+  body { font-family: Arial, sans-serif; font-size: 12px; color: #333; }
+  .header-bar { background: #5585b5; color: #fff; padding: 14px 18px; margin-bottom: 20px; }
+  .header-bar h1 { margin: 0; font-size: 18px; }
+  .header-bar p { margin: 4px 0 0; font-size: 11px; opacity: 0.85; }
+  .fornitore-box { border: 1px solid #dde3ea; border-radius: 4px; padding: 10px 14px;
+                   margin-bottom: 20px; font-size: 12px; background: #f9fafb; }
+  .fornitore-box strong { display: block; font-size: 14px; margin-bottom: 4px; }
+  .oda-header { background: #f0f4f8; padding: 7px 10px; margin: 16px 0 0;
+                font-size: 12px; font-weight: bold; border-left: 4px solid #5585b5; }
+  .oda-header span { color: #888; font-weight: normal; font-size: 11px; margin-left: 12px; }
+  table.righe { width: 100%; border-collapse: collapse; margin-bottom: 4px; }
+  table.righe th { background: #f0f4f8; text-align: left; padding: 6px 8px; font-size: 10px;
+                   text-transform: uppercase; color: #666; border-bottom: 2px solid #dde3ea; }
+  table.righe td { padding: 6px 8px; border-bottom: 1px solid #eee; font-size: 11px; }
+  table.righe td.num { text-align: right; }
+  tr.subtotale td { font-weight: bold; background: #f9fafb; border-top: 2px solid #dde3ea; }
+  .grand-total { margin-top: 20px; text-align: right; font-size: 14px; font-weight: bold;
+                 padding: 10px 14px; background: #5585b5; color: #fff; }
+  .footer { margin-top: 30px; font-size: 10px; color: #aaa; text-align: center; }
+</style>
+</head>
+<body>
+
+<div class="header-bar">
+  <h1>Autofatturazione</h1>
+  <p>Ordini ricevuti senza fattura — generato il {{ data_oggi|date:"d/m/Y" }}</p>
+</div>
+
+<div class="fornitore-box">
+  <strong>{{ fornitore.ragione_sociale }}</strong>
+  {% if fornitore.indirizzo %}{{ fornitore.indirizzo }}{% if fornitore.citta %} — {{ fornitore.citta }}{% endif %}{% endif %}
+  {% if fornitore.email %}<br>Email: {{ fornitore.email }}{% endif %}
+</div>
+
+{% for oda, righe in ordini %}
+<div class="oda-header">
+  Ordine {{ oda.numero_ordine }}
+  <span>del {{ oda.data_ordine|date:"d/m/Y" }}</span>
+</div>
+<table class="righe">
+  <thead>
+    <tr>
+      <th>Prodotto</th>
+      <th>UM</th>
+      <th style="text-align:right">Qt. ord.</th>
+      <th style="text-align:right">Prezzo unit.</th>
+      <th style="text-align:right">Totale riga</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for r in righe %}
+    <tr>
+      <td>{% if r.prodotto %}{{ r.prodotto.nome_prodotto }}{% else %}{{ r.descrizione|default:"—" }}{% endif %}</td>
+      <td>{% if r.prodotto %}{{ r.prodotto.unita_misura }}{% else %}{{ r.unita_misura|default:"—" }}{% endif %}</td>
+      <td class="num">{{ r.quantita_ordinata }}</td>
+      <td class="num">€ {{ r.prezzo_unitario }}</td>
+      <td class="num">€ {{ r.imponibile }}</td>
+    </tr>
+    {% endfor %}
+    <tr class="subtotale">
+      <td colspan="4" class="num">Totale ordine</td>
+      <td class="num">€ {{ oda.totale }}</td>
+    </tr>
+  </tbody>
+</table>
+{% endfor %}
+
+<div class="grand-total">
+  Totale complessivo: € {% for oda, righe in ordini %}{{ oda.totale }}{% if not forloop.last %} + {% endif %}{% endfor %}
+</div>
+
+<div class="footer">Documento generato automaticamente da RATTUS26</div>
+
+</body>
+</html>

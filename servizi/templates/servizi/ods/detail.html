@@ -1,0 +1,341 @@
+{% extends "base.html" %}
+{% load static %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/detail.css' %}">{% endblock %}
+{% block content %}
+<div class="page-header mb-4">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'servizi:dashboard' %}">Servizi</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'servizi:ods_list' %}">Ordini di Servizio</a></li>
+      <li class="breadcrumb-item active">{{ ods.numero }}</li>
+    </ol>
+  </nav>
+  <h1>
+    <i class="bi bi-clipboard-check me-2 text-brand"></i>{{ ods.numero }}
+    {% if ods.stato == "da_espletare" %}<span class="badge badge-ko ms-2">Da espletare</span>
+    {% elif ods.stato == "programmato" %}<span class="badge badge-wait ms-2">Programmato</span>
+    {% elif ods.stato == "completato" %}<span class="badge badge-ok ms-2">Completato</span>
+    {% else %}<span class="badge badge-ko ms-2">Annullato</span>{% endif %}
+  </h1>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-8">
+
+    <div class="card mb-3">
+      <div class="card-header card-header-primary"><i class="bi bi-info-circle me-2"></i>Dati ODS</div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-sm-6">
+            <div class="detail-field">
+              <div class="detail-field-label">Cliente</div>
+              <div class="detail-field-value">
+                {% if ods.filiale %}
+                  <a href="{{ ods.filiale.cliente.get_absolute_url }}" class="text-decoration-none">{{ ods.filiale.cliente }}</a>
+                  <span class="text-muted small"> — {{ ods.filiale.nome }}</span>
+                {% else %}
+                  <a href="{{ ods.privato.get_absolute_url }}" class="text-decoration-none">{{ ods.privato }}</a>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+          <div class="col-sm-6">
+            <div class="detail-field">
+              <div class="detail-field-label">Servizio</div>
+              <div class="detail-field-value">
+                {% with r=ods.righe.all.0 %}
+                  {% if r %}<a href="{{ r.servizio.get_absolute_url }}" class="text-decoration-none">{{ r.servizio }}</a>{% else %}—{% endif %}
+                {% endwith %}
+              </div>
+            </div>
+          </div>
+          <div class="col-sm-3">
+            <div class="detail-field">
+              <div class="detail-field-label">Data</div>
+              <div class="detail-field-value">{{ ods.data_servizio|date:"d/m/Y" }}</div>
+            </div>
+          </div>
+          <div class="col-sm-3">
+            <div class="detail-field">
+              <div class="detail-field-label">Ora inizio</div>
+              <div class="detail-field-value {% if not ods.ora_inizio %}empty{% endif %}">{{ ods.ora_inizio|default:"—" }}</div>
+            </div>
+          </div>
+          <div class="col-sm-3">
+            <div class="detail-field">
+              <div class="detail-field-label">Ora fine</div>
+              <div class="detail-field-value {% if not ods.ora_fine %}empty{% endif %}">{{ ods.ora_fine|default:"—" }}</div>
+            </div>
+          </div>
+          <div class="col-sm-3">
+            <div class="detail-field">
+              <div class="detail-field-label">Totale</div>
+              <div class="detail-field-value fw-bold {% if ods.prezzo_totale %}text-brand{% else %}empty{% endif %}">
+                {% if ods.prezzo_totale %}€ {{ ods.prezzo_totale }}{% else %}—{% endif %}
+              </div>
+            </div>
+          </div>
+          {% with righe=ods.righe.all %}
+          {% if righe.count > 1 %}
+          <div class="col-12">
+            <div class="detail-field mb-0">
+              <div class="detail-field-label">Righe servizio</div>
+              <div class="detail-field-value p-0">
+                <table class="table table-sm mb-0">
+                  <thead class="bg-brand text-white"><tr><th>Servizio</th><th class="text-end">Prezzo</th><th>Note</th></tr></thead>
+                  <tbody>
+                    {% for r in righe %}
+                    <tr>
+                      <td><a href="{{ r.servizio.get_absolute_url }}" class="text-decoration-none">{{ r.servizio }}</a></td>
+                      <td class="text-end">{% if r.prezzo %}€ {{ r.prezzo }}{% else %}<em class="text-muted">—</em>{% endif %}</td>
+                      <td class="text-muted small">{{ r.note|default:"" }}</td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+          {% endif %}
+          {% endwith %}
+
+          {% if ods.distinta %}
+          <div class="col-sm-6">
+            <div class="detail-field">
+              <div class="detail-field-label">Distinta</div>
+              <div class="detail-field-value">
+                <a href="{{ ods.distinta.get_absolute_url }}" class="text-decoration-none">{{ ods.distinta }}</a>
+              </div>
+            </div>
+          </div>
+          {% endif %}
+          {% if ods.modalita_pagamento %}
+          <div class="col-sm-6">
+            <div class="detail-field">
+              <div class="detail-field-label">Modalità pagamento</div>
+              <div class="detail-field-value">{{ ods.get_modalita_pagamento_display }}</div>
+            </div>
+          </div>
+          {% endif %}
+
+          <div class="col-sm-6">
+            <div class="detail-field">
+              <div class="detail-field-label">Tecnico</div>
+              <div class="detail-field-value {% if not ods.tecnico %}empty{% endif %}">
+                {% if ods.tecnico %}{{ ods.tecnico.get_full_name|default:ods.tecnico.username }}{% else %}—{% endif %}
+              </div>
+            </div>
+          </div>
+          <div class="col-sm-6">
+            <div class="detail-field">
+              <div class="detail-field-label">Assistente</div>
+              <div class="detail-field-value {% if not ods.assistente %}empty{% endif %}">
+                {% if ods.assistente %}{{ ods.assistente.get_full_name|default:ods.assistente.username }}{% else %}—{% endif %}
+              </div>
+            </div>
+          </div>
+          <div class="col-sm-6">
+            <div class="detail-field">
+              <div class="detail-field-label">Pagamento</div>
+              <div class="detail-field-value">
+                {% if ods.incasso_al_servizio %}
+                  {% if ods.incassato %}
+                    <span class="badge badge-ok"><i class="bi bi-cash-coin me-1"></i>Incassato</span>
+                    {% if ods.importo_incassato %}<span class="ms-2 fw-bold text-brand">€ {{ ods.importo_incassato }}</span>{% endif %}
+                    {% if ods.data_incasso %}<span class="text-muted small ms-2">{{ ods.data_incasso|date:"d/m/Y" }}</span>{% endif %}
+                  {% else %}
+                    <span class="badge badge-wait"><i class="bi bi-clock me-1"></i>Da incassare</span>
+                  {% endif %}
+                {% else %}
+                  <span class="text-muted small">Da fatturare</span>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+          {% if ods.note_intervento %}
+          <div class="col-12">
+            <div class="detail-field">
+              <div class="detail-field-label">Note intervento</div>
+              <div class="detail-field-value">{{ ods.note_intervento|linebreaksbr }}</div>
+            </div>
+          </div>
+          {% endif %}
+
+          {# Prodotti consumati (aggregati da tutte le righe) #}
+          {% with righe=ods.righe.all %}
+          {% for r in righe %}{% for c in r.consumi.all %}
+          {% if forloop.parentloop.first and forloop.first %}
+          <div class="col-12">
+            <div class="detail-field mb-0">
+              <div class="detail-field-label"><i class="bi bi-box-seam me-1"></i>Prodotti consumati</div>
+              <div class="detail-field-value">
+                <table class="table table-sm mb-0">
+                  <thead class="bg-brand text-white"><tr><th>Prodotto</th><th class="text-end">Quantità</th><th>Note</th></tr></thead>
+                  <tbody>
+          {% endif %}
+                    <tr>
+                      <td class="small">{{ c.prodotto }}</td>
+                      <td class="text-end small fw-bold">{{ c.quantita }} {{ c.prodotto.unita_misura }}</td>
+                      <td class="text-muted small">{{ c.note|default:"" }}</td>
+                    </tr>
+          {% if forloop.last and forloop.parentloop.last %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+          {% endif %}
+          {% endfor %}{% endfor %}
+          {% endwith %}
+
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card mb-3">
+      <div class="card-header"><i class="bi bi-gear me-2"></i>Azioni</div>
+      <div class="list-group list-group-flush">
+        <a href="{% url 'servizi:ods_create' %}" class="list-group-item list-group-item-action"><i class="bi bi-plus-lg me-2"></i>Nuovo ODS</a>
+        <a href="{{ edit_url }}" class="list-group-item list-group-item-action"><i class="bi bi-pencil me-2"></i>Modifica</a>
+        <a href="#" class="list-group-item list-group-item-action"
+           data-bs-toggle="modal" data-bs-target="#modal-personale">
+          <i class="bi bi-people me-2"></i>Cambia tecnico / assistente
+        </a>
+        {% if ods.incasso_al_servizio and not ods.incassato and ods.stato == "completato" %}
+        <a href="#" class="list-group-item list-group-item-action text-success"
+           data-bs-toggle="modal" data-bs-target="#modal-incasso">
+          <i class="bi bi-cash-coin me-2"></i>Segna come incassato
+        </a>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card mb-3">
+      <div class="card-header"><i class="bi bi-arrow-repeat me-2"></i>Cambia stato</div>
+      <div class="card-body">
+        <form method="post" action="{% url 'servizi:ods_set_stato' ods.pk %}">
+          {% csrf_token %}
+          <select name="stato" class="form-select form-select-sm mb-2">
+            {% for val, label in stato_choices %}
+            <option value="{{ val }}" {% if ods.stato == val %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+          <button type="submit" class="btn btn-sm btn-brand w-100">Aggiorna stato</button>
+        </form>
+      </div>
+    </div>
+
+    {% include 'commons_templates/components/sidebar_allegati_qr.html' with object=ods %}
+
+    <div class="card mb-3">
+      <div class="card-header"><i class="bi bi-info-circle me-2"></i>Informazioni</div>
+      <div class="card-body">
+        <div class="detail-field">
+          <div class="detail-field-label">Creato da</div>
+          <div class="detail-field-value">{{ ods.created_by.get_full_name|default:"—" }}</div>
+        </div>
+        <div class="detail-field mb-0">
+          <div class="detail-field-label">Creato il</div>
+          <div class="detail-field-value">{{ ods.created_at|date:"d/m/Y H:i" }}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-2">
+      <a href="{{ back_url }}" class="btn btn-outline-secondary btn-sm w-100"><i class="bi bi-arrow-left me-1"></i>Torna agli ODS</a>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="modal-personale" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h6 class="modal-title"><i class="bi bi-people me-2"></i>Tecnico e Assistente</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" action="{% url 'servizi:ods_cambia_personale' ods.pk %}">
+        {% csrf_token %}
+        <div class="modal-body">
+          <label class="form-label">Tecnico <span class="text-danger">*</span></label>
+          <select name="tecnico" class="form-select form-select-sm mb-3" required id="mp-tecnico">
+            <option value="">— seleziona —</option>
+            {% for u in utenti %}
+            <option value="{{ u.pk }}" {% if ods.tecnico_id == u.pk %}selected{% endif %}>
+              {{ u.get_full_name|default:u.username }}
+            </option>
+            {% endfor %}
+          </select>
+          <label class="form-label">Assistente</label>
+          <select name="assistente" class="form-select form-select-sm" id="mp-assistente">
+            <option value="">— nessuno —</option>
+            {% for u in utenti %}
+            <option value="{{ u.pk }}" {% if ods.assistente_id == u.pk %}selected{% endif %}>
+              {{ u.get_full_name|default:u.username }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Annulla</button>
+          <button type="submit" class="btn btn-sm btn-brand"><i class="bi bi-check-lg me-1"></i>Salva</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% if ods.incasso_al_servizio and not ods.incassato and ods.stato == "completato" %}
+<div class="modal fade" id="modal-incasso" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h6 class="modal-title"><i class="bi bi-cash-coin me-2"></i>Segna come incassato</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" action="{% url 'servizi:ods_segna_incassato' ods.pk %}">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ request.path }}">
+        <div class="modal-body">
+          <label class="form-label">Importo incassato</label>
+          <div class="input-group">
+            <span class="input-group-text">€</span>
+            <input type="number" name="importo_incassato" step="0.01"
+                   value="{{ ods.prezzo_totale|default:'' }}" class="form-control">
+          </div>
+          <div class="form-text">Lascia vuoto per usare il prezzo dell'ODS.</div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Annulla</button>
+          <button type="submit" class="btn btn-sm btn-success"><i class="bi bi-check-lg me-1"></i>Conferma</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  const mpTecnico    = document.getElementById('mp-tecnico');
+  const mpAssistente = document.getElementById('mp-assistente');
+  if (!mpTecnico || !mpAssistente) return;
+  function sync(src, dst) {
+    const v = src.value;
+    Array.from(dst.options).forEach(function (o) {
+      o.disabled = o.value && o.value === v;
+      if (o.disabled && dst.value === o.value) dst.value = '';
+    });
+  }
+  mpTecnico.addEventListener('change', function () { sync(mpTecnico, mpAssistente); });
+  mpAssistente.addEventListener('change', function () { sync(mpAssistente, mpTecnico); });
+  sync(mpTecnico, mpAssistente);
+  sync(mpAssistente, mpTecnico);
+})();
+</script>
+{% endblock %}

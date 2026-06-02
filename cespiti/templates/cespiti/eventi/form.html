@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% load static %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/detail.css' %}">{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'cespiti:dashboard' %}">Cespiti</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'cespiti:evento_list' %}">Eventi</a></li>
+      <li class="breadcrumb-item active">{% if object %}Modifica{% else %}Nuovo Evento{% endif %}</li>
+    </ol>
+  </nav>
+  <h1>
+    <i class="bi bi-exclamation-triangle me-2 text-brand"></i>
+    {% if object %}Modifica Evento{% else %}Nuovo Evento{% endif %}
+  </h1>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-7">
+    <form method="post" enctype="multipart/form-data">
+      {% csrf_token %}
+      <div class="card mb-3">
+        <div class="card-header card-header-primary"><i class="bi bi-info-circle me-2"></i>Dati Evento</div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-sm-6">
+              <label class="form-label">{{ form.automezzo.label }} <span class="text-danger">*</span></label>
+              {{ form.automezzo }}
+              {% if form.automezzo.errors %}<div class="invalid-feedback d-block">{{ form.automezzo.errors.0 }}</div>{% endif %}
+            </div>
+            <div class="col-sm-3">
+              <label class="form-label">{{ form.tipo.label }} <span class="text-danger">*</span></label>
+              {{ form.tipo }}
+              {% if form.tipo.errors %}<div class="invalid-feedback d-block">{{ form.tipo.errors.0 }}</div>{% endif %}
+            </div>
+            <div class="col-sm-3">
+              <label class="form-label">{{ form.data_evento.label }} <span class="text-danger">*</span></label>
+              {{ form.data_evento }}
+              {% if form.data_evento.errors %}<div class="invalid-feedback d-block">{{ form.data_evento.errors.0 }}</div>{% endif %}
+            </div>
+            <div class="col-12">
+              <label class="form-label">{{ form.descrizione.label }}</label>
+              {{ form.descrizione }}
+            </div>
+            <div class="col-sm-4">
+              <label class="form-label">{{ form.costo.label }}</label>
+              {{ form.costo }}
+              {% if form.costo.errors %}<div class="invalid-feedback d-block">{{ form.costo.errors.0 }}</div>{% endif %}
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label">{{ form.dipendente_coinvolto.label }}</label>
+              {{ form.dipendente_coinvolto }}
+            </div>
+            <div class="col-12">
+              <label class="form-label">{{ form.file_allegato.label }}</label>
+              {{ form.file_allegato }}
+            </div>
+            <div class="col-sm-4">
+              <div class="form-check mt-2">
+                {{ form.risolto }}
+                <label class="form-check-label" for="{{ form.risolto.id_for_label }}">{{ form.risolto.label }}</label>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Salva</button>
+        <a href="{% if object %}{% url 'cespiti:evento_detail' object.pk %}{% else %}{% url 'cespiti:evento_list' %}{% endif %}" class="btn btn-outline-secondary">Annulla</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

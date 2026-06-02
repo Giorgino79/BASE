@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% load static %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/detail.css' %}">{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'cespiti:dashboard' %}">Cespiti</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'cespiti:automezzo_list' %}">Automezzi</a></li>
+      <li class="breadcrumb-item active">{% if object %}Modifica {{ object.targa }}{% else %}Nuovo Automezzo{% endif %}</li>
+    </ol>
+  </nav>
+  <h1>
+    <i class="bi bi-truck me-2 text-brand"></i>
+    {% if object %}Modifica {{ object.targa }}{% else %}Nuovo Automezzo{% endif %}
+  </h1>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-8">
+    <form method="post" enctype="multipart/form-data">
+      {% csrf_token %}
+
+      <div class="card mb-3">
+        <div class="card-header card-header-primary"><i class="bi bi-info-circle me-2"></i>Dati Veicolo</div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-sm-3">
+              <label class="form-label">{{ form.numero_mezzo.label }}</label>
+              {{ form.numero_mezzo }}
+              {% if form.numero_mezzo.errors %}<div class="invalid-feedback d-block">{{ form.numero_mezzo.errors.0 }}</div>{% endif %}
+            </div>
+            <div class="col-sm-3">
+              <label class="form-label">{{ form.targa.label }} <span class="text-danger">*</span></label>
+              {{ form.targa }}
+              {% if form.targa.errors %}<div class="invalid-feedback d-block">{{ form.targa.errors.0 }}</div>{% endif %}
+            </div>
+            <div class="col-sm-3">
+              <label class="form-label">{{ form.marca.label }} <span class="text-danger">*</span></label>
+              {{ form.marca }}
+              {% if form.marca.errors %}<div class="invalid-feedback d-block">{{ form.marca.errors.0 }}</div>{% endif %}
+            </div>
+            <div class="col-sm-3">
+              <label class="form-label">{{ form.modello.label }} <span class="text-danger">*</span></label>
+              {{ form.modello }}
+              {% if form.modello.errors %}<div class="invalid-feedback d-block">{{ form.modello.errors.0 }}</div>{% endif %}
+            </div>
+            <div class="col-sm-3">
+              <label class="form-label">{{ form.anno_immatricolazione.label }} <span class="text-danger">*</span></label>
+              {{ form.anno_immatricolazione }}
+              {% if form.anno_immatricolazione.errors %}<div class="invalid-feedback d-block">{{ form.anno_immatricolazione.errors.0 }}</div>{% endif %}
+            </div>
+            <div class="col-sm-3">
+              <label class="form-label">{{ form.chilometri_attuali.label }}</label>
+              {{ form.chilometri_attuali }}
+              {% if form.chilometri_attuali.errors %}<div class="invalid-feedback d-block">{{ form.chilometri_attuali.errors.0 }}</div>{% endif %}
+            </div>
+            <div class="col-sm-3">
+              <label class="form-label">{{ form.assegnato_a.label }}</label>
+              {{ form.assegnato_a }}
+              {% if form.assegnato_a.errors %}<div class="invalid-feedback d-block">{{ form.assegnato_a.errors.0 }}</div>{% endif %}
+            </div>
+          </div>
+
+          <div class="row g-3 mt-1">
+            <div class="col-sm-3">
+              <div class="form-check mt-2">
+                {{ form.attivo }}
+                <label class="form-check-label" for="{{ form.attivo.id_for_label }}">{{ form.attivo.label }}</label>
+              </div>
+            </div>
+            <div class="col-sm-3">
+              <div class="form-check mt-2">
+                {{ form.disponibile }}
+                <label class="form-check-label" for="{{ form.disponibile.id_for_label }}">{{ form.disponibile.label }}</label>
+              </div>
+            </div>
+            <div class="col-sm-3">
+              <div class="form-check mt-2">
+                {{ form.bloccata }}
+                <label class="form-check-label" for="{{ form.bloccata.id_for_label }}">{{ form.bloccata.label }}</label>
+              </div>
+            </div>
+          </div>
+
+          <div class="row g-3 mt-1">
+            <div class="col-12">
+              <label class="form-label">{{ form.motivo_blocco.label }}</label>
+              {{ form.motivo_blocco }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card mb-3">
+        <div class="card-header card-header-primary"><i class="bi bi-file-earmark-text me-2"></i>Documenti e Scadenze</div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-sm-6">
+              <label class="form-label">{{ form.data_revisione.label }}</label>
+              {{ form.data_revisione }}
+              {% if form.data_revisione.errors %}<div class="invalid-feedback d-block">{{ form.data_revisione.errors.0 }}</div>{% endif %}
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label">{{ form.data_scadenza_assicurazione.label }}</label>
+              {{ form.data_scadenza_assicurazione }}
+              {% if form.data_scadenza_assicurazione.errors %}<div class="invalid-feedback d-block">{{ form.data_scadenza_assicurazione.errors.0 }}</div>{% endif %}
+            </div>
+            <div class="col-sm-4">
+              <label class="form-label">{{ form.libretto_fronte.label }}</label>
+              {{ form.libretto_fronte }}
+            </div>
+            <div class="col-sm-4">
+              <label class="form-label">{{ form.libretto_retro.label }}</label>
+              {{ form.libretto_retro }}
+            </div>
+            <div class="col-sm-4">
+              <label class="form-label">{{ form.assicurazione.label }}</label>
+              {{ form.assicurazione }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Salva</button>
+        <a href="{% if object %}{{ object.get_absolute_url }}{% else %}{% url 'cespiti:automezzo_list' %}{% endif %}" class="btn btn-outline-secondary">Annulla</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

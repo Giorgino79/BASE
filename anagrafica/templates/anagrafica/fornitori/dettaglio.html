@@ -1,0 +1,246 @@
+{% extends "commons_templates/base_detail.html" %}
+{% load static %}
+{% load allegati_tags %}
+
+{% block title %}{{ fornitore.ragione_sociale }}{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'anagrafica:fornitore_list' %}">Fornitori</a></li>
+<li class="breadcrumb-item active">{{ fornitore.ragione_sociale|truncatechars:30 }}</li>
+{% endblock %}
+
+{% block page_title %}
+<i class="bi bi-truck me-2 text-success"></i>{{ fornitore.ragione_sociale }}
+{% endblock %}
+
+{% block page_subtitle %}
+{% if fornitore.get_categoria_display %}
+<p class="text-muted mb-0">{{ fornitore.get_categoria_display }}</p>
+{% endif %}
+{% endblock %}
+
+{% block status_badge %}
+<div class="text-end">
+    {% if fornitore.attivo %}
+        <span class="badge fs-6 bg-success">Attivo</span>
+    {% else %}
+        <span class="badge fs-6 bg-secondary">Inattivo</span>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block detail_content %}
+<!-- Dati Anagrafici -->
+<div class="mb-4">
+    <h5 class="border-bottom pb-2 mb-3">
+        <i class="bi bi-building me-2 text-primary"></i>Dati Anagrafici
+    </h5>
+    <div class="row">
+        <div class="col-md-6">
+            <dl class="row mb-0">
+                <dt class="col-sm-5 text-muted">Ragione Sociale</dt>
+                <dd class="col-sm-7"><strong>{{ fornitore.ragione_sociale }}</strong></dd>
+
+                {% if fornitore.indirizzo %}
+                <dt class="col-sm-5 text-muted">Indirizzo</dt>
+                <dd class="col-sm-7">{{ fornitore.indirizzo }}</dd>
+                {% endif %}
+
+                <dt class="col-sm-5 text-muted">Città</dt>
+                <dd class="col-sm-7">
+                    {% if fornitore.citta %}
+                        {{ fornitore.citta }}
+                        {% if fornitore.cap %} ({{ fornitore.cap }}){% endif %}
+                    {% else %}
+                        <span class="text-muted">-</span>
+                    {% endif %}
+                </dd>
+            </dl>
+        </div>
+        <div class="col-md-6">
+            <dl class="row mb-0">
+                <dt class="col-sm-5 text-muted">Fornitore dal</dt>
+                <dd class="col-sm-7">{{ fornitore.created_at|date:"d/m/Y" }}</dd>
+
+                {% if fornitore.get_categoria_display %}
+                <dt class="col-sm-5 text-muted">Categoria</dt>
+                <dd class="col-sm-7">
+                    <span class="badge bg-info">{{ fornitore.get_categoria_display }}</span>
+                </dd>
+                {% endif %}
+            </dl>
+        </div>
+    </div>
+</div>
+
+<!-- Contatti -->
+<div class="mb-4">
+    <h5 class="border-bottom pb-2 mb-3">
+        <i class="bi bi-telephone me-2 text-primary"></i>Contatti
+    </h5>
+    <div class="row">
+        <div class="col-md-6">
+            <dl class="row mb-0">
+                <dt class="col-sm-5 text-muted">Telefono</dt>
+                <dd class="col-sm-7">
+                    <a href="tel:{{ fornitore.telefono }}" class="text-decoration-none">
+                        <i class="bi bi-phone text-success me-1"></i>{{ fornitore.telefono }}
+                    </a>
+                </dd>
+
+                <dt class="col-sm-5 text-muted">Email</dt>
+                <dd class="col-sm-7">
+                    <a href="mailto:{{ fornitore.email }}" class="text-decoration-none">
+                        <i class="bi bi-envelope text-primary me-1"></i>{{ fornitore.email }}
+                    </a>
+                </dd>
+            </dl>
+        </div>
+        <div class="col-md-6">
+            <dl class="row mb-0">
+                {% if fornitore.pec %}
+                <dt class="col-sm-5 text-muted">PEC</dt>
+                <dd class="col-sm-7">
+                    <a href="mailto:{{ fornitore.pec }}" class="text-decoration-none">
+                        <i class="bi bi-shield-check text-warning me-1"></i>{{ fornitore.pec }}
+                    </a>
+                </dd>
+                {% endif %}
+            </dl>
+        </div>
+    </div>
+</div>
+
+<!-- Dati Fiscali -->
+<div class="mb-4">
+    <h5 class="border-bottom pb-2 mb-3">
+        <i class="bi bi-receipt me-2 text-primary"></i>Dati Fiscali
+    </h5>
+    <div class="row">
+        <div class="col-md-6">
+            <dl class="row mb-0">
+                {% if fornitore.partita_iva %}
+                <dt class="col-sm-5 text-muted">Partita IVA</dt>
+                <dd class="col-sm-7">
+                    <code>{{ fornitore.partita_iva }}</code>
+                    <i class="bi bi-check-circle text-success ms-1" title="Validata"></i>
+                </dd>
+                {% endif %}
+
+                {% if fornitore.codice_fiscale %}
+                <dt class="col-sm-5 text-muted">Codice Fiscale</dt>
+                <dd class="col-sm-7">
+                    <code>{{ fornitore.codice_fiscale }}</code>
+                    <i class="bi bi-check-circle text-success ms-1" title="Validato"></i>
+                </dd>
+                {% endif %}
+            </dl>
+        </div>
+        <div class="col-md-6">
+            <dl class="row mb-0">
+                {% if fornitore.codice_univoco %}
+                <dt class="col-sm-5 text-muted">Codice Univoco</dt>
+                <dd class="col-sm-7"><code>{{ fornitore.codice_univoco }}</code></dd>
+                {% endif %}
+
+                {% if not fornitore.partita_iva and not fornitore.codice_fiscale %}
+                <dt class="col-sm-12 text-center text-muted">
+                    <i class="bi bi-exclamation-triangle text-warning me-1"></i>
+                    Nessun dato fiscale inserito
+                </dt>
+                {% endif %}
+            </dl>
+        </div>
+    </div>
+</div>
+
+<!-- Dati Commerciali -->
+<div class="mb-4">
+    <h5 class="border-bottom pb-2 mb-3">
+        <i class="bi bi-cash-stack me-2 text-primary"></i>Dati Commerciali
+    </h5>
+    <div class="row">
+        <div class="col-md-6">
+            <dl class="row mb-0">
+                <dt class="col-sm-5 text-muted">Tipo Pagamento</dt>
+                <dd class="col-sm-7">
+                    <span class="badge bg-primary">{{ fornitore.get_tipo_pagamento_display }}</span>
+                </dd>
+
+                {% if fornitore.iban %}
+                <dt class="col-sm-5 text-muted">IBAN</dt>
+                <dd class="col-sm-7">
+                    <code class="small">{{ fornitore.iban_formatted }}</code>
+                    <i class="bi bi-check-circle text-success ms-1" title="Validato"></i>
+                </dd>
+                {% endif %}
+            </dl>
+        </div>
+        <div class="col-md-6">
+            <dl class="row mb-0">
+                <dt class="col-sm-5 text-muted">Stato</dt>
+                <dd class="col-sm-7">
+                    {% if fornitore.attivo %}
+                        <span class="badge bg-success">Attivo</span>
+                    {% else %}
+                        <span class="badge bg-secondary">Inattivo</span>
+                    {% endif %}
+                </dd>
+            </dl>
+        </div>
+    </div>
+</div>
+
+<!-- Note -->
+{% if fornitore.note %}
+<div class="mb-4">
+    <h5 class="border-bottom pb-2 mb-3">
+        <i class="bi bi-sticky me-2 text-primary"></i>Note
+    </h5>
+    <div class="alert alert-info mb-0">
+        {{ fornitore.note|linebreaks }}
+    </div>
+</div>
+{% endif %}
+
+<!-- Informazioni Temporali -->
+<div class="mb-4">
+    <h5 class="border-bottom pb-2 mb-3">
+        <i class="bi bi-clock me-2 text-primary"></i>Informazioni
+    </h5>
+    <div class="row">
+        <div class="col-md-6">
+            <dl class="row mb-0">
+                <dt class="col-sm-5 text-muted">Creato il</dt>
+                <dd class="col-sm-7">{{ fornitore.created_at|date:"d/m/Y H:i" }}</dd>
+            </dl>
+        </div>
+        <div class="col-md-6">
+            <dl class="row mb-0">
+                <dt class="col-sm-5 text-muted">Modificato il</dt>
+                <dd class="col-sm-7">{{ fornitore.updated_at|date:"d/m/Y H:i" }}</dd>
+            </dl>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block custom_actions %}
+<a href="{% url 'contabilita:mastrino_fornitore_detail' fornitore.pk %}"
+   class="list-group-item list-group-item-action">
+    <i class="bi bi-journal-text me-2 text-primary"></i>Mastrino contabile
+</a>
+{% if user.is_staff and fornitore.attivo %}
+<a href="{% url 'anagrafica:toggle_attivo' 'fornitore' fornitore.pk %}"
+   class="list-group-item list-group-item-action text-warning"
+   onclick="return confirm('Sei sicuro di voler disattivare questo fornitore?')">
+    <i class="bi bi-x-circle me-2"></i>Disattiva Fornitore
+</a>
+{% elif user.is_staff %}
+<a href="{% url 'anagrafica:toggle_attivo' 'fornitore' fornitore.pk %}"
+   class="list-group-item list-group-item-action text-success"
+   onclick="return confirm('Sei sicuro di voler attivare questo fornitore?')">
+    <i class="bi bi-check-circle me-2"></i>Attiva Fornitore
+</a>
+{% endif %}
+{% endblock %}

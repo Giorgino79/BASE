@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% load static %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/detail.css' %}">{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'cespiti:dashboard' %}">Cespiti</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'cespiti:costo_list' %}">Costi</a></li>
+      <li class="breadcrumb-item active">{{ costo.numero_pratica }}</li>
+    </ol>
+  </nav>
+  <h1>
+    <i class="bi bi-currency-euro me-2 text-brand"></i>{{ costo.titolo|truncatechars:50 }}
+    <span class="badge badge-accent ms-2">{{ costo.numero_pratica }}</span>
+    {% if costo.stato == "pagato" %}<span class="badge badge-ok ms-1">Pagato</span>
+    {% elif costo.stato == "fatturato" %}<span class="badge badge-info ms-1">Fatturato</span>
+    {% elif costo.stato == "completato" %}<span class="badge badge-info ms-1">Completato</span>
+    {% elif costo.stato == "in_corso" %}<span class="badge badge-wait ms-1">In corso</span>
+    {% elif costo.stato == "approvato" %}<span class="badge badge-accent ms-1">Approvato</span>
+    {% else %}<span class="badge badge-wait ms-1">Preventivo</span>{% endif %}
+  </h1>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-8">
+
+    <div class="card mb-3">
+      <div class="card-header card-header-primary"><i class="bi bi-info-circle me-2"></i>Dettagli Pratica</div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-sm-6"><div class="detail-field"><div class="detail-field-label">Stabilimento</div><div class="detail-field-value"><a href="{{ costo.stabilimento.get_absolute_url }}">{{ costo.stabilimento.nome }}</a></div></div></div>
+          <div class="col-sm-6"><div class="detail-field"><div class="detail-field-label">Fornitore</div><div class="detail-field-value">{{ costo.fornitore }}</div></div></div>
+          <div class="col-sm-4"><div class="detail-field"><div class="detail-field-label">Causale</div><div class="detail-field-value">{{ costo.get_causale_display }}</div></div></div>
+          <div class="col-sm-4"><div class="detail-field"><div class="detail-field-label">Incaricato</div><div class="detail-field-value">{{ costo.incaricato.get_full_name }}</div></div></div>
+          <div class="col-sm-4"><div class="detail-field"><div class="detail-field-label">Data Richiesta</div><div class="detail-field-value">{{ costo.data_richiesta|date:"d/m/Y" }}</div></div></div>
+          <div class="col-sm-4"><div class="detail-field"><div class="detail-field-label">Importo</div><div class="detail-field-value fw-bold">€ {{ costo.importo }}</div></div></div>
+          <div class="col-sm-4"><div class="detail-field"><div class="detail-field-label">IVA {{ costo.iva_percentuale }}%</div><div class="detail-field-value">€ {{ costo.calcola_iva }}</div></div></div>
+          <div class="col-sm-4"><div class="detail-field"><div class="detail-field-label">Totale con IVA</div><div class="detail-field-value fw-bold">€ {{ costo.calcola_totale_con_iva }}</div></div></div>
+          <div class="col-sm-4"><div class="detail-field"><div class="detail-field-label">Inizio Lavori</div><div class="detail-field-value">{{ costo.data_inizio_lavori|date:"d/m/Y"|default:"—" }}</div></div></div>
+          <div class="col-sm-4"><div class="detail-field"><div class="detail-field-label">Fine Lavori</div><div class="detail-field-value">{{ costo.data_fine_lavori|date:"d/m/Y"|default:"—" }}</div></div></div>
+          <div class="col-sm-4"><div class="detail-field"><div class="detail-field-label">Data Fattura</div><div class="detail-field-value">{{ costo.data_fattura|date:"d/m/Y"|default:"—" }}</div></div></div>
+          <div class="col-sm-4">
+            <div class="detail-field">
+              <div class="detail-field-label">Prossima Scadenza</div>
+              <div class="detail-field-value">
+                {% if costo.data_scadenza_servizio %}
+                  {{ costo.data_scadenza_servizio|date:"d/m/Y" }}
+                  {% if costo.is_scaduto %}<span class="badge badge-ko ms-1">Scaduto</span>
+                  {% elif costo.is_in_scadenza %}<span class="badge badge-wait ms-1">{{ costo.giorni_alla_scadenza }}gg</span>{% endif %}
+                {% else %}—{% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+        {% if costo.descrizione %}
+        <div class="detail-field mt-2"><div class="detail-field-label">Descrizione</div><div class="detail-field-value">{{ costo.descrizione }}</div></div>
+        {% endif %}
+        {% if costo.note_interne %}
+        <div class="detail-field mt-2"><div class="detail-field-label">Note Interne</div><div class="detail-field-value">{{ costo.note_interne }}</div></div>
+        {% endif %}
+      </div>
+    </div>
+
+    {% if costo.consumo_kwh or costo.consumo_mc or costo.periodo_fatturazione_da %}
+    <div class="card mb-3">
+      <div class="card-header card-header-primary"><i class="bi bi-lightning-charge me-2"></i>Dati Utenza</div>
+      <div class="card-body">
+        <div class="row">
+          {% if costo.consumo_kwh %}<div class="col-sm-4"><div class="detail-field"><div class="detail-field-label">Consumo kWh</div><div class="detail-field-value">{{ costo.consumo_kwh }}</div></div></div>{% endif %}
+          {% if costo.consumo_mc %}<div class="col-sm-4"><div class="detail-field"><div class="detail-field-label">Consumo mc</div><div class="detail-field-value">{{ costo.consumo_mc }}</div></div></div>{% endif %}
+          {% if costo.codice_pdr_pod %}<div class="col-sm-4"><div class="detail-field"><div class="detail-field-label">Codice PDR/POD</div><div class="detail-field-value">{{ costo.codice_pdr_pod }}</div></div></div>{% endif %}
+          {% if costo.periodo_fatturazione_da %}<div class="col-sm-4"><div class="detail-field"><div class="detail-field-label">Periodo Da</div><div class="detail-field-value">{{ costo.periodo_fatturazione_da|date:"d/m/Y" }}</div></div></div>{% endif %}
+          {% if costo.periodo_fatturazione_a %}<div class="col-sm-4"><div class="detail-field"><div class="detail-field-label">Periodo A</div><div class="detail-field-value">{{ costo.periodo_fatturazione_a|date:"d/m/Y" }}</div></div></div>{% endif %}
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if costo.fattura or costo.preventivo or costo.certificato or costo.allegato1 or costo.allegato2 %}
+    <div class="card mb-3">
+      <div class="card-header card-header-primary"><i class="bi bi-paperclip me-2"></i>File Allegati</div>
+      <div class="list-group list-group-flush">
+        {% if costo.fattura %}<a href="{{ costo.fattura.url }}" class="list-group-item list-group-item-action small" target="_blank"><i class="bi bi-receipt me-1"></i>Fattura</a>{% endif %}
+        {% if costo.preventivo %}<a href="{{ costo.preventivo.url }}" class="list-group-item list-group-item-action small" target="_blank"><i class="bi bi-file-earmark-text me-1"></i>Preventivo</a>{% endif %}
+        {% if costo.certificato %}<a href="{{ costo.certificato.url }}" class="list-group-item list-group-item-action small" target="_blank"><i class="bi bi-award me-1"></i>Certificato</a>{% endif %}
+        {% if costo.allegato1 %}<a href="{{ costo.allegato1.url }}" class="list-group-item list-group-item-action small" target="_blank"><i class="bi bi-paperclip me-1"></i>Allegato 1</a>{% endif %}
+        {% if costo.allegato2 %}<a href="{{ costo.allegato2.url }}" class="list-group-item list-group-item-action small" target="_blank"><i class="bi bi-paperclip me-1"></i>Allegato 2</a>{% endif %}
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+
+  <div class="col-lg-4">
+    <div class="sidebar-actions">
+      <div class="card mb-3">
+        <div class="card-header"><i class="bi bi-gear me-2"></i>Azioni</div>
+        <div class="list-group list-group-flush">
+          {% if edit_url %}
+          <a href="{{ edit_url }}" class="list-group-item list-group-item-action"><i class="bi bi-pencil"></i>Modifica</a>
+          {% endif %}
+          <a href="{{ costo.stabilimento.get_absolute_url }}" class="list-group-item list-group-item-action"><i class="bi bi-building"></i>Stabilimento</a>
+        </div>
+      </div>
+      {% include 'commons_templates/components/sidebar_allegati_qr.html' with object=costo %}
+
+      <div class="mt-3">
+        <a href="{{ back_url }}" class="btn btn-outline-secondary btn-sm w-100"><i class="bi bi-arrow-left me-1"></i>Torna alla lista</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,315 @@
+{% extends "base.html" %}
+{% load static %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/detail.css' %}">{% endblock %}
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-start mb-4">
+  <div>
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'servizi:dashboard' %}">Servizi</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'servizi:distinta_list' %}">Distinte</a></li>
+        <li class="breadcrumb-item active">{{ distinta }}</li>
+      </ol>
+    </nav>
+    <h1>
+      <i class="bi bi-journal-check me-2 text-brand"></i>{{ distinta }}
+      {% if distinta.stato == "aperta" %}<span class="badge badge-wait ms-2">Aperta</span>
+      {% else %}<span class="badge badge-ok ms-2">Chiusa</span>{% endif %}
+    </h1>
+  </div>
+  {% if distinta.stato == "aperta" %}
+  <a href="{% url 'servizi:chiudi_distinta_ufficio' distinta.pk %}"
+     class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-lock me-1"></i>Chiudi Distinta
+  </a>
+  {% endif %}
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-sm-3">
+    <div class="detail-field">
+      <div class="detail-field-label">Tecnico</div>
+      <div class="detail-field-value fw-semibold">{{ distinta.tecnico.get_full_name|default:distinta.tecnico.username }}</div>
+    </div>
+  </div>
+  <div class="col-sm-3">
+    <div class="detail-field">
+      <div class="detail-field-label">Data servizi</div>
+      <div class="detail-field-value">{{ distinta.data|date:"d/m/Y" }}</div>
+    </div>
+  </div>
+  <div class="col-sm-3">
+    <div class="detail-field">
+      <div class="detail-field-label">Avanzamento</div>
+      <div class="detail-field-value">{{ distinta.n_completati }} / {{ distinta.n_totale }} servizi</div>
+    </div>
+  </div>
+  {% if mezzo %}
+  <div class="col-sm-3">
+    <div class="detail-field">
+      <div class="detail-field-label">Mezzo assegnato</div>
+      <div class="detail-field-value">{{ mezzo }}</div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+{% for ods in ods_list %}
+<div class="card mb-3">
+  <div class="card-header d-flex justify-content-between align-items-center
+    {% if ods.stato == 'completato' %}bg-success bg-opacity-10{% endif %}">
+    <div>
+      <a href="{{ ods.get_absolute_url }}" class="fw-semibold text-brand text-decoration-none">{{ ods.numero }}</a>
+      <span class="text-muted small ms-2">{{ ods.cliente_display }}</span>
+      <span class="text-muted small ms-2">— {{ ods.data_servizio|date:"d/m/Y" }}</span>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+      {% if ods.stato == "completato" %}
+        <span class="badge badge-ok"><i class="bi bi-check-circle me-1"></i>Completato</span>
+        {% if ods.incasso_al_servizio %}
+          {% if ods.incassato %}
+            <span class="badge badge-ok"><i class="bi bi-cash-coin me-1"></i>
+              {{ ods.get_modalita_pagamento_display|default:"Incassato" }}
+              {% if ods.importo_incassato %}€ {{ ods.importo_incassato }}{% endif %}
+            </span>
+          {% else %}
+            <span class="badge badge-ko">Non incassato</span>
+          {% endif %}
+        {% endif %}
+      {% else %}
+        <span class="badge badge-wait">Da chiudere</span>
+        {% if distinta.stato == "aperta" %}
+        <button type="button" class="btn btn-sm btn-brand"
+                data-bs-toggle="modal" data-bs-target="#modal-chiudi-{{ ods.pk }}">
+          <i class="bi bi-check-lg me-1"></i>Chiudi servizio
+        </button>
+        {% endif %}
+      {% endif %}
+    </div>
+  </div>
+  <div class="card-body py-2">
+
+    {# Servizi (righe) #}
+    {% with righe=ods.righe.all %}
+    {% if righe %}
+    <div class="small text-muted mb-2">
+      {% for r in righe %}
+        <span class="me-3"><i class="bi bi-tools me-1"></i>{{ r.servizio }}{% if r.prezzo %} — € {{ r.prezzo }}{% endif %}</span>
+      {% endfor %}
+    </div>
+    {% endif %}
+    {% endwith %}
+
+    {# Note intervento #}
+    {% if ods.note_intervento %}
+    <div class="small text-muted mb-2"><i class="bi bi-chat-left-text me-1"></i>{{ ods.note_intervento }}</div>
+    {% endif %}
+
+    {# Prodotti consumati #}
+    <div class="d-flex align-items-start gap-3 flex-wrap">
+      <div class="flex-grow-1">
+        {% with consumi=ods.righe.all %}
+        {% for r in consumi %}
+        {% for c in r.consumi.all %}
+        {% if forloop.parentloop.first and forloop.first %}
+        <div class="fw-semibold small mb-1"><i class="bi bi-box-seam me-1"></i>Prodotti consumati:</div>
+        {% endif %}
+        <div class="d-flex align-items-center gap-2 mb-1">
+          <span class="small">{{ c.prodotto }} — <strong>{{ c.quantita }}</strong> {{ c.prodotto.unita_misura }}</span>
+          {% if c.note %}<span class="text-muted small">({{ c.note }})</span>{% endif %}
+          {% if distinta.stato == "aperta" and ods.stato != "completato" %}
+          <form method="post" action="{% url 'servizi:elimina_consumo' c.pk %}" class="d-inline">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-1" title="Elimina"
+                    onclick="return confirm('Eliminare questo consumo?')">
+              <i class="bi bi-trash" style="font-size:0.75rem;"></i>
+            </button>
+          </form>
+          {% endif %}
+        </div>
+        {% endfor %}
+        {% endfor %}
+        {% endwith %}
+      </div>
+      {% if distinta.stato == "aperta" and ods.stato != "completato" %}
+      <div class="flex-shrink-0">
+        <button type="button" class="btn btn-sm btn-outline-secondary"
+                data-bs-toggle="modal" data-bs-target="#modal-consumo-{{ ods.pk }}">
+          <i class="bi bi-plus-lg me-1"></i>Aggiungi prodotto
+        </button>
+      </div>
+      {% endif %}
+    </div>
+
+  </div>
+</div>
+
+{# Modal chiudi servizio #}
+{% if distinta.stato == "aperta" and ods.stato != "completato" %}
+<div class="modal fade" id="modal-chiudi-{{ ods.pk }}" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h6 class="modal-title"><i class="bi bi-check-lg me-2"></i>Chiudi {{ ods.numero }}</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" action="{% url 'servizi:chiudi_servizio_distinta' ods.pk %}">
+        {% csrf_token %}
+        <div class="modal-body">
+          {% if ods.incasso_al_servizio %}
+          <label class="form-label">Modalità pagamento</label>
+          <select name="modalita_pagamento" class="form-select form-select-sm mb-2">
+            {% for val, label in chiudi_choices %}
+            <option value="{{ val }}" {% if val == "contanti" %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+          <label class="form-label">Importo incassato</label>
+          <div class="input-group input-group-sm mb-3">
+            <span class="input-group-text">€</span>
+            <input type="number" name="importo_incassato" step="0.01"
+                   value="{{ ods.prezzo_sum|default:'' }}" class="form-control">
+          </div>
+          {% endif %}
+          {# Prodotti previsti: conferma quantità e spunta quelli usati #}
+          <p class="small fw-semibold mb-1 mt-2"><i class="bi bi-box-seam me-1"></i>Materiali previsti:</p>
+          {% for r in ods.righe.all %}{% for c in r.consumi.all %}{% if not c.confermato %}
+          <div class="d-flex align-items-center gap-2 mb-1">
+            <input type="checkbox" name="prod-confermato-{{ c.pk }}"
+                   class="form-check-input flex-shrink-0" checked>
+            <span class="small flex-grow-1">{{ c.prodotto }}</span>
+            <input type="number" name="prod-quantita-{{ c.pk }}" value="{{ c.quantita }}"
+                   step="0.001" min="0.001" class="form-control form-control-sm" style="width:80px">
+          </div>
+          {% endif %}{% endfor %}{% endfor %}
+          {# Prodotti aggiuntivi non previsti #}
+          <p class="small fw-semibold mb-1 mt-3"><i class="bi bi-plus-circle me-1"></i>Prodotti aggiuntivi:</p>
+          <input type="hidden" name="extra-TOTAL_FORMS" value="0" class="extra-total-forms">
+          <div class="extra-prod-rows mb-1"></div>
+          <button type="button" class="btn btn-sm btn-outline-secondary btn-extra-prod-add w-100 mb-3"
+                  style="font-size:.8rem">
+            <i class="bi bi-plus-sm me-1"></i>Aggiungi prodotto
+          </button>
+          <p class="small text-muted fst-italic mb-2">
+            <i class="bi bi-info-circle me-1"></i>In caso di servizi aggiuntivi richiesti dal cliente inserire motivazione nelle note.
+          </p>
+          <label class="form-label">Note intervento</label>
+          <textarea name="note_intervento" class="form-control form-control-sm" rows="2"
+                    placeholder="Note opzionali">{{ ods.note_intervento }}</textarea>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Annulla</button>
+          <button type="submit" class="btn btn-sm btn-brand"><i class="bi bi-check-lg me-1"></i>Conferma</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{# Modal aggiungi prodotto #}
+<div class="modal fade" id="modal-consumo-{{ ods.pk }}" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h6 class="modal-title"><i class="bi bi-box-seam me-2"></i>Aggiungi prodotto — {{ ods.numero }}</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" action="{% url 'servizi:aggiungi_consumo' ods.pk %}">
+        {% csrf_token %}
+        <div class="modal-body">
+          {% if mezzo %}
+          <div class="form-text mb-2 text-muted"><i class="bi bi-truck me-1"></i>Scorte da {{ mezzo }}</div>
+          {% else %}
+          <div class="alert alert-warning py-1 small mb-2">Nessun mezzo assegnato al tecnico — vengono mostrati tutti i prodotti attivi.</div>
+          {% endif %}
+          <label class="form-label">Prodotto</label>
+          {{ consumo_form.prodotto }}
+          <label class="form-label mt-2">Quantità</label>
+          {{ consumo_form.quantita }}
+          <label class="form-label mt-2">Note</label>
+          {{ consumo_form.note }}
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Annulla</button>
+          <button type="submit" class="btn btn-sm btn-brand"><i class="bi bi-plus-lg me-1"></i>Aggiungi</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% endfor %}
+
+{% if not ods_list %}
+<div class="alert alert-info"><i class="bi bi-info-circle me-2"></i>Nessun ODS in questa distinta.</div>
+{% endif %}
+
+{# Sorgente opzioni prodotto per la clonazione JS #}
+<div id="prod-src-wrapper" style="display:none" aria-hidden="true">{{ consumo_form.prodotto }}</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  const srcWrapper = document.getElementById("prod-src-wrapper");
+  if (!srcWrapper) return;
+  const srcSelect = srcWrapper.querySelector("select");
+
+  function buildExtraRow(idx) {
+    const sel = srcSelect.cloneNode(true);
+    sel.name = "extra-" + idx + "-prodotto";
+    sel.className = "form-select form-select-sm flex-grow-1";
+    sel.removeAttribute("id");
+
+    const qty = document.createElement("input");
+    qty.type = "number";
+    qty.name = "extra-" + idx + "-quantita";
+    qty.value = "1";
+    qty.step = "0.001";
+    qty.min = "0.001";
+    qty.className = "form-control form-control-sm";
+    qty.style.width = "80px";
+
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "btn btn-sm btn-outline-danger extra-prod-remove py-0 px-1";
+    btn.innerHTML = '<i class="bi bi-trash" style="font-size:.7rem"></i>';
+
+    const row = document.createElement("div");
+    row.className = "extra-prod-row d-flex gap-1 align-items-center mb-1";
+    row.appendChild(sel);
+    row.appendChild(qty);
+    row.appendChild(btn);
+    return row;
+  }
+
+  function renumber(form) {
+    const rows = form.querySelector(".extra-prod-rows");
+    const tfEl = form.querySelector(".extra-total-forms");
+    rows.querySelectorAll(".extra-prod-row").forEach(function (r, i) {
+      r.querySelectorAll("[name]").forEach(function (el) {
+        el.name = el.name.replace(/^extra-\d+-/, "extra-" + i + "-");
+      });
+    });
+    tfEl.value = rows.querySelectorAll(".extra-prod-row").length;
+  }
+
+  document.addEventListener("click", function (e) {
+    const addBtn = e.target.closest(".btn-extra-prod-add");
+    if (addBtn) {
+      const form = addBtn.closest("form");
+      const tfEl = form.querySelector(".extra-total-forms");
+      const rows = form.querySelector(".extra-prod-rows");
+      rows.appendChild(buildExtraRow(parseInt(tfEl.value)));
+      tfEl.value = parseInt(tfEl.value) + 1;
+      return;
+    }
+    const remBtn = e.target.closest(".extra-prod-remove");
+    if (remBtn) {
+      remBtn.closest(".extra-prod-row").remove();
+      renumber(remBtn.closest("form"));
+    }
+  });
+})();
+</script>
+{% endblock %}

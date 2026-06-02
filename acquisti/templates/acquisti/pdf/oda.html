@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<style>
+  @page { size: A4 portrait; margin: 2cm; }
+  body { font-family: Arial, sans-serif; font-size: 13px; color: #333; }
+  .header-bar { background: #5585b5; color: #fff; padding: 14px 18px; margin-bottom: 20px; }
+  .header-bar h1 { margin: 0; font-size: 17px; }
+  .header-bar p { margin: 3px 0 0; font-size: 11px; opacity: 0.85; }
+  .meta-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+  .meta-table td { padding: 5px 8px; font-size: 12px; }
+  .meta-table td.lbl { color: #888; font-size: 10px; text-transform: uppercase; width: 50%; }
+  .meta-table td.val { font-weight: 700; }
+  table.righe { width: 100%; border-collapse: collapse; margin-bottom: 18px; }
+  table.righe th { background: #f0f4f8; text-align: left; padding: 8px 10px; font-size: 11px;
+                   text-transform: uppercase; color: #666; border-bottom: 2px solid #dde3ea; }
+  table.righe td { padding: 8px 10px; border-bottom: 1px solid #eee; font-size: 12px; }
+  table.righe td.num { text-align: right; }
+  tr.total td { font-weight: 700; background: #f9fafb; border-top: 2px solid #dde3ea; }
+  .note-box { background: #f9fafb; border-left: 3px solid #5585b5; padding: 10px 14px;
+              font-size: 12px; margin-bottom: 18px; }
+  .footer { margin-top: 30px; font-size: 10px; color: #aaa; text-align: center; }
+</style>
+</head>
+<body>
+
+<div class="header-bar">
+  <h1>Ordine di Acquisto {{ ordine.numero_ordine }}</h1>
+  <p>Del {{ ordine.data_ordine|date:"d/m/Y" }}</p>
+</div>
+
+<table class="meta-table">
+  <tr>
+    <td class="lbl">Fornitore</td>
+    <td class="val">{{ ordine.fornitore }}</td>
+    <td class="lbl">Data ordine</td>
+    <td class="val">{{ ordine.data_ordine|date:"d/m/Y" }}</td>
+  </tr>
+  {% if ordine.data_consegna_richiesta %}
+  <tr>
+    <td class="lbl">Consegna richiesta entro</td>
+    <td class="val">{{ ordine.data_consegna_richiesta|date:"d/m/Y" }}</td>
+    <td class="lbl">Creato da</td>
+    <td class="val">{{ ordine.created_by.get_full_name|default:"—" }}</td>
+  </tr>
+  {% endif %}
+</table>
+
+<table class="righe">
+  <thead>
+    <tr>
+      <th>Articolo</th>
+      <th>UM</th>
+      <th style="text-align:right">Qtà</th>
+      <th style="text-align:right">Prezzo unit.</th>
+      <th style="text-align:right">Imponibile</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for r in righe %}
+    <tr>
+      <td>{% if r.prodotto %}{{ r.prodotto.nome_prodotto }}{% else %}{{ r.descrizione }}{% endif %}</td>
+      <td>{{ r.unita_misura|default:"—" }}</td>
+      <td class="num">{{ r.quantita_ordinata }}</td>
+      <td class="num">€ {{ r.prezzo_unitario }}</td>
+      <td class="num">€ {{ r.imponibile }}</td>
+    </tr>
+    {% endfor %}
+    <tr class="total">
+      <td colspan="4" style="text-align:right">Totale imponibile</td>
+      <td class="num">€ {{ ordine.totale }}</td>
+    </tr>
+  </tbody>
+</table>
+
+{% if ordine.note %}
+<div class="note-box"><strong>Note:</strong> {{ ordine.note }}</div>
+{% endif %}
+
+<div class="footer">Documento generato automaticamente da RATTUS26</div>
+
+</body>
+</html>

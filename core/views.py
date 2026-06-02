@@ -663,3 +663,47 @@ def serve_qr_code(request):
 
     qr_buffer = generate_qr_code(data, box_size=box_size, border=border)
     return HttpResponse(qr_buffer.getvalue(), content_type="image/png")
+
+
+def test_email_view(request):
+    """View di test per verificare la configurazione SMTP. Solo staff."""
+    from django.contrib.auth.decorators import login_required
+    from django.contrib import messages
+    from django.shortcuts import render
+    from django.core.mail import send_mail
+    from django.conf import settings
+
+    if not request.user.is_authenticated:
+        from django.shortcuts import redirect
+        return redirect("users:login")
+
+    esito = None
+    errore = None
+
+    if request.method == "POST":
+        destinatario = request.POST.get("to", "").strip()
+        if destinatario:
+            try:
+                send_mail(
+                    subject="[RATTUS26] Test configurazione email",
+                    message=(
+                        "Questa è una mail di test inviata da RATTUS26.\n\n"
+                        f"Backend: {settings.EMAIL_BACKEND}\n"
+                        f"Host: {settings.EMAIL_HOST}:{settings.EMAIL_PORT}\n"
+                        f"From: {settings.DEFAULT_FROM_EMAIL}\n"
+                    ),
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[destinatario],
+                    fail_silently=False,
+                )
+                esito = f"Mail inviata a {destinatario}"
+            except Exception as e:
+                errore = str(e)
+
+    return render(request, "core/test_email.html", {
+        "esito": esito,
+        "errore": errore,
+        "email_backend": settings.EMAIL_BACKEND,
+        "email_host": settings.EMAIL_HOST,
+        "email_host_user": settings.EMAIL_HOST_USER,
+    })

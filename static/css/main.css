@@ -416,6 +416,11 @@ body.sidebar-open { overflow: hidden; }
   border-bottom: 1px solid var(--slate-200);
   padding: .75rem 1rem;
 }
+.table thead.bg-brand th {
+  background: var(--color-1) !important;
+  color: #fff !important;
+  border-bottom-color: var(--color-1-dark);
+}
 .table tbody td { padding: .75rem 1rem; vertical-align: middle; color: var(--slate-700); }
 .table tbody tr:hover { background: var(--color-4); }
 .table-card { border: 1px solid var(--slate-200); border-radius: var(--radius-lg); overflow: hidden; }
@@ -625,3 +630,11 @@ body.sidebar-open { overflow: hidden; }
   .card { box-shadow: none; border: 1px solid var(--slate-200); }
   .card-header { background: #fff !important; color: var(--slate-900) !important; border-bottom: 2px solid var(--color-1); }
 }
+
+.card-hover { transition: transform .15s ease, box-shadow .15s ease; cursor: pointer; }
+.card-hover:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(0,0,0,.12); }
+
+.btn-brand         { background-color: var(--color-1); border-color: var(--color-1); color: #fff; }
+.btn-brand:hover   { background-color: var(--color-1-dark); border-color: var(--color-1-dark); color: #fff; }
+.btn-outline-brand { color: var(--color-1); border-color: var(--color-1); }
+.btn-outline-brand:hover { background-color: var(--color-1); border-color: var(--color-1); color: #fff; }

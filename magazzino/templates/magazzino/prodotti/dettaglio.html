@@ -1,0 +1,237 @@
+{% extends "base.html" %}
+{% load static %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/detail.css' %}">{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'magazzino:dashboard' %}">Magazzino</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'magazzino:prodotto_list' %}">Prodotti</a></li>
+      <li class="breadcrumb-item active">{{ prodotto.nome_prodotto|truncatechars:40 }}</li>
+    </ol>
+  </nav>
+  <h1>
+    <i class="bi bi-tag me-2 text-brand"></i>{{ prodotto.nome_prodotto }}
+    {% if prodotto.attivo %}<span class="badge badge-ok ms-2">Attivo</span>{% else %}<span class="badge badge-ko ms-2">Inattivo</span>{% endif %}
+    {% if prodotto.is_biocida %}<span class="badge badge-accent ms-2">Biocida</span>{% endif %}
+  </h1>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-8">
+    <div class="card mb-3">
+      <div class="card-header card-header-primary"><i class="bi bi-info-circle me-2"></i>Dati Prodotto</div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-sm-4"><div class="detail-field"><div class="detail-field-label">Categoria</div><div class="detail-field-value">{{ prodotto.categoria }}</div></div></div>
+          <div class="col-sm-4"><div class="detail-field"><div class="detail-field-label">Fornitore principale</div><div class="detail-field-value">{{ prodotto.fornitore_principale|default:"—" }}</div></div></div>
+          <div class="col-sm-4"><div class="detail-field"><div class="detail-field-label">Codice interno</div><div class="detail-field-value">{{ prodotto.codice_interno|default:"—" }}</div></div></div>
+          <div class="col-sm-4"><div class="detail-field"><div class="detail-field-label">Codice fornitore</div><div class="detail-field-value">{{ prodotto.codice_fornitore|default:"—" }}</div></div></div>
+          <div class="col-sm-4"><div class="detail-field"><div class="detail-field-label">Unità di misura</div><div class="detail-field-value">{{ prodotto.get_unita_misura_display }}</div></div></div>
+          <div class="col-sm-4"><div class="detail-field"><div class="detail-field-label">Qt. per confezione</div><div class="detail-field-value">{% if prodotto.quantita_per_confezione %}{{ prodotto.quantita_per_confezione }}{% else %}—{% endif %}</div></div></div>
+          {% if prodotto.formato_confezione %}
+          <div class="col-sm-6"><div class="detail-field"><div class="detail-field-label">Formato confezione</div><div class="detail-field-value">{{ prodotto.formato_confezione }}</div></div></div>
+          {% endif %}
+        </div>
+        {% if prodotto.descrizione %}
+        <div class="detail-field mt-2"><div class="detail-field-label">Descrizione</div><div class="detail-field-value">{{ prodotto.descrizione }}</div></div>
+        {% endif %}
+      </div>
+    </div>
+
+    {% if prodotto.is_biocida %}
+    <div class="card mb-3">
+      <div class="card-header card-header-primary"><i class="bi bi-shield-check me-2"></i>Info Biocida</div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-sm-6"><div class="detail-field"><div class="detail-field-label">Principio attivo</div><div class="detail-field-value">{{ prodotto.principio_attivo|default:"—" }}</div></div></div>
+          <div class="col-sm-6"><div class="detail-field"><div class="detail-field-label">N° registrazione</div><div class="detail-field-value">{{ prodotto.numero_registrazione|default:"—" }}</div></div></div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if prodotto.note_interne %}
+    <div class="card mb-3">
+      <div class="card-body">
+        <div class="detail-field"><div class="detail-field-label">Note interne</div><div class="detail-field-value">{{ prodotto.note_interne }}</div></div>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Scorte per stabilimento -->
+    <div class="card mb-3">
+      <div class="card-header card-header-primary d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-building me-2"></i>Scorte per Stabilimento</span>
+        <span class="badge bg-secondary">{{ scorte_stabilimenti|length }} stabilimenti</span>
+      </div>
+      <div class="table-responsive">
+        <table class="table align-middle mb-0">
+          <thead>
+            <tr>
+              <th>Stabilimento</th>
+              <th>Sede</th>
+              <th class="text-end">Giacenza</th>
+              <th class="text-center">Stato</th>
+              <th class="text-center" style="width:100px">Azioni</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for ss in scorte_stabilimenti %}
+            <tr>
+              <td class="fw-semibold">{{ ss.stabilimento.nome }}</td>
+              <td class="text-muted small">{{ ss.stabilimento.citta }} ({{ ss.stabilimento.provincia }})</td>
+              <td class="text-end fw-bold {% if ss.quantita <= 0 %}text-danger{% elif ss.quantita < 5 %}text-warning{% else %}text-success{% endif %}">
+                {{ ss.quantita }} <span class="text-muted fw-normal small">{{ prodotto.get_unita_misura_display }}</span>
+              </td>
+              <td class="text-center">
+                {% if ss.quantita <= 0 %}<span class="badge bg-danger">Esaurito</span>
+                {% elif ss.quantita < 5 %}<span class="badge bg-warning text-dark">Basso</span>
+                {% else %}<span class="badge bg-success">OK</span>{% endif %}
+              </td>
+              <td class="text-center">
+                <a href="{% url 'magazzino:scorte_stabilimento' ss.stabilimento.pk %}" class="btn btn-sm btn-outline-secondary">
+                  <i class="bi bi-eye me-1"></i>Vedi
+                </a>
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="5" class="text-muted text-center py-3 small">
+                <i class="bi bi-info-circle me-1"></i>Nessuna scorta in stabilimenti. Le giacenze si aggiornano con le ricezioni.
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Scorte per mezzo -->
+    <div class="card mb-3">
+      <div class="card-header card-header-primary d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-truck me-2"></i>Scorte per Mezzo</span>
+        <span class="badge bg-secondary">{{ scorte_mezzi|length }} mezzi</span>
+      </div>
+      <div class="table-responsive">
+        <table class="table align-middle mb-0">
+          <thead>
+            <tr>
+              <th>Mezzo</th>
+              <th>Autista</th>
+              <th class="text-end">A bordo</th>
+              <th>U.M.</th>
+              <th class="text-center" style="width:120px">Azioni</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for sm in scorte_mezzi %}
+            <tr>
+              <td>
+                <a href="{% url 'magazzino:scorte_mezzo' sm.mezzo.pk %}" class="fw-semibold text-decoration-none">
+                  {{ sm.mezzo.targa }}
+                </a>
+                <div class="text-muted small">{{ sm.mezzo.marca }} {{ sm.mezzo.modello }}</div>
+              </td>
+              <td class="text-muted small">
+                {% if sm.mezzo.assegnato_a %}
+                  {% if sm.mezzo.assegnato_a.get_full_name %}{{ sm.mezzo.assegnato_a.get_full_name }}{% else %}{{ sm.mezzo.assegnato_a.username }}{% endif %}
+                {% else %}—{% endif %}
+              </td>
+              <td class="text-end fw-bold {% if sm.quantita < 3 %}text-warning{% else %}text-success{% endif %}">
+                {{ sm.quantita }}
+              </td>
+              <td class="text-muted small">{{ prodotto.get_unita_misura_display }}</td>
+              <td class="text-center">
+                <a href="{% url 'magazzino:scorte_mezzo' sm.mezzo.pk %}" class="btn btn-sm btn-outline-secondary">
+                  <i class="bi bi-eye me-1"></i>Vedi
+                </a>
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="5" class="text-muted text-center py-3 small">
+                <i class="bi bi-inbox me-1"></i>Nessun mezzo ha questo prodotto a bordo.
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    {% if prodotto.scheda_tecnica %}
+    <div class="card mb-3">
+      <div class="card-header card-header-primary"><i class="bi bi-file-earmark-text me-2"></i>Scheda Tecnica</div>
+      <div class="card-body d-flex align-items-center justify-content-between gap-2">
+        <a href="{{ prodotto.scheda_tecnica.url }}" target="_blank" class="btn btn-sm btn-outline-primary">
+          <i class="bi bi-download me-1"></i>Scarica scheda
+        </a>
+        <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalInviaScheda">
+          <i class="bi bi-envelope me-1"></i>Invia per email
+        </button>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="col-lg-4">
+    {% if prodotto.immagine %}
+    <div class="card mb-3">
+      <div class="card-body text-center">
+        <img src="{{ prodotto.immagine.url }}" class="img-fluid rounded" alt="{{ prodotto.nome_prodotto }}">
+      </div>
+    </div>
+    {% endif %}
+    <div class="card mb-3">
+      <div class="card-header"><i class="bi bi-gear me-2"></i>Azioni</div>
+      <div class="list-group list-group-flush">
+        <a href="{{ edit_url }}" class="list-group-item list-group-item-action"><i class="bi bi-pencil me-2"></i>Modifica</a>
+        {% if request.user.is_staff %}
+        <a href="{% url 'magazzino:prodotto_delete' prodotto.pk %}" class="list-group-item list-group-item-action text-danger"><i class="bi bi-trash me-2"></i>Elimina</a>
+        {% endif %}
+      </div>
+    </div>
+    {% include 'commons_templates/components/sidebar_allegati_qr.html' with object=prodotto %}
+
+    <div class="mt-3">
+      <a href="{{ back_url }}" class="btn btn-outline-secondary btn-sm w-100"><i class="bi bi-arrow-left me-1"></i>Torna alla lista</a>
+    </div>
+  </div>
+</div>
+
+{% if prodotto.scheda_tecnica %}
+<div class="modal fade" id="modalInviaScheda" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="post" action="{% url 'magazzino:prodotto_invia_scheda' prodotto.pk %}">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-envelope me-2"></i>Invia scheda tecnica</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Destinatario</label>
+            <input type="email" name="destinatario" class="form-control" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Oggetto</label>
+            <input type="text" name="oggetto" class="form-control" value="Scheda tecnica: {{ prodotto.nome_prodotto }}">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Messaggio</label>
+            <textarea name="body" class="form-control" rows="5"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Annulla</button>
+          <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-send me-1"></i>Invia</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% load static %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/detail.css' %}">{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'magazzino:dashboard' %}">Magazzino</a></li>
+      <li class="breadcrumb-item active">Scorte</li>
+    </ol>
+  </nav>
+  <h1><i class="bi bi-boxes me-2 text-brand"></i>Gestione Scorte</h1>
+</div>
+
+<div class="row g-3">
+
+  {# ── Colonna principale ──────────────────────────────────────── #}
+  <div class="col-lg-9">
+
+    <div class="card mb-4" id="stabilimenti">
+      <div class="card-header card-header-primary">
+        <i class="bi bi-building me-2"></i>Scorte per Stabilimento
+      </div>
+      <div class="card-body">
+        <div class="row g-3">
+          {% for stab in stabilimenti %}
+          <div class="col-sm-6 col-xl-4">
+            <a href="{% url 'magazzino:scorte_stabilimento' stab.pk %}" class="text-decoration-none">
+              <div class="card h-100 border-2 border-brand card-hover">
+                <div class="card-body d-flex align-items-start gap-3">
+                  <div class="fs-2 text-brand mt-1"><i class="bi bi-building"></i></div>
+                  <div>
+                    <div class="fw-bold fs-5">{{ stab.nome }}</div>
+                    <div class="text-muted small">{{ stab.codice_stabilimento }}</div>
+                    <div class="text-muted small">{{ stab.citta }} ({{ stab.provincia }})</div>
+                  </div>
+                </div>
+                <div class="card-footer bg-brand text-white text-center small py-1">
+                  <i class="bi bi-eye me-1"></i>Vedi scorte
+                </div>
+              </div>
+            </a>
+          </div>
+          {% empty %}
+          <div class="col-12">
+            <p class="text-muted mb-0"><i class="bi bi-info-circle me-1"></i>Nessuno stabilimento attivo trovato.</p>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="card" id="mezzi">
+      <div class="card-header card-header-primary">
+        <i class="bi bi-truck me-2"></i>Scorte per Mezzo
+      </div>
+      <div class="card-body">
+        <div class="row g-3">
+          {% for mezzo in mezzi %}
+          <div class="col-sm-6 col-xl-4">
+            <a href="{% url 'magazzino:scorte_mezzo' mezzo.pk %}" class="text-decoration-none">
+              <div class="card h-100 border-2 border-brand card-hover">
+                <div class="card-body d-flex align-items-center gap-3">
+                  <div class="fs-2 text-brand"><i class="bi bi-truck"></i></div>
+                  <div>
+                    <div class="fw-bold fs-5">{{ mezzo.targa }}</div>
+                    <div class="text-muted small">{{ mezzo.marca }} {{ mezzo.modello }}</div>
+                    {% if mezzo.assegnato_a %}
+                    <div class="text-muted small">
+                      <i class="bi bi-person me-1"></i>{{ mezzo.assegnato_a.get_full_name|default:mezzo.assegnato_a.username }}
+                    </div>
+                    {% endif %}
+                  </div>
+                </div>
+                <div class="card-footer bg-brand text-white text-center small py-1">
+                  <i class="bi bi-eye me-1"></i>Vedi scorte
+                </div>
+              </div>
+            </a>
+          </div>
+          {% empty %}
+          <div class="col-12">
+            <p class="text-muted mb-0"><i class="bi bi-info-circle me-1"></i>Nessun mezzo attivo trovato.</p>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  {# ── Sidebar azioni ──────────────────────────────────────────── #}
+  <div class="col-lg-3">
+    <div class="card">
+      <div class="card-header"><i class="bi bi-gear me-2"></i>Azioni</div>
+      <div class="list-group list-group-flush">
+        <a href="{% url 'magazzino:carico_mezzo_create' %}" class="list-group-item list-group-item-action">
+          <i class="bi bi-plus-circle me-2"></i>Nuovo carico/scarico
+        </a>
+        <a href="{% url 'magazzino:carico_mezzo_list' %}" class="list-group-item list-group-item-action">
+          <i class="bi bi-list-ul me-2"></i>Storico movimenti
+        </a>
+        <a href="{% url 'magazzino:dashboard' %}" class="list-group-item list-group-item-action text-muted">
+          <i class="bi bi-arrow-left me-2"></i>Dashboard Magazzino
+        </a>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+{% load static %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/detail.css' %}">{% endblock %}
+{% block content %}
+<div class="page-header mb-4">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'servizi:dashboard' %}">Servizi</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'servizi:contratto_list' %}">Contratti</a></li>
+      <li class="breadcrumb-item active">{{ contratto }}</li>
+    </ol>
+  </nav>
+  <h1>
+    <i class="bi bi-file-earmark-text me-2 text-brand"></i>{{ contratto }}
+    {% if contratto.stato == "attivo" %}<span class="badge badge-ok ms-2">Attivo</span>
+    {% elif contratto.stato == "sospeso" %}<span class="badge badge-wait ms-2">Sospeso</span>
+    {% elif contratto.stato == "scaduto" %}<span class="badge badge-ko ms-2">Scaduto</span>
+    {% else %}<span class="badge badge-ko ms-2">Annullato</span>{% endif %}
+  </h1>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-8">
+
+    <div class="card mb-3">
+      <div class="card-header card-header-primary"><i class="bi bi-info-circle me-2"></i>Dati Contratto</div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-sm-6">
+            <div class="detail-field">
+              <div class="detail-field-label">Cliente</div>
+              <div class="detail-field-value"><a href="{{ contratto.cliente.get_absolute_url }}" class="text-decoration-none">{{ contratto.cliente }}</a></div>
+            </div>
+          </div>
+          <div class="col-sm-6">
+            <div class="detail-field">
+              <div class="detail-field-label">Servizio</div>
+              <div class="detail-field-value"><a href="{{ contratto.servizio.get_absolute_url }}" class="text-decoration-none">{{ contratto.servizio }}</a></div>
+            </div>
+          </div>
+          <div class="col-sm-3">
+            <div class="detail-field">
+              <div class="detail-field-label">Prezzo base</div>
+              <div class="detail-field-value fw-bold text-brand">€ {{ contratto.prezzo_default }}</div>
+            </div>
+          </div>
+          <div class="col-sm-3">
+            <div class="detail-field">
+              <div class="detail-field-label">Periodicità</div>
+              <div class="detail-field-value">{{ contratto.get_periodicita_display }}</div>
+            </div>
+          </div>
+          <div class="col-sm-3">
+            <div class="detail-field">
+              <div class="detail-field-label">Data inizio</div>
+              <div class="detail-field-value">{{ contratto.data_inizio|date:"d/m/Y" }}</div>
+            </div>
+          </div>
+          <div class="col-sm-3">
+            <div class="detail-field">
+              <div class="detail-field-label">Data fine</div>
+              <div class="detail-field-value {% if not contratto.data_fine %}empty{% endif %}">{{ contratto.data_fine|date:"d/m/Y"|default:"—" }}</div>
+            </div>
+          </div>
+          {% if contratto.note %}
+          <div class="col-12">
+            <div class="detail-field mb-0">
+              <div class="detail-field-label">Note</div>
+              <div class="detail-field-value">{{ contratto.note }}</div>
+            </div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="card mb-3">
+      <div class="card-header card-header-primary"><i class="bi bi-geo-alt me-2"></i>Prezzi per Sede</div>
+      <div class="table-responsive">
+        <table class="table mb-0 align-middle">
+          <thead class="bg-brand text-white">
+            <tr><th>Sede</th><th>Città</th><th class="text-end">Prezzo effettivo</th><th class="text-end">Override</th><th></th></tr>
+          </thead>
+          <tbody>
+            {% for cf, form in filiale_forms %}
+            <tr>
+              <td class="fw-semibold">{{ cf.filiale.nome }}</td>
+              <td class="text-muted small">{{ cf.filiale.citta }}</td>
+              <td class="text-end fw-bold text-brand">€ {{ cf.prezzo_effettivo }}</td>
+              <td class="text-end text-muted small">
+                {% if cf.prezzo_override %}€ {{ cf.prezzo_override }}{% else %}<em>base</em>{% endif %}
+              </td>
+              <td class="text-end">
+                <button type="button" class="btn btn-sm btn-outline-secondary"
+                        data-bs-toggle="modal" data-bs-target="#modal-cf-{{ cf.pk }}">
+                  <i class="bi bi-pencil"></i>
+                </button>
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="text-center text-muted py-2">Nessuna sede collegata</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card mb-3">
+      <div class="card-header"><i class="bi bi-gear me-2"></i>Azioni</div>
+      <div class="list-group list-group-flush">
+        <a href="{{ edit_url }}" class="list-group-item list-group-item-action"><i class="bi bi-pencil me-2"></i>Modifica</a>
+        <a href="{% url 'servizi:ods_create' %}?filiale={{ contratto.filiali_contratto.first.filiale_id|default:'' }}" class="list-group-item list-group-item-action"><i class="bi bi-plus-circle me-2"></i>Nuovo ODS</a>
+        {% if request.user.is_staff %}
+        <a href="{% url 'servizi:contratto_delete' contratto.pk %}" class="list-group-item list-group-item-action text-danger"><i class="bi bi-trash me-2"></i>Elimina</a>
+        {% endif %}
+      </div>
+    </div>
+
+    {% include 'commons_templates/components/sidebar_allegati_qr.html' with object=contratto %}
+
+    <div class="card mb-3">
+      <div class="card-header"><i class="bi bi-info-circle me-2"></i>Informazioni</div>
+      <div class="card-body">
+        <div class="detail-field">
+          <div class="detail-field-label">Creato da</div>
+          <div class="detail-field-value">{{ contratto.created_by.get_full_name|default:"—" }}</div>
+        </div>
+        <div class="detail-field mb-0">
+          <div class="detail-field-label">Creato il</div>
+          <div class="detail-field-value">{{ contratto.created_at|date:"d/m/Y H:i" }}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-2">
+      <a href="{{ back_url }}" class="btn btn-outline-secondary btn-sm w-100"><i class="bi bi-arrow-left me-1"></i>Torna ai contratti</a>
+    </div>
+  </div>
+</div>
+
+{% for cf, form in filiale_forms %}
+<div class="modal fade" id="modal-cf-{{ cf.pk }}" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h6 class="modal-title">{{ cf.filiale.nome }} — prezzo override</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" action="{% url 'servizi:contratto_filiale_update' cf.pk %}">
+        {% csrf_token %}
+        <div class="modal-body">
+          <p class="text-muted small mb-2">Prezzo base contratto: <strong>€ {{ contratto.prezzo_default }}</strong></p>
+          <label class="form-label">{{ form.prezzo_override.label }}</label>
+          <div class="input-group mb-2"><span class="input-group-text">€</span>{{ form.prezzo_override }}</div>
+          <label class="form-label">{{ form.note.label }}</label>
+          {{ form.note }}
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Annulla</button>
+          <button type="submit" class="btn btn-sm btn-brand">Salva</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endfor %}
+{% endblock %}

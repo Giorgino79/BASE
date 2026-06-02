@@ -1,0 +1,367 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ page_title }} - Management System{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-2 py-md-4">
+    <!-- Header con alert -->
+    <div class="card shadow mb-4 border-danger">
+        <div class="card-header bg-danger text-white py-3">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h6 class="m-0 font-weight-bold">
+                        <i class="fas fa-exclamation-triangle me-2"></i>{{ page_title }}
+                    </h6>
+                    <small class="opacity-75">Questa operazione è irreversibile</small>
+                </div>
+                <div class="col-md-4 text-md-end mt-2 mt-md-0">
+                    <a href="{{ object.get_absolute_url }}" class="btn btn-light btn-sm me-2">
+                        <i class="fas fa-eye me-1"></i>Vedi Dettaglio
+                    </a>
+                    <a href="{% url 'anagrafica:cliente_list' %}" class="btn btn-outline-light btn-sm">
+                        <i class="fas fa-arrow-left me-1"></i>Torna all'Elenco
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <!-- Card di conferma -->
+            <div class="card shadow">
+                <div class="card-body p-4">
+                    <!-- Informazioni cliente -->
+                    <div class="text-center mb-4">
+                        <div class="d-inline-flex align-items-center justify-content-center bg-danger rounded-circle p-3 mb-3" style="width: 80px; height: 80px;">
+                            <i class="fas fa-user-slash fa-2x text-white"></i>
+                        </div>
+                        <h4 class="text-danger mb-2">Conferma Eliminazione Cliente</h4>
+                        <p class="text-muted mb-4">
+                            Stai per eliminare definitivamente il cliente <strong>{{ object.nome }}</strong>.<br>
+                            Questa operazione non può essere annullata.
+                        </p>
+                    </div>
+
+                    <!-- Dettagli cliente -->
+                    <div class="card bg-light mb-4">
+                        <div class="card-header">
+                            <h6 class="mb-0">
+                                <i class="fas fa-info-circle me-1"></i>Dettagli Cliente
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <dl class="mb-2">
+                                        <dt class="text-muted">Nome/Ragione Sociale:</dt>
+                                        <dd class="fw-bold">{{ object.nome }}</dd>
+                                        
+                                        {% if object.indirizzo %}
+                                        <dt class="text-muted">Indirizzo:</dt>
+                                        <dd>{{ object.indirizzo }}</dd>
+                                        {% endif %}
+                                        
+                                        {% if object.citta %}
+                                        <dt class="text-muted">Città:</dt>
+                                        <dd>
+                                            {{ object.citta }}
+                                            {% if object.cap %} ({{ object.cap }}){% endif %}
+                                        </dd>
+                                        {% endif %}
+                                    </dl>
+                                </div>
+                                <div class="col-md-6">
+                                    <dl class="mb-2">
+                                        <dt class="text-muted">Telefono:</dt>
+                                        <dd>{{ object.telefono }}</dd>
+                                        
+                                        <dt class="text-muted">Email:</dt>
+                                        <dd>{{ object.email }}</dd>
+                                        
+                                        <dt class="text-muted">Cliente dal:</dt>
+                                        <dd>{{ object.created_at|date:"d/m/Y" }}</dd>
+                                    </dl>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Warning sul credito -->
+                    {% if object.limite_credito > 0 %}
+                    <div class="alert alert-warning border-left-warning">
+                        <div class="row align-items-center">
+                            <div class="col-1">
+                                <i class="fas fa-credit-card fa-2x text-warning"></i>
+                            </div>
+                            <div class="col">
+                                <h6 class="alert-heading mb-1">Attenzione: Cliente con Limite Credito</h6>
+                                <p class="mb-2">
+                                    Questo cliente ha un limite credito di <strong>€{{ object.limite_credito|floatformat:0 }}</strong>
+                                    {% if object.credito_utilizzato > 0 %}
+                                    con €{{ object.credito_utilizzato|floatformat:0 }} attualmente utilizzato.
+                                    {% else %}
+                                    non ancora utilizzato.
+                                    {% endif %}
+                                </p>
+                                <small class="text-muted">
+                                    Assicurati di aver regolarizzato tutti i rapporti commerciali prima di procedere.
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Warning sui dati collegati -->
+                    <div class="alert alert-info border-left-info">
+                        <div class="row align-items-center">
+                            <div class="col-1">
+                                <i class="fas fa-link fa-2x text-info"></i>
+                            </div>
+                            <div class="col">
+                                <h6 class="alert-heading mb-1">Dati Collegati</h6>
+                                <p class="mb-1">L'eliminazione del cliente comporterà anche l'eliminazione di:</p>
+                                <ul class="mb-2">
+                                    <li>Tutti i documenti e allegati associati</li>
+                                    <li>Lo storico delle transazioni commerciali</li>
+                                    <li>Eventuali note e promemoria collegati</li>
+                                </ul>
+                                <small class="text-muted">
+                                    <strong>Consiglio:</strong> Considera di disattivare il cliente invece di eliminarlo.
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Alternative: disattivazione -->
+                    {% if object.attivo %}
+                    <div class="card border-success mb-4">
+                        <div class="card-header bg-light">
+                            <h6 class="text-success mb-0">
+                                <i class="fas fa-lightbulb me-1"></i>Alternativa Consigliata
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <p class="mb-3">
+                                Invece di eliminare definitivamente il cliente, potresti <strong>disattivarlo</strong>. 
+                                Questo mantiene tutti i dati storici ma rende il cliente non più utilizzabile per nuove operazioni.
+                            </p>
+                            <a href="{% url 'anagrafica:toggle_attivo' 'cliente' object.pk %}" 
+                               class="btn btn-outline-success"
+                               onclick="return confirm('Sei sicuro di voler disattivare questo cliente?')">
+                                <i class="fas fa-ban me-1"></i>Disattiva Cliente (Consigliato)
+                            </a>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Form di eliminazione -->
+                    <form method="post" class="text-center">
+                        {% csrf_token %}
+                        
+                        <!-- Checkbox di conferma -->
+                        <div class="form-check d-inline-block mb-4">
+                            <input class="form-check-input" type="checkbox" id="confermaEliminazione" required>
+                            <label class="form-check-label" for="confermaEliminazione">
+                                <strong>Confermo di voler eliminare definitivamente questo cliente</strong>
+                            </label>
+                        </div>
+
+                        <div class="d-flex justify-content-center gap-3">
+                            <a href="{{ object.get_absolute_url }}" class="btn btn-outline-secondary btn-lg">
+                                <i class="fas fa-times me-1"></i>Annulla
+                            </a>
+                            <button type="submit" class="btn btn-danger btn-lg" id="btnElimina" disabled>
+                                <i class="fas fa-trash me-1"></i>Elimina Definitivamente
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Bordi colorati per alert */
+.border-left-warning { 
+    border-left: 4px solid #f39c12 !important; 
+}
+
+.border-left-info { 
+    border-left: 4px solid #17a2b8 !important; 
+}
+
+/* Styling per form di eliminazione */
+.btn-danger:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Alert styling */
+.alert {
+    border-radius: 8px;
+}
+
+.alert-heading {
+    font-weight: 600;
+}
+
+/* Card styling */
+.card {
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.card-header {
+    border-bottom: 1px solid rgba(0,0,0,0.125);
+}
+
+/* Icon circle styling */
+.bg-danger.rounded-circle {
+    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+}
+
+/* Checkbox personalizzato */
+.form-check-input:checked {
+    background-color: #dc3545;
+    border-color: #dc3545;
+}
+
+/* Button hover effects */
+.btn:hover {
+    transform: translateY(-1px);
+    transition: transform 0.2s ease-in-out;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .d-flex.justify-content-center.gap-3 {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .d-flex.justify-content-center.gap-3 .btn {
+        width: 100%;
+    }
+    
+    .card-body {
+        padding: 1.5rem 1rem;
+    }
+    
+    .alert {
+        margin-bottom: 1rem;
+    }
+}
+
+/* Animazioni */
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+}
+
+.btn-danger:hover:not(:disabled) {
+    animation: shake 0.5s ease-in-out;
+}
+
+/* Definition list styling */
+dl dt {
+    font-size: 0.875rem;
+    margin-bottom: 0.25rem;
+}
+
+dl dd {
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.25rem;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+dl dd:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // Abilita/disabilita pulsante in base al checkbox
+    $('#confermaEliminazione').on('change', function() {
+        $('#btnElimina').prop('disabled', !this.checked);
+        
+        if (this.checked) {
+            $('#btnElimina').removeClass('btn-danger').addClass('btn-danger-enabled');
+        } else {
+            $('#btnElimina').removeClass('btn-danger-enabled').addClass('btn-danger');
+        }
+    });
+    
+    // Conferma aggiuntiva al submit
+    $('form').on('submit', function(e) {
+        e.preventDefault();
+        
+        const clienteNome = "{{ object.nome|escapejs }}";
+        
+        // Primo popup di conferma
+        const conferma1 = confirm(
+            `⚠️ ULTIMA CONFERMA ⚠️\n\n` +
+            `Stai per eliminare DEFINITIVAMENTE il cliente:\n"${clienteNome}"\n\n` +
+            `Questa operazione NON può essere annullata.\n\n` +
+            `Sei ASSOLUTAMENTE sicuro di voler procedere?`
+        );
+        
+        if (conferma1) {
+            // Secondo popup per doppia conferma
+            const conferma2 = confirm(
+                `Digita "ELIMINA" per confermare l'eliminazione definitiva del cliente "${clienteNome}"`
+            );
+            
+            if (conferma2) {
+                // Prompt per inserimento testo di conferma
+                const testoConferma = prompt(
+                    `Per completare l'eliminazione, digita esattamente:\nELIMINA ${clienteNome.toUpperCase()}`
+                );
+                
+                if (testoConferma === `ELIMINA ${clienteNome.toUpperCase()}`) {
+                    // Procedi con l'eliminazione
+                    this.submit();
+                } else {
+                    alert('Testo di conferma non corretto. Eliminazione annullata.');
+                }
+            }
+        }
+    });
+    
+    // Warning se l'utente cerca di lasciare la pagina
+    let formModified = false;
+    $('#confermaEliminazione').on('change', function() {
+        formModified = true;
+    });
+    
+    window.addEventListener('beforeunload', function(e) {
+        if (formModified) {
+            e.preventDefault();
+            e.returnValue = '';
+        }
+    });
+    
+    // Reset warning dopo submit
+    $('form').on('submit', function() {
+        formModified = false;
+    });
+    
+    // Tooltip informativi
+    $('[data-bs-toggle="tooltip"]').tooltip();
+    
+    // Auto-focus sul checkbox quando la pagina si carica
+    setTimeout(function() {
+        $('#confermaEliminazione').focus();
+    }, 500);
+});
+</script>
+{% endblock %}

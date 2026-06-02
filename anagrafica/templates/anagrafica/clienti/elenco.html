@@ -1,0 +1,296 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ page_title }} - Management System{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-2 py-md-4">
+    <!-- Header con ricerca -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <h2 class="m-0 font-weight-bold ">
+                        <i class="fas fa-users me-2"></i>Elenco Clienti
+                    </h2>
+                </div>
+                <div class="col-md-6 text-md-end mt-2 mt-md-0">
+                    <a href="{% url 'anagrafica:cliente_create' %}" class="btn btn-primary">
+                        <i class="fas fa-user-plus me-1"></i>Nuovo Cliente
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Filtri di ricerca -->
+        <div class="card-body border-bottom">
+            <form method="get" class="row g-3">
+                <div class="col-md-4">
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-search"></i></span>
+                        <input type="text" name="search" class="form-control" 
+                               placeholder="Cerca per nome, email, telefono..."
+                               value="{{ search_query }}">
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <select name="credito" class="form-select">
+                        <option value="">Tutti i crediti</option>
+                        <option value="con_limite" {% if credito_filter == 'con_limite' %}selected{% endif %}>
+                            Con limite credito
+                        </option>
+                        <option value="senza_limite" {% if credito_filter == 'senza_limite' %}selected{% endif %}>
+                            Senza limite credito
+                        </option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-search me-1"></i>Cerca
+                    </button>
+                </div>
+                <div class="col-md-3 text-md-end">
+                    <!-- Export CSV - TODO: implementare -->
+                </div>
+            </form>
+        </div>
+        
+        <!-- Statistiche rapide -->
+        {% if totale_crediti > 0 %}
+        <div class="card-footer bg-light">
+            <small class="text-muted">
+                <i class="fas fa-euro-sign me-1"></i>
+                Totale crediti concessi: <strong>€{{ totale_crediti|floatformat:0 }}</strong>
+                • {{ clienti.paginator.count }} clienti trovati
+            </small>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Lista clienti -->
+    <div class="card shadow">
+        <div class="card-body p-0">
+            {% if clienti %}
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="border-0">Cliente</th>
+                                <th class="border-0">Contatti</th>
+                                <th class="border-0 d-none d-md-table-cell">Zona</th>
+                                <th class="border-0">Credito</th>
+                                <th class="border-0">Stato</th>
+                                <th class="border-0 text-center">Azioni</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for cliente in clienti %}
+                            <tr>
+                                <td>
+                                    <div>
+                                        <strong>{{ cliente.nome }}</strong>
+                                        {% if not cliente.attivo %}
+                                            <span class="badge bg-secondary ms-1">Inattivo</span>
+                                        {% endif %}
+                                        {% if cliente.is_cliente_create %}
+                                            <span class="badge bg-success ms-1">Nuovo</span>
+                                        {% endif %}
+                                    </div>
+                                    <small class="text-muted">
+                                        {% if cliente.partita_iva %}P.IVA: {{ cliente.partita_iva }}{% endif %}
+                                        {% if cliente.codice_fiscale %}CF: {{ cliente.codice_fiscale }}{% endif %}
+                                    </small>
+                                </td>
+                                <td>
+                                    <div>
+                                        <i class="fas fa-envelope text-muted me-1"></i>{{ cliente.email|truncatechars:25 }}
+                                    </div>
+                                    <div>
+                                        <i class="fas fa-phone text-muted me-1"></i>{{ cliente.telefono }}
+                                    </div>
+                                </td>
+                                <td class="d-none d-md-table-cell">
+                                    <span class="text-muted">{{ cliente.zona|default:"-" }}</span>
+                                </td>
+                                <td>
+                                    {% if cliente.limite_credito > 0 %}
+                                        {% with stato=cliente.get_stato_credito %}
+                                            <div>
+                                                <span class="text-muted">Limite:</span> €{{ cliente.limite_credito|floatformat:0 }}
+                                            </div>
+                                            <div>
+                                                <span class="text-muted">Disponibile:</span> 
+                                                <span class="{{ stato.classe_css }}">€{{ cliente.credito_disponibile|floatformat:0 }}</span>
+                                            </div>
+                                        {% endwith %}
+                                    {% else %}
+                                        <span class="text-muted">Nessun limite</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% with stato=cliente.get_stato_credito %}
+                                        <span class="badge bg-{{ stato.stato|yesno:'danger,warning,success' }}">
+                                            {{ stato.percentuale_uso|floatformat:1 }}%
+                                        </span>
+                                        <div>
+                                            <small class="{{ stato.classe_css }}">{{ stato.messaggio }}</small>
+                                        </div>
+                                    {% endwith %}
+                                </td>
+                                <td class="text-center">
+                                    <div class="btn-group" role="group">
+                                        <a href="{{ cliente.get_absolute_url }}" 
+                                           class="btn btn-sm btn-outline-primary" 
+                                           title="Visualizza">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        <a href="{% url 'anagrafica:cliente_update' pk=cliente.pk %}" 
+                                           class="btn btn-sm btn-outline-warning"
+                                           title="Modifica">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        {% if user.is_staff %}
+                                        <a href="{% url 'anagrafica:toggle_attivo' 'cliente' cliente.pk %}" 
+                                           class="btn btn-sm btn-outline-{% if cliente.attivo %}secondary{% else %}success{% endif %}"
+                                           title="{% if cliente.attivo %}Disattiva{% else %}Attiva{% endif %}"
+                                           onclick="return confirm('Sei sicuro di voler {% if cliente.attivo %}disattivare{% else %}attivare{% endif %} questo cliente?')">
+                                            <i class="fas fa-{% if cliente.attivo %}ban{% else %}check{% endif %}"></i>
+                                        </a>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">Nessun cliente trovato</h5>
+                    {% if search_query %}
+                        <p class="text-muted">
+                            Non ci sono clienti che corrispondono ai criteri di ricerca.
+                        </p>
+                        <a href="{% url 'anagrafica:cliente_list' %}" class="btn btn-outline-primary">
+                            <i class="fas fa-times me-1"></i>Rimuovi filtri
+                        </a>
+                    {% else %}
+                        <p class="text-muted">
+                            Inizia creando il tuo primo cliente.
+                        </p>
+                        <a href="{% url 'anagrafica:cliente_create' %}" class="btn btn-primary">
+                            <i class="fas fa-user-plus me-1"></i>Crea Primo Cliente
+                        </a>
+                    {% endif %}
+                </div>
+            {% endif %}
+        </div>
+        
+        <!-- Paginazione -->
+        {% if clienti.has_other_pages %}
+        <div class="card-footer">
+            <nav aria-label="Navigazione clienti">
+                <ul class="pagination justify-content-center mb-0">
+                    {% if clienti.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page=1{% if search_query %}&search={{ search_query }}{% endif %}{% if credito_filter %}&credito={{ credito_filter }}{% endif %}">
+                                <i class="fas fa-angle-double-left"></i>
+                            </a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ clienti.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if credito_filter %}&credito={{ credito_filter }}{% endif %}">
+                                <i class="fas fa-angle-left"></i>
+                            </a>
+                        </li>
+                    {% endif %}
+                    
+                    <li class="page-item active">
+                        <span class="page-link">
+                            {{ clienti.number }} di {{ clienti.paginator.num_pages }}
+                        </span>
+                    </li>
+                    
+                    {% if clienti.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ clienti.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if credito_filter %}&credito={{ credito_filter }}{% endif %}">
+                                <i class="fas fa-angle-right"></i>
+                            </a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ clienti.paginator.num_pages }}{% if search_query %}&search={{ search_query }}{% endif %}{% if credito_filter %}&credito={{ credito_filter }}{% endif %}">
+                                <i class="fas fa-angle-double-right"></i>
+                            </a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Table responsive migliorato */
+.table-responsive {
+    border-radius: 0.375rem;
+}
+
+.table th {
+    font-weight: 600;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.table tbody tr:hover {
+    background-color: #f8f9fc;
+    transform: scale(1.01);
+    transition: all 0.2s ease-in-out;
+}
+
+/* Badge personalizzati */
+.badge.bg-danger { background-color: #dc3545 !important; }
+.badge.bg-warning { background-color: #ffc107 !important; color: #000; }
+.badge.bg-success { background-color: #28a745 !important; }
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+    .table-responsive {
+        font-size: 0.875rem;
+    }
+    
+    .btn-group .btn {
+        padding: 0.25rem 0.5rem;
+    }
+    
+    .card-body {
+        padding: 0.5rem;
+    }
+}
+
+/* Hover effects */
+.btn-group .btn:hover {
+    transform: translateY(-1px);
+    transition: transform 0.2s ease-in-out;
+}
+
+/* Form styling */
+.input-group-text {
+    background-color: #f8f9fc;
+    border-color: #e3e6f0;
+}
+
+.form-control:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+}
+
+.form-select:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+}
+</style>
+{% endblock %}
