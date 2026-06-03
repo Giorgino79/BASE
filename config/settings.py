@@ -129,9 +129,9 @@ EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", EMAIL_HOST_USER)
 
-# WhatsApp sender
-WHATSAPP_MIN_DELAY = int(os.environ.get("WHATSAPP_MIN_DELAY", 20))
-WHATSAPP_WAIT_TIME = int(os.environ.get("WHATSAPP_WAIT_TIME", 12))
+# WhatsApp — Green API (green-api.com)
+GREENAPI_INSTANCE_ID = os.environ.get("GREENAPI_INSTANCE_ID", "")
+GREENAPI_TOKEN       = os.environ.get("GREENAPI_TOKEN", "")
 
 from django.contrib.messages import constants as message_constants
 MESSAGE_TAGS = {message_constants.ERROR: "danger"}

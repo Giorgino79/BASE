@@ -13,7 +13,7 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from django.conf import settings as django_settings
 
-from .whatsapp_sender import WhatsAppSender, _get_pywhatkit, normalize_phone
+from .whatsapp_sender import WhatsAppSender, is_configured, normalize_phone
 from .models.invia_log import InvioLog
 
 
@@ -39,8 +39,8 @@ def invia_documento(request):
         return JsonResponse({"success": False, "error": "Numero WhatsApp obbligatorio"})
     if canale in ("email", "entrambi") and not email_dest:
         return JsonResponse({"success": False, "error": "Email destinatario obbligatoria"})
-    if canale in ("whatsapp", "entrambi") and _get_pywhatkit() is None:
-        return JsonResponse({"success": False, "error": "pywhatkit non installato sul server"})
+    if canale in ("whatsapp", "entrambi") and not is_configured():
+        return JsonResponse({"success": False, "error": "WhatsApp non configurato — imposta GREENAPI_INSTANCE_ID e GREENAPI_TOKEN"})
 
     log = InvioLog.objects.create(
         utente=request.user,
@@ -70,7 +70,11 @@ def invia_documento(request):
             if canale in ("whatsapp", "entrambi"):
                 wa_log = log if canale == "whatsapp" else None
                 caption = messaggio or oggetto
-                if local_path and os.path.exists(local_path):
+                if pdf_url and pdf_url.startswith("http"):
+                    # PDF con URL pubblica: invia direttamente via URL (più efficiente su server)
+                    import os as _os
+                    WhatsAppSender.send_pdf_by_url(telefono, pdf_url, filename=_os.path.basename(pdf_url) or "documento.pdf", caption=caption, log_entry=wa_log)
+                elif local_path and os.path.exists(local_path):
                     WhatsAppSender.send_pdf(telefono, local_path, caption=caption, log_entry=wa_log)
                 else:
                     testo = f"{oggetto}\n\n{messaggio}".strip() if messaggio else oggetto
