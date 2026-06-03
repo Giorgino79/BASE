@@ -130,6 +130,31 @@ class ContrattoFiliale(models.Model):
         return f"{self.contratto} / {self.filiale.nome}"
 
 
+class ContrattoFilialeRiga(models.Model):
+    """
+    Prezzo specifico per sede: override di un servizio del contratto padre
+    o servizio aggiuntivo valido solo per questa filiale.
+    """
+    contratto_filiale = models.ForeignKey(
+        ContrattoFiliale, on_delete=models.CASCADE, related_name="righe_sede",
+    )
+    servizio  = models.ForeignKey(
+        Servizio, on_delete=models.PROTECT, related_name="righe_filiale_contratto",
+    )
+    prezzo    = models.DecimalField(
+        max_digits=10, decimal_places=2, verbose_name="Prezzo",
+    )
+
+    class Meta:
+        unique_together = [("contratto_filiale", "servizio")]
+        verbose_name = "Riga sede contratto"
+        verbose_name_plural = "Righe sede contratto"
+        ordering = ["servizio__nome"]
+
+    def __str__(self):
+        return f"{self.servizio} — € {self.prezzo}"
+
+
 class ContrattoRiga(models.Model):
     """Un servizio con il relativo prezzo all'interno di un contratto."""
 

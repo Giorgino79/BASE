@@ -1,0 +1,194 @@
+{% extends "base.html" %}
+{% load static %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/detail.css' %}">{% endblock %}
+{% block content %}
+<div class="page-header mb-4">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'servizi:dashboard' %}">Servizi</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'servizi:contratto_list' %}">Contratti</a></li>
+      <li class="breadcrumb-item"><a href="{{ contratto.get_absolute_url }}">{{ contratto }}</a></li>
+      <li class="breadcrumb-item active">{{ cf.filiale.nome }}</li>
+    </ol>
+  </nav>
+  <h1><i class="bi bi-geo-alt me-2 text-brand"></i>Prezzi sede — {{ cf.filiale.nome }}</h1>
+  <p class="text-muted mb-0">{{ cf.filiale.citta }} · Contratto {{ contratto.get_periodicita_display }}</p>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-8">
+
+    {# ── Riepilogo prezzi base dal contratto ──────────────────── #}
+    <div class="card mb-3">
+      <div class="card-header card-header-primary"><i class="bi bi-list-ul me-2"></i>Prezzi base del contratto</div>
+      <div class="table-responsive">
+        <table class="table table-sm mb-0 align-middle">
+          <thead class="table-light">
+            <tr><th>Servizio</th><th class="text-end">Prezzo contratto</th><th class="text-end">Prezzo questa sede</th></tr>
+          </thead>
+          <tbody>
+            {% for r in righe_base %}
+            {% with override=righe_sede|dictsort:"servizio_id" %}
+            <tr>
+              <td>{{ r.servizio }}</td>
+              <td class="text-end text-muted">€ {{ r.prezzo }}</td>
+              <td class="text-end">
+                {% for rs in righe_sede %}{% if rs.servizio_id == r.servizio_id %}<span class="fw-bold text-brand">€ {{ rs.prezzo }}</span>{% endif %}{% endfor %}
+                {% for rs in righe_sede %}{% if rs.servizio_id == r.servizio_id %}{% empty %}<span class="text-muted small">— usa base</span>{% endfor %}
+                {# Workaround per empty su for annidato: #}
+              </td>
+            </tr>
+            {% endwith %}
+            {% empty %}
+            <tr><td colspan="3" class="text-muted text-center py-2">Nessun servizio nel contratto.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    {# ── Formset override + extra ─────────────────────────────── #}
+    <form method="post" novalidate>
+      {% csrf_token %}
+      {{ fs.management_form }}
+
+      <div class="card mb-3">
+        <div class="card-header card-header-primary">
+          <i class="bi bi-pencil-square me-2"></i>Override prezzi e servizi aggiuntivi
+        </div>
+        {% if fs.non_form_errors %}
+        <div class="alert alert-danger m-3">{{ fs.non_form_errors }}</div>
+        {% endif %}
+        <div class="table-responsive">
+          <table class="table table-sm mb-0 align-middle" id="sede-righe-table">
+            <thead class="table-light">
+              <tr>
+                <th style="min-width:200px">Servizio</th>
+                <th style="width:130px">Prezzo (€)</th>
+                <th style="width:100px" class="text-center">Tipo</th>
+                <th style="width:50px"></th>
+              </tr>
+            </thead>
+            <tbody id="sede-righe-body">
+              {% for f in fs %}
+              <tr class="sede-riga-row">
+                <td>
+                  {{ f.id }}
+                  {{ f.servizio }}
+                  {% if f.servizio.errors %}<div class="invalid-feedback d-block">{{ f.servizio.errors.0 }}</div>{% endif %}
+                </td>
+                <td>
+                  <div class="input-group input-group-sm">
+                    <span class="input-group-text">€</span>{{ f.prezzo }}
+                  </div>
+                  {% if f.prezzo.errors %}<div class="invalid-feedback d-block">{{ f.prezzo.errors.0 }}</div>{% endif %}
+                </td>
+                <td class="text-center">
+                  {% if f.instance.pk %}
+                    {% if f.instance.servizio_id in servizi_base_ids %}
+                      <span class="badge badge-wait">Override</span>
+                    {% else %}
+                      <span class="badge badge-ok">Extra</span>
+                    {% endif %}
+                  {% else %}
+                    <span class="badge bg-secondary">Nuovo</span>
+                  {% endif %}
+                </td>
+                <td class="text-center">
+                  {% if f.DELETE %}
+                  <div class="form-check d-flex justify-content-center" title="Elimina">
+                    {{ f.DELETE }}
+                  </div>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <div class="card-footer">
+          <button type="button" class="btn btn-sm btn-outline-brand" id="btn-aggiungi-sede-riga">
+            <i class="bi bi-plus-lg me-1"></i>Aggiungi riga
+          </button>
+        </div>
+      </div>
+
+      <div class="alert alert-info small">
+        <i class="bi bi-info-circle me-2"></i>
+        <strong>Override</strong>: servizio già presente nel contratto — il prezzo qui sovrascrive quello base per questa sede.<br>
+        <strong>Extra</strong>: servizio non presente nel contratto — valido solo per questa sede.
+      </div>
+
+      <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-brand"><i class="bi bi-check-lg me-1"></i>Salva</button>
+        <a href="{{ contratto.get_absolute_url }}" class="btn btn-outline-secondary">Annulla</a>
+      </div>
+    </form>
+
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card mb-3">
+      <div class="card-header"><i class="bi bi-info-circle me-2"></i>Sede</div>
+      <div class="card-body">
+        <div class="detail-field">
+          <div class="detail-field-label">Nome sede</div>
+          <div class="detail-field-value fw-semibold">{{ cf.filiale.nome }}</div>
+        </div>
+        <div class="detail-field">
+          <div class="detail-field-label">Città</div>
+          <div class="detail-field-value">{{ cf.filiale.citta }}</div>
+        </div>
+        <div class="detail-field">
+          <div class="detail-field-label">Cliente</div>
+          <div class="detail-field-value">{{ contratto.cliente }}</div>
+        </div>
+        <div class="detail-field mb-0">
+          <div class="detail-field-label">Note sede</div>
+          <div class="detail-field-value {% if not cf.note %}empty{% endif %}">{{ cf.note|default:"—" }}</div>
+        </div>
+      </div>
+    </div>
+    <a href="{{ contratto.get_absolute_url }}" class="btn btn-outline-secondary btn-sm w-100">
+      <i class="bi bi-arrow-left me-1"></i>Torna al contratto
+    </a>
+  </div>
+</div>
+
+<template id="sede-riga-empty-template">
+  <tr class="sede-riga-row">
+    <td>
+      <input type="hidden" name="sede-__prefix__-id" id="id_sede-__prefix__-id">
+      <select name="sede-__prefix__-servizio" id="id_sede-__prefix__-servizio" class="form-select form-select-sm">
+        {% for f in fs %}{% if forloop.first %}{% for opt in f.servizio %}{{ opt }}{% endfor %}{% endif %}{% endfor %}
+      </select>
+    </td>
+    <td>
+      <div class="input-group input-group-sm">
+        <span class="input-group-text">€</span>
+        <input type="number" name="sede-__prefix__-prezzo" id="id_sede-__prefix__-prezzo" class="form-control form-control-sm" step="0.01" placeholder="0.00">
+      </div>
+    </td>
+    <td class="text-center"><span class="badge bg-secondary">Nuovo</span></td>
+    <td></td>
+  </tr>
+</template>
+
+<script>
+(function () {
+  const totalFormsInput = document.querySelector('#id_sede-TOTAL_FORMS');
+  const body = document.getElementById('sede-righe-body');
+  const tmpl = document.getElementById('sede-riga-empty-template');
+  document.getElementById('btn-aggiungi-sede-riga').addEventListener('click', function () {
+    const idx = parseInt(totalFormsInput.value);
+    const clone = tmpl.content.cloneNode(true);
+    clone.querySelectorAll('[name],[id]').forEach(el => {
+      if (el.name) el.name = el.name.replace('__prefix__', idx);
+      if (el.id)   el.id   = el.id.replace('__prefix__', idx);
+    });
+    body.appendChild(clone);
+    totalFormsInput.value = idx + 1;
+  });
+})();
+</script>
+{% endblock %}

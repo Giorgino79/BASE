@@ -1,6 +1,6 @@
 from django import forms
 from django.forms import inlineformset_factory
-from .models import Servizio, Contratto, ContrattoFiliale, ContrattoRiga, ODS, ODSRiga, ConsumoMateriale, CondominioODS, RigaUnitaAbitativa, RigaProdottoCondominio
+from .models import Servizio, Contratto, ContrattoFiliale, ContrattoFilialeRiga, ContrattoRiga, ODS, ODSRiga, ConsumoMateriale, CondominioODS, RigaUnitaAbitativa, RigaProdottoCondominio
 
 _BS = {"class": "form-control"}
 _SEL = {"class": "form-select"}
@@ -58,6 +58,28 @@ class ContrattoRigaForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["servizio"].queryset = Servizio.objects.filter(attivo=True).order_by("nome")
+
+
+class ContrattoFilialeRigaForm(forms.ModelForm):
+    class Meta:
+        model = ContrattoFilialeRiga
+        fields = ["servizio", "prezzo"]
+        widgets = {
+            "servizio": forms.Select(attrs={"class": "form-select form-select-sm"}),
+            "prezzo":   forms.NumberInput(attrs={"class": "form-control form-control-sm", "step": "0.01", "placeholder": "0.00"}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["servizio"].queryset = Servizio.objects.filter(attivo=True).order_by("nome")
+
+
+ContrattoFilialeRigaFormSet = inlineformset_factory(
+    ContrattoFiliale, ContrattoFilialeRiga,
+    form=ContrattoFilialeRigaForm,
+    extra=1,
+    can_delete=True,
+)
 
 
 ContrattoRigaFormSet = inlineformset_factory(

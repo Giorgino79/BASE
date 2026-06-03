@@ -9,9 +9,9 @@ from django.contrib.contenttypes.models import ContentType
 from django.http import JsonResponse
 from django.utils import timezone
 
-from .models import Servizio, Contratto, ContrattoFiliale, ContrattoRiga, ODS, ODSRiga, Distinta, ConsumoMateriale, CondominioODS, RigaUnitaAbitativa, RigaProdottoCondominio
+from .models import Servizio, Contratto, ContrattoFiliale, ContrattoFilialeRiga, ContrattoRiga, ODS, ODSRiga, Distinta, ConsumoMateriale, CondominioODS, RigaUnitaAbitativa, RigaProdottoCondominio
 from .forms import (
-    ServizioForm, ContrattoForm, ContrattoRigaFormSet,
+    ServizioForm, ContrattoForm, ContrattoRigaFormSet, ContrattoFilialeRigaFormSet,
     ODSForm, ODSRigaFormSet,
     ConsumoMaterialeForm, ChiudiServizioForm, ProdottoPrevitoForm,
     CondominioODSForm, RigaUnitaAbitativaFormSet, RigaProdottoCondominioFormSet,
@@ -260,6 +260,22 @@ def api_prezzo_contratto(request):
     servizio_id = request.GET.get("servizio")
     if not filiale_id or not servizio_id:
         return JsonResponse({"prezzo": None, "contratto_filiale_id": None})
+    # Prima cerca override specifico per la sede
+    sede_riga = (
+        ContrattoFilialeRiga.objects.filter(
+            servizio_id=servizio_id,
+            contratto_filiale__filiale_id=filiale_id,
+            contratto_filiale__contratto__stato="attivo",
+        )
+        .select_related("contratto_filiale__contratto")
+        .order_by("-contratto_filiale__contratto__created_at")
+        .first()
+    )
+    if sede_riga:
+        cf = sede_riga.contratto_filiale
+        return JsonResponse({"prezzo": str(sede_riga.prezzo), "contratto_filiale_id": cf.pk})
+
+    # Fallback: prezzo base dal contratto
     riga = (
         ContrattoRiga.objects.filter(
             servizio_id=servizio_id,
@@ -274,11 +290,36 @@ def api_prezzo_contratto(request):
         cf = ContrattoFiliale.objects.filter(
             contratto=riga.contratto, filiale_id=filiale_id
         ).first()
-        return JsonResponse({
-            "prezzo": str(riga.prezzo),
-            "contratto_filiale_id": cf.pk if cf else None,
-        })
+        return JsonResponse({"prezzo": str(riga.prezzo), "contratto_filiale_id": cf.pk if cf else None})
     return JsonResponse({"prezzo": None, "contratto_filiale_id": None})
+
+
+@login_required
+def contratto_filiale_gestisci(request, cf_pk):
+    """Gestisce prezzi override e servizi extra per una singola sede del contratto."""
+    cf = get_object_or_404(ContrattoFiliale.objects.select_related("contratto__cliente", "filiale"), pk=cf_pk)
+    contratto = cf.contratto
+    righe_base = contratto.righe.select_related("servizio")
+    servizi_base_ids = set(righe_base.values_list("servizio_id", flat=True))
+
+    if request.method == "POST":
+        fs = ContrattoFilialeRigaFormSet(request.POST, instance=cf, prefix="sede")
+        if fs.is_valid():
+            fs.save()
+            messages.success(request, f"Prezzi per «{cf.filiale.nome}» aggiornati.")
+            return redirect(contratto.get_absolute_url())
+    else:
+        fs = ContrattoFilialeRigaFormSet(instance=cf, prefix="sede")
+
+    ctx = {
+        "cf": cf,
+        "contratto": contratto,
+        "fs": fs,
+        "righe_base": righe_base,
+        "servizi_base_ids": servizi_base_ids,
+        "righe_sede": cf.righe_sede.select_related("servizio"),
+    }
+    return render(request, "servizi/contratti/filiale_gestisci.html", ctx)
 
 
 # ── ODS ───────────────────────────────────────────────────────────────────────

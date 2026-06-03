@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Servizio, Contratto, ContrattoFiliale, ContrattoRiga, ODS, ODSRiga, ConsumoMateriale
+from .models import Servizio, Contratto, ContrattoFiliale, ContrattoFilialeRiga, ContrattoRiga, ODS, ODSRiga, ConsumoMateriale
 
 
 @admin.register(Servizio)
@@ -11,6 +11,12 @@ class ServizioAdmin(admin.ModelAdmin):
 
 class ContrattoRigaInline(admin.TabularInline):
     model = ContrattoRiga
+    extra = 1
+    fields = ["servizio", "prezzo"]
+
+
+class ContrattoFilialeRigaInline(admin.TabularInline):
+    model = ContrattoFilialeRiga
     extra = 1
     fields = ["servizio", "prezzo"]
 

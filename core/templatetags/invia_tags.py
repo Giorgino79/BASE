@@ -47,8 +47,8 @@ def bottone_invia(
         "pdf_url": pdf_url,
         "pdf_path": pdf_path,
         "destinatario_nome": destinatario_nome,
-        "label": label,
-        "btn_class": btn_class,
+        "label": label or "Invia",
+        "btn_class": btn_class or "btn-primary",
         "btn_size": btn_size,
         "request": context.get("request"),
     }
