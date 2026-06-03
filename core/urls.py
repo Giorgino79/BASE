@@ -29,6 +29,7 @@ from .views_permissions import (
     permission_template_delete_view,
 )
 from .admin_views import modules_dashboard, amministrazione_dashboard, hr_dashboard_view
+from .views_invia import invia_documento
 from .views_tools import calcolatrice_view
 from .views_calendario import (
     CalendarioView,
@@ -91,4 +92,6 @@ urlpatterns = [
     path("calendario/evento/<int:pk>/elimina/", evento_calendario_delete, name="evento_calendario_delete"),
     # ========== TEST EMAIL ==========
     path("test-mail/", test_email_view, name="test_email"),
+    # ========== INVIA (WhatsApp / Email) ==========
+    path("invia/", invia_documento, name="invia_documento"),
 ]

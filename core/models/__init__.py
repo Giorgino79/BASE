@@ -6,6 +6,7 @@ Exports base models e mixins per facile import nelle app.
 
 from .base import BaseModel, BaseModelWithCode, BaseModelSimple
 from .evento_calendario import EventoCalendario
+from .invia_log import InvioLog
 from ..models_permissions import PermissionTemplate
 
 __all__ = [
@@ -13,6 +14,7 @@ __all__ = [
     "BaseModelWithCode",
     "BaseModelSimple",
     "EventoCalendario",
+    "InvioLog",
     "PermissionTemplate",
 ]
 

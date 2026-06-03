@@ -1,0 +1,222 @@
+{% comment %}
+Modal INVIA — riusabile da qualsiasi app.
+
+Uso nel template:
+    {% load invia_tags %}
+    {% bottone_invia phone="+393331234567" email="x@y.it" oggetto="Busta paga Gennaio" pdf_url=pdf_url %}
+
+Parametri (tutti opzionali):
+  phone            — numero WhatsApp pre-compilato (es. "+393331234567" o "3331234567")
+  email            — email pre-compilata
+  oggetto          — oggetto/titolo del documento
+  messaggio        — testo pre-compilato del messaggio
+  pdf_url          — URL relativa Django del PDF (es. /media/buste_paga/xzy.pdf)
+  pdf_path         — percorso assoluto del PDF (alternativo a pdf_url)
+  destinatario_nome — nome del destinatario
+  label            — testo del bottone (default: "Invia")
+  btn_class        — classe Bootstrap del bottone (default: "btn-primary")
+  btn_size         — "btn-sm" / "btn-lg" / "" (default "")
+{% endcomment %}
+
+<!-- BOTTONE -->
+<button type="button"
+        class="btn {{ btn_class|default:'btn-primary' }} {{ btn_size }}"
+        data-bs-toggle="modal"
+        data-bs-target="#{{ modal_id }}">
+    <i class="bi bi-send-fill me-1"></i>{{ label|default:"Invia" }}
+</button>
+
+<!-- MODAL -->
+<div class="modal fade" id="{{ modal_id }}" tabindex="-1" aria-labelledby="{{ modal_id }}Label" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <h5 class="modal-title" id="{{ modal_id }}Label">
+                    <i class="bi bi-send me-2"></i>Invia documento
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body">
+
+                <!-- Selezione canale -->
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Invia tramite</label>
+                    <div class="btn-group w-100" role="group" id="{{ modal_id }}_canale_group">
+                        <input type="radio" class="btn-check" name="{{ modal_id }}_canale"
+                               id="{{ modal_id }}_wa" value="whatsapp" checked>
+                        <label class="btn btn-outline-success" for="{{ modal_id }}_wa">
+                            <i class="bi bi-whatsapp me-1"></i>WhatsApp
+                        </label>
+
+                        <input type="radio" class="btn-check" name="{{ modal_id }}_canale"
+                               id="{{ modal_id }}_em" value="email">
+                        <label class="btn btn-outline-primary" for="{{ modal_id }}_em">
+                            <i class="bi bi-envelope-fill me-1"></i>Email
+                        </label>
+
+                        <input type="radio" class="btn-check" name="{{ modal_id }}_canale"
+                               id="{{ modal_id }}_en" value="entrambi">
+                        <label class="btn btn-outline-secondary" for="{{ modal_id }}_en">
+                            <i class="bi bi-send-plus me-1"></i>Entrambi
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Sezione WhatsApp -->
+                <div id="{{ modal_id }}_sec_wa" class="mb-3">
+                    <label class="form-label">Numero WhatsApp</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-whatsapp text-success"></i></span>
+                        <input type="text" class="form-control" id="{{ modal_id }}_telefono"
+                               placeholder="+39 333 1234567"
+                               value="{{ phone }}">
+                    </div>
+                    <div class="form-text">Formato: +39XXXXXXXXXX — senza spazi</div>
+                </div>
+
+                <!-- Sezione Email -->
+                <div id="{{ modal_id }}_sec_em" class="mb-3 d-none">
+                    <label class="form-label">Email destinatario</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-envelope text-primary"></i></span>
+                        <input type="email" class="form-control" id="{{ modal_id }}_email"
+                               placeholder="destinatario@esempio.it"
+                               value="{{ email }}">
+                    </div>
+                </div>
+
+                <!-- Oggetto -->
+                <div class="mb-3">
+                    <label class="form-label">Oggetto</label>
+                    <input type="text" class="form-control" id="{{ modal_id }}_oggetto"
+                           value="{{ oggetto }}" placeholder="Oggetto del messaggio">
+                </div>
+
+                <!-- Messaggio -->
+                <div class="mb-3">
+                    <label class="form-label">Messaggio</label>
+                    <textarea class="form-control" id="{{ modal_id }}_messaggio"
+                              rows="3" placeholder="Testo del messaggio (opzionale)">{{ messaggio }}</textarea>
+                </div>
+
+                {% if pdf_url or pdf_path %}
+                <div class="alert alert-secondary py-2 mb-2 d-flex align-items-center">
+                    <i class="bi bi-file-earmark-pdf-fill text-danger me-2 fs-5"></i>
+                    <small>PDF allegato: <strong>{{ oggetto|default:"documento" }}.pdf</strong></small>
+                </div>
+                {% endif %}
+
+                <!-- Area feedback -->
+                <div id="{{ modal_id }}_feedback" class="d-none"></div>
+
+            </div><!-- /modal-body -->
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Annulla</button>
+                <button type="button" class="btn btn-success btn-sm" id="{{ modal_id }}_btn_invia">
+                    <span id="{{ modal_id }}_spinner" class="spinner-border spinner-border-sm me-1 d-none" role="status"></span>
+                    <i class="bi bi-send-fill me-1" id="{{ modal_id }}_icon"></i>
+                    Invia
+                </button>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    const mid = "{{ modal_id }}";
+
+    function $id(s) { return document.getElementById(mid + "_" + s); }
+
+    // Toggle sezioni in base al canale selezionato
+    document.querySelectorAll(`input[name="${mid}_canale"]`).forEach(function (radio) {
+        radio.addEventListener("change", function () {
+            const v = this.value;
+            $id("sec_wa").classList.toggle("d-none", v === "email");
+            $id("sec_em").classList.toggle("d-none", v === "whatsapp");
+        });
+    });
+
+    // Invia
+    $id("btn_invia").addEventListener("click", function () {
+        const canale = document.querySelector(`input[name="${mid}_canale"]:checked`)?.value || "whatsapp";
+        const telefono = $id("telefono")?.value.trim() || "";
+        const email = $id("email")?.value.trim() || "";
+        const oggetto = $id("oggetto")?.value.trim() || "";
+        const messaggio = $id("messaggio")?.value.trim() || "";
+
+        if ((canale === "whatsapp" || canale === "entrambi") && !telefono) {
+            showFeedback("warning", "Inserisci il numero WhatsApp.");
+            return;
+        }
+        if ((canale === "email" || canale === "entrambi") && !email) {
+            showFeedback("warning", "Inserisci l'email del destinatario.");
+            return;
+        }
+
+        setLoading(true);
+        clearFeedback();
+
+        const payload = {
+            canale: canale,
+            telefono: telefono,
+            email: email,
+            oggetto: oggetto,
+            messaggio: messaggio,
+            pdf_url: "{{ pdf_url }}",
+            pdf_path: "{{ pdf_path }}",
+            destinatario_nome: "{{ destinatario_nome }}",
+        };
+
+        fetch("{% url 'core:invia_documento' %}", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": getCookie("csrftoken"),
+            },
+            body: JSON.stringify(payload),
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            setLoading(false);
+            if (data.success) {
+                showFeedback("success", "<i class='bi bi-check-circle-fill me-1'></i>" + data.message);
+                $id("btn_invia").disabled = true;
+            } else {
+                showFeedback("danger", "<i class='bi bi-exclamation-triangle-fill me-1'></i>" + (data.error || "Errore sconosciuto"));
+            }
+        })
+        .catch(function () {
+            setLoading(false);
+            showFeedback("danger", "Errore di rete — riprova.");
+        });
+    });
+
+    function setLoading(on) {
+        $id("spinner").classList.toggle("d-none", !on);
+        $id("icon").classList.toggle("d-none", on);
+        $id("btn_invia").disabled = on;
+    }
+
+    function showFeedback(type, html) {
+        const el = $id("feedback");
+        el.innerHTML = `<div class="alert alert-${type} py-2 mb-0">${html}</div>`;
+        el.classList.remove("d-none");
+    }
+
+    function clearFeedback() {
+        const el = $id("feedback");
+        el.innerHTML = "";
+        el.classList.add("d-none");
+    }
+
+    function getCookie(name) {
+        const v = document.cookie.match("(^|;)\\s*" + name + "\\s*=\\s*([^;]+)");
+        return v ? v.pop() : "";
+    }
+})();
+</script>
