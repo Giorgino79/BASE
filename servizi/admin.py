@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Servizio, Contratto, ContrattoFiliale, ODS, ODSRiga, ConsumoMateriale
+from .models import Servizio, Contratto, ContrattoFiliale, ContrattoRiga, ODS, ODSRiga, ConsumoMateriale
 
 
 @admin.register(Servizio)
@@ -9,18 +9,24 @@ class ServizioAdmin(admin.ModelAdmin):
     search_fields = ["nome"]
 
 
+class ContrattoRigaInline(admin.TabularInline):
+    model = ContrattoRiga
+    extra = 1
+    fields = ["servizio", "prezzo"]
+
+
 class ContrattoFilialeInline(admin.TabularInline):
     model = ContrattoFiliale
     extra = 0
-    fields = ["filiale", "prezzo_override", "note"]
+    fields = ["filiale", "note"]
 
 
 @admin.register(Contratto)
 class ContrattoAdmin(admin.ModelAdmin):
-    list_display = ["cliente", "servizio", "prezzo_default", "periodicita", "stato", "data_inizio"]
+    list_display = ["cliente", "periodicita", "stato", "data_inizio"]
     list_filter = ["stato", "periodicita"]
-    search_fields = ["cliente__ragione_sociale", "servizio__nome"]
-    inlines = [ContrattoFilialeInline]
+    search_fields = ["cliente__ragione_sociale", "righe__servizio__nome"]
+    inlines = [ContrattoRigaInline, ContrattoFilialeInline]
 
 
 class ODSRigaInline(admin.TabularInline):

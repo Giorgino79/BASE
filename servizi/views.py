@@ -9,9 +9,9 @@ from django.contrib.contenttypes.models import ContentType
 from django.http import JsonResponse
 from django.utils import timezone
 
-from .models import Servizio, Contratto, ContrattoFiliale, ODS, ODSRiga, Distinta, ConsumoMateriale, CondominioODS, RigaUnitaAbitativa, RigaProdottoCondominio
+from .models import Servizio, Contratto, ContrattoFiliale, ContrattoRiga, ODS, ODSRiga, Distinta, ConsumoMateriale, CondominioODS, RigaUnitaAbitativa, RigaProdottoCondominio
 from .forms import (
-    ServizioForm, ContrattoForm, ContrattoFilialeForm,
+    ServizioForm, ContrattoForm, ContrattoRigaFormSet,
     ODSForm, ODSRigaFormSet,
     ConsumoMaterialeForm, ChiudiServizioForm, ProdottoPrevitoForm,
     CondominioODSForm, RigaUnitaAbitativaFormSet, RigaProdottoCondominioFormSet,
@@ -132,12 +132,12 @@ class ContrattoListView(LoginRequiredMixin, ListView):
     paginate_by = 25
 
     def get_queryset(self):
-        qs = Contratto.objects.select_related("cliente", "servizio").order_by("-created_at")
+        qs = Contratto.objects.select_related("cliente").prefetch_related("righe__servizio").order_by("-created_at")
         q = self.request.GET.get("q", "").strip()
         if q:
             qs = qs.filter(
-                Q(cliente__ragione_sociale__icontains=q) | Q(servizio__nome__icontains=q)
-            )
+                Q(cliente__ragione_sociale__icontains=q) | Q(righe__servizio__nome__icontains=q)
+            ).distinct()
         stato = self.request.GET.get("stato", "attivo")
         if stato:
             qs = qs.filter(stato=stato)
@@ -158,8 +158,8 @@ class ContrattoDetailView(LoginRequiredMixin, DetailView):
 
     def get_queryset(self):
         return Contratto.objects.select_related(
-            "cliente", "servizio", "created_by"
-        ).prefetch_related("filiali_contratto__filiale")
+            "cliente", "created_by"
+        ).prefetch_related("righe__servizio", "filiali_contratto__filiale")
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -167,11 +167,8 @@ class ContrattoDetailView(LoginRequiredMixin, DetailView):
         ctx["edit_url"] = reverse("servizi:contratto_update", kwargs={"pk": self.object.pk})
         ctx["content_type_id"] = ContentType.objects.get_for_model(Contratto).pk
         ctx["object_id"] = self.object.pk
-        # Form override per ogni filiale inline
-        ctx["filiale_forms"] = [
-            (cf, ContrattoFilialeForm(instance=cf, prefix=f"cf_{cf.pk}"))
-            for cf in self.object.filiali_contratto.select_related("filiale").order_by("filiale__nome")
-        ]
+        ctx["righe"] = self.object.righe.select_related("servizio")
+        ctx["filiali"] = self.object.filiali_contratto.select_related("filiale").order_by("filiale__nome")
         return ctx
 
 
@@ -184,20 +181,27 @@ class ContrattoCreateView(LoginRequiredMixin, CreateView):
         ctx = super().get_context_data(**kwargs)
         ctx["titolo"] = "Nuovo Contratto"
         ctx["back_url"] = reverse("servizi:contratto_list")
+        if "righe_fs" not in ctx:
+            ctx["righe_fs"] = ContrattoRigaFormSet(prefix="righe")
         return ctx
 
-    def form_valid(self, form):
-        form.instance.created_by = self.request.user
-        self.object = form.save()
-        filiali = self.object.cliente.filiali.filter(attivo=True)
-        for f in filiali:
-            ContrattoFiliale.objects.get_or_create(contratto=self.object, filiale=f)
-        n = filiali.count()
-        messages.success(
-            self.request,
-            f"Contratto creato e applicato a {n} sede{'i' if n != 1 else ''}.",
-        )
-        return redirect(self.object.get_absolute_url())
+    def post(self, request, *args, **kwargs):
+        self.object = None
+        form = self.get_form()
+        righe_fs = ContrattoRigaFormSet(request.POST, prefix="righe")
+        if form.is_valid() and righe_fs.is_valid():
+            form.instance.created_by = request.user
+            self.object = form.save()
+            righe_fs.instance = self.object
+            righe_fs.save()
+            filiali = self.object.cliente.filiali.filter(attivo=True)
+            for f in filiali:
+                ContrattoFiliale.objects.get_or_create(contratto=self.object, filiale=f)
+            n = filiali.count()
+            messages.success(request, f"Contratto creato e applicato a {n} sede{'i' if n != 1 else ''}.")
+            return redirect(self.object.get_absolute_url())
+        ctx = self.get_context_data(form=form, righe_fs=righe_fs)
+        return self.render_to_response(ctx)
 
 
 class ContrattoUpdateView(LoginRequiredMixin, UpdateView):
@@ -209,11 +213,21 @@ class ContrattoUpdateView(LoginRequiredMixin, UpdateView):
         ctx = super().get_context_data(**kwargs)
         ctx["titolo"] = f"Modifica contratto — {self.object}"
         ctx["back_url"] = self.object.get_absolute_url()
+        if "righe_fs" not in ctx:
+            ctx["righe_fs"] = ContrattoRigaFormSet(instance=self.object, prefix="righe")
         return ctx
 
-    def form_valid(self, form):
-        messages.success(self.request, "Contratto aggiornato.")
-        return super().form_valid(form)
+    def post(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        form = self.get_form()
+        righe_fs = ContrattoRigaFormSet(request.POST, instance=self.object, prefix="righe")
+        if form.is_valid() and righe_fs.is_valid():
+            self.object = form.save()
+            righe_fs.save()
+            messages.success(request, "Contratto aggiornato.")
+            return redirect(self.object.get_absolute_url())
+        ctx = self.get_context_data(form=form, righe_fs=righe_fs)
+        return self.render_to_response(ctx)
 
 
 class ContrattoDeleteView(LoginRequiredMixin, DeleteView):
@@ -233,37 +247,33 @@ class ContrattoDeleteView(LoginRequiredMixin, DeleteView):
 
 
 @login_required
-def contratto_filiale_update(request, pk):
-    """Aggiorna il prezzo override di una singola sede dal dettaglio contratto."""
-    cf = get_object_or_404(ContrattoFiliale, pk=pk)
-    if request.method == "POST":
-        form = ContrattoFilialeForm(request.POST, instance=cf, prefix=f"cf_{cf.pk}")
-        if form.is_valid():
-            form.save()
-            messages.success(request, f"Prezzo per «{cf.filiale.nome}» aggiornato.")
-        else:
-            messages.error(request, "Errore nel salvataggio.")
-    return redirect(cf.contratto.get_absolute_url())
-
-
-@login_required
 def api_prezzo_contratto(request):
     """
     GET ?filiale=<pk>&servizio=<pk>
-    Restituisce il prezzo dal contratto attivo per filiale+servizio, o null.
+    Restituisce il prezzo dalla riga di contratto attiva per filiale+servizio, o null.
     """
     filiale_id = request.GET.get("filiale")
     servizio_id = request.GET.get("servizio")
     if not filiale_id or not servizio_id:
         return JsonResponse({"prezzo": None, "contratto_filiale_id": None})
-    qs = ContrattoFiliale.objects.filter(
-        filiale_id=filiale_id,
-        contratto__servizio_id=servizio_id,
-        contratto__stato="attivo",
-    ).select_related("contratto").order_by("-contratto__created_at")
-    cf = qs.first()
-    if cf:
-        return JsonResponse({"prezzo": str(cf.prezzo_effettivo), "contratto_filiale_id": cf.pk})
+    riga = (
+        ContrattoRiga.objects.filter(
+            servizio_id=servizio_id,
+            contratto__stato="attivo",
+            contratto__filiali_contratto__filiale_id=filiale_id,
+        )
+        .select_related("contratto")
+        .order_by("-contratto__created_at")
+        .first()
+    )
+    if riga:
+        cf = ContrattoFiliale.objects.filter(
+            contratto=riga.contratto, filiale_id=filiale_id
+        ).first()
+        return JsonResponse({
+            "prezzo": str(riga.prezzo),
+            "contratto_filiale_id": cf.pk if cf else None,
+        })
     return JsonResponse({"prezzo": None, "contratto_filiale_id": None})
 
 

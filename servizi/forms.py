@@ -1,6 +1,6 @@
 from django import forms
 from django.forms import inlineformset_factory
-from .models import Servizio, Contratto, ContrattoFiliale, ODS, ODSRiga, ConsumoMateriale, CondominioODS, RigaUnitaAbitativa, RigaProdottoCondominio
+from .models import Servizio, Contratto, ContrattoFiliale, ContrattoRiga, ODS, ODSRiga, ConsumoMateriale, CondominioODS, RigaUnitaAbitativa, RigaProdottoCondominio
 
 _BS = {"class": "form-control"}
 _SEL = {"class": "form-select"}
@@ -26,42 +26,48 @@ class ContrattoForm(forms.ModelForm):
     class Meta:
         model = Contratto
         fields = [
-            "cliente", "servizio", "prezzo_default", "periodicita",
+            "cliente", "periodicita",
             "data_inizio", "data_fine", "stato", "note",
         ]
         widgets = {
-            "cliente":        forms.Select(attrs=_SEL),
-            "servizio":       forms.Select(attrs=_SEL),
-            "prezzo_default": forms.NumberInput(attrs={**_BS, "step": "0.01"}),
-            "periodicita":    forms.Select(attrs=_SEL),
-            "data_inizio":    forms.DateInput(attrs=_DATE, format="%Y-%m-%d"),
-            "data_fine":      forms.DateInput(attrs=_DATE, format="%Y-%m-%d"),
-            "stato":          forms.Select(attrs=_SEL),
-            "note":           forms.Textarea(attrs=_AREA),
+            "cliente":     forms.Select(attrs=_SEL),
+            "periodicita": forms.Select(attrs=_SEL),
+            "data_inizio": forms.DateInput(attrs=_DATE, format="%Y-%m-%d"),
+            "data_fine":   forms.DateInput(attrs=_DATE, format="%Y-%m-%d"),
+            "stato":       forms.Select(attrs=_SEL),
+            "note":        forms.Textarea(attrs=_AREA),
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         from anagrafica_r2.models import Azienda
         self.fields["cliente"].queryset = Azienda.objects.filter(attivo=True).order_by("ragione_sociale")
-        self.fields["servizio"].queryset = Servizio.objects.filter(attivo=True).order_by("nome")
         self.fields["data_fine"].required = False
         self.fields["note"].required = False
 
 
-class ContrattoFilialeForm(forms.ModelForm):
+class ContrattoRigaForm(forms.ModelForm):
     class Meta:
-        model = ContrattoFiliale
-        fields = ["prezzo_override", "note"]
+        model = ContrattoRiga
+        fields = ["servizio", "prezzo"]
         widgets = {
-            "prezzo_override": forms.NumberInput(attrs={**_BS, "step": "0.01"}),
-            "note":            forms.TextInput(attrs=_BS),
+            "servizio": forms.Select(attrs={"class": "form-select form-select-sm"}),
+            "prezzo":   forms.NumberInput(attrs={"class": "form-control form-control-sm", "step": "0.01", "placeholder": "0.00"}),
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["prezzo_override"].required = False
-        self.fields["note"].required = False
+        self.fields["servizio"].queryset = Servizio.objects.filter(attivo=True).order_by("nome")
+
+
+ContrattoRigaFormSet = inlineformset_factory(
+    Contratto, ContrattoRiga,
+    form=ContrattoRigaForm,
+    extra=1,
+    min_num=1,
+    validate_min=True,
+    can_delete=True,
+)
 
 
 class ODSForm(forms.ModelForm):

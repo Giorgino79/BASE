@@ -44,14 +44,13 @@
   <div class="table-responsive">
     <table class="table mb-0">
       <thead class="bg-brand text-white">
-        <tr><th>Cliente</th><th>Servizio</th><th class="text-end">Prezzo base</th><th>Periodicità</th><th>Inizio</th><th>Stato</th><th></th></tr>
+        <tr><th>Cliente</th><th>Servizi</th><th>Periodicità</th><th>Inizio</th><th>Stato</th><th></th></tr>
       </thead>
       <tbody>
         {% for c in contratti %}
         <tr>
           <td><a href="{{ c.get_absolute_url }}" class="text-brand fw-semibold text-decoration-none">{{ c.cliente }}</a></td>
-          <td>{{ c.servizio }}</td>
-          <td class="text-end">€ {{ c.prezzo_default }}</td>
+          <td class="small">{% for r in c.righe.all %}{{ r.servizio }}{% if not forloop.last %}, {% endif %}{% empty %}<span class="text-muted">—</span>{% endfor %}</td>
           <td class="text-muted small">{{ c.get_periodicita_display }}</td>
           <td class="text-muted small">{{ c.data_inizio|date:"d/m/Y" }}</td>
           <td>
@@ -63,7 +62,7 @@
           <td class="text-end"><a href="{{ c.get_absolute_url }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-eye"></i></a></td>
         </tr>
         {% empty %}
-        <tr><td colspan="7" class="text-center text-muted py-3"><i class="bi bi-inbox me-2"></i>Nessun contratto trovato</td></tr>
+        <tr><td colspan="6" class="text-center text-muted py-3"><i class="bi bi-inbox me-2"></i>Nessun contratto trovato</td></tr>
         {% endfor %}
       </tbody>
     </table>

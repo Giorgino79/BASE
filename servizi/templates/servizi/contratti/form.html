@@ -12,10 +12,13 @@
   </nav>
   <h1><i class="bi bi-file-earmark-text me-2 text-brand"></i>{{ titolo }}</h1>
 </div>
+
 <form method="post" novalidate>
   {% csrf_token %}
+  {{ righe_fs.management_form }}
   <div class="row g-3">
     <div class="col-lg-9">
+
       <div class="card mb-3">
         <div class="card-header card-header-primary"><i class="bi bi-info-circle me-2"></i>Dati Contratto</div>
         <div class="card-body">
@@ -25,22 +28,11 @@
               {{ form.cliente }}
               {% if form.cliente.errors %}<div class="invalid-feedback d-block">{{ form.cliente.errors.0 }}</div>{% endif %}
             </div>
-            <div class="col-sm-6">
-              <label class="form-label">{{ form.servizio.label }} <span class="text-danger">*</span></label>
-              {{ form.servizio }}
-              {% if form.servizio.errors %}<div class="invalid-feedback d-block">{{ form.servizio.errors.0 }}</div>{% endif %}
-            </div>
-            <div class="col-sm-4">
-              <label class="form-label">{{ form.prezzo_default.label }} <span class="text-danger">*</span></label>
-              <div class="input-group">
-                <span class="input-group-text">€</span>{{ form.prezzo_default }}
-              </div>
-            </div>
-            <div class="col-sm-4">
+            <div class="col-sm-3">
               <label class="form-label">{{ form.periodicita.label }}</label>
               {{ form.periodicita }}
             </div>
-            <div class="col-sm-4">
+            <div class="col-sm-3">
               <label class="form-label">{{ form.stato.label }}</label>
               {{ form.stato }}
             </div>
@@ -59,17 +51,107 @@
           </div>
         </div>
       </div>
+
+      <div class="card mb-3">
+        <div class="card-header card-header-primary"><i class="bi bi-list-ul me-2"></i>Servizi del Contratto</div>
+        {% if righe_fs.non_form_errors %}
+        <div class="alert alert-danger m-3">{{ righe_fs.non_form_errors }}</div>
+        {% endif %}
+        <div class="table-responsive">
+          <table class="table table-sm mb-0 align-middle" id="righe-table">
+            <thead class="table-light">
+              <tr>
+                <th style="min-width:220px">Servizio <span class="text-danger">*</span></th>
+                <th style="width:130px">Prezzo (€) <span class="text-danger">*</span></th>
+                <th style="width:50px"></th>
+              </tr>
+            </thead>
+            <tbody id="righe-body">
+              {% for riga_form in righe_fs %}
+              <tr class="riga-row">
+                <td>
+                  {{ riga_form.id }}
+                  {{ riga_form.servizio }}
+                  {% if riga_form.servizio.errors %}<div class="invalid-feedback d-block">{{ riga_form.servizio.errors.0 }}</div>{% endif %}
+                </td>
+                <td>
+                  <div class="input-group input-group-sm">
+                    <span class="input-group-text">€</span>
+                    {{ riga_form.prezzo }}
+                  </div>
+                  {% if riga_form.prezzo.errors %}<div class="invalid-feedback d-block">{{ riga_form.prezzo.errors.0 }}</div>{% endif %}
+                </td>
+                <td class="text-center">
+                  {% if riga_form.DELETE %}
+                  <div class="form-check d-flex justify-content-center">
+                    {{ riga_form.DELETE }}
+                  </div>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <div class="card-footer">
+          <button type="button" class="btn btn-sm btn-outline-brand" id="btn-aggiungi-riga">
+            <i class="bi bi-plus-lg me-1"></i>Aggiungi servizio
+          </button>
+        </div>
+      </div>
+
       {% if not object %}
       <div class="alert alert-info small">
         <i class="bi bi-info-circle me-2"></i>
-        Al salvataggio, il contratto verrà automaticamente applicato a tutte le sedi attive del cliente selezionato. Potrai poi modificare il prezzo per singola sede dal dettaglio del contratto.
+        Al salvataggio, il contratto verrà applicato a tutte le sedi attive del cliente selezionato.
       </div>
       {% endif %}
+
       <div class="d-flex gap-2">
         <button type="submit" class="btn btn-brand"><i class="bi bi-check-lg me-1"></i>Salva</button>
         <a href="{{ back_url }}" class="btn btn-outline-secondary">Annulla</a>
       </div>
+
     </div>
   </div>
 </form>
+
+{# Template invisibile per la nuova riga da clonare via JS #}
+<template id="riga-empty-template">
+  <tr class="riga-row">
+    <td>
+      <input type="hidden" name="righe-__prefix__-id" id="id_righe-__prefix__-id">
+      <select name="righe-__prefix__-servizio" id="id_righe-__prefix__-servizio" class="form-select form-select-sm">
+        {% for riga_form in righe_fs %}{% if forloop.first %}{% for opt in riga_form.servizio %}{{ opt }}{% endfor %}{% endif %}{% endfor %}
+      </select>
+    </td>
+    <td>
+      <div class="input-group input-group-sm">
+        <span class="input-group-text">€</span>
+        <input type="number" name="righe-__prefix__-prezzo" id="id_righe-__prefix__-prezzo"
+               class="form-control form-control-sm" step="0.01" placeholder="0.00">
+      </div>
+    </td>
+    <td></td>
+  </tr>
+</template>
+
+<script>
+(function () {
+  const totalFormsInput = document.querySelector('#id_righe-TOTAL_FORMS');
+  const body = document.getElementById('righe-body');
+  const template = document.getElementById('riga-empty-template');
+
+  document.getElementById('btn-aggiungi-riga').addEventListener('click', function () {
+    const idx = parseInt(totalFormsInput.value);
+    const clone = template.content.cloneNode(true);
+    clone.querySelectorAll('[name],[id]').forEach(el => {
+      if (el.name) el.name = el.name.replace('__prefix__', idx);
+      if (el.id)   el.id   = el.id.replace('__prefix__', idx);
+    });
+    body.appendChild(clone);
+    totalFormsInput.value = idx + 1;
+  });
+})();
+</script>
 {% endblock %}

@@ -80,15 +80,6 @@ class Contratto(AllegatiMixin, models.Model):
         "anagrafica.Azienda", on_delete=models.PROTECT,
         related_name="contratti", verbose_name="Cliente",
     )
-    servizio       = models.ForeignKey(
-        Servizio, on_delete=models.PROTECT,
-        related_name="contratti", verbose_name="Servizio",
-    )
-    prezzo_default = models.DecimalField(
-        max_digits=10, decimal_places=2,
-        verbose_name="Prezzo base",
-        help_text="Applicato a tutte le sedi; modificabile per singola sede",
-    )
     periodicita    = models.CharField(
         max_length=20, choices=Periodicita.choices, default=Periodicita.MENSILE,
         verbose_name="Periodicità",
@@ -113,17 +104,10 @@ class Contratto(AllegatiMixin, models.Model):
         ordering = ["-created_at"]
 
     def __str__(self):
-        return f"{self.cliente} — {self.servizio}"
+        return f"{self.cliente} — {self.get_periodicita_display()}"
 
     def get_absolute_url(self):
         return reverse("servizi:contratto_detail", kwargs={"pk": self.pk})
-
-    def prezzo_per_filiale(self, filiale):
-        try:
-            cf = self.filiali_contratto.get(filiale=filiale)
-            return cf.prezzo_effettivo
-        except ContrattoFiliale.DoesNotExist:
-            return self.prezzo_default
 
 
 class ContrattoFiliale(models.Model):
@@ -135,11 +119,6 @@ class ContrattoFiliale(models.Model):
     filiale         = models.ForeignKey(
         "anagrafica.Filiale", on_delete=models.CASCADE, related_name="contratti_filiale",
     )
-    prezzo_override = models.DecimalField(
-        max_digits=10, decimal_places=2, null=True, blank=True,
-        verbose_name="Prezzo specifico sede",
-        help_text="Lascia vuoto per usare il prezzo base del contratto",
-    )
     note            = models.CharField(max_length=300, blank=True, verbose_name="Note sede")
 
     class Meta:
@@ -150,11 +129,28 @@ class ContrattoFiliale(models.Model):
     def __str__(self):
         return f"{self.contratto} / {self.filiale.nome}"
 
-    @property
-    def prezzo_effettivo(self):
-        if self.prezzo_override is not None:
-            return self.prezzo_override
-        return self.contratto.prezzo_default
+
+class ContrattoRiga(models.Model):
+    """Un servizio con il relativo prezzo all'interno di un contratto."""
+
+    contratto = models.ForeignKey(
+        Contratto, on_delete=models.CASCADE, related_name="righe",
+    )
+    servizio  = models.ForeignKey(
+        Servizio, on_delete=models.PROTECT, related_name="righe_contratto",
+    )
+    prezzo    = models.DecimalField(
+        max_digits=10, decimal_places=2, verbose_name="Prezzo",
+    )
+
+    class Meta:
+        unique_together = [("contratto", "servizio")]
+        verbose_name = "Riga contratto"
+        verbose_name_plural = "Righe contratto"
+        ordering = ["servizio__nome"]
+
+    def __str__(self):
+        return f"{self.servizio} — € {self.prezzo}"
 
 
 class ODS(AllegatiMixin, models.Model):

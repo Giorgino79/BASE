@@ -32,18 +32,6 @@
               <div class="detail-field-value"><a href="{{ contratto.cliente.get_absolute_url }}" class="text-decoration-none">{{ contratto.cliente }}</a></div>
             </div>
           </div>
-          <div class="col-sm-6">
-            <div class="detail-field">
-              <div class="detail-field-label">Servizio</div>
-              <div class="detail-field-value"><a href="{{ contratto.servizio.get_absolute_url }}" class="text-decoration-none">{{ contratto.servizio }}</a></div>
-            </div>
-          </div>
-          <div class="col-sm-3">
-            <div class="detail-field">
-              <div class="detail-field-label">Prezzo base</div>
-              <div class="detail-field-value fw-bold text-brand">€ {{ contratto.prezzo_default }}</div>
-            </div>
-          </div>
           <div class="col-sm-3">
             <div class="detail-field">
               <div class="detail-field-label">Periodicità</div>
@@ -75,30 +63,42 @@
     </div>
 
     <div class="card mb-3">
-      <div class="card-header card-header-primary"><i class="bi bi-geo-alt me-2"></i>Prezzi per Sede</div>
+      <div class="card-header card-header-primary"><i class="bi bi-list-ul me-2"></i>Servizi del Contratto</div>
       <div class="table-responsive">
         <table class="table mb-0 align-middle">
           <thead class="bg-brand text-white">
-            <tr><th>Sede</th><th>Città</th><th class="text-end">Prezzo effettivo</th><th class="text-end">Override</th><th></th></tr>
+            <tr><th>Servizio</th><th class="text-end">Prezzo</th></tr>
           </thead>
           <tbody>
-            {% for cf, form in filiale_forms %}
+            {% for r in righe %}
+            <tr>
+              <td><a href="{{ r.servizio.get_absolute_url }}" class="text-decoration-none">{{ r.servizio }}</a></td>
+              <td class="text-end fw-bold text-brand">€ {{ r.prezzo }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="2" class="text-center text-muted py-2">Nessun servizio inserito</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card mb-3">
+      <div class="card-header card-header-primary"><i class="bi bi-geo-alt me-2"></i>Sedi Coperte</div>
+      <div class="table-responsive">
+        <table class="table table-sm mb-0 align-middle">
+          <thead class="table-light">
+            <tr><th>Sede</th><th>Città</th><th>Note</th></tr>
+          </thead>
+          <tbody>
+            {% for cf in filiali %}
             <tr>
               <td class="fw-semibold">{{ cf.filiale.nome }}</td>
               <td class="text-muted small">{{ cf.filiale.citta }}</td>
-              <td class="text-end fw-bold text-brand">€ {{ cf.prezzo_effettivo }}</td>
-              <td class="text-end text-muted small">
-                {% if cf.prezzo_override %}€ {{ cf.prezzo_override }}{% else %}<em>base</em>{% endif %}
-              </td>
-              <td class="text-end">
-                <button type="button" class="btn btn-sm btn-outline-secondary"
-                        data-bs-toggle="modal" data-bs-target="#modal-cf-{{ cf.pk }}">
-                  <i class="bi bi-pencil"></i>
-                </button>
-              </td>
+              <td class="text-muted small">{{ cf.note|default:"—" }}</td>
             </tr>
             {% empty %}
-            <tr><td colspan="5" class="text-center text-muted py-2">Nessuna sede collegata</td></tr>
+            <tr><td colspan="3" class="text-center text-muted py-2">Nessuna sede collegata</td></tr>
             {% endfor %}
           </tbody>
         </table>
@@ -112,7 +112,7 @@
       <div class="card-header"><i class="bi bi-gear me-2"></i>Azioni</div>
       <div class="list-group list-group-flush">
         <a href="{{ edit_url }}" class="list-group-item list-group-item-action"><i class="bi bi-pencil me-2"></i>Modifica</a>
-        <a href="{% url 'servizi:ods_create' %}?filiale={{ contratto.filiali_contratto.first.filiale_id|default:'' }}" class="list-group-item list-group-item-action"><i class="bi bi-plus-circle me-2"></i>Nuovo ODS</a>
+        <a href="{% url 'servizi:ods_create' %}?filiale={{ filiali.first.filiale_id|default:'' }}" class="list-group-item list-group-item-action"><i class="bi bi-plus-circle me-2"></i>Nuovo ODS</a>
         {% if request.user.is_staff %}
         <a href="{% url 'servizi:contratto_delete' contratto.pk %}" class="list-group-item list-group-item-action text-danger"><i class="bi bi-trash me-2"></i>Elimina</a>
         {% endif %}
@@ -140,31 +140,4 @@
     </div>
   </div>
 </div>
-
-{% for cf, form in filiale_forms %}
-<div class="modal fade" id="modal-cf-{{ cf.pk }}" tabindex="-1">
-  <div class="modal-dialog modal-sm">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h6 class="modal-title">{{ cf.filiale.nome }} — prezzo override</h6>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <form method="post" action="{% url 'servizi:contratto_filiale_update' cf.pk %}">
-        {% csrf_token %}
-        <div class="modal-body">
-          <p class="text-muted small mb-2">Prezzo base contratto: <strong>€ {{ contratto.prezzo_default }}</strong></p>
-          <label class="form-label">{{ form.prezzo_override.label }}</label>
-          <div class="input-group mb-2"><span class="input-group-text">€</span>{{ form.prezzo_override }}</div>
-          <label class="form-label">{{ form.note.label }}</label>
-          {{ form.note }}
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Annulla</button>
-          <button type="submit" class="btn btn-sm btn-brand">Salva</button>
-        </div>
-      </form>
-    </div>
-  </div>
-</div>
-{% endfor %}
 {% endblock %}
