@@ -122,8 +122,8 @@
       </div>
     </div>
 
-    {% url 'servizi:contratto_pdf' contratto.pk as _pdf_url %}
-    {% include 'commons_templates/components/sidebar_invia.html' with invia_phone=contratto.cliente.telefono invia_email=contratto.cliente.email_amministrazione invia_oggetto=contratto invia_nome=contratto.cliente.ragione_sociale invia_label="Invia al cliente" invia_pdf_url=_pdf_url %}
+    {% url 'servizi:contratto_pdf' contratto.pk as contratto_pdf_url %}
+    {% include 'commons_templates/components/sidebar_invia.html' with invia_phone=contratto.cliente.telefono invia_email=contratto.cliente.email_amministrazione invia_oggetto=contratto invia_nome=contratto.cliente.ragione_sociale invia_label="Invia al cliente" invia_pdf_url=contratto_pdf_url %}
 
     {% include 'commons_templates/components/sidebar_allegati_qr.html' with object=contratto %}
 
