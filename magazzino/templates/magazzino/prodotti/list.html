@@ -12,7 +12,10 @@
   </nav>
   <div class="d-flex justify-content-between align-items-center">
     <h1><i class="bi bi-tag me-2 text-brand"></i>Prodotti</h1>
-    <a href="{% url 'magazzino:prodotto_create' %}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Nuovo Prodotto</a>
+    <div class="d-flex gap-2">
+      <a href="{% url 'magazzino:categoria_list' %}" class="btn btn-outline-secondary"><i class="bi bi-tags me-1"></i>Categorie</a>
+      <a href="{% url 'magazzino:prodotto_create' %}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Nuovo Prodotto</a>
+    </div>
   </div>
 </div>
 
