@@ -58,9 +58,15 @@ def invia_documento(request):
         tmp_created = False
         local_path = pdf_local_path or None
 
+        # Costruisce URL assoluta per pdf_url relative (necessario per Green API)
+        abs_pdf_url = pdf_url
+        if pdf_url and not pdf_url.startswith("http"):
+            site_url = getattr(django_settings, "SITE_URL", "").rstrip("/")
+            abs_pdf_url = f"{site_url}{pdf_url}" if site_url else pdf_url
+
         try:
-            # Risolvi percorso PDF
-            if pdf_url and not local_path:
+            # Risolvi percorso locale solo se non usiamo URL assoluta
+            if pdf_url and not local_path and not abs_pdf_url.startswith("http"):
                 resolved = WhatsAppSender.resolve_local_path(pdf_url)
                 if resolved and not pdf_url.startswith("/"):
                     tmp_created = True
@@ -70,10 +76,9 @@ def invia_documento(request):
             if canale in ("whatsapp", "entrambi"):
                 wa_log = log if canale == "whatsapp" else None
                 caption = messaggio or oggetto
-                if pdf_url and pdf_url.startswith("http"):
-                    # PDF con URL pubblica: invia direttamente via URL (più efficiente su server)
-                    import os as _os
-                    WhatsAppSender.send_pdf_by_url(telefono, pdf_url, filename=_os.path.basename(pdf_url) or "documento.pdf", caption=caption, log_entry=wa_log)
+                if abs_pdf_url and abs_pdf_url.startswith("http"):
+                    filename = os.path.basename(pdf_url.split("?")[0]) or "documento.pdf"
+                    WhatsAppSender.send_pdf_by_url(telefono, abs_pdf_url, filename=filename, caption=caption, log_entry=wa_log)
                 elif local_path and os.path.exists(local_path):
                     WhatsAppSender.send_pdf(telefono, local_path, caption=caption, log_entry=wa_log)
                 else:

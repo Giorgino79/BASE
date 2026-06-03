@@ -20,6 +20,7 @@ urlpatterns = [
     path("contratti/<int:pk>/modifica/",            views.ContrattoUpdateView.as_view(), name="contratto_update"),
     path("contratti/<int:pk>/elimina/",             views.ContrattoDeleteView.as_view(), name="contratto_delete"),
     path("contratti/filiale/<int:cf_pk>/gestisci/", views.contratto_filiale_gestisci,    name="contratto_filiale_gestisci"),
+    path("contratti/<int:pk>/pdf/",                 views.contratto_pdf,                 name="contratto_pdf"),
 
     # ODS
     path("ods/",                   views.ODSListView.as_view(),   name="ods_list"),

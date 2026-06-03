@@ -322,6 +322,32 @@ def contratto_filiale_gestisci(request, cf_pk):
     return render(request, "servizi/contratti/filiale_gestisci.html", ctx)
 
 
+def contratto_pdf(request, pk):
+    """Genera il PDF del contratto. View pubblica: necessario per l'invio via Green API."""
+    from django.template.loader import render_to_string
+    from django.utils import timezone
+    from core.pdf_generator import generate_pdf_from_html, PDFConfig
+
+    contratto = get_object_or_404(
+        Contratto.objects.select_related("cliente").prefetch_related("righe__servizio"),
+        pk=pk,
+    )
+    filiali = ContrattoFiliale.objects.filter(contratto=contratto).select_related("filiale")
+    ctx = {
+        "contratto": contratto,
+        "righe": contratto.righe.select_related("servizio"),
+        "filiali": filiali,
+        "oggi": timezone.now().date(),
+    }
+    html = render_to_string("servizi/contratti/pdf.html", ctx, request=request)
+    cliente_slug = contratto.cliente.ragione_sociale[:20].replace(" ", "_")
+    return generate_pdf_from_html(
+        html,
+        PDFConfig(filename=f"contratto_{cliente_slug}_{contratto.pk}.pdf"),
+        output_type="response",
+    )
+
+
 # ── ODS ───────────────────────────────────────────────────────────────────────
 
 class ODSListView(LoginRequiredMixin, ListView):

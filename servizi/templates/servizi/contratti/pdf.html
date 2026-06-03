@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<style>
+  body { font-family: Helvetica, Arial, sans-serif; font-size: 10pt; color: #222; margin: 0; padding: 0; }
+  .header { background-color: #5585b5; color: white; padding: 14px 20px 10px 20px; margin-bottom: 18px; }
+  .header h1 { margin: 0; font-size: 16pt; letter-spacing: 0.5px; }
+  .header p { margin: 4px 0 0 0; font-size: 9pt; opacity: 0.85; }
+  .section-title { font-size: 10pt; font-weight: bold; color: #5585b5; border-bottom: 1.5px solid #5585b5; padding-bottom: 3px; margin: 16px 0 8px 0; }
+  .info-grid { width: 100%; border-collapse: collapse; margin-bottom: 6px; }
+  .info-grid td { padding: 4px 8px; vertical-align: top; font-size: 9.5pt; }
+  .info-grid td.label { color: #666; width: 130px; }
+  .info-grid td.value { font-weight: bold; }
+  table.data { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+  table.data thead tr { background-color: #5585b5; color: white; }
+  table.data thead th { padding: 6px 8px; text-align: left; font-size: 9pt; }
+  table.data thead th.right { text-align: right; }
+  table.data tbody tr { border-bottom: 1px solid #e0e0e0; }
+  table.data tbody tr:nth-child(even) { background-color: #f5f8fc; }
+  table.data tbody td { padding: 5px 8px; font-size: 9pt; }
+  table.data tbody td.right { text-align: right; font-weight: bold; color: #5585b5; }
+  .badge { display: inline-block; padding: 1px 7px; border-radius: 3px; font-size: 8pt; font-weight: bold; }
+  .badge-ok { background-color: #d4edda; color: #155724; }
+  .badge-wait { background-color: #fff3cd; color: #856404; }
+  .badge-ko { background-color: #f8d7da; color: #721c24; }
+  .footer { margin-top: 30px; border-top: 1px solid #ccc; padding-top: 8px; font-size: 8pt; color: #888; text-align: center; }
+  .note-box { background: #f5f8fc; border-left: 3px solid #5585b5; padding: 8px 12px; font-size: 9pt; color: #444; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Contratto — {{ contratto.cliente }}</h1>
+  <p>{{ contratto.get_periodicita_display }}{% if contratto.data_inizio %} · Dal {{ contratto.data_inizio|date:"d/m/Y" }}{% endif %}{% if contratto.data_fine %} al {{ contratto.data_fine|date:"d/m/Y" }}{% endif %}</p>
+</div>
+
+<div class="section-title">Dati contratto</div>
+<table class="info-grid">
+  <tr>
+    <td class="label">Cliente</td>
+    <td class="value">{{ contratto.cliente }}</td>
+    <td class="label">Stato</td>
+    <td class="value">{{ contratto.get_stato_display }}</td>
+  </tr>
+  <tr>
+    <td class="label">Periodicità</td>
+    <td class="value">{{ contratto.get_periodicita_display }}</td>
+    <td class="label">Data inizio</td>
+    <td class="value">{{ contratto.data_inizio|date:"d/m/Y"|default:"—" }}</td>
+  </tr>
+  {% if contratto.data_fine %}
+  <tr>
+    <td class="label"></td>
+    <td class="value"></td>
+    <td class="label">Data fine</td>
+    <td class="value">{{ contratto.data_fine|date:"d/m/Y" }}</td>
+  </tr>
+  {% endif %}
+</table>
+
+{% if contratto.note %}
+<div class="note-box">{{ contratto.note }}</div>
+{% endif %}
+
+<div class="section-title">Servizi e prezzi</div>
+<table class="data">
+  <thead>
+    <tr>
+      <th>Servizio</th>
+      <th class="right">Prezzo ({{ contratto.get_periodicita_display }})</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for r in righe %}
+    <tr>
+      <td>{{ r.servizio.nome }}</td>
+      <td class="right">€ {{ r.prezzo }}</td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="2" style="text-align:center;color:#888;">Nessun servizio</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% if filiali %}
+<div class="section-title">Sedi coperte</div>
+<table class="data">
+  <thead>
+    <tr>
+      <th>Sede</th>
+      <th>Città</th>
+      <th>Note</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for cf in filiali %}
+    <tr>
+      <td>{{ cf.filiale.nome }}</td>
+      <td>{{ cf.filiale.citta }}</td>
+      <td>{{ cf.note|default:"—" }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+<div class="footer">
+  Documento generato il {{ oggi|date:"d/m/Y" }} — uso interno
+</div>
+
+</body>
+</html>
