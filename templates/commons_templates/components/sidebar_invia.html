@@ -1,0 +1,43 @@
+{% load invia_tags %}
+{% comment %}
+Blocco sidebar: card Invia (WhatsApp / Email).
+
+Parametri via with:
+  invia_phone          — numero telefono del destinatario
+  invia_email          — email del destinatario
+  invia_oggetto        — oggetto / titolo del documento
+  invia_messaggio      — testo opzionale (default "")
+  invia_pdf_url        — URL relativa Django del PDF (default "")
+  invia_nome           — nome del destinatario (default "")
+  invia_label          — testo del bottone (default "Invia")
+  invia_btn_class      — classe Bootstrap del bottone (default "btn-outline-success")
+
+Esempio:
+  {% include 'commons_templates/components/sidebar_invia.html' with
+      invia_phone=contratto.cliente.telefono
+      invia_email=contratto.cliente.email_amministrazione
+      invia_oggetto=contratto
+      invia_nome=contratto.cliente.ragione_sociale
+  %}
+{% endcomment %}
+
+{% with _label=invia_label|default:"Invia" _btn=invia_btn_class|default:"btn-outline-success" %}
+<div class="card mb-3">
+  <div class="card-header">
+    <i class="bi bi-send me-2"></i>Invia documento
+  </div>
+  <div class="card-body pb-3">
+    {% bottone_invia
+        phone=invia_phone
+        email=invia_email
+        oggetto=invia_oggetto
+        messaggio=invia_messaggio
+        pdf_url=invia_pdf_url
+        destinatario_nome=invia_nome
+        label=_label
+        btn_class=_btn
+        btn_size="btn-sm w-100"
+    %}
+  </div>
+</div>
+{% endwith %}

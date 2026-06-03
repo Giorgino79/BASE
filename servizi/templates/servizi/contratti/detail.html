@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load static invia_tags %}
+{% load static %}
 {% block extra_css %}<link rel="stylesheet" href="{% static 'css/detail.css' %}">{% endblock %}
 {% block content %}
 <div class="page-header mb-4">
@@ -117,18 +117,15 @@
         <a href="{% url 'servizi:contratto_delete' contratto.pk %}" class="list-group-item list-group-item-action text-danger"><i class="bi bi-trash me-2"></i>Elimina</a>
         {% endif %}
       </div>
-      <div class="card-body pt-2 pb-3">
-        {% bottone_invia
-            phone=contratto.cliente.telefono
-            email=contratto.cliente.email_amministrazione
-            oggetto=contratto
-            destinatario_nome=contratto.cliente.ragione_sociale
-            label="Invia al cliente"
-            btn_class="btn-outline-success"
-            btn_size="btn-sm w-100"
-        %}
-      </div>
     </div>
+
+    {% include 'commons_templates/components/sidebar_invia.html' with
+        invia_phone=contratto.cliente.telefono
+        invia_email=contratto.cliente.email_amministrazione
+        invia_oggetto=contratto
+        invia_nome=contratto.cliente.ragione_sociale
+        invia_label="Invia al cliente"
+    %}
 
     {% include 'commons_templates/components/sidebar_allegati_qr.html' with object=contratto %}
 
