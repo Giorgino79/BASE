@@ -38,19 +38,19 @@
         </div>
       </div>
     </div>
-    {% if contratti %}
+    {% if contratto_righe %}
     <div class="card mb-3">
       <div class="card-header"><i class="bi bi-file-earmark-text me-2"></i>Contratti attivi</div>
       <div class="table-responsive">
         <table class="table mb-0">
-          <thead class="bg-brand text-white"><tr><th>Cliente</th><th>Prezzo base</th><th>Periodicità</th><th></th></tr></thead>
+          <thead class="bg-brand text-white"><tr><th>Cliente</th><th class="text-end">Prezzo contratto</th><th>Periodicità</th><th></th></tr></thead>
           <tbody>
-            {% for c in contratti %}
+            {% for r in contratto_righe %}
             <tr>
-              <td><a href="{{ c.get_absolute_url }}" class="text-decoration-none">{{ c.cliente }}</a></td>
-              <td>€ {{ c.prezzo_default }}</td>
-              <td>{{ c.get_periodicita_display }}</td>
-              <td class="text-end"><a href="{{ c.get_absolute_url }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-eye"></i></a></td>
+              <td><a href="{{ r.contratto.get_absolute_url }}" class="text-decoration-none">{{ r.contratto.cliente }}</a></td>
+              <td class="text-end fw-bold text-brand">€ {{ r.prezzo }}</td>
+              <td>{{ r.contratto.get_periodicita_display }}</td>
+              <td class="text-end"><a href="{{ r.contratto.get_absolute_url }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-eye"></i></a></td>
             </tr>
             {% endfor %}
           </tbody>

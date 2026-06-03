@@ -67,7 +67,11 @@ class ServizioDetailView(LoginRequiredMixin, DetailView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        ctx["contratti"] = self.object.contratti.select_related("cliente").filter(stato="attivo")
+        ctx["contratto_righe"] = (
+            ContrattoRiga.objects.filter(servizio=self.object, contratto__stato="attivo")
+            .select_related("contratto__cliente")
+            .order_by("-contratto__created_at")
+        )
         ctx["back_url"] = reverse("servizi:servizio_list")
         ctx["edit_url"] = reverse("servizi:servizio_update", kwargs={"pk": self.object.pk})
         ctx["content_type_id"] = ContentType.objects.get_for_model(Servizio).pk
