@@ -12,6 +12,7 @@ class Command(BaseCommand):
         self._tecnici = self._crea_tecnici()
         self._assistenti = self._crea_assistenti()
         self._crea_aziende()
+        self._crea_filiali()
         self._crea_privati()
         self._crea_automezzo()
         self._crea_stabilimento()
@@ -105,6 +106,44 @@ class Command(BaseCommand):
             )
             if created:
                 self.stdout.write(f"  + Azienda: {rs}")
+
+    # ------------------------------------------------------------------
+    def _crea_filiali(self):
+        from anagrafica_r2.models import Azienda, Filiale
+        sedi = [
+            ("Condominio Il Cedro",     "Sede Principale", "Via Roma 12",        "Roma",    "Centro",    "00100", "RM"),
+            ("Condominio Le Querce",    "Sede Principale", "Via Nazionale 45",   "Milano",  "Nord",      "20100", "MI"),
+            ("Palazzo Moretti Srl",     "Sede Principale", "Corso Vittorio 8",   "Torino",  "Centro",    "10100", "TO"),
+            ("Immobiliare Rossi Spa",   "Sede Principale", "Via Garibaldi 100",  "Napoli",  "Sud",       "80100", "NA"),
+            ("Condominio Aurora",       "Sede Principale", "Via Mazzini 22",     "Bologna", "Centro",    "40100", "BO"),
+            ("Residenza La Pineta",     "Sede Principale", "Viale Europa 5",     "Firenze", "Centro",    "50100", "FI"),
+            ("Condominio Primavera",    "Sede Principale", "Via Dante 33",       "Venezia", "Nord-Est",  "30100", "VE"),
+            ("Palazzo San Giorgio Srl", "Sede Principale", "Via Verdi 77",       "Genova",  "Nord-Ovest","16100", "GE"),
+            ("Immobiliare Blu Srl",     "Sede Principale", "Via Leopardi 14",    "Bari",    "Sud",       "70100", "BA"),
+            ("Condominio Monte Verde",  "Sede Principale", "Via Pascoli 3",      "Catania", "Sud",       "95100", "CT"),
+        ]
+        for rs, nome_f, ind, cit, zona, cap, prov in sedi:
+            try:
+                az = Azienda.objects.get(ragione_sociale=rs)
+            except Azienda.DoesNotExist:
+                continue
+            obj, created = Filiale.objects.get_or_create(
+                cliente=az,
+                nome=nome_f,
+                defaults=dict(
+                    tipo_sede="altro",
+                    indirizzo=ind,
+                    citta=cit,
+                    zona=zona,
+                    cap=cap,
+                    provincia=prov,
+                    telefono="0612345678",
+                    email=EMAIL,
+                    attivo=True,
+                ),
+            )
+            if created:
+                self.stdout.write(f"  + Filiale: {az.ragione_sociale} — {nome_f}")
 
     # ------------------------------------------------------------------
     def _crea_privati(self):
