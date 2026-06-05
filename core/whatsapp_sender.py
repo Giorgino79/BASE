@@ -30,6 +30,26 @@ def is_configured() -> bool:
     return bool(iid and token)
 
 
+def check_authorized() -> tuple[bool, str]:
+    """Controlla se l'istanza Green API è autorizzata (QR scansionato).
+    Ritorna (True, "") oppure (False, messaggio_errore)."""
+    iid, token = _credentials()
+    if not iid or not token:
+        return False, "Green API non configurata"
+    try:
+        resp = requests.get(
+            f"{GREENAPI_BASE}/waInstance{iid}/getStateInstance/{token}",
+            timeout=10,
+        )
+        resp.raise_for_status()
+        state = resp.json().get("stateInstance", "")
+        if state == "authorized":
+            return True, ""
+        return False, f"Green API non autorizzata (stato: {state}) — ri-scansiona il QR su app.green-api.com"
+    except Exception as exc:
+        return False, f"Impossibile verificare stato Green API: {exc}"
+
+
 def normalize_phone(phone: str) -> str:
     """
     Normalizza il numero in formato Green API chatId: 393331234567@c.us

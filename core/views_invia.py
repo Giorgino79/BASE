@@ -13,7 +13,7 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from django.conf import settings as django_settings
 
-from .whatsapp_sender import WhatsAppSender, is_configured, normalize_phone
+from .whatsapp_sender import WhatsAppSender, is_configured, check_authorized, normalize_phone
 from .models.invia_log import InvioLog
 
 
@@ -41,6 +41,10 @@ def invia_documento(request):
         return JsonResponse({"success": False, "error": "Email destinatario obbligatoria"})
     if canale in ("whatsapp", "entrambi") and not is_configured():
         return JsonResponse({"success": False, "error": "WhatsApp non configurato — imposta GREENAPI_INSTANCE_ID e GREENAPI_TOKEN"})
+    if canale in ("whatsapp", "entrambi"):
+        ok, err = check_authorized()
+        if not ok:
+            return JsonResponse({"success": False, "error": err})
 
     # Costruisce subito l'URL assoluta dal request (garantisce l'host corretto su qualsiasi server)
     if pdf_url and not pdf_url.startswith("http"):
