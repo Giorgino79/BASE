@@ -141,6 +141,12 @@ Parametri (tutti opzionali):
         });
     });
 
+    // Reset stato al riaprire il modal
+    document.getElementById(mid).addEventListener("show.bs.modal", function () {
+        setLoading(false);
+        clearFeedback();
+    });
+
     // Invia
     $id("btn_invia").addEventListener("click", function () {
         const canale = document.querySelector(`input[name="${mid}_canale"]:checked`)?.value || "whatsapp";
