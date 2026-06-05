@@ -1177,10 +1177,14 @@ def condominio_esegui(request, pk):
         if fs_unita.is_valid() and fs_prodotti.is_valid():
             fs_unita.save()
             fs_prodotti.save()
-            if request.POST.get("action") == "chiudi":
+            action = request.POST.get("action", "salva")
+            if action == "chiudi":
                 condominio.stato = CondominioODS.Stato.COMPLETATO
                 condominio.save(update_fields=["stato"])
                 messages.success(request, f"{condominio.numero} chiuso come completato.")
+                return redirect("servizi:condominio_detail", pk=pk)
+            elif action == "torna":
+                messages.success(request, "Progresso salvato.")
                 return redirect("servizi:condominio_detail", pk=pk)
             else:
                 messages.success(request, "Progresso salvato.")

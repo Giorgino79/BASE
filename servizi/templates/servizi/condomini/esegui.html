@@ -162,9 +162,10 @@
                   onclick="if(confirm('Chiudere il servizio come completato?')) submitAction('chiudi')">
             <i class="bi bi-check-circle me-2"></i>Chiudi servizio
           </button>
-          <a href="{{ condominio.get_absolute_url }}" class="list-group-item list-group-item-action text-muted">
-            <i class="bi bi-arrow-left me-2"></i>Torna al dettaglio
-          </a>
+          <button type="button" class="list-group-item list-group-item-action text-muted"
+                  onclick="submitAction('torna')">
+            <i class="bi bi-arrow-left me-2"></i>Salva e torna al dettaglio
+          </button>
         </div>
       </div>
 
@@ -197,75 +198,83 @@
       if (chk && chk.checked && imp) somma += parseFloat(imp.value) || 0;
     });
     const fmt = '€ ' + somma.toFixed(2).replace('.', ',');
-    const el = document.getElementById('totale-incassato');
+    const el1 = document.getElementById('totale-incassato');
     const el2 = document.getElementById('totale-sidebar');
-    if (el) el.textContent = fmt;
+    if (el1) el1.textContent = fmt;
     if (el2) el2.textContent = fmt;
   }
 
-  // ── Autosave AJAX ─────────────────────────────────────────────
-  function getCookie(name) {
-    const v = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+  // ── Autosave AJAX per righe esistenti ─────────────────────────
+  function getCsrf() {
+    const v = document.cookie.match('(^|;)\\s*csrftoken\\s*=\\s*([^;]+)');
     return v ? v.pop() : '';
   }
 
-  function setIndicator(row, stato) {
+  function setInd(row, stato) {
     let ind = row.querySelector('.autosave-ind');
     if (!ind) {
       ind = document.createElement('span');
-      ind.className = 'autosave-ind ms-1 small';
+      ind.className = 'autosave-ind ms-2 small';
       const td = row.querySelector('td');
       if (td) td.appendChild(ind);
     }
-    if (stato === 'saving') {
-      ind.innerHTML = '<span class="spinner-border spinner-border-sm text-secondary" style="width:.65rem;height:.65rem"></span>';
-    } else if (stato === 'saved') {
-      ind.innerHTML = '<i class="bi bi-check-circle-fill text-success" style="font-size:.75rem"></i>';
-      setTimeout(() => { ind.innerHTML = ''; }, 2000);
-    } else if (stato === 'error') {
-      ind.innerHTML = '<i class="bi bi-exclamation-triangle-fill text-danger" style="font-size:.75rem" title="Errore salvataggio"></i>';
+    if (stato === 'ok') {
+      ind.innerHTML = '<i class="bi bi-check-circle-fill text-success"></i>';
+      setTimeout(() => { if (ind) ind.innerHTML = ''; }, 2500);
+    } else if (stato === 'err') {
+      ind.innerHTML = '<i class="bi bi-exclamation-triangle-fill text-danger" title="Errore salvataggio — usa Salva progresso"></i>';
     }
   }
 
-  const saveTimers = new WeakMap();
-
-  function autoSaveRow(row) {
+  function doSave(row) {
     const idInput = row.querySelector('input[type=hidden][name$="-id"]');
-    if (!idInput || !idInput.value) return; // riga nuova non ancora salvata nel DB
+    if (!idInput || !idInput.value) return; // riga nuova → salvata solo col form submit
 
-    if (saveTimers.has(row)) clearTimeout(saveTimers.get(row));
-    saveTimers.set(row, setTimeout(function () {
-      const servizio = row.querySelector('input[type=checkbox][name$="-servizio_effettuato"]')?.checked || false;
-      const incasso  = row.querySelector('input[type=checkbox][name$="-incasso_effettuato"]')?.checked || false;
-      const importo  = row.querySelector('input[name$="-importo_da_incassare"]')?.value ?? '';
+    const servizio = row.querySelector('input[type=checkbox][name$="-servizio_effettuato"]')?.checked || false;
+    const incasso  = row.querySelector('input[type=checkbox][name$="-incasso_effettuato"]')?.checked || false;
+    const importo  = row.querySelector('input[name$="-importo_da_incassare"]')?.value ?? '';
 
-      setIndicator(row, 'saving');
-      fetch(SALVA_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
-        body: JSON.stringify({
-          riga_id: idInput.value,
-          servizio_effettuato: servizio,
-          incasso_effettuato:  incasso,
-          importo_da_incassare: importo,
-        }),
-      })
-      .then(r => r.json())
-      .then(data => setIndicator(row, data.success ? 'saved' : 'error'))
-      .catch(() => setIndicator(row, 'error'));
-    }, 400)); // debounce 400ms
+    fetch(SALVA_URL, {
+      method: 'POST',
+      keepalive: true,   // sopravvive alla navigazione del browser
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrf() },
+      body: JSON.stringify({
+        riga_id: idInput.value,
+        servizio_effettuato: servizio,
+        incasso_effettuato:  incasso,
+        importo_da_incassare: importo,
+      }),
+    })
+    .then(r => r.json())
+    .then(d => setInd(row, d.success ? 'ok' : 'err'))
+    .catch(() => setInd(row, 'err'));
   }
 
-  // Delega gli eventi su tutta la tbody
+  const timers = new WeakMap();
+
+  function schedSave(row, delay) {
+    if (timers.has(row)) clearTimeout(timers.get(row));
+    timers.set(row, setTimeout(() => doSave(row), delay));
+  }
+
+  // Delegazione eventi
   const body = document.getElementById('unita-body');
+
   body.addEventListener('change', function (e) {
     const row = e.target.closest('.unita-row');
-    if (row) { aggiornaTotale(); autoSaveRow(row); }
+    if (!row) return;
+    aggiornaTotale();
+    // checkbox → salva subito; altri → salva dopo 500ms
+    const isChk = e.target.type === 'checkbox';
+    schedSave(row, isChk ? 0 : 500);
   });
+
   body.addEventListener('input', function (e) {
+    if (e.target.type === 'checkbox') return; // già gestito da change
     const row = e.target.closest('.unita-row');
-    if (row) { aggiornaTotale(); autoSaveRow(row); }
+    if (row) { aggiornaTotale(); schedSave(row, 500); }
   });
+
   aggiornaTotale();
 
   // ── Aggiungi nuove unità ──────────────────────────────────────
@@ -279,11 +288,20 @@
     totalInput.value = idx + 1;
     aggiornaTotale();
   });
+
+  // ── Avviso se ci sono righe nuove non salvate ─────────────────
+  window.addEventListener('beforeunload', function (e) {
+    const hasNew = !!body.querySelector('input[type=hidden][name$="-id"]:not([value])');
+    if (hasNew) {
+      e.preventDefault();
+      e.returnValue = '';
+    }
+  });
 })();
 
-function submitAction(action) {
+window.submitAction = function(action) {
   document.getElementById('action-input').value = action;
   document.getElementById('esegui-form').submit();
-}
+};
 </script>
 {% endblock %}
