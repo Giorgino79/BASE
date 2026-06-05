@@ -4,14 +4,10 @@
 <meta charset="UTF-8">
 <style>
   body { font-family: Helvetica, Arial, sans-serif; font-size: 10pt; color: #222; margin: 0; padding: 0; }
-  .header { background-color: #5585b5; color: white; padding: 14px 20px 10px 20px; margin-bottom: 16px; }
-  .header h1 { margin: 0; font-size: 15pt; }
+  .header { background-color: #5585b5; color: white; padding: 12px 18px 10px 18px; margin-bottom: 14px; }
+  .header h1 { margin: 0; font-size: 14pt; }
   .header p  { margin: 4px 0 0 0; font-size: 9pt; opacity: 0.88; }
-  .section-title { font-size: 10pt; font-weight: bold; color: #5585b5; border-bottom: 1.5px solid #5585b5; padding-bottom: 3px; margin: 14px 0 8px 0; }
-  .info-grid { width: 100%; border-collapse: collapse; margin-bottom: 4px; }
-  .info-grid td { padding: 3px 8px; font-size: 9.5pt; }
-  .info-grid td.label { color: #666; width: 120px; }
-  .info-grid td.value { font-weight: bold; }
+  .section-title { font-size: 10pt; font-weight: bold; color: #5585b5; border-bottom: 1.5px solid #5585b5; padding-bottom: 3px; margin: 12px 0 7px 0; }
   table.data { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
   table.data thead tr { background-color: #5585b5; color: white; }
   table.data thead th { padding: 6px 8px; text-align: left; font-size: 9pt; }
@@ -39,23 +35,24 @@
 </div>
 
 <div class="section-title">Dettaglio intervento</div>
-<table class="info-grid">
+<table style="width:100%; border-collapse:collapse; margin-bottom:6px; font-size:9.5pt;">
   <tr>
-    <td class="label">Tecnico</td>
-    <td class="value">{{ condominio.tecnico.get_full_name|default:"—" }}</td>
-    <td class="label">Assistente</td>
-    <td class="value">{{ condominio.assistente.get_full_name|default:"—" }}</td>
+    <td style="width:22%; color:#666; padding:4px 6px 4px 0;">Tecnico</td>
+    <td style="width:28%; font-weight:bold; padding:4px 6px;">{{ condominio.tecnico.get_full_name|default:"—" }}</td>
+    <td style="width:22%; color:#666; padding:4px 6px;">Assistente</td>
+    <td style="width:28%; font-weight:bold; padding:4px 0 4px 6px;">{{ condominio.assistente.get_full_name|default:"—" }}</td>
   </tr>
   <tr>
-    <td class="label">Prezzo base / unità</td>
-    <td class="value">€ {{ condominio.prezzo_base }}</td>
-    <td class="label">Totale da incassare</td>
-    <td class="value">€ {{ condominio.totale_da_incassare }}</td>
+    <td style="color:#666; padding:4px 6px 4px 0;">Stato</td>
+    <td style="font-weight:bold; padding:4px 6px;">{{ condominio.get_stato_display }}</td>
+    <td style="color:#666; padding:4px 6px;">Prezzo base / unità</td>
+    <td style="font-weight:bold; padding:4px 0 4px 6px;">€ {{ condominio.prezzo_base }}</td>
   </tr>
   <tr>
-    <td class="label">Già incassato</td>
-    <td class="value">€ {{ condominio.totale_incassato }}</td>
-    <td></td><td></td>
+    <td style="color:#666; padding:4px 6px 4px 0;">Totale da incassare</td>
+    <td style="font-weight:bold; color:#5585b5; padding:4px 6px;">€ {{ condominio.totale_da_incassare }}</td>
+    <td style="color:#666; padding:4px 6px;">Già incassato</td>
+    <td style="font-weight:bold; color:#155724; padding:4px 0 4px 6px;">€ {{ condominio.totale_incassato }}</td>
   </tr>
 </table>
 
