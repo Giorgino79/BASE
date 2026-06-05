@@ -40,6 +40,13 @@ Parametri (tutti opzionali):
 
             <div class="modal-body">
 
+                <!-- Cerca destinatario (Tom Select) -->
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Cerca destinatario</label>
+                    <select id="{{ modal_id }}_contatto" autocomplete="off"></select>
+                    <div class="form-text">Digita nome o numero — compila automaticamente telefono e email</div>
+                </div>
+
                 <!-- Selezione canale -->
                 <div class="mb-3">
                     <label class="form-label fw-semibold">Invia tramite</label>
@@ -129,65 +136,120 @@ Parametri (tutti opzionali):
 <script>
 (function () {
     const mid = "{{ modal_id }}";
+    const CONTATTI_URL = "{% url 'core:api_contatti_search' %}";
 
     function $id(s) { return document.getElementById(mid + "_" + s); }
 
-    // Toggle sezioni in base al canale selezionato
-    document.querySelectorAll(`input[name="${mid}_canale"]`).forEach(function (radio) {
+    // ── Tom Select (caricato una volta sola per pagina) ────────────
+    if (!document.getElementById('_ts_css')) {
+        var lnk = document.createElement('link');
+        lnk.id  = '_ts_css';
+        lnk.rel = 'stylesheet';
+        lnk.href = 'https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.bootstrap5.min.css';
+        document.head.appendChild(lnk);
+    }
+
+    window._tsQueue = window._tsQueue || [];
+
+    function _initContatto() {
+        var el = document.getElementById(mid + '_contatto');
+        if (!el || el.tomselect) return;
+        new TomSelect(el, {
+            valueField: 'id',
+            labelField: 'text',
+            searchField: ['text'],
+            placeholder: 'Digita nome, telefono o email…',
+            load: function(query, callback) {
+                if (query.length < 2) return callback();
+                fetch(CONTATTI_URL + '?q=' + encodeURIComponent(query), {
+                    headers: {'X-Requested-With': 'XMLHttpRequest'}
+                })
+                .then(function(r){ return r.json(); })
+                .then(function(d){ callback(d.results); })
+                .catch(function(){ callback(); });
+            },
+            onChange: function(value) {
+                var opt = this.options[value];
+                if (!opt) return;
+                var tel = $id('telefono'), em = $id('email');
+                if (tel && opt.telefono) tel.value = opt.telefono;
+                if (em  && opt.email)    em.value  = opt.email;
+            },
+            render: {
+                option: function(d, esc) {
+                    return '<div><span class="fw-semibold">' + esc(d.text) + '</span>'
+                        + (d.telefono ? '<span class="text-muted small ms-2">' + esc(d.telefono) + '</span>' : '')
+                        + '</div>';
+                },
+                item: function(d, esc) {
+                    return '<span>' + esc(d.text) + '</span>';
+                }
+            }
+        });
+    }
+
+    window._tsQueue.push(_initContatto);
+
+    if (!document.getElementById('_ts_js')) {
+        var sc  = document.createElement('script');
+        sc.id   = '_ts_js';
+        sc.src  = 'https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js';
+        sc.onload = function() {
+            window._tsReady = true;
+            window._tsQueue.forEach(function(fn){ fn(); });
+            window._tsQueue = [];
+        };
+        document.head.appendChild(sc);
+    } else if (window._tsReady) {
+        _initContatto();
+    }
+    // se _ts_js esiste ma non è ancora pronto, _initContatto è in coda e verrà chiamato da onload
+
+    // ── Toggle sezioni canale ──────────────────────────────────────
+    document.querySelectorAll('input[name="' + mid + '_canale"]').forEach(function (radio) {
         radio.addEventListener("change", function () {
-            const v = this.value;
+            var v = this.value;
             $id("sec_wa").classList.toggle("d-none", v === "email");
             $id("sec_em").classList.toggle("d-none", v === "whatsapp");
         });
     });
 
-    // Reset stato al riaprire il modal
+    // ── Reset al riaprire il modal ─────────────────────────────────
     document.getElementById(mid).addEventListener("show.bs.modal", function () {
         setLoading(false);
         clearFeedback();
     });
 
-    // Invia
+    // ── Invia ──────────────────────────────────────────────────────
     $id("btn_invia").addEventListener("click", function () {
-        const canale = document.querySelector(`input[name="${mid}_canale"]:checked`)?.value || "whatsapp";
-        const telefono = $id("telefono")?.value.trim() || "";
-        const email = $id("email")?.value.trim() || "";
-        const oggetto = $id("oggetto")?.value.trim() || "";
-        const messaggio = $id("messaggio")?.value.trim() || "";
+        var canale   = document.querySelector('input[name="' + mid + '_canale"]:checked')?.value || "whatsapp";
+        var telefono = $id("telefono")?.value.trim() || "";
+        var email    = $id("email")?.value.trim() || "";
+        var oggetto  = $id("oggetto")?.value.trim() || "";
+        var messaggio = $id("messaggio")?.value.trim() || "";
 
         if ((canale === "whatsapp" || canale === "entrambi") && !telefono) {
-            showFeedback("warning", "Inserisci il numero WhatsApp.");
-            return;
+            showFeedback("warning", "Inserisci il numero WhatsApp."); return;
         }
         if ((canale === "email" || canale === "entrambi") && !email) {
-            showFeedback("warning", "Inserisci l'email del destinatario.");
-            return;
+            showFeedback("warning", "Inserisci l'email del destinatario."); return;
         }
 
         setLoading(true);
         clearFeedback();
 
-        const payload = {
-            canale: canale,
-            telefono: telefono,
-            email: email,
-            oggetto: oggetto,
-            messaggio: messaggio,
-            pdf_url: "{{ pdf_url }}",
-            pdf_path: "{{ pdf_path }}",
-            destinatario_nome: "{{ destinatario_nome }}",
-        };
-
         fetch("{% url 'core:invia_documento' %}", {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "X-CSRFToken": getCookie("csrftoken"),
-            },
-            body: JSON.stringify(payload),
+            headers: {"Content-Type": "application/json", "X-CSRFToken": getCookie("csrftoken")},
+            body: JSON.stringify({
+                canale: canale, telefono: telefono, email: email,
+                oggetto: oggetto, messaggio: messaggio,
+                pdf_url: "{{ pdf_url }}", pdf_path: "{{ pdf_path }}",
+                destinatario_nome: "{{ destinatario_nome }}",
+            }),
         })
-        .then(function (r) { return r.json(); })
-        .then(function (data) {
+        .then(function(r){ return r.json(); })
+        .then(function(data) {
             setLoading(false);
             if (data.success) {
                 showFeedback("success", "<i class='bi bi-check-circle-fill me-1'></i>" + data.message);
@@ -196,10 +258,7 @@ Parametri (tutti opzionali):
                 showFeedback("danger", "<i class='bi bi-exclamation-triangle-fill me-1'></i>" + (data.error || "Errore sconosciuto"));
             }
         })
-        .catch(function () {
-            setLoading(false);
-            showFeedback("danger", "Errore di rete — riprova.");
-        });
+        .catch(function(){ setLoading(false); showFeedback("danger", "Errore di rete — riprova."); });
     });
 
     function setLoading(on) {
@@ -207,21 +266,16 @@ Parametri (tutti opzionali):
         $id("icon").classList.toggle("d-none", on);
         $id("btn_invia").disabled = on;
     }
-
     function showFeedback(type, html) {
-        const el = $id("feedback");
-        el.innerHTML = `<div class="alert alert-${type} py-2 mb-0">${html}</div>`;
+        var el = $id("feedback");
+        el.innerHTML = '<div class="alert alert-' + type + ' py-2 mb-0">' + html + '</div>';
         el.classList.remove("d-none");
     }
-
     function clearFeedback() {
-        const el = $id("feedback");
-        el.innerHTML = "";
-        el.classList.add("d-none");
+        var el = $id("feedback"); el.innerHTML = ""; el.classList.add("d-none");
     }
-
     function getCookie(name) {
-        const v = document.cookie.match("(^|;)\\s*" + name + "\\s*=\\s*([^;]+)");
+        var v = document.cookie.match("(^|;)\\s*" + name + "\\s*=\\s*([^;]+)");
         return v ? v.pop() : "";
     }
 })();

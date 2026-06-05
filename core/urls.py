@@ -30,6 +30,7 @@ from .views_permissions import (
 )
 from .admin_views import modules_dashboard, amministrazione_dashboard, hr_dashboard_view
 from .views_invia import invia_documento
+from .views_contatti import api_contatti_search
 from .views_tools import calcolatrice_view
 from .views_calendario import (
     CalendarioView,
@@ -94,4 +95,6 @@ urlpatterns = [
     path("test-mail/", test_email_view, name="test_email"),
     # ========== INVIA (WhatsApp / Email) ==========
     path("invia/", invia_documento, name="invia_documento"),
+    # ========== API CONTATTI (Select2/TomSelect) ==========
+    path("api/contatti/", api_contatti_search, name="api_contatti_search"),
 ]
