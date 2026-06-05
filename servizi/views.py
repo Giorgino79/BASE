@@ -548,7 +548,7 @@ def ods_cambia_personale(request, pk):
 @login_required
 def organizzazione_giri(request):
     """
-    Tabella organizzazione giri: ODS da_espletare raggruppati per zona+giorno.
+    Tabella organizzazione giri: ODS + CondominioODS da_espletare.
     Sezione inferiore: giri già confermati raggruppati per tecnico.
     """
     from django.contrib.auth import get_user_model
@@ -557,7 +557,7 @@ def organizzazione_giri(request):
     User = get_user_model()
     utenti = User.objects.filter(is_active=True).order_by("last_name", "first_name")
 
-    # ── Da organizzare ────────────────────────────────────────────────────────
+    # ── ODS da organizzare ────────────────────────────────────────────────────
     da_organizzare_qs = (
         ODS.objects
         .filter(stato="da_espletare")
@@ -565,8 +565,6 @@ def organizzazione_giri(request):
         .prefetch_related("righe__servizio")
         .order_by("data_servizio", "ora_inizio")
     )
-
-    # Raggruppa per (zona, data_servizio) — sort in Python per usare zona property
     da_organizzare_sorted = sorted(
         da_organizzare_qs,
         key=lambda o: (o.zona or "\xff", o.data_servizio.isoformat(), o.ora_inizio.isoformat() if o.ora_inizio else ""),
@@ -576,27 +574,51 @@ def organizzazione_giri(request):
         da_organizzare_sorted,
         key=lambda o: (o.zona or "—", o.data_servizio),
     ):
-        gruppi_da_organizzare.append({
-            "zona": zona,
-            "data": data,
-            "ods": list(items),
-        })
+        gruppi_da_organizzare.append({"zona": zona, "data": data, "ods": list(items)})
 
-    # ── Giri confermati ───────────────────────────────────────────────────────
-    confermati_qs = (
+    # ── Condomini da organizzare (senza tecnico) ──────────────────────────────
+    condomini_da_organizzare = list(
+        CondominioODS.objects
+        .filter(stato=CondominioODS.Stato.DA_ESPLETARE, tecnico__isnull=True)
+        .order_by("data", "ora")
+    )
+
+    # ── Giri confermati (ODS programmati + CondominioODS con tecnico) ─────────
+    confermati_qs = list(
         ODS.objects
         .filter(stato="programmato")
         .select_related("filiale__cliente", "filiale", "privato", "tecnico", "assistente")
         .prefetch_related("righe__servizio")
-        .order_by("tecnico__last_name", "tecnico__first_name", "data_servizio", "ora_inizio")
+        .order_by("data_servizio", "ora_inizio")
     )
+    condomini_confermati = list(
+        CondominioODS.objects
+        .filter(stato=CondominioODS.Stato.DA_ESPLETARE, tecnico__isnull=False)
+        .select_related("tecnico", "assistente")
+        .order_by("data", "ora")
+    )
+
+    # Merge per tecnico
+    tecnici_ids = set()
+    for o in confermati_qs:
+        if o.tecnico_id:
+            tecnici_ids.add(o.tecnico_id)
+    for c in condomini_confermati:
+        tecnici_ids.add(c.tecnico_id)
+
+    tecnici_map = {u.pk: u for u in User.objects.filter(pk__in=tecnici_ids).order_by("last_name", "first_name")}
     giri_confermati = []
-    for tecnico, items in groupby(confermati_qs, key=lambda o: o.tecnico):
-        ods_list = list(items)
-        senza_distinta = sum(1 for o in ods_list if o.distinta_id is None)
+    for tid, tecnico in tecnici_map.items():
+        ods_list  = [o for o in confermati_qs    if o.tecnico_id == tid]
+        cond_list = [c for c in condomini_confermati if c.tecnico_id == tid]
+        senza_distinta = (
+            sum(1 for o in ods_list  if not o.distinta_id) +
+            sum(1 for c in cond_list if not c.distinta_id)
+        )
         giri_confermati.append({
             "tecnico": tecnico,
             "ods": ods_list,
+            "condomini": cond_list,
             "senza_distinta": senza_distinta,
         })
 
@@ -605,11 +627,34 @@ def organizzazione_giri(request):
 
     return render(request, "servizi/ods/organizzazione_giri.html", {
         "gruppi_da_organizzare": gruppi_da_organizzare,
+        "condomini_da_organizzare": condomini_da_organizzare,
         "giri_confermati": giri_confermati,
         "utenti": utenti,
         "automezzi": automezzi,
         "today": timezone.localdate().isoformat(),
     })
+
+
+@login_required
+def condominio_assegna_tecnico(request, pk):
+    """Assegna tecnico+assistente a un CondominioODS dalla pagina organizzazione giri."""
+    condominio = get_object_or_404(CondominioODS, pk=pk)
+    if request.method == "POST":
+        tecnico_id    = request.POST.get("tecnico")
+        assistente_id = request.POST.get("assistente") or None
+        if tecnico_id:
+            from django.contrib.auth import get_user_model
+            User = get_user_model()
+            try:
+                condominio.tecnico    = User.objects.get(pk=tecnico_id)
+                condominio.assistente = User.objects.get(pk=assistente_id) if assistente_id else None
+                condominio.save(update_fields=["tecnico", "assistente"])
+                messages.success(request, f"{condominio.numero} assegnato a {condominio.tecnico.get_full_name()}.")
+            except User.DoesNotExist:
+                messages.error(request, "Utente non trovato.")
+        else:
+            messages.error(request, "Il tecnico è obbligatorio.")
+    return redirect("servizi:organizzazione_giri")
 
 
 @login_required
@@ -746,8 +791,11 @@ def crea_distinta(request, tecnico_pk):
     ods_da_includere = ODS.objects.filter(
         tecnico=tecnico, stato="programmato", distinta__isnull=True
     )
-    if not ods_da_includere.exists():
-        messages.warning(request, f"Nessun ODS da includere per {tecnico.get_full_name() or tecnico.username}.")
+    condomini_da_includere = CondominioODS.objects.filter(
+        tecnico=tecnico, stato=CondominioODS.Stato.DA_ESPLETARE, distinta__isnull=True
+    )
+    if not ods_da_includere.exists() and not condomini_da_includere.exists():
+        messages.warning(request, f"Nessun servizio da includere per {tecnico.get_full_name() or tecnico.username}.")
         return redirect("servizi:organizzazione_giri")
 
     mezzo_id = request.POST.get("mezzo") or None
@@ -757,7 +805,9 @@ def crea_distinta(request, tecnico_pk):
         mezzo_id=mezzo_id,
         creata_da=request.user,
     )
-    n = ods_da_includere.update(distinta=distinta)
+    n_ods  = ods_da_includere.update(distinta=distinta)
+    n_cond = condomini_da_includere.update(distinta=distinta)
+    n = n_ods + n_cond
 
     from comunicazioni.models import Promemoria
     Promemoria.objects.create(
@@ -771,7 +821,7 @@ def crea_distinta(request, tecnico_pk):
         ),
         priorita="alta",
     )
-    messages.success(request, f"Distinta creata con {n} ODS. Promemoria inviato a {tecnico.get_full_name() or tecnico.username}.")
+    messages.success(request, f"Distinta creata con {n_ods} ODS e {n_cond} condomini. Promemoria inviato a {tecnico.get_full_name() or tecnico.username}.")
     return redirect(distinta.get_absolute_url())
 
 

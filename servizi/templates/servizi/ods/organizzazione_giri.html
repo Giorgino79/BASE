@@ -99,7 +99,73 @@
 
 {% else %}
 <div class="alert alert-success">
-  <i class="bi bi-check-circle me-2"></i>Nessun servizio da organizzare.
+  <i class="bi bi-check-circle me-2"></i>Nessun ODS da organizzare.
+</div>
+{% endif %}
+
+{# ── CONDOMINI DA ORGANIZZARE ───────────────────────────────────────────────── #}
+{% if condomini_da_organizzare %}
+<h5 class="text-brand mb-3 mt-4"><i class="bi bi-buildings me-2"></i>Condomini da organizzare</h5>
+<div class="card mb-3">
+  <div class="table-responsive">
+    <table class="table mb-0 align-middle">
+      <thead class="bg-brand text-white">
+        <tr>
+          <th>Numero</th>
+          <th>Titolo</th>
+          <th>Data / Ora</th>
+          <th>Indirizzo</th>
+          <th class="text-end">Importo est.</th>
+          <th style="width:190px">Tecnico <span class="text-danger">*</span></th>
+          <th style="width:190px">Assistente</th>
+          <th style="width:100px"></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in condomini_da_organizzare %}
+        <tr>
+          <td class="fw-semibold">
+            <a href="{{ c.get_absolute_url }}" class="text-brand text-decoration-none">{{ c.numero }}</a>
+          </td>
+          <td class="small">{{ c.titolo }}</td>
+          <td class="small text-nowrap text-muted">
+            {{ c.data|date:"d/m/Y" }}
+            {% if c.ora %}<br><span class="text-brand">{{ c.ora|time:"H:i" }}</span>{% endif %}
+          </td>
+          <td class="small text-muted">{{ c.indirizzo }}</td>
+          <td class="text-end small text-nowrap">€ {{ c.totale_da_incassare }}</td>
+          <td colspan="3">
+            <form method="post" action="{% url 'servizi:condominio_assegna_tecnico' c.pk %}"
+                  class="d-flex gap-2 align-items-center" data-giro-form>
+              {% csrf_token %}
+              <select name="tecnico" class="form-select form-select-sm tecnico-sel" required
+                      style="width:190px; flex-shrink:0;">
+                <option value="">— Tecnico —</option>
+                {% for u in utenti %}
+                <option value="{{ u.pk }}" {% if c.tecnico_id == u.pk %}selected{% endif %}>
+                  {{ u.get_full_name|default:u.username }}
+                </option>
+                {% endfor %}
+              </select>
+              <select name="assistente" class="form-select form-select-sm assistente-sel"
+                      style="width:190px; flex-shrink:0;">
+                <option value="">— nessuno —</option>
+                {% for u in utenti %}
+                <option value="{{ u.pk }}" {% if c.assistente_id == u.pk %}selected{% endif %}>
+                  {{ u.get_full_name|default:u.username }}
+                </option>
+                {% endfor %}
+              </select>
+              <button type="submit" class="btn btn-sm btn-brand text-nowrap">
+                <i class="bi bi-check-lg me-1"></i>Conferma
+              </button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 </div>
 {% endif %}
 
@@ -115,7 +181,7 @@
       <span class="fw-semibold">
         {% if giro.tecnico %}{{ giro.tecnico.get_full_name|default:giro.tecnico.username }}{% else %}Senza tecnico{% endif %}
       </span>
-      <span class="badge badge-info ms-2">{{ giro.ods|length }} servizi</span>
+      <span class="badge badge-info ms-2">{{ giro.ods|length }} ODS{% if giro.condomini %} + {{ giro.condomini|length }} cond.{% endif %}</span>
       {% if giro.senza_distinta > 0 %}
       <span class="badge bg-warning text-dark ms-1">{{ giro.senza_distinta }} senza distinta</span>
       {% endif %}
@@ -167,6 +233,31 @@
           <td class="small text-muted">{% if o.assistente %}{{ o.assistente.get_full_name|default:o.assistente.username }}{% else %}—{% endif %}</td>
           <td class="text-end">
             <a href="{{ o.get_absolute_url }}" class="btn btn-sm btn-outline-secondary">
+              <i class="bi bi-eye"></i>
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+        {% for c in giro.condomini %}
+        <tr class="table-info">
+          <td class="fw-semibold">
+            <a href="{{ c.get_absolute_url }}" class="text-brand text-decoration-none">
+              <i class="bi bi-buildings me-1"></i>{{ c.numero }}
+            </a>
+          </td>
+          <td class="small text-nowrap text-muted">
+            {{ c.data|date:"d/m/Y" }}
+            {% if c.ora %}<br><span class="text-brand">{{ c.ora|time:"H:i" }}</span>{% endif %}
+          </td>
+          <td class="small">{{ c.titolo }}</td>
+          <td class="small text-muted">{{ c.indirizzo }}</td>
+          <td class="small">Condominio</td>
+          <td class="small text-muted">—</td>
+          <td class="text-end small text-nowrap">€ {{ c.totale_da_incassare }}</td>
+          <td class="small">{{ c.tecnico.get_full_name|default:"—" }}</td>
+          <td class="small text-muted">{{ c.assistente.get_full_name|default:"—" }}</td>
+          <td class="text-end">
+            <a href="{{ c.get_absolute_url }}" class="btn btn-sm btn-outline-secondary">
               <i class="bi bi-eye"></i>
             </a>
           </td>
