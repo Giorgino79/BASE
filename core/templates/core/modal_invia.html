@@ -177,9 +177,11 @@ Parametri (tutti opzionali):
             },
             render: {
                 option: function(d, esc) {
-                    return '<div><span class="fw-semibold">' + esc(d.text) + '</span>'
-                        + (d.telefono ? '<span class="text-muted small ms-2">' + esc(d.telefono) + '</span>' : '')
-                        + '</div>';
+                    var badge = d.tipo ? '<span class="badge bg-secondary ms-1 fw-normal" style="font-size:0.7em">' + esc(d.tipo) + '</span>' : '';
+                    var sub = d.telefono ? '<span class="text-muted small ms-1">' + esc(d.telefono) + '</span>' : '';
+                    return '<div class="d-flex align-items-center gap-1">'
+                        + '<span class="fw-semibold">' + esc(d.text) + '</span>'
+                        + badge + sub + '</div>';
                 },
                 item: function(d, esc) {
                     return '<span>' + esc(d.text) + '</span>';
