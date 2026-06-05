@@ -50,7 +50,8 @@ urlpatterns = [
     path("condomini/nuovo/",              views.condominio_create, name="condominio_create"),
     path("condomini/<int:pk>/",           views.condominio_detail, name="condominio_detail"),
     path("condomini/<int:pk>/modifica/",  views.condominio_update, name="condominio_update"),
-    path("condomini/<int:pk>/esegui/",    views.condominio_esegui, name="condominio_esegui"),
+    path("condomini/<int:pk>/esegui/",    views.condominio_esegui,     name="condominio_esegui"),
+    path("condomini/<int:pk>/salva-riga/", views.condominio_salva_riga, name="condominio_salva_riga"),
 
     # API
     path("api/prezzo-contratto/", views.api_prezzo_contratto, name="api_prezzo_contratto"),

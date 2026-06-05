@@ -186,14 +186,15 @@
 {% block extra_js %}
 <script>
 (function () {
+  const SALVA_URL = "{% url 'servizi:condominio_salva_riga' condominio.pk %}";
+
+  // ── Totale incassato ──────────────────────────────────────────
   function aggiornaTotale() {
     let somma = 0;
     document.querySelectorAll('#unita-body .unita-row').forEach(function (row) {
       const chk = row.querySelector('input[type=checkbox][name$="-incasso_effettuato"]');
       const imp = row.querySelector('input[name$="-importo_da_incassare"]');
-      if (chk && chk.checked && imp) {
-        somma += parseFloat(imp.value) || 0;
-      }
+      if (chk && chk.checked && imp) somma += parseFloat(imp.value) || 0;
     });
     const fmt = '€ ' + somma.toFixed(2).replace('.', ',');
     const el = document.getElementById('totale-incassato');
@@ -202,13 +203,73 @@
     if (el2) el2.textContent = fmt;
   }
 
-  document.getElementById('unita-body').addEventListener('change', aggiornaTotale);
-  document.getElementById('unita-body').addEventListener('input', aggiornaTotale);
+  // ── Autosave AJAX ─────────────────────────────────────────────
+  function getCookie(name) {
+    const v = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+    return v ? v.pop() : '';
+  }
+
+  function setIndicator(row, stato) {
+    let ind = row.querySelector('.autosave-ind');
+    if (!ind) {
+      ind = document.createElement('span');
+      ind.className = 'autosave-ind ms-1 small';
+      const td = row.querySelector('td');
+      if (td) td.appendChild(ind);
+    }
+    if (stato === 'saving') {
+      ind.innerHTML = '<span class="spinner-border spinner-border-sm text-secondary" style="width:.65rem;height:.65rem"></span>';
+    } else if (stato === 'saved') {
+      ind.innerHTML = '<i class="bi bi-check-circle-fill text-success" style="font-size:.75rem"></i>';
+      setTimeout(() => { ind.innerHTML = ''; }, 2000);
+    } else if (stato === 'error') {
+      ind.innerHTML = '<i class="bi bi-exclamation-triangle-fill text-danger" style="font-size:.75rem" title="Errore salvataggio"></i>';
+    }
+  }
+
+  const saveTimers = new WeakMap();
+
+  function autoSaveRow(row) {
+    const idInput = row.querySelector('input[type=hidden][name$="-id"]');
+    if (!idInput || !idInput.value) return; // riga nuova non ancora salvata nel DB
+
+    if (saveTimers.has(row)) clearTimeout(saveTimers.get(row));
+    saveTimers.set(row, setTimeout(function () {
+      const servizio = row.querySelector('input[type=checkbox][name$="-servizio_effettuato"]')?.checked || false;
+      const incasso  = row.querySelector('input[type=checkbox][name$="-incasso_effettuato"]')?.checked || false;
+      const importo  = row.querySelector('input[name$="-importo_da_incassare"]')?.value ?? '';
+
+      setIndicator(row, 'saving');
+      fetch(SALVA_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+        body: JSON.stringify({
+          riga_id: idInput.value,
+          servizio_effettuato: servizio,
+          incasso_effettuato:  incasso,
+          importo_da_incassare: importo,
+        }),
+      })
+      .then(r => r.json())
+      .then(data => setIndicator(row, data.success ? 'saved' : 'error'))
+      .catch(() => setIndicator(row, 'error'));
+    }, 400)); // debounce 400ms
+  }
+
+  // Delega gli eventi su tutta la tbody
+  const body = document.getElementById('unita-body');
+  body.addEventListener('change', function (e) {
+    const row = e.target.closest('.unita-row');
+    if (row) { aggiornaTotale(); autoSaveRow(row); }
+  });
+  body.addEventListener('input', function (e) {
+    const row = e.target.closest('.unita-row');
+    if (row) { aggiornaTotale(); autoSaveRow(row); }
+  });
   aggiornaTotale();
 
-  // Aggiungi nuove unità
+  // ── Aggiungi nuove unità ──────────────────────────────────────
   const totalInput = document.getElementById('id_unita-TOTAL_FORMS');
-  const body = document.getElementById('unita-body');
   const tpl = document.getElementById('unita-empty-tpl').querySelector('tr');
   document.getElementById('btn-aggiungi-unita').addEventListener('click', function () {
     const idx = parseInt(totalInput.value);

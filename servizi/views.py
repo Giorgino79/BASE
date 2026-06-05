@@ -8,6 +8,7 @@ from django.db.models import Q
 from django.contrib.contenttypes.models import ContentType
 from django.http import JsonResponse
 from django.utils import timezone
+from django.views.decorators.http import require_POST
 
 from .models import Servizio, Contratto, ContrattoFiliale, ContrattoFilialeRiga, ContrattoRiga, ODS, ODSRiga, Distinta, ConsumoMateriale, CondominioODS, RigaUnitaAbitativa, RigaProdottoCondominio
 from .forms import (
@@ -1180,14 +1181,15 @@ def condominio_esegui(request, pk):
                 condominio.stato = CondominioODS.Stato.COMPLETATO
                 condominio.save(update_fields=["stato"])
                 messages.success(request, f"{condominio.numero} chiuso come completato.")
+                return redirect("servizi:condominio_detail", pk=pk)
             else:
                 messages.success(request, "Progresso salvato.")
-            return redirect("servizi:condominio_detail", pk=pk)
+                return redirect("servizi:condominio_esegui", pk=pk)
+        # se validazione fallisce: ri-renderizza con errori (non redirige)
     else:
         fs_unita = RigaUnitaAbitativaEseguiFormSet(instance=condominio, prefix="unita")
         fs_prodotti = RigaProdottoCondominioEseguiFormSet(instance=condominio, prefix="prodotti")
 
-    # Costruisce dizionario importi per JS (prezzo_base come fallback)
     importi = {
         str(u.pk): float(u.importo_da_incassare or condominio.prezzo_base)
         for u in condominio.unita.all()
@@ -1198,3 +1200,40 @@ def condominio_esegui(request, pk):
         "fs_prodotti": fs_prodotti,
         "importi_json": importi,
     })
+
+
+@login_required
+@require_POST
+def condominio_salva_riga(request, pk):
+    """AJAX: salva una singola RigaUnitaAbitativa senza ricaricare la pagina."""
+    from django.http import JsonResponse
+    import json
+    from decimal import Decimal, InvalidOperation
+
+    condominio = get_object_or_404(CondominioODS, pk=pk)
+    try:
+        data = json.loads(request.body)
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return JsonResponse({"success": False, "error": "Dati non validi"}, status=400)
+
+    riga_id = data.get("riga_id")
+    if not riga_id:
+        return JsonResponse({"success": False, "error": "riga_id mancante"}, status=400)
+
+    try:
+        riga = RigaUnitaAbitativa.objects.get(pk=riga_id, condominio=condominio)
+    except RigaUnitaAbitativa.DoesNotExist:
+        return JsonResponse({"success": False, "error": "Riga non trovata"}, status=404)
+
+    riga.servizio_effettuato = bool(data.get("servizio_effettuato", False))
+    riga.incasso_effettuato  = bool(data.get("incasso_effettuato", False))
+    importo_raw = data.get("importo_da_incassare")
+    if importo_raw is not None and str(importo_raw).strip() != "":
+        try:
+            riga.importo_da_incassare = Decimal(str(importo_raw))
+        except InvalidOperation:
+            riga.importo_da_incassare = None
+    else:
+        riga.importo_da_incassare = None
+    riga.save(update_fields=["servizio_effettuato", "incasso_effettuato", "importo_da_incassare"])
+    return JsonResponse({"success": True})
