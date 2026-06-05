@@ -1190,24 +1190,23 @@ def condominio_esegui(request, pk):
         pk=pk,
     )
     if request.method == "POST":
+        action = request.POST.get("action", "salva")
         fs_unita = RigaUnitaAbitativaEseguiFormSet(request.POST, instance=condominio, prefix="unita")
         fs_prodotti = RigaProdottoCondominioEseguiFormSet(request.POST, instance=condominio, prefix="prodotti")
         if fs_unita.is_valid() and fs_prodotti.is_valid():
             fs_unita.save()
             fs_prodotti.save()
-            action = request.POST.get("action", "salva")
-            if action == "chiudi":
-                condominio.stato = CondominioODS.Stato.COMPLETATO
-                condominio.save(update_fields=["stato"])
-                messages.success(request, f"{condominio.numero} chiuso come completato.")
-                return redirect("servizi:condominio_detail", pk=pk)
-            elif action == "torna":
-                messages.success(request, "Progresso salvato.")
-                return redirect("servizi:condominio_detail", pk=pk)
-            else:
-                messages.success(request, "Progresso salvato.")
-                return redirect("servizi:condominio_esegui", pk=pk)
-        # se validazione fallisce: ri-renderizza con errori (non redirige)
+        if action == "chiudi":
+            condominio.stato = CondominioODS.Stato.COMPLETATO
+            condominio.save(update_fields=["stato"])
+            messages.success(request, f"{condominio.numero} chiuso come completato.")
+            return redirect("servizi:condominio_detail", pk=pk)
+        elif action == "torna":
+            messages.success(request, "Progresso salvato.")
+            return redirect("servizi:condominio_detail", pk=pk)
+        elif fs_unita.is_valid():
+            messages.success(request, "Progresso salvato.")
+            return redirect("servizi:condominio_esegui", pk=pk)
     else:
         fs_unita = RigaUnitaAbitativaEseguiFormSet(instance=condominio, prefix="unita")
         fs_prodotti = RigaProdottoCondominioEseguiFormSet(instance=condominio, prefix="prodotti")
