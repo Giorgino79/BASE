@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<style>
+  body { font-family: Helvetica, Arial, sans-serif; font-size: 10pt; color: #222; margin: 0; padding: 0; }
+  .header { background-color: #5585b5; color: white; padding: 14px 20px 10px 20px; margin-bottom: 16px; }
+  .header h1 { margin: 0; font-size: 15pt; }
+  .header p  { margin: 4px 0 0 0; font-size: 9pt; opacity: 0.88; }
+  .section-title { font-size: 10pt; font-weight: bold; color: #5585b5; border-bottom: 1.5px solid #5585b5; padding-bottom: 3px; margin: 14px 0 8px 0; }
+  .info-grid { width: 100%; border-collapse: collapse; margin-bottom: 4px; }
+  .info-grid td { padding: 3px 8px; font-size: 9.5pt; }
+  .info-grid td.label { color: #666; width: 120px; }
+  .info-grid td.value { font-weight: bold; }
+  table.data { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+  table.data thead tr { background-color: #5585b5; color: white; }
+  table.data thead th { padding: 6px 8px; text-align: left; font-size: 9pt; }
+  table.data thead th.center { text-align: center; }
+  table.data thead th.right  { text-align: right; }
+  table.data tbody tr { border-bottom: 1px solid #e0e0e0; }
+  table.data tbody tr:nth-child(even) { background-color: #f5f8fc; }
+  table.data tbody td { padding: 5px 8px; font-size: 9pt; }
+  table.data tbody td.center { text-align: center; }
+  table.data tbody td.right  { text-align: right; }
+  table.data tfoot td { padding: 6px 8px; font-size: 9.5pt; font-weight: bold; border-top: 2px solid #5585b5; background: #f0f4f8; }
+  table.data tfoot td.right  { text-align: right; color: #5585b5; }
+  .badge-ok  { color: #155724; font-weight: bold; }
+  .badge-ko  { color: #721c24; }
+  .badge-wait { color: #856404; }
+  .note-box { background: #f5f8fc; border-left: 3px solid #5585b5; padding: 8px 12px; font-size: 9pt; color: #444; margin-bottom: 10px; }
+  .footer { margin-top: 24px; border-top: 1px solid #ccc; padding-top: 6px; font-size: 8pt; color: #888; text-align: center; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>{{ condominio.numero }} — {{ condominio.titolo }}</h1>
+  <p><i>{{ condominio.indirizzo }}</i> &nbsp;·&nbsp; {{ condominio.data|date:"d/m/Y" }}{% if condominio.ora %} {{ condominio.ora|time:"H:i" }}{% endif %} &nbsp;·&nbsp; {{ condominio.get_stato_display }}</p>
+</div>
+
+<div class="section-title">Dettaglio intervento</div>
+<table class="info-grid">
+  <tr>
+    <td class="label">Tecnico</td>
+    <td class="value">{{ condominio.tecnico.get_full_name|default:"—" }}</td>
+    <td class="label">Assistente</td>
+    <td class="value">{{ condominio.assistente.get_full_name|default:"—" }}</td>
+  </tr>
+  <tr>
+    <td class="label">Prezzo base / unità</td>
+    <td class="value">€ {{ condominio.prezzo_base }}</td>
+    <td class="label">Totale da incassare</td>
+    <td class="value">€ {{ condominio.totale_da_incassare }}</td>
+  </tr>
+  <tr>
+    <td class="label">Già incassato</td>
+    <td class="value">€ {{ condominio.totale_incassato }}</td>
+    <td></td><td></td>
+  </tr>
+</table>
+
+{% if condominio.note %}
+<div class="note-box">{{ condominio.note }}</div>
+{% endif %}
+
+<div class="section-title">Unità abitative ({{ unita|length }})</div>
+<table class="data">
+  <thead>
+    <tr>
+      <th>Nome / Intestatario</th>
+      <th class="center" style="width:90px">Servizio</th>
+      <th class="center" style="width:90px">Incassato</th>
+      <th class="right"  style="width:100px">Importo</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for u in unita %}
+    <tr>
+      <td>{{ u.nome }}</td>
+      <td class="center">
+        {% if u.servizio_effettuato %}<span class="badge-ok">&#10003; Sì</span>{% else %}<span class="badge-wait">—</span>{% endif %}
+      </td>
+      <td class="center">
+        {% if u.incasso_effettuato %}<span class="badge-ok">&#10003; Sì</span>{% else %}<span class="badge-ko">—</span>{% endif %}
+      </td>
+      <td class="right">
+        € {{ u.importo_effettivo }}{% if not u.importo_da_incassare %} <span style="color:#888;font-size:8pt">(base)</span>{% endif %}
+      </td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="4" style="text-align:center;color:#888;padding:10px">Nessuna unità</td></tr>
+    {% endfor %}
+  </tbody>
+  {% if unita %}
+  <tfoot>
+    <tr>
+      <td colspan="3" style="text-align:right">Totale da incassare (servizi effettuati)</td>
+      <td class="right">€ {{ condominio.totale_da_incassare }}</td>
+    </tr>
+    <tr>
+      <td colspan="3" style="text-align:right;color:#155724">Già incassato</td>
+      <td class="right" style="color:#155724">€ {{ condominio.totale_incassato }}</td>
+    </tr>
+  </tfoot>
+  {% endif %}
+</table>
+
+<div class="footer">
+  Report generato il {{ oggi|date:"d/m/Y" }} — {{ condominio.numero }}
+</div>
+
+</body>
+</html>

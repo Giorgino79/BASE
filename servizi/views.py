@@ -1137,6 +1137,24 @@ def condominio_detail(request, pk):
     })
 
 
+def condominio_pdf(request, pk):
+    from django.template.loader import render_to_string
+    from django.utils import timezone
+    from core.pdf_generator import generate_pdf_from_html, PDFConfig
+    condominio = get_object_or_404(
+        CondominioODS.objects.select_related("tecnico", "assistente").prefetch_related("unita"),
+        pk=pk,
+    )
+    unita = list(condominio.unita.all())
+    ctx = {"condominio": condominio, "unita": unita, "oggi": timezone.now().date()}
+    html = render_to_string("servizi/condomini/pdf.html", ctx, request=request)
+    return generate_pdf_from_html(
+        html,
+        PDFConfig(filename=f"{condominio.numero}.pdf"),
+        output_type="response",
+    )
+
+
 @login_required
 def condominio_update(request, pk):
     condominio = get_object_or_404(CondominioODS, pk=pk)
