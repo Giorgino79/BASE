@@ -32,11 +32,8 @@
 
       {# Unità abitative #}
       <div class="card mb-3">
-        <div class="card-header card-header-primary d-flex justify-content-between align-items-center">
-          <span><i class="bi bi-door-open me-2"></i>Unità abitative</span>
-          <button type="button" class="btn btn-sm btn-outline-light" id="btn-aggiungi-unita">
-            <i class="bi bi-plus-lg me-1"></i>Aggiungi unità
-          </button>
+        <div class="card-header card-header-primary">
+          <i class="bi bi-door-open me-2"></i>Unità abitative
         </div>
         <div class="table-responsive">
           {{ fs_unita.management_form }}
@@ -75,32 +72,10 @@
             </tfoot>
           </table>
         </div>
-        {# Riga template per JS — clonata da btn-aggiungi-unita #}
-        <div id="unita-empty-tpl" class="d-none">
-          <tr class="unita-row">
-            <td>
-              <input type="hidden" name="unita-__idx__-id" id="id_unita-__idx__-id">
-              <input type="text" name="unita-__idx__-nome" id="id_unita-__idx__-nome"
-                     class="form-control form-control-sm" placeholder="Nome / intestatario">
-            </td>
-            <td class="text-center">
-              <input type="checkbox" name="unita-__idx__-servizio_effettuato"
-                     id="id_unita-__idx__-servizio_effettuato" class="form-check-input">
-            </td>
-            <td class="text-center">
-              <input type="checkbox" name="unita-__idx__-incasso_effettuato"
-                     id="id_unita-__idx__-incasso_effettuato" class="form-check-input">
-            </td>
-            <td>
-              <div class="input-group input-group-sm">
-                <span class="input-group-text">€</span>
-                <input type="number" name="unita-__idx__-importo_da_incassare"
-                       id="id_unita-__idx__-importo_da_incassare"
-                       value="{{ condominio.prezzo_base }}"
-                       class="form-control" step="0.01">
-              </div>
-            </td>
-          </tr>
+        <div class="card-footer bg-transparent border-top-0 pt-2">
+          <button type="button" class="btn btn-sm btn-outline-primary" id="btn-aggiungi-unita">
+            <i class="bi bi-plus-lg me-1"></i>Aggiungi unità
+          </button>
         </div>
       </div>
 
@@ -182,6 +157,34 @@
     </div>
   </div>
 </form>
+
+{# <template> evita che il browser rimuova <tr> se messo fuori dalla tabella #}
+<template id="unita-empty-tpl">
+  <tr class="unita-row">
+    <td>
+      <input type="hidden" name="unita-__idx__-id" id="id_unita-__idx__-id">
+      <input type="text" name="unita-__idx__-nome" id="id_unita-__idx__-nome"
+             class="form-control form-control-sm" placeholder="Nome / intestatario">
+    </td>
+    <td class="text-center">
+      <input type="checkbox" name="unita-__idx__-servizio_effettuato"
+             id="id_unita-__idx__-servizio_effettuato" class="form-check-input">
+    </td>
+    <td class="text-center">
+      <input type="checkbox" name="unita-__idx__-incasso_effettuato"
+             id="id_unita-__idx__-incasso_effettuato" class="form-check-input">
+    </td>
+    <td>
+      <div class="input-group input-group-sm">
+        <span class="input-group-text">€</span>
+        <input type="number" name="unita-__idx__-importo_da_incassare"
+               id="id_unita-__idx__-importo_da_incassare"
+               value="{{ condominio.prezzo_base }}"
+               class="form-control" step="0.01">
+      </div>
+    </td>
+  </tr>
+</template>
 {% endblock %}
 
 {% block extra_js %}
@@ -228,7 +231,7 @@
 
   function doSave(row) {
     const idInput = row.querySelector('input[type=hidden][name$="-id"]');
-    if (!idInput || !idInput.value) return; // riga nuova → salvata solo col form submit
+    if (!idInput || !idInput.value) return;
 
     const servizio = row.querySelector('input[type=checkbox][name$="-servizio_effettuato"]')?.checked || false;
     const incasso  = row.querySelector('input[type=checkbox][name$="-incasso_effettuato"]')?.checked || false;
@@ -236,7 +239,7 @@
 
     fetch(SALVA_URL, {
       method: 'POST',
-      keepalive: true,   // sopravvive alla navigazione del browser
+      keepalive: true,
       headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrf() },
       body: JSON.stringify({
         riga_id: idInput.value,
@@ -257,20 +260,17 @@
     timers.set(row, setTimeout(() => doSave(row), delay));
   }
 
-  // Delegazione eventi
   const body = document.getElementById('unita-body');
 
   body.addEventListener('change', function (e) {
     const row = e.target.closest('.unita-row');
     if (!row) return;
     aggiornaTotale();
-    // checkbox → salva subito; altri → salva dopo 500ms
-    const isChk = e.target.type === 'checkbox';
-    schedSave(row, isChk ? 0 : 500);
+    schedSave(row, e.target.type === 'checkbox' ? 0 : 500);
   });
 
   body.addEventListener('input', function (e) {
-    if (e.target.type === 'checkbox') return; // già gestito da change
+    if (e.target.type === 'checkbox') return;
     const row = e.target.closest('.unita-row');
     if (row) { aggiornaTotale(); schedSave(row, 500); }
   });
@@ -279,12 +279,13 @@
 
   // ── Aggiungi nuove unità ──────────────────────────────────────
   const totalInput = document.getElementById('id_unita-TOTAL_FORMS');
-  const tpl = document.getElementById('unita-empty-tpl').querySelector('tr');
+  const tpl = document.getElementById('unita-empty-tpl');  // <template>
+
   document.getElementById('btn-aggiungi-unita').addEventListener('click', function () {
     const idx = parseInt(totalInput.value);
-    const row = tpl.cloneNode(true);
-    row.innerHTML = row.innerHTML.replaceAll('__idx__', idx);
-    body.appendChild(row);
+    const clone = tpl.content.querySelector('tr').cloneNode(true);
+    clone.innerHTML = clone.innerHTML.replaceAll('__idx__', idx);
+    body.appendChild(clone);
     totalInput.value = idx + 1;
     aggiornaTotale();
   });
@@ -292,10 +293,7 @@
   // ── Avviso se ci sono righe nuove non salvate ─────────────────
   window.addEventListener('beforeunload', function (e) {
     const hasNew = !!body.querySelector('input[type=hidden][name$="-id"]:not([value])');
-    if (hasNew) {
-      e.preventDefault();
-      e.returnValue = '';
-    }
+    if (hasNew) { e.preventDefault(); e.returnValue = ''; }
   });
 })();
 
