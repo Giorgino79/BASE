@@ -42,6 +42,12 @@ def invia_documento(request):
     if canale in ("whatsapp", "entrambi") and not is_configured():
         return JsonResponse({"success": False, "error": "WhatsApp non configurato — imposta GREENAPI_INSTANCE_ID e GREENAPI_TOKEN"})
 
+    # Costruisce subito l'URL assoluta dal request (garantisce l'host corretto su qualsiasi server)
+    if pdf_url and not pdf_url.startswith("http"):
+        abs_pdf_url = request.build_absolute_uri(pdf_url)
+    else:
+        abs_pdf_url = pdf_url
+
     log = InvioLog.objects.create(
         utente=request.user,
         canale=canale,
@@ -58,26 +64,15 @@ def invia_documento(request):
         tmp_created = False
         local_path = pdf_local_path or None
 
-        # Costruisce URL assoluta per pdf_url relative (necessario per Green API)
-        abs_pdf_url = pdf_url
-        if pdf_url and not pdf_url.startswith("http"):
-            site_url = getattr(django_settings, "SITE_URL", "").rstrip("/")
-            abs_pdf_url = f"{site_url}{pdf_url}" if site_url else pdf_url
-
         try:
-            # Risolvi percorso locale solo se non usiamo URL assoluta
-            if pdf_url and not local_path and not abs_pdf_url.startswith("http"):
-                resolved = WhatsAppSender.resolve_local_path(pdf_url)
-                if resolved and not pdf_url.startswith("/"):
-                    tmp_created = True
-                local_path = resolved
-
             # --- WhatsApp ---
             if canale in ("whatsapp", "entrambi"):
                 wa_log = log if canale == "whatsapp" else None
                 caption = messaggio or oggetto
                 if abs_pdf_url and abs_pdf_url.startswith("http"):
                     filename = os.path.basename(pdf_url.split("?")[0]) or "documento.pdf"
+                    if not filename.endswith(".pdf"):
+                        filename += ".pdf"
                     WhatsAppSender.send_pdf_by_url(telefono, abs_pdf_url, filename=filename, caption=caption, log_entry=wa_log)
                 elif local_path and os.path.exists(local_path):
                     WhatsAppSender.send_pdf(telefono, local_path, caption=caption, log_entry=wa_log)
@@ -87,6 +82,9 @@ def invia_documento(request):
 
             # --- Email ---
             if canale in ("email", "entrambi"):
+                # Per email con PDF remoto: scarica prima in locale
+                if abs_pdf_url and abs_pdf_url.startswith("http") and not local_path:
+                    local_path = WhatsAppSender.resolve_local_path(pdf_url)
                 _send_email(email_dest, oggetto, messaggio, local_path)
                 if canale == "email":
                     log.stato = "inviato"
@@ -108,9 +106,9 @@ def invia_documento(request):
     threading.Thread(target=_send, daemon=True).start()
 
     label = {
-        "whatsapp": "WhatsApp in invio — controlla il browser",
+        "whatsapp": "Messaggio WhatsApp inviato — controlla il telefono",
         "email": "Email in invio…",
-        "entrambi": "WhatsApp + Email in invio…",
+        "entrambi": "WhatsApp + Email inviati",
     }.get(canale, "Invio in corso…")
 
     return JsonResponse({"success": True, "message": label, "log_id": log.pk})
