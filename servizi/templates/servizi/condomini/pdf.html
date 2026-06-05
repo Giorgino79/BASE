@@ -43,8 +43,16 @@
     <td style="width:28%; font-weight:bold; padding:4px 0 4px 6px;">{{ condominio.assistente.get_full_name|default:"—" }}</td>
   </tr>
   <tr>
-    <td style="color:#666; padding:4px 6px 4px 0;">Stato</td>
-    <td style="font-weight:bold; padding:4px 6px;">{{ condominio.get_stato_display }}</td>
+    <td style="color:#666; padding:4px 6px 4px 0;">Stato servizio</td>
+    <td style="font-weight:bold; padding:4px 6px;">
+      {% if condominio.stato == "completato" %}
+        <span style="color:#155724;">&#10003; Servizio completato</span>
+      {% elif condominio.stato == "annullato" %}
+        <span style="color:#721c24;">&#10007; Annullato</span>
+      {% else %}
+        <span style="color:#856404;">&#9679; Servizio aperto</span>
+      {% endif %}
+    </td>
     <td style="color:#666; padding:4px 6px;">Prezzo base / unità</td>
     <td style="font-weight:bold; padding:4px 0 4px 6px;">€ {{ condominio.prezzo_base }}</td>
   </tr>
