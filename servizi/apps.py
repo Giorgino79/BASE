@@ -23,7 +23,7 @@ class ServiziConfig(AppConfig):
 
         try:
             from core.calendario_registry import CalendarioRegistry
-            from .calendario_providers import get_ods_eventi
+            from .calendario_providers import get_ods_eventi, get_condomini_eventi
             CalendarioRegistry.register(
                 name='ods',
                 provider_func=get_ods_eventi,
@@ -31,6 +31,14 @@ class ServiziConfig(AppConfig):
                 description='Ordini di Servizio programmati',
                 color='#fd7e14',
                 priority=30,
+            )
+            CalendarioRegistry.register(
+                name='condomini',
+                provider_func=get_condomini_eventi,
+                category='Servizi',
+                description='Condomini da espletare',
+                color='#0d6efd',
+                priority=31,
             )
         except Exception as e:
             import logging

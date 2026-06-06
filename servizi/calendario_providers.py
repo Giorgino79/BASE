@@ -62,3 +62,50 @@ def get_ods_eventi(user, start_date, end_date):
         })
 
     return eventi
+
+
+def get_condomini_eventi(user, start_date, end_date):
+    """
+    Restituisce i CondominioODS da espletare come eventi FullCalendar.
+    """
+    from .models import CondominioODS
+
+    qs = CondominioODS.objects.select_related(
+        "tecnico", "assistente"
+    ).exclude(stato__in=["completato", "annullato"])
+
+    if start_date:
+        qs = qs.filter(data__gte=start_date.date())
+    if end_date:
+        qs = qs.filter(data__lte=end_date.date())
+
+    eventi = []
+    for c in qs.order_by("data", "ora")[:200]:
+        tecnico = c.tecnico.get_full_name() if c.tecnico else "—"
+        title = f"🏢 {c.titolo}"
+        if c.tecnico:
+            title += f" [{tecnico}]"
+
+        start = c.data.isoformat()
+        if c.ora:
+            from datetime import datetime
+            start = datetime.combine(c.data, c.ora).isoformat()
+
+        eventi.append({
+            "id": f"con-{c.pk}",
+            "title": title,
+            "start": start,
+            "allDay": not c.ora,
+            "color": "#0d6efd",
+            "url": c.get_absolute_url(),
+            "extendedProps": {
+                "tipo": "condominio",
+                "numero": c.numero,
+                "stato": c.get_stato_display(),
+                "cliente": c.titolo,
+                "indirizzo": c.indirizzo,
+                "tecnico": tecnico,
+            },
+        })
+
+    return eventi
