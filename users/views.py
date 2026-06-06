@@ -650,6 +650,25 @@ def giornata_lavorativa_list_view(request):
     num_giornate = giornate.count()
     media_ore = ore_totali / num_giornate if num_giornate > 0 else 0
 
+    # URL PDF con i filtri correnti (per il modal invia)
+    from django.urls import reverse as _reverse
+    from urllib.parse import urlencode as _urlencode
+    _pdf_params = {k: v for k, v in [("mese", mese), ("stato", stato)] if v}
+    if request.user.is_staff and user_filter:
+        _pdf_params["user"] = user_filter
+    giornate_pdf_url = _reverse("users:giornate_export_pdf") + (
+        "?" + _urlencode(_pdf_params) if _pdf_params else ""
+    )
+
+    # Destinatario del messaggio
+    if request.user.is_staff and user_filter:
+        try:
+            _dest = User.objects.get(pk=user_filter)
+        except User.DoesNotExist:
+            _dest = request.user
+    else:
+        _dest = request.user
+
     return render(request, "users/giornata_list.html", {
         "giornate": giornate,
         "ore_totali": ore_totali,
@@ -658,6 +677,8 @@ def giornata_lavorativa_list_view(request):
         "mese": mese,
         "tutti_utenti": tutti_utenti,
         "locked_user": None if request.user.is_staff else request.user,
+        "giornate_pdf_url": giornate_pdf_url,
+        "invia_destinatario": _dest,
     })
 
 
