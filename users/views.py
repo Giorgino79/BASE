@@ -1068,12 +1068,15 @@ def tesserino_pdf_view(request):
 
     logo_path = getattr(settings, "LOGO_PATH", None)
     if not logo_path:
-        static_dir = settings.STATICFILES_DIRS[0] if settings.STATICFILES_DIRS else None
-        if static_dir:
-            logo_path = os.path.join(static_dir, "img", "logo.png")
-        if not logo_path or not os.path.exists(logo_path):
-            from django.templatetags.static import static
-            logo_path = request.build_absolute_uri(static("img/logo.png"))
+        candidates = []
+        if settings.STATICFILES_DIRS:
+            candidates.append(os.path.join(settings.STATICFILES_DIRS[0], "img", "logo.png"))
+        if getattr(settings, "STATIC_ROOT", None):
+            candidates.append(os.path.join(settings.STATIC_ROOT, "img", "logo.png"))
+        for p in candidates:
+            if os.path.exists(p):
+                logo_path = p
+                break
 
     return generate_tesserino_pdf(request.user, logo_path=logo_path)
 
