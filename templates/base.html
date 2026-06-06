@@ -114,6 +114,8 @@
         <li><hr class="dropdown-divider"></li>
         <li><a class="dropdown-item" href="{% url 'users:profilo' %}">
           <i class="bi bi-person me-2"></i>Profilo</a></li>
+        <li><a class="dropdown-item" href="{% url 'users:user_detail' request.user.pk %}">
+          <i class="bi bi-person-lines-fill me-2"></i>Scheda dipendente</a></li>
         <li><a class="dropdown-item" href="#"
                data-bs-toggle="modal" data-bs-target="#modalTimbraOra">
           <i class="bi bi-clock me-2"></i>Timbratura</a></li>
