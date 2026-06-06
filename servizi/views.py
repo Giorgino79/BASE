@@ -762,6 +762,9 @@ class DistintaDetailView(LoginRequiredMixin, DetailView):
             prezzo_sum=Sum("righe__prezzo"),
         ).order_by("data_servizio", "pk")
         ctx["ods_list"] = ods_qs
+        ctx["condomini_list"] = self.object.condomini_set.select_related(
+            "tecnico", "assistente"
+        ).prefetch_related("unita").order_by("data", "ora")
 
         mezzo = self.object.mezzo
         ctx["mezzo"] = mezzo

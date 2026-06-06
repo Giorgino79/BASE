@@ -397,11 +397,14 @@ class Distinta(models.Model):
 
     @property
     def n_completati(self):
-        return self.ods_set.filter(stato="completato").count()
+        return (
+            self.ods_set.filter(stato="completato").count() +
+            self.condomini_set.filter(stato="completato").count()
+        )
 
     @property
     def n_totale(self):
-        return self.ods_set.count()
+        return self.ods_set.count() + self.condomini_set.count()
 
 
 class ConsumoMateriale(models.Model):

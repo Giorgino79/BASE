@@ -240,9 +240,45 @@
 
 {% endfor %}
 
-{% if not ods_list %}
-<div class="alert alert-info"><i class="bi bi-info-circle me-2"></i>Nessun ODS in questa distinta.</div>
+{% if not ods_list and not condomini_list %}
+<div class="alert alert-info"><i class="bi bi-info-circle me-2"></i>Nessun servizio in questa distinta.</div>
 {% endif %}
+
+{# ── CONDOMINI ─────────────────────────────────────────────────────────────── #}
+{% for c in condomini_list %}
+<div class="card mb-3">
+  <div class="card-header d-flex justify-content-between align-items-center
+    {% if c.stato == 'completato' %}bg-success bg-opacity-10{% endif %}">
+    <div>
+      <i class="bi bi-buildings me-1 text-brand"></i>
+      <a href="{{ c.get_absolute_url }}" class="fw-semibold text-brand text-decoration-none">{{ c.numero }}</a>
+      <span class="text-muted small ms-2">{{ c.titolo }}</span>
+      <span class="text-muted small ms-2">— {{ c.data|date:"d/m/Y" }}{% if c.ora %} {{ c.ora|time:"H:i" }}{% endif %}</span>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+      {% if c.stato == "completato" %}
+        <span class="badge badge-ok"><i class="bi bi-check-circle me-1"></i>Completato</span>
+      {% else %}
+        <span class="badge badge-wait">Da eseguire</span>
+        {% if distinta.stato == "aperta" %}
+        <a href="{% url 'servizi:condominio_esegui' c.pk %}" class="btn btn-sm btn-brand">
+          <i class="bi bi-play-circle me-1"></i>Esegui
+        </a>
+        {% endif %}
+      {% endif %}
+    </div>
+  </div>
+  <div class="card-body py-2">
+    <div class="row g-2 small">
+      <div class="col-auto text-muted"><i class="bi bi-geo-alt me-1"></i>{{ c.indirizzo }}</div>
+      <div class="col-auto"><span class="text-muted">Unità:</span> <strong>{{ c.unita.count }}</strong></div>
+      <div class="col-auto"><span class="text-muted">Da incassare:</span> <strong class="text-brand">€ {{ c.totale_da_incassare }}</strong></div>
+      <div class="col-auto"><span class="text-muted">Incassato:</span> <strong class="text-success">€ {{ c.totale_incassato }}</strong></div>
+      {% if c.tecnico %}<div class="col-auto text-muted"><i class="bi bi-person me-1"></i>{{ c.tecnico.get_full_name }}</div>{% endif %}
+    </div>
+  </div>
+</div>
+{% endfor %}
 
 {# Sorgente opzioni prodotto per la clonazione JS #}
 <div id="prod-src-wrapper" style="display:none" aria-hidden="true">{{ consumo_form.prodotto }}</div>
