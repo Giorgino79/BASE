@@ -63,3 +63,10 @@ class CoreConfig(AppConfig):
              "icon": "bi-gear-fill", "staff_only": True,
              "active_app": "core", "active_url_contains": "amministrazione"},
         ], order=5)
+
+        # Sidebar: Calendario aziendale (visibile a tutti)
+        register_nav("calendario", "Calendario", [
+            {"label": "Calendario aziendale", "url": "core:calendario_aziendale",
+             "icon": "bi-calendar2-week",
+             "active_app": "core", "active_url_contains": "calendario"},
+        ], order=6)
