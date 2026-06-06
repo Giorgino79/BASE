@@ -657,6 +657,7 @@ def giornata_lavorativa_list_view(request):
         "media_ore": media_ore,
         "mese": mese,
         "tutti_utenti": tutti_utenti,
+        "locked_user": None if request.user.is_staff else request.user,
     })
 
 

@@ -47,6 +47,12 @@
         {% endfor %}
       </select>
     </div>
+    {% else %}
+    <div class="col-md-4">
+      <label class="form-label-sm">Dipendente</label>
+      <input type="text" class="form-control form-control-sm"
+             value="{{ locked_user.get_full_name|default:locked_user.username }}" disabled>
+    </div>
     {% endif %}
     <div class="col-md-2">
       <label class="form-label-sm">Mese</label>
