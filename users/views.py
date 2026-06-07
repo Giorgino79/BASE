@@ -1334,4 +1334,4 @@ def giornate_export_pdf(request):
         title = f"Giornate Lavorative - {request.user.get_full_name() or request.user.username}"
 
     filename = f"giornate_{timezone.now().strftime('%Y%m%d')}"
-    return generate_pdf_response(data, filename, title=title, headers=base_headers)
+    return generate_pdf_response(data, filename, title=title, headers=base_headers, landscape=True)

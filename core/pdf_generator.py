@@ -104,6 +104,7 @@ def generate_pdf_response(
     filename: str,
     title: str = "Report",
     headers: List[str] = None,
+    landscape: bool = False,
 ) -> HttpResponse:
     """
     Genera un file PDF con tabella e lo ritorna come HttpResponse.
@@ -113,6 +114,7 @@ def generate_pdf_response(
         filename: Nome del file (senza estensione)
         title: Titolo del documento
         headers: Lista headers personalizzati (opzionale)
+        landscape: Se True usa orientamento orizzontale (utile per molte colonne)
 
     Returns:
         HttpResponse con il file PDF
@@ -120,17 +122,21 @@ def generate_pdf_response(
     if not REPORTLAB_AVAILABLE:
         raise ImportError("reportlab non installato. Run: pip install reportlab")
 
+    from reportlab.lib.pagesizes import landscape as _landscape
+    page_size = _landscape(A4) if landscape else A4
+
     # Crea buffer
     buffer = BytesIO()
 
+    margin = 1.5 * cm
     # Crea documento
     doc = SimpleDocTemplate(
         buffer,
-        pagesize=A4,
-        rightMargin=2 * cm,
-        leftMargin=2 * cm,
-        topMargin=2 * cm,
-        bottomMargin=2 * cm,
+        pagesize=page_size,
+        rightMargin=margin,
+        leftMargin=margin,
+        topMargin=margin,
+        bottomMargin=margin,
     )
 
     # Elementi del documento
@@ -196,8 +202,17 @@ def generate_pdf_response(
 
             table_data.append(row)
 
+        # Distribuisce le colonne su tutta la larghezza utile
+        n_cols = len(headers)
+        usable_w = page_size[0] - 2 * margin
+        col_w = usable_w / n_cols
+
+        # Font adattivo: meno spazio → caratteri più piccoli
+        body_font = max(6, min(9, int(usable_w / (n_cols * 8))))
+        head_font = body_font + 1
+
         # Crea tabella
-        table = Table(table_data)
+        table = Table(table_data, colWidths=[col_w] * n_cols, repeatRows=1)
 
         # Stile tabella
         table_style = TableStyle(
@@ -207,19 +222,20 @@ def generate_pdf_response(
                 ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
                 ("ALIGN", (0, 0), (-1, 0), "CENTER"),
                 ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                ("FONTSIZE", (0, 0), (-1, 0), 12),
-                ("BOTTOMPADDING", (0, 0), (-1, 0), 12),
+                ("FONTSIZE", (0, 0), (-1, 0), head_font),
+                ("BOTTOMPADDING", (0, 0), (-1, 0), 6),
+                ("TOPPADDING", (0, 0), (-1, 0), 6),
                 # Dati
                 ("BACKGROUND", (0, 1), (-1, -1), colors.white),
                 ("TEXTCOLOR", (0, 1), (-1, -1), colors.black),
-                ("ALIGN", (0, 1), (-1, -1), "LEFT"),
+                ("ALIGN", (0, 1), (-1, -1), "CENTER"),
                 ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
-                ("FONTSIZE", (0, 1), (-1, -1), 10),
-                ("TOPPADDING", (0, 1), (-1, -1), 6),
-                ("BOTTOMPADDING", (0, 1), (-1, -1), 6),
+                ("FONTSIZE", (0, 1), (-1, -1), body_font),
+                ("TOPPADDING", (0, 1), (-1, -1), 4),
+                ("BOTTOMPADDING", (0, 1), (-1, -1), 4),
                 # Bordi
                 ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
-                ("BOX", (0, 0), (-1, -1), 2, colors.HexColor("#5585b5")),
+                ("BOX", (0, 0), (-1, -1), 1.5, colors.HexColor("#5585b5")),
                 # Alternating row colors
                 (
                     "ROWBACKGROUNDS",
