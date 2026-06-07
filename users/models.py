@@ -228,6 +228,39 @@ class User(AbstractUser, AllegatiMixin, TimestampMixin, SoftDeleteMixin):
     def ferie_utilizzate(self):
         return self.giorni_ferie_anno - self.giorni_ferie_residui
 
+    def ferie_spettanti_anno(self, anno=None):
+        """
+        Giorni ferie spettanti nell'anno, con pro-rata se assunto in corso d'anno.
+        Dipendente assunto a luglio → 6/12 × 26 = 13 giorni.
+        """
+        from datetime import date as _date
+        from django.db.models import Sum
+        if anno is None:
+            anno = _date.today().year
+        if not self.data_assunzione or self.data_assunzione.year > anno:
+            return 0
+        if self.data_assunzione.year < anno:
+            return self.giorni_ferie_anno
+        # Assunto nell'anno corrente: pro-rata per mese (mese assunzione incluso)
+        mesi = 13 - self.data_assunzione.month
+        return round(self.giorni_ferie_anno * mesi / 12)
+
+    def ferie_godute_anno(self, anno=None):
+        """Giorni ferie effettivamente approvati nell'anno."""
+        from datetime import date as _date
+        from django.db.models import Sum
+        if anno is None:
+            anno = _date.today().year
+        result = self.richieste_ferie.filter(
+            stato="approvata",
+            data_inizio__year=anno,
+        ).aggregate(tot=Sum("giorni_richiesti"))["tot"]
+        return result or 0
+
+    def ferie_residue_anno(self, anno=None):
+        """Giorni ferie residui nell'anno (dinamico, mai stantio)."""
+        return max(0, self.ferie_spettanti_anno(anno) - self.ferie_godute_anno(anno))
+
     def save(self, *args, **kwargs):
         is_new = self.pk is None
         if not self.codice_dipendente:

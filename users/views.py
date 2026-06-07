@@ -289,8 +289,8 @@ def user_detail_view(request, pk):
                         ),
                     },
                     {"label": "Ferie Annuali", "value": f"{user.giorni_ferie_anno} giorni"},
-                    {"label": "Ferie Utilizzate", "value": f"{user.ferie_utilizzate} giorni"},
-                    {"label": "Ferie Residue", "value": f"{user.giorni_ferie_residui} giorni"},
+                    {"label": "Ferie Utilizzate", "value": f"{user.ferie_godute_anno()} giorni"},
+                    {"label": "Ferie Residue", "value": f"{user.ferie_residue_anno()} giorni"},
                     {"label": "Permessi Residui", "value": f"{user.ore_permesso_residue} ore"},
                 ],
             },
@@ -696,10 +696,10 @@ def richiesta_ferie_create_view(request):
             try:
                 richiesta = form.save(commit=False)
                 richiesta.user = request.user
-                if richiesta.giorni_richiesti > request.user.giorni_ferie_residui:
+                if richiesta.giorni_richiesti > request.user.ferie_residue_anno():
                     messages.error(
                         request,
-                        f"Giorni richiesti ({richiesta.giorni_richiesti}) superiori a disponibili ({request.user.giorni_ferie_residui})",
+                        f"Giorni richiesti ({richiesta.giorni_richiesti}) superiori a disponibili ({request.user.ferie_residue_anno()})",
                     )
                     return render(request, "users/richiesta_ferie_form.html", {"form": form})
                 form_with_user = RichiestaFerieForm(request.POST, instance=richiesta)
@@ -723,7 +723,7 @@ def richiesta_ferie_create_view(request):
     return render(
         request,
         "users/richiesta_ferie_form.html",
-        {"form": form, "giorni_disponibili": request.user.giorni_ferie_residui},
+        {"form": form, "giorni_disponibili": request.user.ferie_residue_anno()},
     )
 
 

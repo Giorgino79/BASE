@@ -104,7 +104,7 @@
         </div>
         <div class="d-flex justify-content-between">
           <span style="color:var(--slate-500);">Ferie residue</span>
-          <strong style="color:var(--slate-800);">{{ profile_user.giorni_ferie_residui }} gg</strong>
+          <strong style="color:var(--slate-800);">{{ profile_user.ferie_residue_anno }} gg</strong>
         </div>
         <div class="d-flex justify-content-between">
           <span style="color:var(--slate-500);">Permessi residui</span>
@@ -225,7 +225,7 @@
         <dt class="col-5" style="color:var(--slate-400);font-weight:500;">Telefono</dt>
         <dd class="col-7 mb-2" style="color:var(--slate-700);">{{ profile_user.telefono|default:"—" }}</dd>
         <dt class="col-5" style="color:var(--slate-400);font-weight:500;">Ferie annuali</dt>
-        <dd class="col-7 mb-2" style="color:var(--slate-700);">{{ profile_user.giorni_ferie_anno }} gg (residui: {{ profile_user.giorni_ferie_residui }})</dd>
+        <dd class="col-7 mb-2" style="color:var(--slate-700);">{{ profile_user.giorni_ferie_anno }} gg — goduti: {{ profile_user.ferie_godute_anno }} — residui: <strong>{{ profile_user.ferie_residue_anno }}</strong></dd>
         <dt class="col-5" style="color:var(--slate-400);font-weight:500;">Permessi residui</dt>
         <dd class="col-7 mb-0" style="color:var(--slate-700);">{{ profile_user.ore_permesso_residue }}h</dd>
       </dl>
