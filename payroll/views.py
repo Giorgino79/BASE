@@ -270,6 +270,84 @@ def busta_paga_elabora(request, user_pk):
 
 
 @login_required
+@permission_required("payroll.add_bustapaga", raise_exception=True)
+def busta_paga_auto_genera(request, user_pk):
+    """
+    Anteprima e generazione automatica della busta paga dalle timbrature.
+
+    GET  → mostra il riepilogo ore calcolato dal servizio ore_da_timbrature.
+    POST → genera la busta paga chiamando PayrollCalculator e reindirizza al dettaglio.
+    """
+    from .services.ore_da_timbrature import calcola_ore_mese_payroll
+
+    user_obj = get_object_or_404(User, pk=user_pk)
+
+    try:
+        user_obj.dati_payroll
+    except DatiContrattualiPayroll.DoesNotExist:
+        messages.warning(request, f"Configura prima i dati payroll per {user_obj.get_full_name()}.")
+        return redirect("payroll:dati_payroll_form", user_pk=user_obj.pk)
+
+    oggi = date.today()
+    # Mese precedente come default (si elabora il mese appena chiuso)
+    if oggi.month == 1:
+        mese_default, anno_default = 12, oggi.year - 1
+    else:
+        mese_default, anno_default = oggi.month - 1, oggi.year
+
+    mese = int(request.GET.get("mese", request.POST.get("mese", mese_default)))
+    anno = int(request.GET.get("anno", request.POST.get("anno", anno_default)))
+    mese = max(1, min(12, mese))
+
+    # Calcolo ore
+    dati_ore = calcola_ore_mese_payroll(user_obj, mese, anno)
+
+    # Verifica se esiste già una busta per il mese
+    busta_esistente = BustaPaga.objects.filter(
+        user=user_obj, mese=mese, anno=anno
+    ).first()
+
+    if request.method == "POST" and "genera" in request.POST:
+        # Aggiunta eventuale malattia manuale
+        ore_malattia = Decimal(request.POST.get("ore_malattia", "0") or "0")
+        dati_ore["assenze"]["malattia"] = ore_malattia
+
+        try:
+            calculator = PayrollCalculator(user_obj, mese, anno)
+            busta = calculator.calcola_busta_paga(
+                ore_ordinarie=dati_ore["ore_ordinarie"],
+                ore_straordinari=dati_ore["ore_straordinario"],
+                assenze=dati_ore["assenze"],
+            )
+            calculator.matura_ferie_permessi_mensili()
+            messages.success(
+                request,
+                f"Busta paga {mese:02d}/{anno} generata automaticamente. "
+                f"Netto: € {busta.netto_busta:,.2f}",
+            )
+            return redirect("payroll:busta_paga_detail", pk=busta.pk)
+        except Exception as exc:
+            messages.error(request, f"Errore nella generazione: {exc}")
+
+    MESI = [
+        "Gennaio","Febbraio","Marzo","Aprile","Maggio","Giugno",
+        "Luglio","Agosto","Settembre","Ottobre","Novembre","Dicembre",
+    ]
+
+    context = {
+        "user_obj": user_obj,
+        "mese": mese,
+        "anno": anno,
+        "mese_label": MESI[mese - 1],
+        "dati_ore": dati_ore,
+        "busta_esistente": busta_esistente,
+        "mesi": enumerate(MESI, 1),
+        "anno_range": range(oggi.year - 2, oggi.year + 1),
+    }
+    return render(request, "payroll/busta_paga_auto_preview.html", context)
+
+
+@login_required
 @permission_required("payroll.view_feriepermessipayroll", raise_exception=True)
 def ferie_permessi_list(request, user_pk):
     """Lista ferie e permessi payroll di un dipendente"""

@@ -47,11 +47,14 @@
           <td class="text-end">
             {% if row.ha_dati_payroll %}
               <a href="{% url 'payroll:busta_paga_list' row.utente.pk %}" class="btn btn-sm btn-outline-primary me-1">
-                <i class="bi bi-list-ul me-1"></i>Buste
+                <i class="bi bi-list-ul me-1"></i>Storico
               </a>
               {% if perms.payroll.add_bustapaga %}
-              <a href="{% url 'payroll:busta_paga_elabora' row.utente.pk %}" class="btn btn-sm btn-primary">
-                <i class="bi bi-calculator me-1"></i>Elabora
+              <a href="{% url 'payroll:busta_paga_auto_genera' row.utente.pk %}" class="btn btn-sm btn-primary me-1">
+                <i class="bi bi-magic me-1"></i>Genera
+              </a>
+              <a href="{% url 'payroll:busta_paga_elabora' row.utente.pk %}" class="btn btn-sm btn-outline-secondary">
+                <i class="bi bi-pencil"></i>
               </a>
               {% endif %}
             {% else %}

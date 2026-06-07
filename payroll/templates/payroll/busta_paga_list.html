@@ -20,9 +20,14 @@
     <p class="text-muted mb-0" style="font-size:.875rem;">Dipendente: <strong>{{ user_obj.get_full_name }}</strong></p>
   </div>
   {% if perms.payroll.add_bustapaga %}
-  <a href="{% url 'payroll:busta_paga_elabora' user_obj.pk %}" class="btn btn-primary btn-sm">
-    <i class="bi bi-plus-circle me-1"></i>Elabora Nuova Busta
-  </a>
+  <div class="d-flex gap-2">
+    <a href="{% url 'payroll:busta_paga_auto_genera' user_obj.pk %}" class="btn btn-primary btn-sm">
+      <i class="bi bi-magic me-1"></i>Genera da timbrature
+    </a>
+    <a href="{% url 'payroll:busta_paga_elabora' user_obj.pk %}" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-pencil me-1"></i>Manuale
+    </a>
+  </div>
   {% endif %}
 </div>
 

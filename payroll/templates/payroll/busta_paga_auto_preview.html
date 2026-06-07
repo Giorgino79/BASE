@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+
+{% block title %}Genera automaticamente — {{ user_obj.get_full_name }}{% endblock %}
+
+{% block content %}
+<nav class="mb-3" style="font-size:.8rem;">
+  <a href="{% url 'payroll:dipendenti_payroll_list' %}" style="color:var(--color-1);text-decoration:none;">Payroll</a>
+  <i class="bi bi-chevron-right mx-1" style="color:var(--slate-400);"></i>
+  <a href="{% url 'payroll:busta_paga_list' user_obj.pk %}" style="color:var(--color-1);text-decoration:none;">{{ user_obj.get_full_name }}</a>
+  <i class="bi bi-chevron-right mx-1" style="color:var(--slate-400);"></i>
+  <span style="color:var(--slate-500);">Genera da timbrature</span>
+</nav>
+
+<div class="d-flex align-items-center justify-content-between mb-4">
+  <div>
+    <h1 class="h4 fw-bold mb-1" style="color:var(--slate-900);">
+      <i class="bi bi-magic me-2" style="color:var(--color-1);"></i>Genera busta da timbrature
+    </h1>
+    <p class="text-muted mb-0" style="font-size:.875rem;">
+      Dipendente: <strong>{{ user_obj.get_full_name }}</strong> —
+      Contratto: {{ user_obj.dati_payroll.ore_settimanali }}h/sett., Livello {{ user_obj.dati_payroll.livello.codice }}
+    </p>
+  </div>
+</div>
+
+{# ── Selettore mese/anno ── #}
+<div class="card card-body mb-3">
+  <form method="get" class="row g-2 align-items-end">
+    <div class="col-md-3">
+      <label class="form-label-sm">Mese</label>
+      <select name="mese" class="form-select form-select-sm" onchange="this.form.submit()">
+        {% for n, nome in mesi %}
+        <option value="{{ n }}" {% if n == mese %}selected{% endif %}>{{ nome }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2">
+      <label class="form-label-sm">Anno</label>
+      <select name="anno" class="form-select form-select-sm" onchange="this.form.submit()">
+        {% for a in anno_range %}
+        <option value="{{ a }}" {% if a == anno %}selected{% endif %}>{{ a }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-auto">
+      <button type="submit" class="btn btn-outline-primary btn-sm">
+        <i class="bi bi-arrow-clockwise me-1"></i>Ricalcola
+      </button>
+    </div>
+  </form>
+</div>
+
+{# ── Avvisi ── #}
+{% for av in dati_ore.riepilogo.avvisi %}
+<div class="alert {% if 'alattia' in av %}alert-warning{% else %}alert-info{% endif %} py-2 mb-2" style="font-size:.875rem;">
+  <i class="bi bi-info-circle me-2"></i>{{ av }}
+</div>
+{% endfor %}
+
+{# ── Busta già esistente ── #}
+{% if busta_esistente %}
+<div class="alert alert-warning py-2 mb-3" style="font-size:.875rem;">
+  <i class="bi bi-exclamation-triangle me-2"></i>
+  Esiste già una busta paga per <strong>{{ mese_label }} {{ anno }}</strong>
+  (netto € {{ busta_esistente.netto_busta|floatformat:2 }}).
+  Generando di nuovo verrà <strong>sovrascritta</strong>.
+</div>
+{% endif %}
+
+{# ── Riepilogo ore ── #}
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="card card-body py-2 text-center">
+      <div class="fw-bold" style="font-size:1.3rem;color:var(--slate-800);">{{ dati_ore.riepilogo.giorni_lavorati }}</div>
+      <div class="text-muted" style="font-size:.75rem;">Giorni lavorati</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card card-body py-2 text-center">
+      <div class="fw-bold" style="font-size:1.3rem;color:var(--slate-800);">{{ dati_ore.riepilogo.ore_totali_lavorate|floatformat:1 }}h</div>
+      <div class="text-muted" style="font-size:.75rem;">Ore totali</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card card-body py-2 text-center">
+      <div class="fw-bold" style="font-size:1.3rem;color:var(--color-2);">{{ dati_ore.ore_straordinario.feriale|floatformat:1 }}h</div>
+      <div class="text-muted" style="font-size:.75rem;">Straord. feriale</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card card-body py-2 text-center">
+      <div class="fw-bold" style="font-size:1.3rem;color:var(--color-1);">{{ dati_ore.ore_ordinarie|floatformat:1 }}h</div>
+      <div class="text-muted" style="font-size:.75rem;">Ore ordinarie</div>
+    </div>
+  </div>
+</div>
+
+{# ── Dettaglio voci ── #}
+<div class="card mb-3">
+  <div class="card-header py-2" style="background:var(--slate-50);">
+    <span class="fw-semibold" style="font-size:.8rem;color:var(--slate-600);">RIEPILOGO VOCI — {{ mese_label|upper }} {{ anno }}</span>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-sm mb-0">
+      <tbody>
+        <tr>
+          <td style="font-size:.875rem;color:var(--slate-600);">Ore ordinarie</td>
+          <td class="text-end fw-semibold">{{ dati_ore.ore_ordinarie|floatformat:2 }}h</td>
+          <td class="text-end text-muted" style="font-size:.8rem;">calcolate per ISO-settimana (limite {{ user_obj.dati_payroll.ore_settimanali }}h/sett.)</td>
+        </tr>
+        <tr>
+          <td style="font-size:.875rem;color:var(--color-2);">Straordinario feriale <small class="text-muted">(+{{ user_obj.dati_payroll.ccnl.percentuale_straordinario_feriale }}%)</small></td>
+          <td class="text-end fw-semibold" style="color:var(--color-2);">{{ dati_ore.ore_straordinario.feriale|floatformat:2 }}h</td>
+          <td class="text-end text-muted" style="font-size:.8rem;">ore oltre {{ user_obj.dati_payroll.ore_settimanali }}h/settimana</td>
+        </tr>
+        <tr>
+          <td style="font-size:.875rem;color:var(--color-2);">Straordinario festivo <small class="text-muted">(+{{ user_obj.dati_payroll.ccnl.percentuale_straordinario_festivo }}%)</small></td>
+          <td class="text-end fw-semibold" style="color:var(--color-2);">{{ dati_ore.ore_straordinario.festivo|floatformat:2 }}h</td>
+          <td class="text-end text-muted" style="font-size:.8rem;">domeniche e festivi ({{ dati_ore.riepilogo.giorni_festivi }} giornate)</td>
+        </tr>
+        <tr>
+          <td style="font-size:.875rem;color:var(--color-2);">Straordinario notturno <small class="text-muted">(+{{ user_obj.dati_payroll.ccnl.percentuale_straordinario_notturno }}%)</small></td>
+          <td class="text-end fw-semibold" style="color:var(--color-2);">{{ dati_ore.ore_straordinario.notturno|floatformat:2 }}h</td>
+          <td class="text-end text-muted" style="font-size:.8rem;">turni notte 22:00–06:00</td>
+        </tr>
+        <tr class="table-light">
+          <td style="font-size:.875rem;color:var(--slate-500);">Ferie godute</td>
+          <td class="text-end">{{ dati_ore.assenze.ferie|floatformat:2 }}h</td>
+          <td class="text-end text-muted" style="font-size:.8rem;">da richieste approvate</td>
+        </tr>
+        <tr class="table-light">
+          <td style="font-size:.875rem;color:var(--slate-500);">Permessi goduti</td>
+          <td class="text-end">{{ dati_ore.assenze.permessi|floatformat:2 }}h</td>
+          <td class="text-end text-muted" style="font-size:.8rem;">da richieste approvate</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{# ── Dettaglio settimane ── #}
+{% if dati_ore.riepilogo.settimane %}
+<details class="mb-3">
+  <summary class="fw-semibold" style="font-size:.85rem;color:var(--slate-600);cursor:pointer;">
+    Dettaglio per settimana ISO
+  </summary>
+  <div class="card mt-2">
+    <div class="table-responsive">
+      <table class="table table-sm mb-0" style="font-size:.8rem;">
+        <thead>
+          <tr>
+            <th>Sett.</th><th>Feriale</th><th>Straord. fer.</th><th>Festivo</th><th>Notturno</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in dati_ore.riepilogo.settimane %}
+          <tr>
+            <td>W{{ s.settimana }}</td>
+            <td>{{ s.feriali|floatformat:1 }}h</td>
+            <td {% if s.straord_feriale %}style="color:var(--color-2);font-weight:600;"{% endif %}>{{ s.straord_feriale|floatformat:1 }}h</td>
+            <td {% if s.festivo %}style="color:var(--color-2);"{% endif %}>{{ s.festivo|floatformat:1 }}h</td>
+            <td {% if s.notturno %}style="color:var(--color-2);"{% endif %}>{{ s.notturno|floatformat:1 }}h</td>
+          </tr>
+          {% for g in s.giorni %}
+          <tr style="background:var(--slate-50);">
+            <td class="ps-4 text-muted" style="font-size:.75rem;">{{ g.data|date:"D d/m" }}{% if g.festivo %} 🔴{% endif %}</td>
+            <td class="text-muted" style="font-size:.75rem;">{{ g.ore_diurne|floatformat:1 }}h</td>
+            <td></td>
+            <td></td>
+            <td class="text-muted" style="font-size:.75rem;">{% if g.ore_notte %}{{ g.ore_notte|floatformat:1 }}h{% endif %}</td>
+          </tr>
+          {% endfor %}
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</details>
+{% endif %}
+
+{# ── Form generazione ── #}
+<form method="post">
+  {% csrf_token %}
+  <input type="hidden" name="mese" value="{{ mese }}">
+  <input type="hidden" name="anno" value="{{ anno }}">
+  <div class="card card-body mb-4">
+    <div class="row g-3 align-items-end">
+      <div class="col-md-4">
+        <label class="form-label">Ore malattia <small class="text-muted">(da inserire manualmente)</small></label>
+        <input type="number" step="0.5" min="0" class="form-control" name="ore_malattia" value="0">
+        <small class="text-muted">Richiede certificato medico — non rilevabile dalle timbrature</small>
+      </div>
+      <div class="col-auto ms-auto">
+        <a href="{% url 'payroll:busta_paga_list' user_obj.pk %}" class="btn btn-outline-secondary me-2">Annulla</a>
+        {% if dati_ore.riepilogo.giorni_lavorati == 0 %}
+        <button type="submit" name="genera" class="btn btn-warning" disabled title="Nessuna giornata conclusa">
+          <i class="bi bi-magic me-1"></i>Genera busta paga
+        </button>
+        {% else %}
+        <button type="submit" name="genera" class="btn btn-primary btn-lg">
+          <i class="bi bi-magic me-1"></i>Genera busta paga — {{ mese_label }} {{ anno }}
+        </button>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</form>
+{% endblock %}

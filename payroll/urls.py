@@ -14,6 +14,7 @@ urlpatterns = [
     path("buste-paga/<int:user_pk>/", views.busta_paga_list, name="busta_paga_list"),
     path("busta-paga/<int:pk>/", views.busta_paga_detail, name="busta_paga_detail"),
     path("busta-paga/<int:user_pk>/elabora/", views.busta_paga_elabora, name="busta_paga_elabora"),
+    path("busta-paga/<int:user_pk>/auto/", views.busta_paga_auto_genera, name="busta_paga_auto_genera"),
     path("ferie-permessi/<int:user_pk>/", views.ferie_permessi_list, name="ferie_permessi_list"),
     path("manuale/", views.manuale_payroll, name="manuale_payroll"),
     path("manuale/edit/", views.manuale_payroll_edit, name="manuale_payroll_edit"),
