@@ -244,6 +244,12 @@
 
 <!-- ===== TAB: Calendario ===== -->
 {% if tab == 'calendario' and profile_user.pk == request.user.pk %}
+<div class="d-flex align-items-center justify-content-between mb-3">
+  <span class="fw-semibold" style="font-size:.875rem;color:var(--slate-700);">Calendario personale</span>
+  <a href="{% url 'users:evento_personale_create' %}" class="btn btn-sm btn-primary">
+    <i class="bi bi-plus-lg me-1"></i>Nuovo evento
+  </a>
+</div>
 <div class="card p-3">
   <div id="calendario-personale"></div>
 </div>
