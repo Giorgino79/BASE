@@ -45,13 +45,23 @@
             {% endif %}
           </td>
           <td class="text-end">
-            <a href="{% url 'payroll:busta_paga_list' row.utente.pk %}" class="btn btn-sm btn-outline-primary me-1">
-              <i class="bi bi-list-ul me-1"></i>Buste
-            </a>
-            {% if perms.payroll.add_bustapaga %}
-            <a href="{% url 'payroll:busta_paga_elabora' row.utente.pk %}" class="btn btn-sm btn-primary">
-              <i class="bi bi-calculator me-1"></i>Elabora
-            </a>
+            {% if row.ha_dati_payroll %}
+              <a href="{% url 'payroll:busta_paga_list' row.utente.pk %}" class="btn btn-sm btn-outline-primary me-1">
+                <i class="bi bi-list-ul me-1"></i>Buste
+              </a>
+              {% if perms.payroll.add_bustapaga %}
+              <a href="{% url 'payroll:busta_paga_elabora' row.utente.pk %}" class="btn btn-sm btn-primary">
+                <i class="bi bi-calculator me-1"></i>Elabora
+              </a>
+              {% endif %}
+            {% else %}
+              {% if perms.payroll.change_daticontrattualiPayroll %}
+              <a href="{% url 'payroll:dati_payroll_form' row.utente.pk %}" class="btn btn-sm btn-outline-warning">
+                <i class="bi bi-gear me-1"></i>Configura payroll
+              </a>
+              {% else %}
+              <span class="text-muted" style="font-size:.8rem;">Dati non configurati</span>
+              {% endif %}
             {% endif %}
           </td>
         </tr>

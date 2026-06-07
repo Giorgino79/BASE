@@ -45,7 +45,11 @@ def dipendenti_payroll_list(request):
         ultima_busta = (
             u.buste_paga.filter(anno=anno_corrente).order_by("-mese").first()
         )
-        rows.append({"utente": u, "ultima_busta": ultima_busta})
+        try:
+            ha_dati_payroll = bool(u.dati_payroll)
+        except DatiContrattualiPayroll.DoesNotExist:
+            ha_dati_payroll = False
+        rows.append({"utente": u, "ultima_busta": ultima_busta, "ha_dati_payroll": ha_dati_payroll})
 
     return render(request, "payroll/dipendenti_payroll_list.html", {
         "rows": rows,
@@ -189,11 +193,11 @@ def busta_paga_elabora(request, user_pk):
     try:
         user_obj.dati_payroll
     except DatiContrattualiPayroll.DoesNotExist:
-        messages.error(
+        messages.warning(
             request,
-            f"Impossibile elaborare busta paga: dati payroll non configurati per {user_obj.get_full_name()}",
+            f"Configura prima i dati payroll per {user_obj.get_full_name()}.",
         )
-        return redirect("users:user_detail", pk=user_obj.pk)
+        return redirect("payroll:dati_payroll_form", user_pk=user_obj.pk)
 
     oggi = date.today()
     mese_default = oggi.month
