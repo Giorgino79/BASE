@@ -10,6 +10,12 @@ from django.contrib.auth import get_user_model
 from datetime import date
 from decimal import Decimal
 
+try:
+    from users.models import GiornataLavorativa
+    _GIORNATE_DISPONIBILI = True
+except ImportError:
+    _GIORNATE_DISPONIBILI = False
+
 from .models import (
     DatiContrattualiPayroll,
     BustaPaga,
@@ -204,10 +210,32 @@ def busta_paga_elabora(request, user_pk):
         except Exception as e:
             messages.error(request, f"Errore nell'elaborazione: {e}")
 
+    # Pre-popola ore da GiornataLavorativa del mese
+    ore_auto = {}
+    if _GIORNATE_DISPONIBILI:
+        mese_q = int(request.GET.get("mese", mese_default))
+        anno_q = int(request.GET.get("anno", anno_default))
+        giornate = GiornataLavorativa.objects.filter(
+            user=user_obj,
+            data__year=anno_q,
+            data__month=mese_q,
+            conclusa=True,
+        )
+        if giornate.exists():
+            tot = sum(g.ore_totali for g in giornate)
+            straord = sum(g.ore_straordinarie for g in giornate)
+            ore_auto = {
+                "ore_ordinarie": round(float(tot - straord), 2),
+                "ore_straordinario_feriale": round(float(straord), 2),
+                "mese_auto": mese_q,
+                "anno_auto": anno_q,
+            }
+
     context = {
         "user_obj": user_obj,
-        "mese_default": mese_default,
-        "anno_default": anno_default,
+        "mese_default": ore_auto.get("mese_auto", mese_default),
+        "anno_default": ore_auto.get("anno_auto", anno_default),
+        "ore_auto": ore_auto,
     }
 
     return render(request, "payroll/busta_paga_elabora.html", context)

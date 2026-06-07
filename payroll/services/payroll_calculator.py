@@ -119,6 +119,7 @@ class PayrollCalculator:
         busta.ore_malattia = assenze.get("malattia", 0)
 
         self._calcola_competenze(busta, ore_ordinarie, ore_straordinari)
+        self._calcola_mensilita_aggiuntive(busta)
         self._calcola_imponibili(busta)
         self._calcola_contributi_inps(busta)
         self._calcola_irpef(busta)
@@ -202,6 +203,66 @@ class PayrollCalculator:
         elif elemento.tipo_calcolo in ["PERCENTUALE_PAGA_BASE", "PERCENTUALE_RETRIBUZIONE"]:
             return paga_base * (elemento.valore / Decimal("100"))
         return Decimal("0")
+
+    def _calcola_mensilita_aggiuntive(self, busta):
+        """
+        Aggiunge tredicesima (dicembre) e quattordicesima (mese previsto da CCNL)
+        come voci di competenza, proporzionali ai mesi lavorati nell'anno.
+        """
+        retrib_utile = self._retribuzione_utile_mensilita()
+        if retrib_utile <= 0:
+            return
+
+        if self.ccnl.ha_tredicesima and self.mese == 12:
+            mesi = self._mesi_maturati(1, 12)
+            importo = (retrib_utile * Decimal(str(mesi)) / Decimal("12")).quantize(Decimal("0.01"))
+            if importo > 0:
+                VoceBustaPaga.objects.create(
+                    busta_paga=busta,
+                    tipo="COMPETENZA",
+                    descrizione=f"13ª mensilità ({mesi}/12 mesi)",
+                    importo_totale=importo,
+                    imponibile_fiscale=True,
+                    imponibile_contributivo=True,
+                )
+
+        if self.ccnl.ha_quattordicesima and self.ccnl.maturazione_quattordicesima:
+            mese_pag = {"GIUGNO": 6, "LUGLIO": 7, "DICEMBRE": 12}.get(
+                self.ccnl.maturazione_quattordicesima
+            )
+            if mese_pag == self.mese:
+                mese_inizio = 7 if mese_pag in (6, 7) else 1
+                mesi = self._mesi_maturati(mese_inizio, mese_pag)
+                importo = (retrib_utile * Decimal(str(mesi)) / Decimal("12")).quantize(Decimal("0.01"))
+                if importo > 0:
+                    VoceBustaPaga.objects.create(
+                        busta_paga=busta,
+                        tipo="COMPETENZA",
+                        descrizione=f"14ª mensilità ({mesi}/12 mesi)",
+                        importo_totale=importo,
+                        imponibile_fiscale=True,
+                        imponibile_contributivo=True,
+                    )
+
+    def _retribuzione_utile_mensilita(self):
+        """Paga mensile base per mensilità aggiuntive (esclusi straordinari)."""
+        paga = self.livello.paga_base_mensile + self.dati_payroll.superminimo
+        n_scatti = Decimal(str(self.dati_payroll.calcola_scatti_anzianita()))
+        paga += n_scatti * self.ccnl.importo_scatto
+        for el in self.ccnl.elementi_retributivi.filter(attivo=True, incluso_tredicesima=True):
+            paga += self._calcola_elemento_retributivo(el, paga)
+        return paga.quantize(Decimal("0.01"))
+
+    def _mesi_maturati(self, mese_inizio, mese_fine):
+        """Mesi effettivamente lavorati nel range (mese_inizio→mese_fine) dell'anno."""
+        data_ass = getattr(self.user, "data_assunzione", None)
+        if not data_ass or data_ass.year < self.anno:
+            primo_mese = mese_inizio
+        elif data_ass.year == self.anno:
+            primo_mese = max(mese_inizio, data_ass.month)
+        else:
+            return 0
+        return max(0, mese_fine - primo_mese + 1)
 
     def _calcola_imponibili(self, busta):
         """Calcola imponibile fiscale e contributivo"""

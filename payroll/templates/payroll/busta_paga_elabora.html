@@ -67,12 +67,14 @@
     <div class="row g-3">
       <div class="col-md-6">
         <label for="ore_ordinarie" class="form-label">Ore Ordinarie *</label>
-        <input type="number" step="0.01" class="form-control" id="ore_ordinarie" name="ore_ordinarie" value="176.00" required>
-        <small class="text-muted">Circa 22 giorni × 8 ore</small>
+        <input type="number" step="0.01" class="form-control" id="ore_ordinarie" name="ore_ordinarie"
+               value="{{ ore_auto.ore_ordinarie|default:'176.00' }}" required>
+        <small class="text-muted">{% if ore_auto %}Da giornate lavorative del mese{% else %}Circa 22 giorni × 8 ore{% endif %}</small>
       </div>
       <div class="col-md-6">
         <label for="ore_straordinario_feriale" class="form-label">Ore Straordinario Feriale</label>
-        <input type="number" step="0.01" class="form-control" id="ore_straordinario_feriale" name="ore_straordinario_feriale" value="0.00">
+        <input type="number" step="0.01" class="form-control" id="ore_straordinario_feriale" name="ore_straordinario_feriale"
+               value="{{ ore_auto.ore_straordinario_feriale|default:'0.00' }}">
         <small class="text-muted">Maggiorazione CCNL</small>
       </div>
       <div class="col-md-6">
@@ -114,11 +116,20 @@
     </div>
   </div>
 
+  {% if ore_auto %}
+  <div class="alert alert-success mb-3" style="font-size:.875rem;">
+    <i class="bi bi-check-circle me-2"></i>
+    <strong>Ore pre-compilate</strong> dalle giornate lavorative concluse del mese selezionato.
+    Verifica e correggi se necessario prima di elaborare.
+  </div>
+  {% endif %}
+
   <!-- Info -->
   <div class="alert alert-info mb-4" style="font-size:.875rem;">
     <i class="bi bi-info-circle me-2"></i>
     <strong>Il sistema calcolerà automaticamente:</strong>
     retribuzione base e straordinari, elementi retributivi CCNL (contingenza, EDR),
+    tredicesima (dicembre) e quattordicesima (se prevista da CCNL),
     contributi INPS (9,19%), IRPEF progressiva 2025, addizionali, detrazioni fiscali,
     TFR (Art. 2120 C.C.), maturazione ferie e permessi mensili.
   </div>
@@ -145,5 +156,14 @@ function calcolaTotale() {
   document.getElementById(id).addEventListener('input', calcolaTotale);
 });
 calcolaTotale();
+
+// Ricarica con GET params per auto-import ore quando cambia mese/anno
+function aggiornaMese() {
+  const mese = document.getElementById('mese').value;
+  const anno = document.getElementById('anno').value;
+  window.location.href = window.location.pathname + '?mese=' + mese + '&anno=' + anno;
+}
+document.getElementById('mese').addEventListener('change', aggiornaMese);
+document.getElementById('anno').addEventListener('change', aggiornaMese);
 </script>
 {% endblock %}
