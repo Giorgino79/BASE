@@ -8,6 +8,7 @@ from . import views
 app_name = "payroll"
 
 urlpatterns = [
+    path("dipendenti/", views.dipendenti_payroll_list, name="dipendenti_payroll_list"),
     path("dati-payroll/<int:user_pk>/", views.dati_payroll_detail, name="dati_payroll_detail"),
     path("dati-payroll/<int:user_pk>/form/", views.dati_payroll_form, name="dati_payroll_form"),
     path("buste-paga/<int:user_pk>/", views.busta_paga_list, name="busta_paga_list"),

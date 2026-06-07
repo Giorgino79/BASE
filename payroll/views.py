@@ -30,6 +30,30 @@ User = get_user_model()
 
 
 @login_required
+@permission_required("payroll.view_bustapaga", raise_exception=True)
+def dipendenti_payroll_list(request):
+    """Lista dipendenti per accesso rapido alle buste paga."""
+    dipendenti = (
+        User.objects.filter(is_active=True)
+        .prefetch_related("buste_paga")
+        .order_by("last_name", "first_name")
+    )
+    anno_corrente = date.today().year
+
+    rows = []
+    for u in dipendenti:
+        ultima_busta = (
+            u.buste_paga.filter(anno=anno_corrente).order_by("-mese").first()
+        )
+        rows.append({"utente": u, "ultima_busta": ultima_busta})
+
+    return render(request, "payroll/dipendenti_payroll_list.html", {
+        "rows": rows,
+        "anno": anno_corrente,
+    })
+
+
+@login_required
 @permission_required("payroll.view_daticontrattualiPayroll", raise_exception=True)
 def dati_payroll_detail(request, user_pk):
     """Visualizza i dati payroll di un dipendente"""
