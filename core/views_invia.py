@@ -5,6 +5,7 @@ Risponde in JSON; l'invio WhatsApp avviene in un thread separato per non bloccar
 
 import json
 import os
+import tempfile
 import threading
 
 from django.contrib.auth.decorators import login_required
@@ -15,6 +16,29 @@ from django.conf import settings as django_settings
 
 from .whatsapp_sender import WhatsAppSender, is_configured, check_authorized, normalize_phone
 from .models.invia_log import InvioLog
+
+
+def _fetch_pdf_with_session(abs_url: str, session_id: str) -> str | None:
+    """
+    Scarica un PDF da una URL Django protetta da login usando il session cookie.
+    Salva in un file temporaneo e restituisce il percorso, oppure None in caso di errore.
+    """
+    import requests as _req
+    try:
+        resp = _req.get(
+            abs_url,
+            cookies={"sessionid": session_id},
+            timeout=30,
+            allow_redirects=False,
+        )
+        if resp.status_code == 200 and "pdf" in resp.headers.get("content-type", ""):
+            tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
+            tmp.write(resp.content)
+            tmp.close()
+            return tmp.name
+    except Exception:
+        pass
+    return None
 
 
 @login_required
@@ -46,11 +70,22 @@ def invia_documento(request):
         if not ok:
             return JsonResponse({"success": False, "error": err})
 
-    # Costruisce subito l'URL assoluta dal request (garantisce l'host corretto su qualsiasi server)
+    # Costruisce URL assoluta
     if pdf_url and not pdf_url.startswith("http"):
         abs_pdf_url = request.build_absolute_uri(pdf_url)
     else:
         abs_pdf_url = pdf_url
+
+    # Se la pdf_url punta a una view Django (non a un file statico/media),
+    # la scarica subito con il session cookie dell'utente, prima del thread.
+    # Questo risolve il problema dei PDF protetti da @login_required.
+    pre_downloaded_path = None
+    session_id = request.COOKIES.get("sessionid", "")
+    if abs_pdf_url and session_id and not pdf_local_path:
+        is_static = any(abs_pdf_url.split("?")[0].endswith(ext)
+                        for ext in (".pdf", ".png", ".jpg", ".jpeg"))
+        if not is_static:
+            pre_downloaded_path = _fetch_pdf_with_session(abs_pdf_url, session_id)
 
     log = InvioLog.objects.create(
         utente=request.user,
@@ -65,30 +100,30 @@ def invia_documento(request):
     )
 
     def _send():
-        tmp_created = False
-        local_path = pdf_local_path or None
+        tmp_to_delete = pre_downloaded_path
+        local_path = pre_downloaded_path or pdf_local_path or None
 
         try:
+            caption = messaggio or oggetto
+
             # --- WhatsApp ---
             if canale in ("whatsapp", "entrambi"):
                 wa_log = log if canale == "whatsapp" else None
-                caption = messaggio or oggetto
-                if abs_pdf_url and abs_pdf_url.startswith("http"):
+                if local_path and os.path.exists(local_path):
+                    # Upload diretto: funziona anche con URL protette da login
+                    WhatsAppSender.send_pdf(telefono, local_path, caption=caption, log_entry=wa_log)
+                elif abs_pdf_url and abs_pdf_url.startswith("http"):
+                    # Fallback URL pubblica (es. file su S3/media)
                     filename = os.path.basename(pdf_url.split("?")[0]) or "documento.pdf"
                     if not filename.endswith(".pdf"):
                         filename += ".pdf"
                     WhatsAppSender.send_pdf_by_url(telefono, abs_pdf_url, filename=filename, caption=caption, log_entry=wa_log)
-                elif local_path and os.path.exists(local_path):
-                    WhatsAppSender.send_pdf(telefono, local_path, caption=caption, log_entry=wa_log)
                 else:
                     testo = f"{oggetto}\n\n{messaggio}".strip() if messaggio else oggetto
                     WhatsAppSender.send_message(telefono, testo, log_entry=wa_log)
 
             # --- Email ---
             if canale in ("email", "entrambi"):
-                # Per email con PDF remoto: scarica prima in locale
-                if abs_pdf_url and abs_pdf_url.startswith("http") and not local_path:
-                    local_path = WhatsAppSender.resolve_local_path(pdf_url)
                 _send_email(email_dest, oggetto, messaggio, local_path)
                 if canale == "email":
                     log.stato = "inviato"
@@ -104,8 +139,8 @@ def invia_documento(request):
             log.save(update_fields=["stato", "errore_dettaglio", "updated_at"])
 
         finally:
-            if tmp_created and local_path and os.path.exists(local_path):
-                os.unlink(local_path)
+            if tmp_to_delete and os.path.exists(tmp_to_delete):
+                os.unlink(tmp_to_delete)
 
     threading.Thread(target=_send, daemon=True).start()
 
