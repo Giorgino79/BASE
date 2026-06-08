@@ -47,18 +47,10 @@
 
     <div class="flex-grow-1 min-width-0">
       <div class="d-flex align-items-center gap-2 flex-wrap">
-        {% if p.link_url %}
-        <a href="{{ p.link_url }}" class="fw-semibold text-decoration-none"
-           style="font-size:.9rem;color:var(--color-1);
-                  {% if p.stato == 'completato' %}text-decoration:line-through !important;opacity:.7;{% endif %}">
-          {{ p.titolo }}&nbsp;<i class="bi bi-box-arrow-up-right" style="font-size:.75rem;"></i>
-        </a>
-        {% else %}
         <span class="fw-semibold" style="font-size:.9rem;color:var(--slate-900);
               {% if p.stato == 'completato' %}text-decoration:line-through;{% endif %}">
           {{ p.titolo }}
         </span>
-        {% endif %}
         <!-- Priorità badge -->
         {% if p.priorita == 'urgente' %}
           <span class="badge" style="background:var(--slate-200);color:var(--slate-600);font-size:.7rem;">Urgente</span>
@@ -84,25 +76,24 @@
         <span><i class="bi bi-person me-1"></i>{{ p.assegnato_a.get_full_name|default:p.assegnato_a.username }}</span>
         {% endif %}
       </div>
-    </div>
-
-    <div class="d-flex flex-column gap-1 flex-shrink-0">
       {% if p.link_url %}
-      <a href="{{ p.link_url }}" class="btn btn-sm flex-shrink-0"
-         style="background:var(--color-1-light);color:var(--color-1);border:none;" title="Vai all'oggetto">
-        <i class="bi bi-box-arrow-up-right"></i>
+      <a href="{{ p.link_url }}"
+         class="d-inline-flex align-items-center gap-1 mt-2 px-2 py-1 rounded text-decoration-none fw-semibold"
+         style="background:var(--color-1-light);color:var(--color-1);font-size:.78rem;border:1px solid var(--color-1);">
+        <i class="bi bi-box-arrow-up-right"></i> Vai all'oggetto
       </a>
       {% else %}
       <a href="{% url 'comunicazioni:promemoria_update' p.pk %}#link-section"
-         class="btn btn-sm flex-shrink-0 text-muted" title="Collega un oggetto"
-         style="border:1px dashed var(--slate-300);">
-        <i class="bi bi-link-45deg"></i>
+         class="d-inline-flex align-items-center gap-1 mt-2 px-2 py-1 rounded text-decoration-none"
+         style="font-size:.78rem;border:1px dashed #adb5bd;color:#6c757d;">
+        <i class="bi bi-link-45deg"></i> Collega un oggetto
       </a>
       {% endif %}
-      <a href="{% url 'comunicazioni:promemoria_update' p.pk %}" class="btn btn-icon btn-sm flex-shrink-0" title="Modifica">
-        <i class="bi bi-pencil"></i>
-      </a>
     </div>
+
+    <a href="{% url 'comunicazioni:promemoria_update' p.pk %}" class="btn btn-icon btn-sm flex-shrink-0" title="Modifica">
+      <i class="bi bi-pencil"></i>
+    </a>
   </div>
   {% endfor %}
 </div>
