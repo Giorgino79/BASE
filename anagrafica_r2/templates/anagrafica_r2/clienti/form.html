@@ -37,10 +37,14 @@
         </div>
         <div class="card-body">
           <div class="row g-3">
-            <div class="col-12">
+            <div class="col-sm-8">
               <label class="form-label" for="{{ form.ragione_sociale.id_for_label }}">{{ form.ragione_sociale.label }} *</label>
               {{ form.ragione_sociale }}
               {% if form.ragione_sociale.errors %}<div class="invalid-feedback">{% for e in form.ragione_sociale.errors %}{{ e }}{% endfor %}</div>{% endif %}
+            </div>
+            <div class="col-sm-4">
+              <label class="form-label" for="{{ form.marchio.id_for_label }}">{{ form.marchio.label }}</label>
+              {{ form.marchio }}
             </div>
             <div class="col-12">
               <label class="form-label" for="{{ form.indirizzo.id_for_label }}">{{ form.indirizzo.label }}</label>

@@ -13,7 +13,7 @@ class AziendaForm(forms.ModelForm):
     class Meta:
         model = Azienda
         fields = [
-            'ragione_sociale', 'indirizzo', 'citta', 'zona', 'cap', 'provincia',
+            'ragione_sociale', 'marchio', 'indirizzo', 'citta', 'zona', 'cap', 'provincia',
             'partita_iva', 'codice_fiscale', 'codice_univoco', 'pec',
             'referente', 'telefono',
             'email_direzione', 'email_amministrazione', 'email_operativo', 'email_operativo_2',
@@ -22,6 +22,7 @@ class AziendaForm(forms.ModelForm):
         ]
         widgets = {
             'ragione_sociale':      forms.TextInput(attrs=W_TEXT),
+            'marchio':              forms.TextInput(attrs={**W_TEXT, 'placeholder': 'es: McDonald\'s (se diverso dalla ragione sociale)'}),
             'indirizzo':            forms.TextInput(attrs=W_TEXT),
             'citta':                forms.TextInput(attrs=W_TEXT),
             'cap':                  forms.TextInput(attrs={**W_TEXT, 'maxlength': '5', 'pattern': '[0-9]{5}'}),

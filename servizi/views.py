@@ -1,3 +1,4 @@
+from datetime import timedelta
 from django.shortcuts import render, get_object_or_404, redirect
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -479,6 +480,19 @@ class ODSCreateView(LoginRequiredMixin, CreateView):
         form.instance.created_by = self.request.user
         formset = ODSRigaFormSet(self.request.POST, instance=form.instance, prefix="righe")
         if formset.is_valid():
+            # Duplicate guard: same user + same filiale/privato + same data_servizio within 60s
+            cutoff = timezone.now() - timedelta(seconds=60)
+            dup_qs = ODS.objects.filter(
+                created_by=self.request.user,
+                filiale=form.instance.filiale,
+                privato=form.instance.privato,
+                data_servizio=form.instance.data_servizio,
+                created_at__gte=cutoff,
+            )
+            if dup_qs.exists():
+                existing = dup_qs.first()
+                messages.info(self.request, f"ODS {existing.numero} già salvato — reindirizzato.")
+                return redirect(existing.get_absolute_url())
             self.object = form.save()
             formset.instance = self.object
             formset.save()
@@ -850,6 +864,10 @@ def chiudi_servizio_distinta(request, ods_pk):
     ods = get_object_or_404(ODS.objects.select_related("distinta"), pk=ods_pk)
     if request.method != "POST":
         return redirect(ods.distinta.get_absolute_url() if ods.distinta else reverse("servizi:distinta_list"))
+
+    if ods.stato == "completato":
+        back = ods.distinta.get_absolute_url() if ods.distinta else reverse("servizi:distinta_list")
+        return redirect(back)
 
     form = ChiudiServizioForm(request.POST)
     if form.is_valid():

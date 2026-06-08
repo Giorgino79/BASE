@@ -48,6 +48,14 @@
               <div class="detail-field-value">{{ cliente.ragione_sociale }}</div>
             </div>
           </div>
+          {% if cliente.marchio %}
+          <div class="col-sm-6">
+            <div class="detail-field">
+              <div class="detail-field-label">Marchio</div>
+              <div class="detail-field-value">{{ cliente.marchio }}</div>
+            </div>
+          </div>
+          {% endif %}
           <div class="col-sm-6">
             <div class="detail-field">
               <div class="detail-field-label">Indirizzo</div>
