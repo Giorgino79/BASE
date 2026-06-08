@@ -86,9 +86,23 @@
       </div>
     </div>
 
-    <a href="{% url 'comunicazioni:promemoria_update' p.pk %}" class="btn btn-icon btn-sm flex-shrink-0" title="Modifica">
-      <i class="bi bi-pencil"></i>
-    </a>
+    <div class="d-flex flex-column gap-1 flex-shrink-0">
+      {% if p.link_url %}
+      <a href="{{ p.link_url }}" class="btn btn-sm flex-shrink-0"
+         style="background:var(--color-1-light);color:var(--color-1);border:none;" title="Vai all'oggetto">
+        <i class="bi bi-box-arrow-up-right"></i>
+      </a>
+      {% else %}
+      <a href="{% url 'comunicazioni:promemoria_update' p.pk %}#link-section"
+         class="btn btn-sm flex-shrink-0 text-muted" title="Collega un oggetto"
+         style="border:1px dashed var(--slate-300);">
+        <i class="bi bi-link-45deg"></i>
+      </a>
+      {% endif %}
+      <a href="{% url 'comunicazioni:promemoria_update' p.pk %}" class="btn btn-icon btn-sm flex-shrink-0" title="Modifica">
+        <i class="bi bi-pencil"></i>
+      </a>
+    </div>
   </div>
   {% endfor %}
 </div>

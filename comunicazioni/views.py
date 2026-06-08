@@ -112,12 +112,16 @@ def promemoria_search_oggetto(request):
 
         # Distinte
         dist_qs = Distinta.objects.filter(
-            Q(numero__icontains=q) | Q(note__icontains=q)
-        )[:5]
+            Q(numero__icontains=q) |
+            Q(nota__icontains=q) |
+            Q(tecnico__first_name__icontains=q) |
+            Q(tecnico__last_name__icontains=q)
+        ).select_related('tecnico')[:5]
         for d in dist_qs:
+            tecnico_nome = d.tecnico.get_full_name() if d.tecnico else ''
             results.append({
                 'label': f'Distinta {d.numero}',
-                'sub': d.data.strftime('%d/%m/%Y') if d.data else '',
+                'sub': (d.data.strftime('%d/%m/%Y') if d.data else '') + (f' — {tecnico_nome}' if tecnico_nome else ''),
                 'tipo': 'Distinta',
                 'url': d.get_absolute_url(),
             })
