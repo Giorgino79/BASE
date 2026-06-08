@@ -74,9 +74,10 @@
     <div class="card mb-3">
       <div class="card-header card-header-primary d-flex justify-content-between align-items-center">
         <span><i class="bi bi-box-seam me-2"></i>Prodotti a bordo</span>
-        {% if scorte %}
-        <small class="text-white-50">{{ scorte|length }} prodotti</small>
-        {% endif %}
+        <a href="{% url 'magazzino:scorte_mezzo' automezzo.pk %}"
+           class="btn btn-sm" style="background:rgba(255,255,255,.15);color:#fff;border:none;font-size:.8rem;">
+          <i class="bi bi-box-arrow-up-right me-1"></i>Magazzino mezzo
+        </a>
       </div>
       {% if fabbisogno %}
       <div class="px-3 pt-2 pb-1">
