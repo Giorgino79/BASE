@@ -53,9 +53,14 @@ def dashboard_tecnico(request):
         tecnico=user, stato=Distinta.Stato.APERTA
     ).order_by("-data")
 
-    # Mezzo assegnato
+    # Mezzo: prima cerca nella distinta aperta più recente, poi fallback su assegnato_a
     from cespiti.models import Automezzo
-    mezzo = Automezzo.objects.filter(assegnato_a=user, attivo=True).first()
+    mezzo = None
+    distinta_con_mezzo = distinte_aperte.exclude(mezzo=None).first()
+    if distinta_con_mezzo:
+        mezzo = distinta_con_mezzo.mezzo
+    if not mezzo:
+        mezzo = Automezzo.objects.filter(assegnato_a=user, attivo=True).first()
 
     # Scorte a bordo del mezzo
     from magazzino.models import ScortaMezzo
