@@ -20,7 +20,7 @@
 </div>
 
 <div class="row g-3">
-  <div class="col-lg-8">
+  <div class="col-md-8">
 
     <div class="card mb-3">
       <div class="card-header card-header-primary"><i class="bi bi-info-circle me-2"></i>Dati ODS</div>
@@ -194,7 +194,7 @@
 
   </div>
 
-  <div class="col-lg-4">
+  <div class="col-md-4">
     <div class="card mb-3">
       <div class="card-header"><i class="bi bi-gear me-2"></i>Azioni</div>
       <div class="list-group list-group-flush">
@@ -209,6 +209,15 @@
            data-bs-toggle="modal" data-bs-target="#modal-incasso">
           <i class="bi bi-cash-coin me-2"></i>Segna come incassato
         </a>
+        {% endif %}
+        {% if ods.stato == "completato" or ods.stato == "annullato" %}
+        <form method="post" action="{% url 'servizi:ods_set_stato' ods.pk %}" class="m-0">
+          {% csrf_token %}
+          <input type="hidden" name="stato" value="programmato">
+          <button type="submit" class="list-group-item list-group-item-action text-warning w-100 text-start border-0 bg-transparent">
+            <i class="bi bi-arrow-counterclockwise me-2"></i>Riattiva servizio
+          </button>
+        </form>
         {% endif %}
       </div>
     </div>
