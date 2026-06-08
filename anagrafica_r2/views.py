@@ -540,6 +540,17 @@ class PrivatoDetailView(AccessMixin, DetailView):
         ctx['back_url']   = reverse('anagrafica:privato_list')
         ctx['content_type_id'] = ContentType.objects.get_for_model(Privato).pk
         ctx['object_id']       = p.pk
+        try:
+            from servizi.models import ODS
+            ctx['ods_list'] = (
+                ODS.objects
+                .filter(privato=p)
+                .select_related('tecnico', 'distinta')
+                .prefetch_related('righe__servizio')
+                .order_by('-data_servizio', '-pk')[:20]
+            )
+        except Exception:
+            ctx['ods_list'] = []
         return ctx
 
 
