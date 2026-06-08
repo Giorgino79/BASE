@@ -922,69 +922,82 @@ def chiudi_servizio_distinta(request, ods_pk):
     if request.method != "POST":
         return redirect(ods.distinta.get_absolute_url() if ods.distinta else reverse("servizi:distinta_list"))
 
-    if ods.stato == "completato":
+    if ods.stato in ("completato", "annullato"):
         back = ods.distinta.get_absolute_url() if ods.distinta else reverse("servizi:distinta_list")
         return redirect(back)
 
-    form = ChiudiServizioForm(request.POST)
-    if form.is_valid():
-        cd = form.cleaned_data
-        ods.stato = "completato"
+    azione = request.POST.get("azione", "completato")
+
+    if azione == "annullato":
+        motivo = request.POST.get("motivo_annullamento", "").strip()
+        ods.stato = "annullato"
         fields = ["stato"]
-        if ods.incasso_al_servizio:
-            modalita = cd.get("modalita_pagamento") or "contanti"
-            ods.modalita_pagamento = modalita
-            fields.append("modalita_pagamento")
-            if modalita != "non_incassato":
-                ods.incassato = True
-                ods.data_incasso = timezone.localdate()
-                importo = cd.get("importo_incassato")
-                ods.importo_incassato = importo if importo else ods.prezzo_totale
-                fields += ["incassato", "data_incasso", "importo_incassato"]
-        note = cd.get("note_intervento", "").strip()
-        if note:
-            ods.note_intervento = note
+        if motivo:
+            ods.note_intervento = motivo
             fields.append("note_intervento")
         ods.save(update_fields=fields)
+        # ConsumoMateriale rimane confermato=False → prodotti non scalati, restano a bordo
+        messages.info(request, f"ODS {ods.numero} segnato come annullato.")
+    else:
+        form = ChiudiServizioForm(request.POST)
+        if form.is_valid():
+            cd = form.cleaned_data
+            ods.stato = "completato"
+            fields = ["stato"]
+            if ods.incasso_al_servizio:
+                modalita = cd.get("modalita_pagamento") or "contanti"
+                ods.modalita_pagamento = modalita
+                fields.append("modalita_pagamento")
+                if modalita != "non_incassato":
+                    ods.incassato = True
+                    ods.data_incasso = timezone.localdate()
+                    importo = cd.get("importo_incassato")
+                    ods.importo_incassato = importo if importo else ods.prezzo_totale
+                    fields += ["incassato", "data_incasso", "importo_incassato"]
+            note = cd.get("note_intervento", "").strip()
+            if note:
+                ods.note_intervento = note
+                fields.append("note_intervento")
+            ods.save(update_fields=fields)
 
-        from decimal import Decimal, InvalidOperation
+            from decimal import Decimal, InvalidOperation
 
-        # Conferma prodotti previsti (confermato=False → True se spuntati)
-        for riga in ods.righe.all():
-            for c in ConsumoMateriale.objects.filter(riga=riga, confermato=False):
-                qty_str = request.POST.get(f"prod-quantita-{c.pk}", "").strip()
-                confirmed = f"prod-confermato-{c.pk}" in request.POST
-                try:
-                    qty = Decimal(qty_str) if qty_str else c.quantita
-                except InvalidOperation:
-                    qty = c.quantita
-                if confirmed or qty != c.quantita:
-                    c.confermato = confirmed
-                    c.quantita = qty
-                    c.save()
-
-        # Prodotti aggiuntivi non previsti (aggiunti sul campo)
-        extra_total = int(request.POST.get("extra-TOTAL_FORMS", 0) or 0)
-        if extra_total > 0:
-            prima_riga = ods.righe.first()
-            if prima_riga:
-                for i in range(extra_total):
-                    prod_id = request.POST.get(f"extra-{i}-prodotto", "").strip()
-                    qty_str = request.POST.get(f"extra-{i}-quantita", "1").strip()
-                    if not prod_id:
-                        continue
+            # Conferma prodotti previsti (confermato=False → True se spuntati)
+            for riga in ods.righe.all():
+                for c in ConsumoMateriale.objects.filter(riga=riga, confermato=False):
+                    qty_str = request.POST.get(f"prod-quantita-{c.pk}", "").strip()
+                    confirmed = f"prod-confermato-{c.pk}" in request.POST
                     try:
-                        qty = Decimal(qty_str)
+                        qty = Decimal(qty_str) if qty_str else c.quantita
                     except InvalidOperation:
-                        qty = Decimal("1")
-                    ConsumoMateriale.objects.create(
-                        riga=prima_riga,
-                        prodotto_id=prod_id,
-                        quantita=qty,
-                        confermato=True,
-                    )
+                        qty = c.quantita
+                    if confirmed or qty != c.quantita:
+                        c.confermato = confirmed
+                        c.quantita = qty
+                        c.save()
 
-        messages.success(request, f"ODS {ods.numero} chiuso.")
+            # Prodotti aggiuntivi non previsti (aggiunti sul campo)
+            extra_total = int(request.POST.get("extra-TOTAL_FORMS", 0) or 0)
+            if extra_total > 0:
+                prima_riga = ods.righe.first()
+                if prima_riga:
+                    for i in range(extra_total):
+                        prod_id = request.POST.get(f"extra-{i}-prodotto", "").strip()
+                        qty_str = request.POST.get(f"extra-{i}-quantita", "1").strip()
+                        if not prod_id:
+                            continue
+                        try:
+                            qty = Decimal(qty_str)
+                        except InvalidOperation:
+                            qty = Decimal("1")
+                        ConsumoMateriale.objects.create(
+                            riga=prima_riga,
+                            prodotto_id=prod_id,
+                            quantita=qty,
+                            confermato=True,
+                        )
+
+            messages.success(request, f"ODS {ods.numero} chiuso.")
 
     back = ods.distinta.get_absolute_url() if ods.distinta else reverse("servizi:distinta_list")
     return redirect(back)

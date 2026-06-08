@@ -57,7 +57,8 @@
 {% for ods in ods_list %}
 <div class="card mb-3">
   <div class="card-header d-flex justify-content-between align-items-center
-    {% if ods.stato == 'completato' %}bg-success bg-opacity-10{% endif %}">
+    {% if ods.stato == 'completato' %}bg-success bg-opacity-10
+    {% elif ods.stato == 'annullato' %}bg-danger bg-opacity-10{% endif %}">
     <div>
       <a href="{{ ods.get_absolute_url }}" class="fw-semibold text-brand text-decoration-none">{{ ods.numero }}</a>
       <span class="text-muted small ms-2">{{ ods.cliente_display }}</span>
@@ -76,6 +77,8 @@
             <span class="badge badge-ko">Non incassato</span>
           {% endif %}
         {% endif %}
+      {% elif ods.stato == "annullato" %}
+        <span class="badge badge-ko"><i class="bi bi-x-circle me-1"></i>Annullato</span>
       {% else %}
         <span class="badge badge-wait">Da chiudere</span>
         {% if distinta.stato == "aperta" %}
@@ -161,7 +164,7 @@
 </div>
 
 {# Modal chiudi servizio #}
-{% if distinta.stato == "aperta" and ods.stato != "completato" %}
+{% if distinta.stato == "aperta" and ods.stato != "completato" and ods.stato != "annullato" %}
 <div class="modal fade" id="modal-chiudi-{{ ods.pk }}" tabindex="-1">
   <div class="modal-dialog">
     <div class="modal-content">
@@ -171,55 +174,112 @@
       </div>
       <form method="post" action="{% url 'servizi:chiudi_servizio_distinta' ods.pk %}">
         {% csrf_token %}
+        <input type="hidden" name="azione" value="completato" class="chiudi-azione">
         <div class="modal-body">
-          {% if ods.incasso_al_servizio %}
-          <label class="form-label">Modalità pagamento</label>
-          <select name="modalita_pagamento" class="form-select form-select-sm mb-2">
-            {% for val, label in chiudi_choices %}
-            <option value="{{ val }}" {% if val == "contanti" %}selected{% endif %}>{{ label }}</option>
-            {% endfor %}
-          </select>
-          <label class="form-label">Importo incassato</label>
-          <div class="input-group input-group-sm mb-3">
-            <span class="input-group-text">€</span>
-            <input type="number" name="importo_incassato" step="0.01"
-                   value="{{ ods.prezzo_sum|default:'' }}" class="form-control">
+          {# Sezione completamento normale #}
+          <div class="chiudi-sezione-completato">
+            {% if ods.incasso_al_servizio %}
+            <label class="form-label">Modalità pagamento</label>
+            <select name="modalita_pagamento" class="form-select form-select-sm mb-2">
+              {% for val, label in chiudi_choices %}
+              <option value="{{ val }}" {% if val == "contanti" %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+            <label class="form-label">Importo incassato</label>
+            <div class="input-group input-group-sm mb-3">
+              <span class="input-group-text">€</span>
+              <input type="number" name="importo_incassato" step="0.01"
+                     value="{{ ods.prezzo_sum|default:'' }}" class="form-control">
+            </div>
+            {% endif %}
+            {# Prodotti previsti: conferma quantità e spunta quelli usati #}
+            <p class="small fw-semibold mb-1 mt-2"><i class="bi bi-box-seam me-1"></i>Materiali previsti:</p>
+            {% for r in ods.righe.all %}{% for c in r.consumi.all %}{% if not c.confermato %}
+            <div class="d-flex align-items-center gap-2 mb-1">
+              <input type="checkbox" name="prod-confermato-{{ c.pk }}"
+                     class="form-check-input flex-shrink-0" checked>
+              <span class="small flex-grow-1">{{ c.prodotto }}</span>
+              <input type="number" name="prod-quantita-{{ c.pk }}" value="{{ c.quantita }}"
+                     step="0.001" min="0.001" class="form-control form-control-sm" style="width:80px">
+            </div>
+            {% endif %}{% endfor %}{% endfor %}
+            {# Prodotti aggiuntivi non previsti #}
+            <p class="small fw-semibold mb-1 mt-3"><i class="bi bi-plus-circle me-1"></i>Prodotti aggiuntivi:</p>
+            <input type="hidden" name="extra-TOTAL_FORMS" value="0" class="extra-total-forms">
+            <div class="extra-prod-rows mb-1"></div>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-extra-prod-add w-100 mb-3"
+                    style="font-size:.8rem">
+              <i class="bi bi-plus-sm me-1"></i>Aggiungi prodotto
+            </button>
+            <p class="small text-muted fst-italic mb-2">
+              <i class="bi bi-info-circle me-1"></i>In caso di servizi aggiuntivi richiesti dal cliente inserire motivazione nelle note.
+            </p>
+            <label class="form-label">Note intervento</label>
+            <textarea name="note_intervento" class="form-control form-control-sm" rows="2"
+                      placeholder="Note opzionali">{{ ods.note_intervento }}</textarea>
           </div>
-          {% endif %}
-          {# Prodotti previsti: conferma quantità e spunta quelli usati #}
-          <p class="small fw-semibold mb-1 mt-2"><i class="bi bi-box-seam me-1"></i>Materiali previsti:</p>
-          {% for r in ods.righe.all %}{% for c in r.consumi.all %}{% if not c.confermato %}
-          <div class="d-flex align-items-center gap-2 mb-1">
-            <input type="checkbox" name="prod-confermato-{{ c.pk }}"
-                   class="form-check-input flex-shrink-0" checked>
-            <span class="small flex-grow-1">{{ c.prodotto }}</span>
-            <input type="number" name="prod-quantita-{{ c.pk }}" value="{{ c.quantita }}"
-                   step="0.001" min="0.001" class="form-control form-control-sm" style="width:80px">
+          {# Sezione annullamento #}
+          <div class="chiudi-sezione-annullato" style="display:none;">
+            <div class="alert alert-warning py-2 small mb-3">
+              <i class="bi bi-exclamation-triangle me-1"></i>
+              Il servizio verrà segnato come <strong>annullato</strong>. I prodotti rimarranno a bordo del mezzo.
+            </div>
+            <label class="form-label fw-semibold">Motivo annullamento <span class="text-danger">*</span></label>
+            <textarea name="motivo_annullamento" class="form-control form-control-sm" rows="3"
+                      placeholder="Es: cliente assente, accesso negato, disdetta…"></textarea>
           </div>
-          {% endif %}{% endfor %}{% endfor %}
-          {# Prodotti aggiuntivi non previsti #}
-          <p class="small fw-semibold mb-1 mt-3"><i class="bi bi-plus-circle me-1"></i>Prodotti aggiuntivi:</p>
-          <input type="hidden" name="extra-TOTAL_FORMS" value="0" class="extra-total-forms">
-          <div class="extra-prod-rows mb-1"></div>
-          <button type="button" class="btn btn-sm btn-outline-secondary btn-extra-prod-add w-100 mb-3"
-                  style="font-size:.8rem">
-            <i class="bi bi-plus-sm me-1"></i>Aggiungi prodotto
-          </button>
-          <p class="small text-muted fst-italic mb-2">
-            <i class="bi bi-info-circle me-1"></i>In caso di servizi aggiuntivi richiesti dal cliente inserire motivazione nelle note.
-          </p>
-          <label class="form-label">Note intervento</label>
-          <textarea name="note_intervento" class="form-control form-control-sm" rows="2"
-                    placeholder="Note opzionali">{{ ods.note_intervento }}</textarea>
         </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Annulla</button>
-          <button type="submit" class="btn btn-sm btn-brand"><i class="bi bi-check-lg me-1"></i>Conferma</button>
+        <div class="modal-footer d-flex justify-content-between">
+          <button type="button" class="btn btn-sm btn-outline-danger btn-segna-annullato">
+            <i class="bi bi-x-circle me-1"></i>Servizio annullato
+          </button>
+          <div class="d-flex gap-2">
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Chiudi</button>
+            <button type="submit" class="btn btn-sm btn-brand btn-conferma-submit">
+              <i class="bi bi-check-lg me-1"></i>Conferma servizio
+            </button>
+          </div>
         </div>
       </form>
     </div>
   </div>
 </div>
+<script>
+(function () {
+  var modal = document.getElementById('modal-chiudi-{{ ods.pk }}');
+  if (!modal) return;
+  var btnAnnulla = modal.querySelector('.btn-segna-annullato');
+  var sezioneOk  = modal.querySelector('.chiudi-sezione-completato');
+  var sezioneKo  = modal.querySelector('.chiudi-sezione-annullato');
+  var azioneInput = modal.querySelector('.chiudi-azione');
+  var btnSubmit   = modal.querySelector('.btn-conferma-submit');
+  var inAnnullamento = false;
+
+  btnAnnulla.addEventListener('click', function () {
+    if (!inAnnullamento) {
+      inAnnullamento = true;
+      sezioneOk.style.display = 'none';
+      sezioneKo.style.display = 'block';
+      azioneInput.value = 'annullato';
+      btnAnnulla.innerHTML = '<i class="bi bi-arrow-left me-1"></i>Torna a conferma';
+      btnSubmit.innerHTML  = '<i class="bi bi-x-circle me-1"></i>Segna annullato';
+      btnSubmit.className  = btnSubmit.className.replace('btn-brand', 'btn-danger');
+    } else {
+      inAnnullamento = false;
+      sezioneOk.style.display = 'block';
+      sezioneKo.style.display = 'none';
+      azioneInput.value = 'completato';
+      btnAnnulla.innerHTML = '<i class="bi bi-x-circle me-1"></i>Servizio annullato';
+      btnSubmit.innerHTML  = '<i class="bi bi-check-lg me-1"></i>Conferma servizio';
+      btnSubmit.className  = btnSubmit.className.replace('btn-danger', 'btn-brand');
+    }
+  });
+
+  modal.addEventListener('hidden.bs.modal', function () {
+    if (inAnnullamento) btnAnnulla.click();
+  });
+})();
+</script>
 
 {# Modal aggiungi prodotto #}
 <div class="modal fade" id="modal-consumo-{{ ods.pk }}" tabindex="-1">
