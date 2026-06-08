@@ -80,6 +80,84 @@ def promemoria_delete(request, pk):
 
 
 @login_required
+def promemoria_search_oggetto(request):
+    """Ricerca veloce multi-modello per il widget link promemoria."""
+    q = request.GET.get('q', '').strip()
+    if len(q) < 2:
+        return JsonResponse({'results': []})
+
+    from django.db.models import Q
+    results = []
+
+    try:
+        from servizi.models import ODS, Distinta
+        from django.urls import reverse
+
+        # ODS
+        ods_qs = ODS.objects.filter(
+            Q(numero__icontains=q) |
+            Q(privato__cognome__icontains=q) |
+            Q(privato__nome__icontains=q) |
+            Q(filiale__nome__icontains=q) |
+            Q(filiale__cliente__ragione_sociale__icontains=q)
+        ).select_related('privato', 'filiale__cliente')[:8]
+        for o in ods_qs:
+            cliente = str(o.privato) if o.privato else (str(o.filiale) if o.filiale else '—')
+            results.append({
+                'label': o.numero,
+                'sub': cliente,
+                'tipo': 'ODS',
+                'url': o.get_absolute_url(),
+            })
+
+        # Distinte
+        dist_qs = Distinta.objects.filter(
+            Q(numero__icontains=q) | Q(note__icontains=q)
+        )[:5]
+        for d in dist_qs:
+            results.append({
+                'label': f'Distinta {d.numero}',
+                'sub': d.data.strftime('%d/%m/%Y') if d.data else '',
+                'tipo': 'Distinta',
+                'url': d.get_absolute_url(),
+            })
+    except Exception:
+        pass
+
+    try:
+        from anagrafica_r2.models import Privato, Azienda, Filiale
+        from django.urls import reverse
+
+        # Privati
+        priv_qs = Privato.objects.filter(
+            Q(cognome__icontains=q) | Q(nome__icontains=q) | Q(telefono__icontains=q)
+        )[:5]
+        for p in priv_qs:
+            results.append({
+                'label': p.nome_completo,
+                'sub': p.citta or '',
+                'tipo': 'Cliente privato',
+                'url': p.get_absolute_url(),
+            })
+
+        # Aziende
+        az_qs = Azienda.objects.filter(
+            Q(ragione_sociale__icontains=q) | Q(marchio__icontains=q)
+        )[:5]
+        for a in az_qs:
+            results.append({
+                'label': a.ragione_sociale,
+                'sub': a.marchio or a.citta or '',
+                'tipo': 'Azienda',
+                'url': a.get_absolute_url(),
+            })
+    except Exception:
+        pass
+
+    return JsonResponse({'results': results[:15]})
+
+
+@login_required
 def promemoria_toggle(request, pk):
     p = get_object_or_404(Promemoria, pk=pk)
     if p.user != request.user and p.assegnato_a != request.user:

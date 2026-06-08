@@ -33,7 +33,7 @@ class PromemoriaForm(forms.ModelForm):
             Field('data_scadenza'),
             Field('assegnato_a'),
             Field('descrizione'),
-            Field('link_url'),
+            # link_url rendered manually nel template con widget di ricerca
         )
 
 

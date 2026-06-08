@@ -25,6 +25,45 @@
         <form method="post">
           {% csrf_token %}
           {% crispy form %}
+
+          {# Widget ricerca oggetto collegato #}
+          <div class="mb-3">
+            <label class="form-label fw-semibold" style="font-size:.875rem;">
+              <i class="bi bi-link-45deg me-1"></i>Oggetto collegato
+              <span class="text-muted fw-normal">(opzionale)</span>
+            </label>
+
+            {# campo nascosto che va nel DB #}
+            <input type="hidden" name="link_url" id="id_link_url" value="{{ form.link_url.value|default:'' }}">
+
+            {# se già selezionato mostra il chip #}
+            <div id="link-selected"
+                 class="{% if not form.link_url.value %}d-none{% endif %} d-flex align-items-center gap-2 p-2 rounded mb-2"
+                 style="background:var(--color-1-light);border:1px solid var(--color-1);font-size:.85rem;">
+              <i class="bi bi-link-45deg" style="color:var(--color-1);"></i>
+              <a id="link-selected-label" href="{{ form.link_url.value|default:'#' }}"
+                 target="_blank" class="text-decoration-none fw-semibold flex-grow-1"
+                 style="color:var(--color-1);">{{ form.link_url.value|default:'' }}</a>
+              <button type="button" id="link-clear-btn" class="btn btn-sm p-0 ms-auto"
+                      style="color:var(--color-1);background:none;border:none;" title="Rimuovi">
+                <i class="bi bi-x-lg"></i>
+              </button>
+            </div>
+
+            {# barra di ricerca #}
+            <div id="link-search-wrap" class="{% if form.link_url.value %}d-none{% endif %} position-relative">
+              <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                <input type="text" id="link-search-input" class="form-control"
+                       placeholder="Cerca per numero ODS, nome cliente, distinta…"
+                       autocomplete="off">
+              </div>
+              <ul id="link-search-results"
+                  class="list-group shadow position-absolute w-100 d-none"
+                  style="z-index:1050;top:100%;max-height:260px;overflow-y:auto;"></ul>
+            </div>
+          </div>
+
           <div class="d-flex gap-2 mt-3">
             <button type="submit" class="btn btn-primary">
               <i class="bi bi-check-lg me-1"></i>
@@ -43,4 +82,84 @@
     </div>
   </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  const searchInput  = document.getElementById('link-search-input');
+  const resultsList  = document.getElementById('link-search-results');
+  const hiddenInput  = document.getElementById('id_link_url');
+  const selectedWrap = document.getElementById('link-selected');
+  const selectedLabel= document.getElementById('link-selected-label');
+  const searchWrap   = document.getElementById('link-search-wrap');
+  const clearBtn     = document.getElementById('link-clear-btn');
+
+  const TIPO_ICON = {
+    'ODS':            'bi-tools',
+    'Distinta':       'bi-journal-text',
+    'Cliente privato':'bi-person',
+    'Azienda':        'bi-building',
+  };
+
+  let debounce;
+  searchInput.addEventListener('input', function () {
+    clearTimeout(debounce);
+    const q = searchInput.value.trim();
+    if (q.length < 2) { resultsList.innerHTML = ''; resultsList.classList.add('d-none'); return; }
+    debounce = setTimeout(function () {
+      fetch('{% url "comunicazioni:promemoria_search_oggetto" %}?q=' + encodeURIComponent(q), {
+        headers: {'X-Requested-With': 'XMLHttpRequest'}
+      })
+      .then(r => r.json())
+      .then(data => {
+        resultsList.innerHTML = '';
+        if (!data.results.length) {
+          resultsList.innerHTML = '<li class="list-group-item text-muted small py-2">Nessun risultato</li>';
+        } else {
+          data.results.forEach(function (item) {
+            const li = document.createElement('li');
+            li.className = 'list-group-item list-group-item-action py-2 px-3';
+            li.style.cursor = 'pointer';
+            const icon = TIPO_ICON[item.tipo] || 'bi-link';
+            li.innerHTML =
+              '<div class="d-flex align-items-center gap-2">' +
+              '<i class="bi ' + icon + ' flex-shrink-0" style="color:var(--color-1);font-size:1rem;"></i>' +
+              '<div class="flex-grow-1 min-width-0">' +
+              '<div class="fw-semibold small text-truncate">' + item.label + '</div>' +
+              (item.sub ? '<div class="text-muted" style="font-size:.75rem;">' + item.sub + '</div>' : '') +
+              '</div>' +
+              '<span class="badge ms-auto" style="background:var(--color-1-light);color:var(--color-1);font-size:.7rem;">' + item.tipo + '</span>' +
+              '</div>';
+            li.addEventListener('click', function () { selectItem(item); });
+            resultsList.appendChild(li);
+          });
+        }
+        resultsList.classList.remove('d-none');
+      });
+    }, 250);
+  });
+
+  function selectItem(item) {
+    hiddenInput.value = item.url;
+    selectedLabel.textContent = item.label + (item.sub ? ' — ' + item.sub : '');
+    selectedLabel.href = item.url;
+    selectedWrap.classList.remove('d-none');
+    searchWrap.classList.add('d-none');
+    resultsList.classList.add('d-none');
+    searchInput.value = '';
+  }
+
+  clearBtn.addEventListener('click', function () {
+    hiddenInput.value = '';
+    selectedWrap.classList.add('d-none');
+    searchWrap.classList.remove('d-none');
+    searchInput.focus();
+  });
+
+  document.addEventListener('click', function (e) {
+    if (!searchWrap.contains(e.target)) resultsList.classList.add('d-none');
+  });
+})();
+</script>
 {% endblock %}

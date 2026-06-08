@@ -10,6 +10,7 @@ urlpatterns = [
     path('promemoria/<int:pk>/modifica/', views.promemoria_update, name='promemoria_update'),
     path('promemoria/<int:pk>/elimina/', views.promemoria_delete, name='promemoria_delete'),
     path('promemoria/<int:pk>/toggle/', views.promemoria_toggle, name='promemoria_toggle'),
+    path('promemoria/search-oggetto/', views.promemoria_search_oggetto, name='promemoria_search_oggetto'),
     # Chat
     path('chat/', views.chat_list, name='chat_list'),
     path('chat/nuova/', views.chat_nuova, name='chat_nuova'),
