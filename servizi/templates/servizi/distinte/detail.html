@@ -269,13 +269,26 @@
     </div>
   </div>
   <div class="card-body py-2">
-    <div class="row g-2 small">
+    <div class="row g-2 small mb-2">
       <div class="col-auto text-muted"><i class="bi bi-geo-alt me-1"></i>{{ c.indirizzo }}</div>
       <div class="col-auto"><span class="text-muted">Unità:</span> <strong>{{ c.unita.count }}</strong></div>
       <div class="col-auto"><span class="text-muted">Da incassare:</span> <strong class="text-brand">€ {{ c.totale_da_incassare }}</strong></div>
       <div class="col-auto"><span class="text-muted">Incassato:</span> <strong class="text-success">€ {{ c.totale_incassato }}</strong></div>
       {% if c.tecnico %}<div class="col-auto text-muted"><i class="bi bi-person me-1"></i>{{ c.tecnico.get_full_name }}</div>{% endif %}
     </div>
+    {% with prodotti=c.prodotti.all %}
+    {% if prodotti %}
+    <div class="small text-muted">
+      <i class="bi bi-box-seam me-1"></i>
+      {% for p in prodotti %}
+        <span class="me-3 {% if p.confermato %}text-success fw-semibold{% endif %}">
+          {{ p.prodotto.nome_prodotto }} — <strong>{{ p.quantita }}</strong> {{ p.prodotto.unita_misura }}
+          {% if p.confermato %}<i class="bi bi-check-circle ms-1"></i>{% endif %}
+        </span>
+      {% endfor %}
+    </div>
+    {% endif %}
+    {% endwith %}
   </div>
 </div>
 {% endfor %}

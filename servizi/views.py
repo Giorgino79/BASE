@@ -764,7 +764,7 @@ class DistintaDetailView(LoginRequiredMixin, DetailView):
         ctx["ods_list"] = ods_qs
         ctx["condomini_list"] = self.object.condomini_set.select_related(
             "tecnico", "assistente"
-        ).prefetch_related("unita").order_by("data", "ora")
+        ).prefetch_related("unita", "prodotti__prodotto").order_by("data", "ora")
 
         mezzo = self.object.mezzo
         ctx["mezzo"] = mezzo
