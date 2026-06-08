@@ -31,6 +31,8 @@ class Promemoria(models.Model):
     stato = models.CharField('Stato', max_length=15, choices=STATO_CHOICES, default='pending')
     data_scadenza = models.DateTimeField('Data scadenza', null=True, blank=True)
     completato_il = models.DateTimeField('Completato il', null=True, blank=True)
+    link_url      = models.CharField('Link oggetto', max_length=500, blank=True,
+                                     help_text='URL della pagina correlata (es. ODS, cliente, distinta)')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

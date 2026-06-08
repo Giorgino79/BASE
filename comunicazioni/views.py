@@ -46,7 +46,12 @@ def promemoria_create(request):
             messages.success(request, 'Promemoria creato.')
             return redirect('comunicazioni:promemoria_list')
     else:
-        form = PromemoriaForm(user=request.user)
+        initial = {}
+        if request.GET.get('link_url'):
+            initial['link_url'] = request.GET['link_url']
+        if request.GET.get('titolo'):
+            initial['titolo'] = request.GET['titolo']
+        form = PromemoriaForm(user=request.user, initial=initial)
     return render(request, 'comunicazioni/promemoria_form.html', {'form': form})
 
 

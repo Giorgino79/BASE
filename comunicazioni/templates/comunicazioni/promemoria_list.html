@@ -47,10 +47,18 @@
 
     <div class="flex-grow-1 min-width-0">
       <div class="d-flex align-items-center gap-2 flex-wrap">
+        {% if p.link_url %}
+        <a href="{{ p.link_url }}" class="fw-semibold text-decoration-none"
+           style="font-size:.9rem;color:var(--color-1);
+                  {% if p.stato == 'completato' %}text-decoration:line-through !important;opacity:.7;{% endif %}">
+          {{ p.titolo }}&nbsp;<i class="bi bi-box-arrow-up-right" style="font-size:.75rem;"></i>
+        </a>
+        {% else %}
         <span class="fw-semibold" style="font-size:.9rem;color:var(--slate-900);
               {% if p.stato == 'completato' %}text-decoration:line-through;{% endif %}">
           {{ p.titolo }}
         </span>
+        {% endif %}
         <!-- Priorità badge -->
         {% if p.priorita == 'urgente' %}
           <span class="badge" style="background:var(--slate-200);color:var(--slate-600);font-size:.7rem;">Urgente</span>

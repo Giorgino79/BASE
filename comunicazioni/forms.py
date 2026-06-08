@@ -8,10 +8,11 @@ from .models import Promemoria
 class PromemoriaForm(forms.ModelForm):
     class Meta:
         model = Promemoria
-        fields = ['titolo', 'descrizione', 'priorita', 'stato', 'data_scadenza', 'assegnato_a']
+        fields = ['titolo', 'descrizione', 'priorita', 'stato', 'data_scadenza', 'assegnato_a', 'link_url']
         widgets = {
             'data_scadenza': forms.DateTimeInput(attrs={'type': 'datetime-local'}, format='%Y-%m-%dT%H:%M'),
             'descrizione': forms.Textarea(attrs={'rows': 3}),
+            'link_url': forms.TextInput(attrs={'placeholder': 'es. /servizi/ods/42/'}),
         }
 
     def __init__(self, *args, user=None, **kwargs):
@@ -32,6 +33,7 @@ class PromemoriaForm(forms.ModelForm):
             Field('data_scadenza'),
             Field('assegnato_a'),
             Field('descrizione'),
+            Field('link_url'),
         )
 
 
