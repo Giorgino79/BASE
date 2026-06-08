@@ -32,6 +32,7 @@ urlpatterns = [
     path("ods/<int:pk>/personale/",      views.ods_cambia_personale,    name="ods_cambia_personale"),
     path("ods/<int:pk>/stato/",         views.ods_set_stato,           name="ods_set_stato"),
     path("ods/<int:pk>/incassato/",     views.ods_segna_incassato,     name="ods_segna_incassato"),
+    path("ods/<int:pk>/set-importo/",   views.ods_set_importo,         name="ods_set_importo"),
     path("ods/da-incassare/",           views.ods_da_incassare,        name="ods_da_incassare"),
 
     # Distinte

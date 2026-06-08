@@ -100,6 +100,22 @@
     {% endif %}
     {% endwith %}
 
+    {# Importo da incassare (editabile se pagamento immediato e servizio non ancora chiuso) #}
+    {% if ods.incasso_al_servizio and ods.stato != 'completato' and distinta.stato == 'aperta' %}
+    <div class="d-flex align-items-center gap-2 mb-2 small">
+      <span class="text-muted fw-semibold"><i class="bi bi-cash-coin me-1"></i>Importo:</span>
+      <div class="input-group input-group-sm" style="max-width:155px;">
+        <span class="input-group-text">€</span>
+        <input type="number" step="0.01" min="0"
+               class="form-control ods-importo-input"
+               data-url="{% url 'servizi:ods_set_importo' ods.pk %}"
+               value="{{ ods.importo_incassato|default:'' }}"
+               placeholder="{{ ods.prezzo_sum|floatformat:2|default:'0,00' }}">
+      </div>
+      <span class="ods-importo-ind" style="font-size:.8rem;"></span>
+    </div>
+    {% endif %}
+
     {# Note intervento #}
     {% if ods.note_intervento %}
     <div class="small text-muted mb-2"><i class="bi bi-chat-left-text me-1"></i>{{ ods.note_intervento }}</div>
@@ -298,6 +314,44 @@
 {% endblock %}
 
 {% block extra_js %}
+<script>
+(function () {
+  function getCsrf() {
+    const m = document.cookie.match('(^|;)\\s*csrftoken\\s*=\\s*([^;]+)');
+    return m ? m.pop() : '';
+  }
+
+  // ── Autosave importo da incassare ─────────────────────────────
+  document.querySelectorAll('.ods-importo-input').forEach(function (input) {
+    input.addEventListener('blur', function () {
+      const url = this.dataset.url;
+      const val = this.value.trim();
+      const ind = this.closest('.d-flex').querySelector('.ods-importo-ind');
+      fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'X-CSRFToken': getCsrf(),
+        },
+        body: 'importo=' + encodeURIComponent(val),
+      })
+      .then(r => r.json())
+      .then(d => {
+        if (ind) {
+          ind.innerHTML = d.success
+            ? '<i class="bi bi-check-circle-fill text-success"></i>'
+            : '<i class="bi bi-exclamation-triangle-fill text-danger" title="' + (d.error || 'Errore') + '"></i>';
+          setTimeout(() => { if (ind) ind.innerHTML = ''; }, 2500);
+        }
+      })
+      .catch(() => {
+        if (ind) ind.innerHTML = '<i class="bi bi-exclamation-triangle-fill text-danger"></i>';
+      });
+    });
+  });
+})();
+</script>
+
 <script>
 (function () {
   const srcWrapper = document.getElementById("prod-src-wrapper");

@@ -717,6 +717,22 @@ def ods_segna_incassato(request, pk):
 
 
 @login_required
+@require_POST
+def ods_set_importo(request, pk):
+    """AJAX: salva l'importo da incassare su un ODS (può essere vuoto)."""
+    from django.http import JsonResponse
+    from decimal import Decimal, InvalidOperation
+    ods = get_object_or_404(ODS, pk=pk)
+    importo_str = request.POST.get("importo", "").strip()
+    try:
+        ods.importo_incassato = Decimal(importo_str) if importo_str else None
+        ods.save(update_fields=["importo_incassato"])
+        return JsonResponse({"success": True})
+    except InvalidOperation:
+        return JsonResponse({"success": False, "error": "Importo non valido"}, status=400)
+
+
+@login_required
 def ods_set_stato(request, pk):
     ods = get_object_or_404(ODS, pk=pk)
     if request.method == "POST":
