@@ -983,8 +983,16 @@ def chiudi_distinta_ufficio(request, pk):
     )
     ods_list = list(ods_qs)
 
-    totale_previsto = sum(
-        (o.importo_incassato or Decimal("0")) for o in ods_list if o.incassato
+    condomini_qs = (
+        distinta.condomini_set
+        .prefetch_related("unita")
+        .order_by("data", "pk")
+    )
+    condomini_list = list(condomini_qs)
+
+    totale_previsto = (
+        sum((o.importo_incassato or Decimal("0")) for o in ods_list if o.incassato) +
+        sum(c.totale_incassato for c in condomini_list)
     )
 
     if request.method == "POST":
@@ -1003,11 +1011,26 @@ def chiudi_distinta_ufficio(request, pk):
                 o.save(update_fields=fields)
                 riaperti += 1
 
+        # Riapertura CondominioODS selezionati
+        for c in condomini_list:
+            if request.POST.get(f"riapri_c_{c.pk}"):
+                c.stato = "da_espletare"
+                c.distinta = None
+                c.save(update_fields=["stato", "distinta"])
+                riaperti += 1
+
         # Ricalcola totale dopo eventuali riaperture
-        totale_effettivo = sum(
-            (o.importo_incassato or Decimal("0"))
-            for o in ods_list
-            if o.incassato and not request.POST.get(f"riapri_{o.pk}")
+        totale_effettivo = (
+            sum(
+                (o.importo_incassato or Decimal("0"))
+                for o in ods_list
+                if o.incassato and not request.POST.get(f"riapri_{o.pk}")
+            ) +
+            sum(
+                c.totale_incassato
+                for c in condomini_list
+                if not request.POST.get(f"riapri_c_{c.pk}")
+            )
         )
 
         importo_str = request.POST.get("importo_ricevuto", "").strip()
@@ -1067,6 +1090,7 @@ def chiudi_distinta_ufficio(request, pk):
     return render(request, "servizi/distinte/chiudi_ufficio.html", {
         "distinta": distinta,
         "ods_list": ods_list,
+        "condomini_list": condomini_list,
         "totale_previsto": totale_previsto,
     })
 

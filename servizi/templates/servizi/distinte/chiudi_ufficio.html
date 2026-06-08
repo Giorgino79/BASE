@@ -102,6 +102,44 @@
               </td>
             </tr>
             {% endfor %}
+            {% for c in condomini_list %}
+            <tr class="{% if c.stato == 'completato' %}table-success bg-opacity-25{% elif c.stato == 'annullato' %}table-secondary{% else %}table-warning bg-opacity-25{% endif %}">
+              <td class="fw-semibold">
+                <a href="{{ c.get_absolute_url }}" class="text-brand text-decoration-none">{{ c.numero }}</a>
+                <span class="badge bg-secondary ms-1" style="font-size:.65rem;">Cond.</span>
+              </td>
+              <td class="small">{{ c.titolo }}</td>
+              <td class="small text-muted">{{ c.indirizzo }}</td>
+              <td>
+                {% if c.stato == "completato" %}
+                  <span class="badge badge-ok"><i class="bi bi-check-circle me-1"></i>Completato</span>
+                {% elif c.stato == "annullato" %}
+                  <span class="badge bg-secondary">Annullato</span>
+                {% else %}
+                  <span class="badge badge-ko"><i class="bi bi-exclamation-circle me-1"></i>Non completato</span>
+                {% endif %}
+              </td>
+              <td class="text-end">
+                {% if c.totale_incassato %}
+                  <span class="fw-semibold text-success">€ {{ c.totale_incassato }}</span>
+                {% else %}
+                  <span class="text-muted small">€ 0,00</span>
+                {% endif %}
+              </td>
+              <td class="text-center">
+                <div class="form-check d-flex justify-content-center m-0">
+                  <input class="form-check-input ods-riapri" type="checkbox"
+                         name="riapri_c_{{ c.pk }}" id="riapri_c_{{ c.pk }}"
+                         {% if c.stato != "completato" %}checked{% endif %}>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+            {% if not ods_list and not condomini_list %}
+            <tr>
+              <td colspan="6" class="text-center text-muted py-3">Nessun servizio in questa distinta</td>
+            </tr>
+            {% endif %}
           </tbody>
         </table>
       </div>
