@@ -19,6 +19,13 @@ class AnagraficaR2Config(AppConfig):
                     'icon': 'bi-building',
                     'active_app': 'anagrafica',
                 },
+                {
+                    'label': 'Privati',
+                    'url': 'anagrafica:privato_list',
+                    'icon': 'bi-person',
+                    'active_app': 'anagrafica',
+                    'active_url_contains': 'privati',
+                },
             ],
             order=10,
         )
