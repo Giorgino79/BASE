@@ -70,6 +70,75 @@
       </div>
     </div>
 
+    <!-- Prodotti a bordo -->
+    <div class="card mb-3">
+      <div class="card-header card-header-primary d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-box-seam me-2"></i>Prodotti a bordo</span>
+        {% if scorte %}
+        <small class="text-white-50">{{ scorte|length }} prodotti</small>
+        {% endif %}
+      </div>
+      {% if fabbisogno %}
+      <div class="px-3 pt-2 pb-1">
+        <div class="fw-semibold small mb-1"><i class="bi bi-tools me-1"></i>Fabbisogno distinte aperte</div>
+        {% for f in fabbisogno %}
+        <div class="d-flex align-items-center gap-2 mb-1 small">
+          {% if f.mancante %}
+          <i class="bi bi-exclamation-triangle-fill text-danger"></i>
+          {% else %}
+          <i class="bi bi-check-circle-fill text-success"></i>
+          {% endif %}
+          <span class="flex-grow-1">{{ f.nome }}</span>
+          <span class="fw-semibold {% if f.mancante %}text-danger{% else %}text-success{% endif %}">
+            {{ f.necessario|floatformat:"-3" }} {{ f.um }}
+          </span>
+          {% if f.mancante %}
+          <span class="badge bg-danger text-white" style="font-size:.7rem;">
+            {% if f.disponibile is not None %}
+              Scorta: {{ f.disponibile|floatformat:"-3" }} {{ f.um }}
+            {% else %}
+              Assente
+            {% endif %}
+          </span>
+          {% endif %}
+        </div>
+        {% endfor %}
+        <hr class="my-2">
+      </div>
+      {% endif %}
+      {% if scorte %}
+      <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0 align-middle">
+          <thead>
+            <tr>
+              <th>Prodotto</th>
+              <th class="text-end">Disponibile</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for s in scorte %}
+            <tr {% if s.quantita <= 0 %}class="table-warning"{% endif %}>
+              <td class="small">{{ s.prodotto.nome_prodotto }}</td>
+              <td class="text-end small fw-semibold
+                  {% if s.quantita <= 0 %}text-danger
+                  {% elif s.prodotto.soglia_scorta_bassa and s.quantita <= s.prodotto.soglia_scorta_bassa %}text-warning
+                  {% endif %}">
+                {{ s.quantita|floatformat:"-3" }}
+                {% if s.prodotto.unita_misura %}<span class="text-muted fw-normal">{{ s.prodotto.unita_misura }}</span>{% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="card-body text-center py-3 text-muted">
+        <i class="bi bi-box-seam" style="font-size:1.5rem;display:block;margin-bottom:.4rem;"></i>
+        <div class="small">Nessun prodotto a bordo</div>
+      </div>
+      {% endif %}
+    </div>
+
     <!-- Manutenzioni recenti -->
     <div class="card mb-3">
       <div class="card-header d-flex justify-content-between align-items-center">

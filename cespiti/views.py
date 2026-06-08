@@ -131,6 +131,44 @@ class AutomezzoDetailView(LoginRequiredMixin, DetailView):
                 ctx["urgenza_assicurazione"] = "in_scadenza"
             else:
                 ctx["urgenza_assicurazione"] = "ok"
+
+        # Scorte a bordo
+        from magazzino.models import ScortaMezzo
+        scorte = list(
+            ScortaMezzo.objects.filter(mezzo=a)
+            .select_related("prodotto")
+            .order_by("prodotto__nome_prodotto")
+        )
+        ctx["scorte"] = scorte
+
+        # Fabbisogno dalle distinte aperte: ConsumoMateriale confermato=False
+        try:
+            from django.db.models import Sum
+            from servizi.models import Distinta, ConsumoMateriale
+            distinte_aperte = Distinta.objects.filter(mezzo=a, stato=Distinta.Stato.APERTA)
+            fabbisogno_qs = (
+                ConsumoMateriale.objects
+                .filter(riga__ods__distinta__in=distinte_aperte, confermato=False)
+                .values("prodotto__pk", "prodotto__nome_prodotto", "prodotto__unita_misura")
+                .annotate(totale=Sum("quantita"))
+                .order_by("prodotto__nome_prodotto")
+            )
+            scorte_map = {s.prodotto_id: s.quantita for s in scorte}
+            fabbisogno = []
+            for row in fabbisogno_qs:
+                pid = row["prodotto__pk"]
+                disponibile = scorte_map.get(pid)
+                fabbisogno.append({
+                    "nome": row["prodotto__nome_prodotto"],
+                    "um": row["prodotto__unita_misura"] or "",
+                    "necessario": row["totale"],
+                    "disponibile": disponibile,
+                    "mancante": disponibile is None or disponibile < row["totale"],
+                })
+            ctx["fabbisogno"] = fabbisogno
+        except Exception:
+            ctx["fabbisogno"] = []
+
         return ctx
 
 
