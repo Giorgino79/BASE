@@ -43,6 +43,38 @@ def dashboard(request):
     return render(request, "servizi/dashboard.html", ctx)
 
 
+@login_required
+def dashboard_tecnico(request):
+    """Dashboard operativa personale del tecnico."""
+    user = request.user
+
+    # Distinte aperte assegnate al tecnico (non ancora chiuse)
+    distinte_aperte = Distinta.objects.filter(
+        tecnico=user, stato=Distinta.Stato.APERTA
+    ).order_by("-data")
+
+    # Mezzo assegnato
+    from cespiti.models import Automezzo
+    mezzo = Automezzo.objects.filter(assegnato_a=user, attivo=True).first()
+
+    # Scorte a bordo del mezzo
+    from magazzino.models import ScortaMezzo
+    scorte = []
+    if mezzo:
+        scorte = list(
+            ScortaMezzo.objects.filter(mezzo=mezzo)
+            .select_related("prodotto")
+            .order_by("prodotto__nome_prodotto")
+        )
+
+    return render(request, "servizi/dashboard_tecnico.html", {
+        "distinte_aperte": distinte_aperte,
+        "n_distinte": distinte_aperte.count(),
+        "mezzo": mezzo,
+        "scorte": scorte,
+    })
+
+
 # ── Servizi ───────────────────────────────────────────────────────────────────
 
 class ServizioListView(LoginRequiredMixin, ListView):
@@ -842,6 +874,9 @@ def crea_distinta(request, tecnico_pk):
     n_cond = condomini_da_includere.update(distinta=distinta)
     n = n_ods + n_cond
 
+    distinta_url_rel = distinta.get_absolute_url()
+    distinta_url_abs = request.build_absolute_uri(distinta_url_rel)
+
     from comunicazioni.models import Promemoria
     Promemoria.objects.create(
         user=request.user,
@@ -853,8 +888,25 @@ def crea_distinta(request, tecnico_pk):
             f"Accedi alla distinta per gestire i servizi."
         ),
         priorita="alta",
+        link_url=distinta_url_rel,
     )
-    messages.success(request, f"Distinta creata con {n_ods} ODS e {n_cond} condomini. Promemoria inviato a {tecnico.get_full_name() or tecnico.username}.")
+
+    # WU automatico al tecnico se ha il numero
+    telefono = getattr(tecnico, 'telefono', '').strip()
+    wu_esito = ""
+    if telefono and telefono not in ('.', '-'):
+        from core.whatsapp_sender import WhatsAppSender, is_configured
+        if is_configured():
+            nome_tecnico = tecnico.get_full_name() or tecnico.username
+            msg = (
+                f"🔧 *Distinta servizi {data.strftime('%d/%m/%Y')}*\n\n"
+                f"Ciao {nome_tecnico}! Hai {n} servizi assegnati.\n"
+                f"Apri la distinta dal link:\n{distinta_url_abs}"
+            )
+            ok = WhatsAppSender.send_message(telefono, msg)
+            wu_esito = " WU inviato." if ok else " WU non inviato (controlla configurazione)."
+
+    messages.success(request, f"Distinta creata con {n_ods} ODS e {n_cond} condomini. Promemoria assegnato a {tecnico.get_full_name() or tecnico.username}.{wu_esito}")
     return redirect(distinta.get_absolute_url())
 
 

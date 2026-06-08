@@ -5,6 +5,7 @@ app_name = "servizi"
 
 urlpatterns = [
     path("", views.dashboard, name="dashboard"),
+    path("tecnico/", views.dashboard_tecnico, name="dashboard_tecnico"),
 
     # Servizi
     path("servizi/",                   views.ServizioListView.as_view(),   name="servizio_list"),

@@ -17,6 +17,13 @@ class ServiziConfig(AppConfig):
                     'icon': 'bi-clipboard-check',
                     'active_app': 'servizi',
                 },
+                {
+                    'label': 'La mia giornata',
+                    'url': 'servizi:dashboard_tecnico',
+                    'icon': 'bi-person-workspace',
+                    'active_app': 'servizi',
+                    'active_url_contains': 'tecnico',
+                },
             ],
             order=30,
         )
