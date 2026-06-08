@@ -281,5 +281,5 @@ RigaUnitaAbitativaEseguiFormSet = inlineformset_factory(
 RigaProdottoCondominioEseguiFormSet = inlineformset_factory(
     CondominioODS, RigaProdottoCondominio,
     form=RigaProdottoCondominioForm,
-    extra=0, can_delete=False,
+    extra=1, can_delete=True,
 )

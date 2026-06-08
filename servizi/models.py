@@ -613,6 +613,10 @@ class RigaProdottoCondominio(models.Model):
         max_digits=12, decimal_places=3, default=Decimal("1.000"),
         verbose_name="Quantità",
     )
+    confermato = models.BooleanField(
+        default=False, verbose_name="Confermato",
+        help_text="True = quantità già scalata da ScortaMezzo",
+    )
 
     class Meta:
         verbose_name = "Prodotto condominio"
@@ -621,3 +625,53 @@ class RigaProdottoCondominio(models.Model):
 
     def __str__(self):
         return f"{self.prodotto} × {self.quantita}"
+
+    def _mezzo_condominio(self):
+        c = self.condominio
+        if c.distinta_id:
+            row = Distinta.objects.filter(pk=c.distinta_id).values("mezzo_id").first()
+            if row and row["mezzo_id"]:
+                from cespiti.models import Automezzo
+                return Automezzo.objects.filter(pk=row["mezzo_id"]).first()
+        if c.tecnico_id:
+            from cespiti.models import Automezzo
+            return Automezzo.objects.filter(assegnato_a_id=c.tecnico_id, attivo=True).first()
+        return None
+
+    def save(self, *args, **kwargs):
+        old_qty = Decimal("0")
+        old_confermato = False
+        if self.pk:
+            old = RigaProdottoCondominio.objects.filter(pk=self.pk).values_list(
+                "quantita", "confermato"
+            ).first()
+            if old:
+                old_qty, old_confermato = old
+                old_qty = old_qty or Decimal("0")
+        super().save(*args, **kwargs)
+        qty_prima = old_qty if old_confermato else Decimal("0")
+        qty_dopo  = self.quantita if self.confermato else Decimal("0")
+        delta = qty_dopo - qty_prima
+        if delta:
+            mezzo = self._mezzo_condominio()
+            if mezzo:
+                from magazzino.models import ScortaMezzo
+                from django.db.models import F
+                sm, _ = ScortaMezzo.objects.get_or_create(
+                    mezzo=mezzo, prodotto=self.prodotto,
+                    defaults={"quantita": Decimal("0")},
+                )
+                ScortaMezzo.objects.filter(pk=sm.pk).update(quantita=F("quantita") - delta)
+
+    def delete(self, *args, **kwargs):
+        if self.confermato:
+            mezzo = self._mezzo_condominio()
+            if mezzo:
+                from magazzino.models import ScortaMezzo
+                from django.db.models import F
+                sm = ScortaMezzo.objects.filter(mezzo=mezzo, prodotto=self.prodotto).first()
+                if sm:
+                    ScortaMezzo.objects.filter(pk=sm.pk).update(
+                        quantita=F("quantita") + self.quantita
+                    )
+        super().delete(*args, **kwargs)

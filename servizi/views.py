@@ -1014,6 +1014,11 @@ def chiudi_distinta_ufficio(request, pk):
         # Riapertura CondominioODS selezionati
         for c in condomini_list:
             if request.POST.get(f"riapri_c_{c.pk}"):
+                # Ripristina stock furgone per i prodotti già confermati
+                for riga in c.prodotti.all():
+                    if riga.confermato:
+                        riga.confermato = False
+                        riga.save(update_fields=["confermato"])
                 c.stato = "da_espletare"
                 c.distinta = None
                 c.save(update_fields=["stato", "distinta"])
@@ -1262,7 +1267,7 @@ def condominio_update(request, pk):
 @login_required
 def condominio_esegui(request, pk):
     condominio = get_object_or_404(
-        CondominioODS.objects.select_related("tecnico", "assistente")
+        CondominioODS.objects.select_related("tecnico", "assistente", "distinta__mezzo")
         .prefetch_related("unita", "prodotti__prodotto"),
         pk=pk,
     )
@@ -1274,9 +1279,14 @@ def condominio_esegui(request, pk):
             fs_unita.save()
             fs_prodotti.save()
         if action == "chiudi":
+            # Scala ScortaMezzo per tutti i prodotti non ancora confermati
+            for riga in condominio.prodotti.all():
+                if not riga.confermato:
+                    riga.confermato = True
+                    riga.save(update_fields=["confermato"])
             condominio.stato = CondominioODS.Stato.COMPLETATO
             condominio.save(update_fields=["stato"])
-            messages.success(request, f"{condominio.numero} chiuso come completato.")
+            messages.success(request, f"{condominio.numero} chiuso. Carico furgone aggiornato.")
             return redirect("servizi:condominio_detail", pk=pk)
         elif action == "torna":
             messages.success(request, "Progresso salvato.")
@@ -1288,6 +1298,26 @@ def condominio_esegui(request, pk):
         fs_unita = RigaUnitaAbitativaEseguiFormSet(instance=condominio, prefix="unita")
         fs_prodotti = RigaProdottoCondominioEseguiFormSet(instance=condominio, prefix="prodotti")
 
+    # Stock furgone per ogni prodotto
+    mezzo = None
+    if condominio.distinta and condominio.distinta.mezzo_id:
+        mezzo = condominio.distinta.mezzo
+    elif condominio.tecnico_id:
+        try:
+            from cespiti.models import Automezzo
+            mezzo = Automezzo.objects.filter(
+                assegnato_a_id=condominio.tecnico_id, attivo=True
+            ).first()
+        except Exception:
+            mezzo = None
+
+    import json as _json
+    scorte_mezzo = {}
+    if mezzo:
+        from magazzino.models import ScortaMezzo
+        for sm in ScortaMezzo.objects.filter(mezzo=mezzo).select_related("prodotto"):
+            scorte_mezzo[sm.prodotto_id] = sm.quantita
+
     importi = {
         str(u.pk): float(u.importo_da_incassare or condominio.prezzo_base)
         for u in condominio.unita.all()
@@ -1297,6 +1327,8 @@ def condominio_esegui(request, pk):
         "fs_unita": fs_unita,
         "fs_prodotti": fs_prodotti,
         "importi_json": importi,
+        "mezzo": mezzo,
+        "scorte_json": _json.dumps({str(k): float(v) for k, v in scorte_mezzo.items()}),
     })
 
 
