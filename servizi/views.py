@@ -1102,7 +1102,7 @@ def chiudi_distinta_ufficio(request, pk):
     condomini_list = list(condomini_qs)
 
     totale_previsto = (
-        sum((o.importo_incassato or Decimal("0")) for o in ods_list if o.incassato) +
+        sum((o.importo_incassato or Decimal("0")) for o in ods_list if o.incassato and o.stato != "annullato") +
         sum(c.totale_incassato for c in condomini_list)
     )
 
@@ -1140,7 +1140,7 @@ def chiudi_distinta_ufficio(request, pk):
             sum(
                 (o.importo_incassato or Decimal("0"))
                 for o in ods_list
-                if o.incassato and not request.POST.get(f"riapri_{o.pk}")
+                if o.incassato and o.stato != "annullato" and not request.POST.get(f"riapri_{o.pk}")
             ) +
             sum(
                 c.totale_incassato

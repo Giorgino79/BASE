@@ -85,7 +85,9 @@
                 {% endif %}
               </td>
               <td class="text-end">
-                {% if o.incassato %}
+                {% if o.stato == "annullato" %}
+                  <span class="text-muted small">—</span>
+                {% elif o.incassato %}
                   <span class="fw-semibold text-success">€ {{ o.importo_incassato|default:"—" }}</span>
                 {% elif o.incasso_al_servizio %}
                   <span class="text-danger small"><i class="bi bi-exclamation-triangle me-1"></i>Da incassare</span>
@@ -94,11 +96,15 @@
                 {% endif %}
               </td>
               <td class="text-center">
+                {% if o.stato == "annullato" %}
+                  <span class="text-muted small" title="Servizio annullato — non riapribile da qui">—</span>
+                {% else %}
                 <div class="form-check d-flex justify-content-center m-0">
                   <input class="form-check-input ods-riapri" type="checkbox"
                          name="riapri_{{ o.pk }}" id="riapri_{{ o.pk }}"
                          {% if o.stato != "completato" %}checked{% endif %}>
                 </div>
+                {% endif %}
               </td>
             </tr>
             {% endfor %}
