@@ -507,6 +507,49 @@ def _next_numero_condominio():
     return f"{prefix}{n:04d}"
 
 
+class CondominioStabile(models.Model):
+    """Anagrafica stabile condominiale con unità abitative ricorrenti."""
+    nome       = models.CharField(max_length=200, verbose_name="Nome stabile")
+    indirizzo  = models.CharField(max_length=300, verbose_name="Indirizzo")
+    prezzo_base = models.DecimalField(
+        max_digits=10, decimal_places=2, verbose_name="Prezzo base per unità",
+        help_text="Prezzo predefinito quando si crea un ODS da questo stabile",
+    )
+    note = models.TextField(blank=True)
+
+    class Meta:
+        verbose_name = "Stabile"
+        verbose_name_plural = "Stabili"
+        ordering = ["nome"]
+
+    def __str__(self):
+        return f"{self.nome} — {self.indirizzo}"
+
+    def get_absolute_url(self):
+        return reverse("servizi:stabile_detail", kwargs={"pk": self.pk})
+
+
+class UnitaAbitativaBase(models.Model):
+    """Unità abitativa fissa di uno stabile (template per gli ODS)."""
+    stabile  = models.ForeignKey(
+        CondominioStabile, on_delete=models.CASCADE, related_name="unita",
+    )
+    nome     = models.CharField(max_length=200, verbose_name="Nome / Intestatario")
+    importo_override = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True,
+        verbose_name="Importo specifico",
+        help_text="Lascia vuoto per usare il prezzo base dello stabile",
+    )
+
+    class Meta:
+        verbose_name = "Unità abitativa base"
+        verbose_name_plural = "Unità abitative base"
+        ordering = ["nome"]
+
+    def __str__(self):
+        return self.nome
+
+
 class CondominioODS(models.Model):
 
     class Stato(models.TextChoices):
@@ -514,6 +557,10 @@ class CondominioODS(models.Model):
         COMPLETATO   = "completato",   "Completato"
         ANNULLATO    = "annullato",    "Annullato"
 
+    stabile    = models.ForeignKey(
+        CondominioStabile, on_delete=models.SET_NULL,
+        null=True, blank=True, related_name="ods_set", verbose_name="Stabile",
+    )
     numero     = models.CharField(max_length=30, unique=True, blank=True)
     titolo     = models.CharField(max_length=200, verbose_name="Titolo servizio")
     indirizzo  = models.CharField(max_length=300, verbose_name="Indirizzo")

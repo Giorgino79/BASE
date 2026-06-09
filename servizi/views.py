@@ -11,12 +11,13 @@ from django.http import JsonResponse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from .models import Servizio, Contratto, ContrattoFiliale, ContrattoFilialeRiga, ContrattoRiga, ODS, ODSRiga, Distinta, ConsumoMateriale, CondominioODS, RigaUnitaAbitativa, RigaProdottoCondominio
+from .models import Servizio, Contratto, ContrattoFiliale, ContrattoFilialeRiga, ContrattoRiga, ODS, ODSRiga, Distinta, ConsumoMateriale, CondominioODS, RigaUnitaAbitativa, RigaProdottoCondominio, CondominioStabile, UnitaAbitativaBase
 from .forms import (
     ServizioForm, ContrattoForm, ContrattoRigaFormSet, ContrattoFilialeRigaFormSet,
     ODSForm, ODSRigaFormSet,
     ConsumoMaterialeForm, ChiudiServizioForm, ProdottoPrevitoForm,
     CondominioODSForm, RigaUnitaAbitativaFormSet, RigaProdottoCondominioFormSet,
+    CondominioStabileForm, UnitaAbitativaBaseFormSet,
     RigaUnitaAbitativaEseguiFormSet, RigaProdottoCondominioEseguiFormSet,
 )
 

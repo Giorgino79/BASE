@@ -1,6 +1,6 @@
 from django import forms
 from django.forms import inlineformset_factory
-from .models import Servizio, Contratto, ContrattoFiliale, ContrattoFilialeRiga, ContrattoRiga, ODS, ODSRiga, ConsumoMateriale, CondominioODS, RigaUnitaAbitativa, RigaProdottoCondominio
+from .models import Servizio, Contratto, ContrattoFiliale, ContrattoFilialeRiga, ContrattoRiga, ODS, ODSRiga, ConsumoMateriale, CondominioODS, RigaUnitaAbitativa, RigaProdottoCondominio, CondominioStabile, UnitaAbitativaBase
 
 _BS = {"class": "form-control"}
 _SEL = {"class": "form-select"}
@@ -222,8 +222,9 @@ class ChiudiServizioForm(forms.Form):
 class CondominioODSForm(forms.ModelForm):
     class Meta:
         model = CondominioODS
-        fields = ["titolo", "indirizzo", "data", "ora", "prezzo_base", "distinta", "tecnico", "assistente", "note"]
+        fields = ["stabile", "titolo", "indirizzo", "data", "ora", "prezzo_base", "distinta", "tecnico", "assistente", "note"]
         widgets = {
+            "stabile":     forms.Select(attrs={**_SEL, "id": "id_stabile"}),
             "titolo":      forms.TextInput(attrs=_BS),
             "indirizzo":   forms.TextInput(attrs=_BS),
             "data":        forms.DateInput(attrs=_DATE),
@@ -283,3 +284,34 @@ RigaProdottoCondominioEseguiFormSet = inlineformset_factory(
     form=RigaProdottoCondominioForm,
     extra=1, can_delete=True,
 )
+
+
+class CondominioStabileForm(forms.ModelForm):
+    class Meta:
+        model = CondominioStabile
+        fields = ["nome", "indirizzo", "prezzo_base", "note"]
+        widgets = {
+            "nome":        forms.TextInput(attrs={**_BS, "placeholder": "Es. Condominio Le Querce"}),
+            "indirizzo":   forms.TextInput(attrs={**_BS, "placeholder": "Via Roma 1, Milano"}),
+            "prezzo_base": forms.NumberInput(attrs={**_BS, "step": "0.01"}),
+            "note":        forms.Textarea(attrs={**_AREA, "placeholder": "Note opzionali"}),
+        }
+
+
+class UnitaAbitativaBaseForm(forms.ModelForm):
+    class Meta:
+        model = UnitaAbitativaBase
+        fields = ["nome", "importo_override"]
+        widgets = {
+            "nome":             forms.TextInput(attrs={**_BS, "placeholder": "Es. Rossi Mario — Int. 3"}),
+            "importo_override": forms.NumberInput(attrs={**_BS, "step": "0.01", "placeholder": "Lascia vuoto per prezzo base"}),
+        }
+
+
+UnitaAbitativaBaseFormSet = inlineformset_factory(
+    CondominioStabile, UnitaAbitativaBase,
+    form=UnitaAbitativaBaseForm,
+    extra=5, can_delete=True, min_num=1, validate_min=True,
+)
+
+
