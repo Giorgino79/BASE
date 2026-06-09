@@ -16,6 +16,7 @@
 
 <form method="post" id="main-form">
   {% csrf_token %}
+  {% if stabile_source %}<input type="hidden" name="stabile_source" value="{{ stabile_source }}">{% endif %}
 
   <div class="row g-3">
     <div class="col-lg-8">

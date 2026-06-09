@@ -1288,6 +1288,14 @@ def condominio_list(request):
 
 @login_required
 def condominio_create(request):
+    stabile_pk = request.GET.get("stabile") or request.POST.get("stabile_source")
+    stabile_obj = None
+    if stabile_pk:
+        try:
+            stabile_obj = CondominioStabile.objects.prefetch_related("unita").get(pk=int(stabile_pk))
+        except (CondominioStabile.DoesNotExist, ValueError):
+            pass
+
     if request.method == "POST":
         form = CondominioODSForm(request.POST)
         fs_unita = RigaUnitaAbitativaFormSet(request.POST, prefix="unita")
@@ -1298,13 +1306,39 @@ def condominio_create(request):
             condominio.save()
             fs_unita.instance = condominio
             fs_unita.save()
+            # Se il formset era vuoto e c'è uno stabile, copia le unità base
+            if stabile_obj and not any(
+                f.cleaned_data.get("nome") for f in fs_unita.forms if not f.cleaned_data.get("DELETE")
+            ):
+                for u in stabile_obj.unita.all():
+                    RigaUnitaAbitativa.objects.create(
+                        condominio=condominio,
+                        nome=u.nome,
+                        importo_da_incassare=u.importo_override,
+                    )
             fs_prodotti.instance = condominio
             fs_prodotti.save()
             messages.success(request, f"Condominio ODS {condominio.numero} creato.")
             return redirect("servizi:condominio_detail", pk=condominio.pk)
     else:
-        form = CondominioODSForm()
-        fs_unita = RigaUnitaAbitativaFormSet(prefix="unita")
+        initial_form = {}
+        if stabile_obj:
+            initial_form = {
+                "stabile": stabile_obj,
+                "titolo": stabile_obj.nome,
+                "indirizzo": stabile_obj.indirizzo,
+                "prezzo_base": stabile_obj.prezzo_base,
+            }
+        form = CondominioODSForm(initial=initial_form)
+        # Pre-popola unità dal formset se arriva da uno stabile
+        if stabile_obj:
+            unita_initial = [
+                {"nome": u.nome, "importo_da_incassare": u.importo_override}
+                for u in stabile_obj.unita.all()
+            ]
+            fs_unita = RigaUnitaAbitativaFormSet(prefix="unita", initial=unita_initial)
+        else:
+            fs_unita = RigaUnitaAbitativaFormSet(prefix="unita")
         fs_prodotti = RigaProdottoCondominioFormSet(prefix="prodotti")
     return render(request, "servizi/condomini/form.html", {
         "form": form,
@@ -1312,6 +1346,7 @@ def condominio_create(request):
         "fs_prodotti": fs_prodotti,
         "titolo": "Nuovo Condominio ODS",
         "back_url": reverse("servizi:condominio_list"),
+        "stabile_source": stabile_pk or "",
     })
 
 
@@ -1479,3 +1514,85 @@ def condominio_salva_riga(request, pk):
         riga.importo_da_incassare = None
     riga.save(update_fields=["servizio_effettuato", "incasso_effettuato", "importo_da_incassare"])
     return JsonResponse({"success": True})
+
+
+# ─── Stabili condominiali ────────────────────────────────────────────────────
+
+@login_required
+def stabile_list(request):
+    stabili = CondominioStabile.objects.prefetch_related("unita").order_by("nome")
+    return render(request, "servizi/stabili/list.html", {"stabili": stabili})
+
+
+@login_required
+def stabile_create(request):
+    if request.method == "POST":
+        form = CondominioStabileForm(request.POST)
+        fs = UnitaAbitativaBaseFormSet(request.POST, prefix="unita")
+        if form.is_valid() and fs.is_valid():
+            stabile = form.save()
+            fs.instance = stabile
+            fs.save()
+            messages.success(request, f"Stabile «{stabile.nome}» creato.")
+            return redirect("servizi:stabile_detail", pk=stabile.pk)
+    else:
+        form = CondominioStabileForm()
+        fs = UnitaAbitativaBaseFormSet(prefix="unita")
+    return render(request, "servizi/stabili/form.html", {
+        "form": form, "fs_unita": fs,
+        "titolo": "Nuovo stabile", "back_url": reverse("servizi:stabile_list"),
+    })
+
+
+@login_required
+def stabile_detail(request, pk):
+    stabile = get_object_or_404(
+        CondominioStabile.objects.prefetch_related("unita"), pk=pk
+    )
+    return render(request, "servizi/stabili/detail.html", {"stabile": stabile})
+
+
+@login_required
+def stabile_update(request, pk):
+    stabile = get_object_or_404(CondominioStabile, pk=pk)
+    if request.method == "POST":
+        form = CondominioStabileForm(request.POST, instance=stabile)
+        fs = UnitaAbitativaBaseFormSet(request.POST, instance=stabile, prefix="unita")
+        if form.is_valid() and fs.is_valid():
+            form.save()
+            fs.save()
+            messages.success(request, "Stabile aggiornato.")
+            return redirect("servizi:stabile_detail", pk=stabile.pk)
+    else:
+        form = CondominioStabileForm(instance=stabile)
+        fs = UnitaAbitativaBaseFormSet(instance=stabile, prefix="unita")
+    return render(request, "servizi/stabili/form.html", {
+        "form": form, "fs_unita": fs,
+        "titolo": f"Modifica {stabile.nome}",
+        "back_url": reverse("servizi:stabile_detail", kwargs={"pk": pk}),
+        "stabile": stabile,
+    })
+
+
+@login_required
+def stabile_delete(request, pk):
+    stabile = get_object_or_404(CondominioStabile, pk=pk)
+    if request.method == "POST":
+        nome = stabile.nome
+        stabile.delete()
+        messages.success(request, f"Stabile «{nome}» eliminato.")
+        return redirect("servizi:stabile_list")
+    return render(request, "servizi/stabili/conferma_elimina.html", {"stabile": stabile})
+
+
+@login_required
+def api_stabile_unita(request, pk):
+    """Restituisce le unità base di uno stabile in JSON per pre-popolare il formset."""
+    stabile = get_object_or_404(CondominioStabile, pk=pk)
+    unita = list(stabile.unita.values("nome", "importo_override"))
+    return JsonResponse({
+        "nome": stabile.nome,
+        "indirizzo": stabile.indirizzo,
+        "prezzo_base": str(stabile.prezzo_base),
+        "unita": unita,
+    })

@@ -57,6 +57,14 @@ urlpatterns = [
     path("condomini/<int:pk>/pdf/",       views.condominio_pdf,        name="condominio_pdf"),
     path("condomini/<int:pk>/salva-riga/", views.condominio_salva_riga, name="condominio_salva_riga"),
 
+    # Stabili condominiali
+    path("stabili/",                    views.stabile_list,   name="stabile_list"),
+    path("stabili/nuovo/",              views.stabile_create, name="stabile_create"),
+    path("stabili/<int:pk>/",           views.stabile_detail, name="stabile_detail"),
+    path("stabili/<int:pk>/modifica/",  views.stabile_update, name="stabile_update"),
+    path("stabili/<int:pk>/elimina/",   views.stabile_delete, name="stabile_delete"),
+    path("api/stabile-unita/<int:pk>/", views.api_stabile_unita, name="api_stabile_unita"),
+
     # API
     path("api/prezzo-contratto/", views.api_prezzo_contratto, name="api_prezzo_contratto"),
 ]

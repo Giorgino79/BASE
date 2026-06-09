@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Elimina {{ stabile.nome }}{% endblock %}
+{% block content %}
+<div class="page-header mb-4">
+  <h1><i class="bi bi-trash me-2 text-danger"></i>Elimina stabile</h1>
+</div>
+<div class="card" style="max-width:500px;">
+  <div class="card-body">
+    <p>Sei sicuro di voler eliminare lo stabile <strong>{{ stabile.nome }}</strong>?</p>
+    <p class="text-muted small">Verranno eliminate anche le {{ stabile.unita.count }} unità abitative associate.</p>
+    <form method="post" class="d-flex gap-2">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-danger"><i class="bi bi-trash me-1"></i>Elimina</button>
+      <a href="{{ stabile.get_absolute_url }}" class="btn btn-outline-secondary">Annulla</a>
+    </form>
+  </div>
+</div>
+{% endblock %}
