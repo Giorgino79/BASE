@@ -192,15 +192,19 @@
                      value="{{ ods.prezzo_sum|default:'' }}" class="form-control">
             </div>
             {% endif %}
-            {# Prodotti previsti: conferma quantità e spunta quelli usati #}
+            {# Prodotti previsti: cambia prodotto, quantità e spunta quelli usati #}
             <p class="small fw-semibold mb-1 mt-2"><i class="bi bi-box-seam me-1"></i>Materiali previsti:</p>
             {% for r in ods.righe.all %}{% for c in r.consumi.all %}{% if not c.confermato %}
-            <div class="d-flex align-items-center gap-2 mb-1">
+            <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
               <input type="checkbox" name="prod-confermato-{{ c.pk }}"
                      class="form-check-input flex-shrink-0" checked>
-              <span class="small flex-grow-1">{{ c.prodotto }}</span>
+              <select name="prod-prodotto-{{ c.pk }}" class="form-select form-select-sm" style="min-width:0;flex:1;">
+                {% for p in prodotti_attivi %}
+                <option value="{{ p.pk }}" {% if p.pk == c.prodotto_id %}selected{% endif %}>{{ p.nome_prodotto }}</option>
+                {% endfor %}
+              </select>
               <input type="number" name="prod-quantita-{{ c.pk }}" value="{{ c.quantita }}"
-                     step="0.001" min="0.001" class="form-control form-control-sm" style="width:80px">
+                     step="0.001" min="0.001" class="form-control form-control-sm flex-shrink-0" style="width:80px">
             </div>
             {% endif %}{% endfor %}{% endfor %}
             {# Prodotti aggiuntivi non previsti #}

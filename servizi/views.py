@@ -838,6 +838,8 @@ class DistintaDetailView(LoginRequiredMixin, DetailView):
         ctx["chiudi_form"] = ChiudiServizioForm()
         ctx["consumo_form"] = ConsumoMaterialeForm(mezzo=mezzo)
         ctx["chiudi_choices"] = ChiudiServizioForm().fields["modalita_pagamento"].choices
+        from magazzino.models import Prodotto
+        ctx["prodotti_attivi"] = list(Prodotto.objects.filter(attivo=True).order_by("nome_prodotto"))
         return ctx
 
 
@@ -967,13 +969,18 @@ def chiudi_servizio_distinta(request, ods_pk):
                 for c in ConsumoMateriale.objects.filter(riga=riga, confermato=False):
                     qty_str = request.POST.get(f"prod-quantita-{c.pk}", "").strip()
                     confirmed = f"prod-confermato-{c.pk}" in request.POST
+                    new_prod_id = request.POST.get(f"prod-prodotto-{c.pk}", "").strip()
                     try:
                         qty = Decimal(qty_str) if qty_str else c.quantita
                     except InvalidOperation:
                         qty = c.quantita
-                    if confirmed or qty != c.quantita:
-                        c.confermato = confirmed
-                        c.quantita = qty
+                    changed = (confirmed != c.confermato) or (qty != c.quantita)
+                    if new_prod_id and str(new_prod_id) != str(c.prodotto_id):
+                        c.prodotto_id = int(new_prod_id)
+                        changed = True
+                    c.confermato = confirmed
+                    c.quantita = qty
+                    if changed:
                         c.save()
 
             # Prodotti aggiuntivi non previsti (aggiunti sul campo)
