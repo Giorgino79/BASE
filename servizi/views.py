@@ -1280,7 +1280,7 @@ def situazione_incassi(request):
 @login_required
 def condominio_list(request):
     q = request.GET.get("q", "")
-    qs = CondominioODS.objects.select_related("tecnico", "assistente").order_by("-data", "-created_at")
+    qs = CondominioODS.objects.select_related("tecnico", "assistente", "distinta").order_by("-data", "-created_at")
     if q:
         qs = qs.filter(Q(titolo__icontains=q) | Q(indirizzo__icontains=q) | Q(numero__icontains=q))
     return render(request, "servizi/condomini/list.html", {"condomini": qs, "q": q})

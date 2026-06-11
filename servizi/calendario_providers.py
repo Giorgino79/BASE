@@ -12,8 +12,6 @@ def get_ods_eventi(user, start_date, end_date):
         "filiale__cliente", "privato", "tecnico"
     ).prefetch_related("righe__servizio").exclude(stato__in=["completato", "annullato"])
 
-    if start_date:
-        qs = qs.filter(data_servizio__gte=start_date.date())
     if end_date:
         qs = qs.filter(data_servizio__lte=end_date.date())
 
@@ -74,8 +72,6 @@ def get_condomini_eventi(user, start_date, end_date):
         "tecnico", "assistente"
     ).exclude(stato__in=["completato", "annullato"])
 
-    if start_date:
-        qs = qs.filter(data__gte=start_date.date())
     if end_date:
         qs = qs.filter(data__lte=end_date.date())
 
