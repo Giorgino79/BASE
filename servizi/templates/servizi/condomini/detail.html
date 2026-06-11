@@ -132,6 +132,36 @@
       </div>
     </div>
 
+    {# Prodotti consumati #}
+    <div class="card mb-3">
+      <div class="card-header card-header-primary d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-box-seam me-2"></i>Prodotti consumati ({{ condominio.prodotti.count }})</span>
+        <a href="{% url 'servizi:condominio_update' condominio.pk %}" class="btn btn-sm btn-outline-light">
+          <i class="bi bi-pencil me-1"></i>Modifica
+        </a>
+      </div>
+      <div class="table-responsive">
+        <table class="table mb-0 align-middle">
+          <thead class="bg-brand text-white">
+            <tr>
+              <th>Prodotto</th>
+              <th class="text-end" style="width:120px">Quantità</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in condominio.prodotti.all %}
+            <tr>
+              <td>{{ p.prodotto.nome_prodotto }}</td>
+              <td class="text-end fw-semibold">{{ p.quantita }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="2" class="text-muted text-center py-3">Nessun prodotto registrato</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
   </div>
 
   <div class="col-lg-3">

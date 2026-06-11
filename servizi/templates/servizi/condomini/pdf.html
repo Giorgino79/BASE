@@ -110,6 +110,26 @@
   {% endif %}
 </table>
 
+{% if prodotti %}
+<div class="section-title">Prodotti consumati</div>
+<table class="data">
+  <thead>
+    <tr>
+      <th>Prodotto</th>
+      <th class="right" style="width:120px">Quantità</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for p in prodotti %}
+    <tr>
+      <td>{{ p.prodotto.nome_prodotto }}</td>
+      <td class="right">{{ p.quantita }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
 <div class="footer">
   Report generato il {{ oggi|date:"d/m/Y" }} — {{ condominio.numero }}
 </div>
