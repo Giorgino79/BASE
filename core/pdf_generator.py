@@ -105,6 +105,7 @@ def generate_pdf_response(
     title: str = "Report",
     headers: List[str] = None,
     landscape: bool = False,
+    totals: Dict[str, Any] = None,
 ) -> HttpResponse:
     """
     Genera un file PDF con tabella e lo ritorna come HttpResponse.
@@ -202,6 +203,19 @@ def generate_pdf_response(
 
             table_data.append(row)
 
+        # Riga totali
+        if totals:
+            totals_row = []
+            for header in headers:
+                val = totals.get(header, "")
+                if val == "" or val is None:
+                    totals_row.append("")
+                elif isinstance(val, float):
+                    totals_row.append(f"{val:.2f}")
+                else:
+                    totals_row.append(str(val))
+            table_data.append(totals_row)
+
         # Distribuisce le colonne su tutta la larghezza utile
         n_cols = len(headers)
         usable_w = page_size[0] - 2 * margin
@@ -245,6 +259,14 @@ def generate_pdf_response(
                 ),
             ]
         )
+
+        if totals:
+            last = len(table_data) - 1
+            table_style.add("BACKGROUND",   (0, last), (-1, last), colors.HexColor("#dce8f5"))
+            table_style.add("FONTNAME",     (0, last), (-1, last), "Helvetica-Bold")
+            table_style.add("TEXTCOLOR",    (0, last), (-1, last), colors.HexColor("#1a3a5c"))
+            table_style.add("TOPPADDING",   (0, last), (-1, last), 6)
+            table_style.add("BOTTOMPADDING",(0, last), (-1, last), 6)
 
         table.setStyle(table_style)
         elements.append(table)

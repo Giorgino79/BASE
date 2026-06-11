@@ -1362,5 +1362,17 @@ def giornate_export_pdf(request):
     else:
         title = "Giornate Lavorative - Tutti i dipendenti"
 
+    totals = {
+        "Ore Mat.":    round(sum(r.get("Ore Mat.", 0) or 0 for r in data), 2),
+        "Ore Pom.":    round(sum(r.get("Ore Pom.", 0) or 0 for r in data), 2),
+        "Ore Notte":   round(sum(r.get("Ore Notte", 0) or 0 for r in data), 2),
+        "Ore Totali":  round(sum(r.get("Ore Totali", 0) or 0 for r in data), 2),
+        "Straord.":    round(sum(r.get("Straord.", 0) or 0 for r in data), 2),
+    }
+    if show_dipendente:
+        totals["Dipendente"] = "TOTALE"
+    else:
+        totals["Data"] = "TOTALE"
+
     filename = f"giornate_{timezone.now().strftime('%Y%m%d')}"
-    return generate_pdf_response(data, filename, title=title, headers=base_headers, landscape=True)
+    return generate_pdf_response(data, filename, title=title, headers=base_headers, landscape=True, totals=totals)
