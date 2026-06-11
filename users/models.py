@@ -10,10 +10,16 @@ Include:
 - LetteraRichiamo (lettere disciplinari)
 """
 
+from datetime import date, datetime
+
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.core.exceptions import ValidationError
 from core.mixins import TimestampMixin, AllegatiMixin, SoftDeleteMixin
+
+
+def _ora_default():
+    return datetime.now().time()
 
 
 # ============================================================================
@@ -312,8 +318,8 @@ class Timbratura(TimestampMixin):
     user = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name="timbrature", verbose_name="User"
     )
-    data = models.DateField("Data", auto_now_add=True)
-    ora = models.TimeField("Ora", auto_now_add=True)
+    data = models.DateField("Data", default=date.today)
+    ora = models.TimeField("Ora", default=_ora_default)
     tipo = models.CharField("Tipo", max_length=10, choices=TIPO_CHOICES)
     turno = models.CharField("Turno", max_length=15, choices=TURNO_CHOICES)
     latitudine = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)

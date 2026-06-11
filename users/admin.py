@@ -81,10 +81,11 @@ class UserAdmin(BaseUserAdmin):
 
 @admin.register(Timbratura)
 class TimbraturaAdmin(admin.ModelAdmin):
-    list_display = ["user", "data", "ora", "tipo", "turno"]
+    list_display = ["user", "data", "ora", "tipo", "turno", "note"]
     list_filter = ["tipo", "turno", "data"]
     search_fields = ["user__username", "user__first_name", "user__last_name"]
     date_hierarchy = "data"
+    fields = ["user", "data", "ora", "tipo", "turno", "note", "latitudine", "longitudine"]
 
 
 @admin.register(GiornataLavorativa)
