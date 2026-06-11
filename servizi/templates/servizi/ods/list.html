@@ -18,63 +18,124 @@
 
 <div class="card mb-3">
   <div class="card-body py-2">
-    <form method="get" class="row g-2 align-items-end">
-      <div class="col-md-5">
-        <div class="input-group input-group-sm">
-          <span class="input-group-text"><i class="bi bi-search"></i></span>
-          <input type="text" name="q" value="{{ q }}" class="form-control" placeholder="Numero, cliente, servizio…">
-        </div>
+    <form method="get" class="d-flex gap-2 align-items-end flex-wrap">
+      <div class="input-group input-group-sm" style="max-width:340px">
+        <span class="input-group-text"><i class="bi bi-search"></i></span>
+        <input type="text" name="q" value="{{ q }}" class="form-control" placeholder="Numero, cliente, titolo…">
       </div>
-      <div class="col-md-2">
-        <select name="stato" class="form-select form-select-sm">
-          <option value="">Tutti gli stati</option>
-          {% for val, label in stato_choices %}
-          <option value="{{ val }}" {% if stato_sel == val %}selected{% endif %}>{{ label }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div class="col-md-2">
-        <button type="submit" class="btn btn-sm btn-outline-secondary w-100">Filtra</button>
-      </div>
+      <button type="submit" class="btn btn-sm btn-outline-secondary">Filtra</button>
+      {% if q %}<a href="{% url 'servizi:ods_list' %}" class="btn btn-sm btn-outline-secondary">Azzera</a>{% endif %}
     </form>
   </div>
 </div>
 
-<div class="card">
+{# ── Tabella 1: in corso / da espletare ── #}
+<div class="card mb-4">
+  <div class="card-header card-header-primary d-flex justify-content-between align-items-center">
+    <span><i class="bi bi-hourglass-split me-2"></i>Da espletare / In corso ({{ pending|length }})</span>
+  </div>
   <div class="table-responsive">
-    <table class="table mb-0">
+    <table class="table mb-0 align-middle">
       <thead class="bg-brand text-white">
-        <tr><th>Numero</th><th>Cliente</th><th>Servizio</th><th>Data</th><th>Prezzo</th><th>Tecnico</th><th>Stato</th><th></th></tr>
+        <tr>
+          <th>Numero</th>
+          <th class="text-center" style="width:90px">Tipo</th>
+          <th>Cliente / Titolo</th>
+          <th>Servizio</th>
+          <th>Data</th>
+          <th>Tecnico</th>
+          <th>Stato</th>
+          <th></th>
+        </tr>
       </thead>
       <tbody>
-        {% for o in ods_list %}
+        {% for r in pending %}
         <tr>
-          <td class="fw-semibold"><a href="{{ o.get_absolute_url }}" class="text-brand text-decoration-none">{{ o.numero }}</a></td>
-          <td class="small">{{ o.cliente_display }}</td>
-          <td class="small">{{ o.servizio_principale|default:"—" }}</td>
-          <td class="text-muted small">{{ o.data_servizio|date:"d/m/Y" }}</td>
-          <td class="text-end small">{% if o.prezzo_totale %}€ {{ o.prezzo_totale }}{% else %}<em class="text-muted">—</em>{% endif %}</td>
-          <td class="text-muted small">{{ o.tecnico.get_full_name|default:"—" }}</td>
-          <td>
-            {% if o.stato == "da_espletare" %}<span class="badge badge-ko">Da espletare</span>
-            {% elif o.stato == "programmato" %}<span class="badge badge-wait">Programmato</span>
-            {% elif o.stato == "completato" %}<span class="badge badge-ok">Completato</span>
-            {% else %}<span class="badge badge-ko">Annullato</span>{% endif %}
+          <td class="fw-semibold">
+            <a href="{{ r.url }}" class="text-brand text-decoration-none">{{ r.numero }}</a>
           </td>
-          <td class="text-end"><a href="{{ o.get_absolute_url }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-eye"></i></a></td>
+          <td class="text-center">
+            {% if r.tipo == "ODS" %}
+              <span class="badge bg-secondary">ODS</span>
+            {% else %}
+              <span class="badge bg-primary">Cond.</span>
+            {% endif %}
+          </td>
+          <td class="small">{{ r.display }}</td>
+          <td class="small text-muted">{{ r.servizio }}</td>
+          <td class="small text-nowrap">{{ r.data|date:"d/m/Y" }}</td>
+          <td class="small">{{ r.tecnico.get_full_name|default:"—" }}</td>
+          <td>
+            {% if r.stato == "da_espletare" %}
+              <span class="badge badge-ko">Da espletare</span>
+            {% elif r.stato == "programmato" %}
+              <span class="badge badge-wait">Programmato</span>
+            {% endif %}
+          </td>
+          <td class="text-end">
+            <a href="{{ r.url }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-eye"></i></a>
+          </td>
         </tr>
         {% empty %}
-        <tr><td colspan="8" class="text-center text-muted py-3"><i class="bi bi-inbox me-2"></i>Nessun ordine trovato</td></tr>
+        <tr><td colspan="8" class="text-center text-muted py-3"><i class="bi bi-check2-all me-2 text-success"></i>Tutti i servizi sono stati espletati</td></tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
 </div>
-{% if is_paginated %}
-<nav class="mt-3"><ul class="pagination pagination-sm justify-content-center">
-  {% if page_obj.has_previous %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}&q={{ q }}&stato={{ stato_sel }}">«</a></li>{% endif %}
-  <li class="page-item disabled"><span class="page-link">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span></li>
-  {% if page_obj.has_next %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}&q={{ q }}&stato={{ stato_sel }}">»</a></li>{% endif %}
-</ul></nav>
-{% endif %}
+
+{# ── Tabella 2: ultimi 10 espletati ── #}
+<div class="card">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <span><i class="bi bi-check2-circle me-2 text-success"></i>Ultimi espletati</span>
+  </div>
+  <div class="table-responsive">
+    <table class="table mb-0 align-middle">
+      <thead class="table-light">
+        <tr>
+          <th>Numero</th>
+          <th class="text-center" style="width:90px">Tipo</th>
+          <th>Cliente / Titolo</th>
+          <th>Servizio</th>
+          <th>Data</th>
+          <th>Tecnico</th>
+          <th>Stato</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in recenti %}
+        <tr class="text-muted">
+          <td class="fw-semibold">
+            <a href="{{ r.url }}" class="text-decoration-none text-muted">{{ r.numero }}</a>
+          </td>
+          <td class="text-center">
+            {% if r.tipo == "ODS" %}
+              <span class="badge bg-secondary">ODS</span>
+            {% else %}
+              <span class="badge bg-primary">Cond.</span>
+            {% endif %}
+          </td>
+          <td class="small">{{ r.display }}</td>
+          <td class="small">{{ r.servizio }}</td>
+          <td class="small text-nowrap">{{ r.data|date:"d/m/Y" }}</td>
+          <td class="small">{{ r.tecnico.get_full_name|default:"—" }}</td>
+          <td>
+            {% if r.stato == "completato" %}
+              <span class="badge badge-ok">Completato</span>
+            {% else %}
+              <span class="badge badge-ko">Annullato</span>
+            {% endif %}
+          </td>
+          <td class="text-end">
+            <a href="{{ r.url }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-eye"></i></a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="8" class="text-center text-muted py-3"><i class="bi bi-inbox me-2"></i>Nessun servizio espletato</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
 {% endblock %}

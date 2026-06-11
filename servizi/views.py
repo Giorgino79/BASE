@@ -390,37 +390,79 @@ def contratto_pdf(request, pk):
 
 # ── ODS ───────────────────────────────────────────────────────────────────────
 
-class ODSListView(LoginRequiredMixin, ListView):
-    model = ODS
-    template_name = "servizi/ods/list.html"
-    context_object_name = "ods_list"
-    paginate_by = 25
+@login_required
+def ods_list(request):
+    from datetime import date as _date
 
-    def get_queryset(self):
-        qs = ODS.objects.select_related(
-            "filiale__cliente", "privato", "tecnico"
-        ).prefetch_related("righe__servizio").order_by("-data_servizio", "-created_at")
-        q = self.request.GET.get("q", "").strip()
-        if q:
-            qs = qs.filter(
-                Q(numero__icontains=q) |
-                Q(filiale__cliente__ragione_sociale__icontains=q) |
-                Q(filiale__nome__icontains=q) |
-                Q(privato__cognome__icontains=q) |
-                Q(privato__nome__icontains=q) |
-                Q(righe__servizio__nome__icontains=q)
-            ).distinct()
-        stato = self.request.GET.get("stato", "")
-        if stato:
-            qs = qs.filter(stato=stato)
-        return qs
+    q = request.GET.get("q", "").strip()
+    PENDING = ["da_espletare", "programmato"]
+    DONE    = ["completato", "annullato"]
 
-    def get_context_data(self, **kwargs):
-        ctx = super().get_context_data(**kwargs)
-        ctx["stato_choices"] = ODS.Stato.choices
-        ctx["stato_sel"] = self.request.GET.get("stato", "")
-        ctx["q"] = self.request.GET.get("q", "")
-        return ctx
+    # ── ODS pending ──────────────────────────────────────────────
+    ods_pend_qs = ODS.objects.select_related(
+        "filiale__cliente", "privato", "tecnico"
+    ).prefetch_related("righe__servizio").filter(stato__in=PENDING)
+    if q:
+        ods_pend_qs = ods_pend_qs.filter(
+            Q(numero__icontains=q) |
+            Q(filiale__cliente__ragione_sociale__icontains=q) |
+            Q(filiale__nome__icontains=q) |
+            Q(privato__cognome__icontains=q) |
+            Q(privato__nome__icontains=q)
+        ).distinct()
+
+    # ── Condomini pending ─────────────────────────────────────────
+    con_pend_qs = CondominioODS.objects.select_related("tecnico").filter(stato__in=PENDING)
+    if q:
+        con_pend_qs = con_pend_qs.filter(
+            Q(numero__icontains=q) | Q(titolo__icontains=q)
+        ).distinct()
+
+    # ── Normalize ─────────────────────────────────────────────────
+    def _ods(o):
+        return {
+            "tipo": "ODS", "numero": o.numero,
+            "display": o.cliente_display,
+            "servizio": str(o.servizio_principale) if o.servizio_principale else "—",
+            "data": o.data_servizio, "tecnico": o.tecnico,
+            "stato": o.stato, "stato_display": o.get_stato_display(),
+            "url": o.get_absolute_url(),
+        }
+
+    def _con(c):
+        return {
+            "tipo": "Condominio", "numero": c.numero,
+            "display": c.titolo, "servizio": "—",
+            "data": c.data, "tecnico": c.tecnico,
+            "stato": c.stato, "stato_display": c.get_stato_display(),
+            "url": c.get_absolute_url(),
+        }
+
+    pending = sorted(
+        [_ods(o) for o in ods_pend_qs] + [_con(c) for c in con_pend_qs],
+        key=lambda x: x["data"] or _date.min,
+    )
+
+    # ── Ultimi 10 completati/annullati ────────────────────────────
+    ods_done = list(ODS.objects.select_related(
+        "filiale__cliente", "privato", "tecnico"
+    ).prefetch_related("righe__servizio").filter(
+        stato__in=DONE
+    ).order_by("-data_servizio", "-created_at")[:10])
+
+    con_done = list(CondominioODS.objects.select_related("tecnico").filter(
+        stato__in=DONE
+    ).order_by("-data", "-created_at")[:10])
+
+    recenti = sorted(
+        [_ods(o) for o in ods_done] + [_con(c) for c in con_done],
+        key=lambda x: x["data"] or _date.min,
+        reverse=True,
+    )[:10]
+
+    return render(request, "servizi/ods/list.html", {
+        "pending": pending, "recenti": recenti, "q": q,
+    })
 
 
 class ODSDetailView(LoginRequiredMixin, DetailView):

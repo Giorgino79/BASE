@@ -24,7 +24,7 @@ urlpatterns = [
     path("contratti/<int:pk>/pdf/",                 views.contratto_pdf,                 name="contratto_pdf"),
 
     # ODS
-    path("ods/",                   views.ODSListView.as_view(),   name="ods_list"),
+    path("ods/",                   views.ods_list,                name="ods_list"),
     path("ods/nuovo/",             views.ODSCreateView.as_view(), name="ods_create"),
     path("ods/<int:pk>/",          views.ODSDetailView.as_view(), name="ods_detail"),
     path("ods/<int:pk>/modifica/", views.ODSUpdateView.as_view(), name="ods_update"),
