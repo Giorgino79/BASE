@@ -1297,14 +1297,17 @@ def _row_giornata(g, tmap, is_staff):
 def giornate_export_excel(request):
     from core.excel_generator import generate_excel_response
 
+    user_filter = request.GET.get("user")
+    is_staff = request.user.is_staff
+    show_dipendente = is_staff and not user_filter
+
     giornate = list(_build_giornate_queryset(request))
     tmap = _timbrature_map(giornate)
-    is_staff = request.user.is_staff
 
-    data = [_row_giornata(g, tmap, is_staff) for g in giornate]
+    data = [_row_giornata(g, tmap, show_dipendente) for g in giornate]
 
     base_headers = []
-    if is_staff:
+    if show_dipendente:
         base_headers.append("Dipendente")
     base_headers += [
         "Data",
@@ -1325,14 +1328,17 @@ def giornate_export_excel(request):
 def giornate_export_pdf(request):
     from core.pdf_generator import generate_pdf_response
 
+    user_filter = request.GET.get("user")
+    is_staff = request.user.is_staff
+    show_dipendente = is_staff and not user_filter
+
     giornate = list(_build_giornate_queryset(request))
     tmap = _timbrature_map(giornate)
-    is_staff = request.user.is_staff
 
-    data = [_row_giornata(g, tmap, is_staff) for g in giornate]
+    data = [_row_giornata(g, tmap, show_dipendente) for g in giornate]
 
     base_headers = []
-    if is_staff:
+    if show_dipendente:
         base_headers.append("Dipendente")
     base_headers += [
         "Data",
@@ -1345,7 +1351,6 @@ def giornate_export_pdf(request):
     if any(r.get("Note") for r in data):
         base_headers.append("Note")
 
-    user_filter = request.GET.get("user")
     if not is_staff:
         title = f"Giornate Lavorative - {request.user.get_full_name() or request.user.username}"
     elif user_filter:
