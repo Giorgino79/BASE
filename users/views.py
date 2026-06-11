@@ -625,16 +625,23 @@ def giornata_lavorativa_list_view(request):
         giornate = request.user.giornate.all().order_by("-data")
         tutti_utenti = []
 
-    # Filtro per mese (input type=month → "YYYY-MM")
-    mese = request.GET.get("mese")
-    if mese:
+    data_da = request.GET.get("data_da", "").strip()
+    data_a  = request.GET.get("data_a", "").strip()
+    mese    = request.GET.get("mese", "").strip()
+
+    if data_da or data_a:
+        mese = ""
+        if data_da:
+            giornate = giornate.filter(data__gte=data_da)
+        if data_a:
+            giornate = giornate.filter(data__lte=data_a)
+    elif mese:
         try:
             anno, m = mese.split("-")
             giornate = giornate.filter(data__year=int(anno), data__month=int(m))
         except (ValueError, AttributeError):
-            mese = None
+            mese = ""
     else:
-        # Default: mese corrente
         oggi = date.today()
         mese = oggi.strftime("%Y-%m")
         giornate = giornate.filter(data__year=oggi.year, data__month=oggi.month)
@@ -653,7 +660,7 @@ def giornata_lavorativa_list_view(request):
     # URL PDF con i filtri correnti (per il modal invia)
     from django.urls import reverse as _reverse
     from urllib.parse import urlencode as _urlencode
-    _pdf_params = {k: v for k, v in [("mese", mese), ("stato", stato)] if v}
+    _pdf_params = {k: v for k, v in [("mese", mese), ("stato", stato), ("data_da", data_da), ("data_a", data_a)] if v}
     if request.user.is_staff and user_filter:
         _pdf_params["user"] = user_filter
     giornate_pdf_url = _reverse("users:giornate_export_pdf") + (
@@ -675,6 +682,8 @@ def giornata_lavorativa_list_view(request):
         "straordinari": straordinari,
         "media_ore": media_ore,
         "mese": mese,
+        "data_da": data_da,
+        "data_a": data_a,
         "tutti_utenti": tutti_utenti,
         "locked_user": None if request.user.is_staff else request.user,
         "giornate_pdf_url": giornate_pdf_url,
@@ -1218,8 +1227,16 @@ def _build_giornate_queryset(request):
     else:
         qs = request.user.giornate.all().select_related("user").order_by("-data")
 
-    mese = request.GET.get("mese")
-    if mese:
+    data_da = request.GET.get("data_da", "").strip()
+    data_a  = request.GET.get("data_a", "").strip()
+    mese    = request.GET.get("mese", "").strip()
+
+    if data_da or data_a:
+        if data_da:
+            qs = qs.filter(data__gte=data_da)
+        if data_a:
+            qs = qs.filter(data__lte=data_a)
+    elif mese:
         try:
             anno, mese_num = mese.split("-")
             qs = qs.filter(data__year=anno, data__month=mese_num)
@@ -1328,10 +1345,17 @@ def giornate_export_pdf(request):
     if any(r.get("Note") for r in data):
         base_headers.append("Note")
 
-    if is_staff:
-        title = "Giornate Lavorative - Tutti i dipendenti"
-    else:
+    user_filter = request.GET.get("user")
+    if not is_staff:
         title = f"Giornate Lavorative - {request.user.get_full_name() or request.user.username}"
+    elif user_filter:
+        try:
+            _u = User.objects.get(pk=user_filter)
+            title = f"Giornate Lavorative - {_u.get_full_name() or _u.username}"
+        except User.DoesNotExist:
+            title = "Giornate Lavorative"
+    else:
+        title = "Giornate Lavorative - Tutti i dipendenti"
 
     filename = f"giornate_{timezone.now().strftime('%Y%m%d')}"
     return generate_pdf_response(data, filename, title=title, headers=base_headers, landscape=True)

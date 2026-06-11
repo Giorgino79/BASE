@@ -182,11 +182,16 @@
         </div>
         <div id="timbra-msg" class="mt-2" style="display:none;font-size:.85rem;"></div>
       </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Annulla</button>
-        <button type="button" class="btn btn-primary btn-sm" id="timbra-submit">
-          <i class="bi bi-check-lg me-1"></i>Conferma
+      <div class="modal-footer d-flex justify-content-between">
+        <button type="button" class="btn btn-outline-danger btn-sm" id="chiudi-giornata-btn" title="Calcola le ore e segna la giornata come conclusa">
+          <i class="bi bi-lock me-1"></i>Chiudi giornata
         </button>
+        <div class="d-flex gap-2">
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Annulla</button>
+          <button type="button" class="btn btn-primary btn-sm" id="timbra-submit">
+            <i class="bi bi-check-lg me-1"></i>Conferma
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -305,6 +310,40 @@
     btn.disabled = false;
     selTurno.disabled = false;
   });
+
+  const chiudiBtn = document.getElementById('chiudi-giornata-btn');
+  if (chiudiBtn) {
+    chiudiBtn.addEventListener('click', function() {
+      chiudiBtn.disabled = true;
+      fetch('{% url "users:chiudi_giornata" %}', {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': '{{ csrf_token }}',
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: '',
+      })
+      .then(r => r.json())
+      .then(data => {
+        msg.style.display = '';
+        if (data.success) {
+          msg.className = 'mt-2 text-success';
+          msg.textContent = data.message;
+          setTimeout(() => bootstrap.Modal.getInstance(modal).hide(), 2000);
+        } else {
+          msg.className = 'mt-2 text-danger';
+          msg.textContent = data.error || 'Errore nella chiusura giornata.';
+          chiudiBtn.disabled = false;
+        }
+      })
+      .catch(() => {
+        msg.style.display = '';
+        msg.className = 'mt-2 text-danger';
+        msg.textContent = 'Errore di connessione.';
+        chiudiBtn.disabled = false;
+      });
+    });
+  }
 })();
 </script>
 {% block extra_js %}{% endblock %}

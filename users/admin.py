@@ -87,6 +87,26 @@ class TimbraturaAdmin(admin.ModelAdmin):
     date_hierarchy = "data"
     fields = ["user", "data", "ora", "tipo", "turno", "note", "latitudine", "longitudine"]
 
+    def save_model(self, request, obj, form, change):
+        super().save_model(request, obj, form, change)
+        giornata, _ = GiornataLavorativa.objects.get_or_create(user=obj.user, data=obj.data)
+        giornata.calcola_ore()
+
+    def delete_model(self, request, obj):
+        user, data = obj.user, obj.data
+        super().delete_model(request, obj)
+        try:
+            giornata = GiornataLavorativa.objects.get(user=user, data=data)
+            giornata.calcola_ore()
+        except GiornataLavorativa.DoesNotExist:
+            pass
+
+
+def _ricalcola_ore(modeladmin, request, queryset):
+    for g in queryset:
+        g.calcola_ore()
+_ricalcola_ore.short_description = "Ricalcola ore da timbrature"
+
 
 @admin.register(GiornataLavorativa)
 class GiornataLavorativaAdmin(admin.ModelAdmin):
@@ -94,6 +114,7 @@ class GiornataLavorativaAdmin(admin.ModelAdmin):
     list_filter = ["conclusa", "data"]
     search_fields = ["user__username", "user__first_name", "user__last_name"]
     date_hierarchy = "data"
+    actions = [_ricalcola_ore]
 
 
 @admin.register(RichiestaFerie)

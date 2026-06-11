@@ -37,7 +37,7 @@
 <div class="card card-body mb-3">
   <form method="get" class="row g-2 align-items-end">
     {% if user.is_staff %}
-    <div class="col-md-4">
+    <div class="col-md-3">
       <label class="form-label-sm">Dipendente</label>
       <select name="user" id="select-dipendente" class="form-select form-select-sm">
         <option value="">Tutti</option>
@@ -49,7 +49,7 @@
       </select>
     </div>
     {% else %}
-    <div class="col-md-4">
+    <div class="col-md-3">
       <label class="form-label-sm">Dipendente</label>
       <input type="text" class="form-control form-control-sm"
              value="{{ locked_user.get_full_name|default:locked_user.username }}" disabled>
@@ -60,6 +60,14 @@
       <input type="month" name="mese" class="form-control form-control-sm" value="{{ mese }}">
     </div>
     <div class="col-md-2">
+      <label class="form-label-sm">Da data</label>
+      <input type="date" name="data_da" class="form-control form-control-sm" value="{{ data_da }}">
+    </div>
+    <div class="col-md-2">
+      <label class="form-label-sm">A data</label>
+      <input type="date" name="data_a" class="form-control form-control-sm" value="{{ data_a }}">
+    </div>
+    <div class="col-md-1">
       <label class="form-label-sm">Stato</label>
       <select name="stato" class="form-select form-select-sm">
         <option value="">Tutti</option>
@@ -71,16 +79,16 @@
       <button type="submit" class="btn btn-primary btn-sm">Filtra</button>
       <a href="{% url 'users:giornata_list' %}" class="btn btn-outline-secondary btn-sm">Reset</a>
     </div>
-    <div class="col-auto ms-auto d-flex gap-2">
-      <a href="{% url 'users:giornate_export_excel' %}?{{ request.GET.urlencode }}" class="btn btn-outline-primary btn-sm d-flex align-items-center gap-1">
-        <i class="bi bi-file-earmark-excel"></i> Excel
-      </a>
-      <a href="{% url 'users:giornate_export_pdf' %}?{{ request.GET.urlencode }}" class="btn btn-outline-primary btn-sm d-flex align-items-center gap-1">
-        <i class="bi bi-file-earmark-pdf"></i> PDF
-      </a>
-      {% bottone_invia phone=invia_destinatario.telefono email=invia_destinatario.email oggetto="Giornate lavorative" pdf_url=giornate_pdf_url destinatario_nome=invia_destinatario.get_full_name label="Invia" btn_class="btn-outline-success" btn_size="btn-sm" %}
-    </div>
   </form>
+  <div class="d-flex gap-2 mt-2 justify-content-end">
+    <a href="{% url 'users:giornate_export_excel' %}?{{ request.GET.urlencode }}" class="btn btn-outline-primary btn-sm d-flex align-items-center gap-1">
+      <i class="bi bi-file-earmark-excel"></i> Excel
+    </a>
+    <a href="{% url 'users:giornate_export_pdf' %}?{{ request.GET.urlencode }}" class="btn btn-outline-primary btn-sm d-flex align-items-center gap-1">
+      <i class="bi bi-file-earmark-pdf"></i> PDF
+    </a>
+    {% bottone_invia phone=invia_destinatario.telefono email=invia_destinatario.email oggetto="Giornate lavorative" pdf_url=giornate_pdf_url destinatario_nome=invia_destinatario.get_full_name label="Invia" btn_class="btn-outline-success" btn_size="btn-sm" %}
+  </div>
 </div>
 
 <!-- Totali -->
