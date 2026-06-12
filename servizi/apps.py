@@ -24,13 +24,6 @@ class ServiziConfig(AppConfig):
                     'active_app': 'servizi',
                     'active_url_contains': 'tecnico',
                 },
-                {
-                    'label': 'Stabili',
-                    'url': 'servizi:stabile_list',
-                    'icon': 'bi-buildings',
-                    'active_app': 'servizi',
-                    'active_url_contains': 'stabili',
-                },
             ],
             order=30,
         )
