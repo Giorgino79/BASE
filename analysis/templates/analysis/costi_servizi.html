@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}Ricavi e Consumi Servizi{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-start mb-4">
+  <div>
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'analysis:dashboard' %}">Analisi</a></li>
+        <li class="breadcrumb-item active">Ricavi e Consumi</li>
+      </ol>
+    </nav>
+    <h1><i class="bi bi-table me-2 text-brand"></i>Ricavi e Consumi Servizi</h1>
+  </div>
+</div>
+
+{# ── Filtri ─────────────────────────────────────────────────────────────── #}
+<div class="card mb-3">
+  <div class="card-body py-2">
+    <form method="get" class="d-flex flex-wrap gap-2 align-items-end">
+      <div>
+        <label class="form-label-sm d-block">Da</label>
+        <input type="date" name="data_da" value="{{ data_da }}" class="form-control form-control-sm">
+      </div>
+      <div>
+        <label class="form-label-sm d-block">A</label>
+        <input type="date" name="data_a" value="{{ data_a }}" class="form-control form-control-sm">
+      </div>
+      <div class="align-self-end">
+        <button type="submit" class="btn btn-sm btn-primary">Filtra</button>
+        <a href="{% url 'analysis:costi_servizi' %}" class="btn btn-sm btn-outline-secondary">Reset</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+{# ── Tabella ─────────────────────────────────────────────────────────────── #}
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-sm mb-0 align-middle" style="font-size:.82rem;">
+      <thead class="bg-brand text-white">
+        <tr>
+          <th style="width:80px">Data</th>
+          <th style="width:60px" class="text-center">Tipo</th>
+          <th style="width:110px">N°</th>
+          <th>Cliente / Titolo</th>
+          <th style="width:120px">Tecnico</th>
+          <th style="width:80px">Stato</th>
+          <th style="width:90px" class="text-end">Ricavo €</th>
+          <th>Prodotti consumati</th>
+          <th style="width:90px" class="text-end">Costo €</th>
+          <th style="width:90px" class="text-end">Margine €</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in rows %}
+        <tr class="{% if r.stato == 'completato' %}{% else %}text-muted{% endif %}">
+          <td class="text-nowrap">{{ r.data|date:"d/m/Y" }}</td>
+          <td class="text-center">
+            {% if r.tipo == "ODS" %}
+              <span class="badge bg-secondary">ODS</span>
+            {% else %}
+              <span class="badge bg-primary">Cond.</span>
+            {% endif %}
+          </td>
+          <td class="fw-semibold">
+            <a href="{{ r.url }}" class="text-decoration-none text-brand">{{ r.numero }}</a>
+          </td>
+          <td>{{ r.display }}</td>
+          <td>{{ r.tecnico.get_full_name|default:"—" }}</td>
+          <td>
+            {% if r.stato == "completato" %}
+              <span class="badge badge-ok">Completato</span>
+            {% elif r.stato == "da_espletare" %}
+              <span class="badge badge-ko">Da espl.</span>
+            {% elif r.stato == "programmato" %}
+              <span class="badge badge-wait">Progr.</span>
+            {% else %}
+              <span class="badge bg-secondary">{{ r.stato_display }}</span>
+            {% endif %}
+          </td>
+          <td class="text-end fw-semibold">
+            {% if r.ricavo %}€ {{ r.ricavo|floatformat:2 }}{% else %}<span class="text-muted">—</span>{% endif %}
+          </td>
+          <td>
+            {% if r.items %}
+              <div class="d-flex flex-wrap gap-1">
+                {% for item in r.items %}
+                  <span class="text-nowrap" style="font-size:.78rem;">
+                    <span class="text-muted">{{ item.nome }}</span>
+                    <span>×{{ item.qty|floatformat:"-3" }} {{ item.um }}</span>
+                    {% if item.prezzo %}
+                      <span class="text-muted">@€{{ item.prezzo|floatformat:4 }}</span>
+                      <span class="fw-semibold text-danger">=&nbsp;€{{ item.costo|floatformat:2 }}</span>
+                    {% else %}
+                      <span class="text-warning">prezzo n.d.</span>
+                    {% endif %}
+                  </span>
+                  {% if not forloop.last %}<span class="text-muted">·</span>{% endif %}
+                {% endfor %}
+              </div>
+            {% else %}
+              <span class="text-muted" style="font-size:.78rem;">—</span>
+            {% endif %}
+          </td>
+          <td class="text-end {% if r.costo > 0 %}text-danger fw-semibold{% else %}text-muted{% endif %}">
+            {% if r.costo %}€ {{ r.costo|floatformat:2 }}{% else %}—{% endif %}
+          </td>
+          <td class="text-end fw-semibold {% if r.margine < 0 %}text-danger{% else %}text-success{% endif %}">
+            {% if r.ricavo %}€ {{ r.margine|floatformat:2 }}{% else %}<span class="text-muted">—</span>{% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="10" class="text-center text-muted py-4">
+            <i class="bi bi-inbox me-2"></i>Nessun servizio nel periodo selezionato
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+
+      {% if rows %}
+      <tfoot>
+        <tr style="background:#dce8f5;font-weight:700;border-top:2px solid #5585b5;">
+          <td colspan="6" class="text-end" style="color:#1a3a5c;">TOTALI</td>
+          <td class="text-end" style="color:#1a3a5c;">€ {{ totali.ricavo|floatformat:2 }}</td>
+          <td></td>
+          <td class="text-end text-danger">€ {{ totali.costo|floatformat:2 }}</td>
+          <td class="text-end {% if totali.margine < 0 %}text-danger{% else %}text-success{% endif %}">
+            € {{ totali.margine|floatformat:2 }}
+          </td>
+        </tr>
+      </tfoot>
+      {% endif %}
+    </table>
+  </div>
+</div>
+{% endblock %}
