@@ -33,11 +33,11 @@ class _DecimalEncoder(json.JSONEncoder):
 @login_required
 def dashboard(request):
     today = date.today()
-    data_da = _parse_date(request.GET.get("data_da"), date(today.year, 1, 1))
-    data_a  = _parse_date(request.GET.get("data_a"),  date(today.year, 12, 31))
-    group_by = request.GET.get("group_by", "month")
+    data_da = _parse_date(request.GET.get("data_da"), date(today.year, today.month, 1))
+    data_a  = _parse_date(request.GET.get("data_a"),  today)
+    group_by = request.GET.get("group_by", "day")
     if group_by not in ("month", "week", "day"):
-        group_by = "month"
+        group_by = "day"
 
     ricavi  = RicaviReport().get_data(data_da, data_a, group_by)
     tipo    = RicaviPerTipoReport().get_data(data_da, data_a, group_by)
