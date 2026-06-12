@@ -114,7 +114,7 @@ class MarginiReport(BaseReport):
         r_data  = [ricavi_map.get(p, 0) for p in all_periods]
         c_data  = [costi_map.get(p, 0) for p in all_periods]
         cp_data = [consumo_map.get(p, 0) for p in all_periods]
-        m_data  = [r - c for r, c in zip(r_data, c_data)]
+        m_data  = [r - cp for r, cp in zip(r_data, cp_data)]
 
         return {
             "labels": labels,
@@ -168,5 +168,6 @@ class MarginiReport(BaseReport):
             ],
             "totale_ricavi": sum(r_data),
             "totale_costi": sum(c_data),
+            "totale_costo_prodotti": sum(cp_data),
             "margine": sum(m_data),
         }
