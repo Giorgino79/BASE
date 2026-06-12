@@ -252,7 +252,7 @@
   // ── Ricavi vs Costi vs Margine ───────────────────────────────────────────
   const marginiData = {{ margini_json|safe }};
   new Chart(document.getElementById('chart-margini'), {
-    type: 'line',
+    type: 'bar',
     data: marginiData,
     options: {
       ...baseOptions,

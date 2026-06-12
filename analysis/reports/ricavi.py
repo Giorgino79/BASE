@@ -1,7 +1,35 @@
 from decimal import Decimal
-from django.db.models import Sum
+from django.db.models import (
+    Sum, Count, F, ExpressionWrapper, IntegerField, Value, Subquery, OuterRef,
+    DecimalField as DBDecimalField,
+)
 from django.db.models.functions import Coalesce
 from .base import BaseReport
+
+
+def _n_esp_subquery():
+    from servizi.models import RigaUnitaAbitativa
+    return (
+        RigaUnitaAbitativa.objects
+        .filter(condominio=OuterRef("pk"), servizio_effettuato=True)
+        .values("condominio")
+        .annotate(cnt=Count("pk"))
+        .values("cnt")[:1]
+    )
+
+
+def _con_ricavo_qs(qs):
+    """Annotate a CondominioODS queryset with per-row ricavo = prezzo_base × n_unità_espletate."""
+    return (
+        qs
+        .annotate(n_esp=Coalesce(Subquery(_n_esp_subquery(), output_field=IntegerField()), Value(0)))
+        .annotate(
+            ricavo=ExpressionWrapper(
+                F("prezzo_base") * F("n_esp"),
+                output_field=DBDecimalField(max_digits=10, decimal_places=2),
+            )
+        )
+    )
 
 
 class RicaviReport(BaseReport):
@@ -26,10 +54,12 @@ class RicaviReport(BaseReport):
         )
 
         con_map = self.build_map(
-            CondominioODS.objects.filter(stato="completato", data__range=(data_da, data_a))
-            .annotate(periodo=Trunc("data"))
+            _con_ricavo_qs(
+                CondominioODS.objects.filter(stato="completato", data__range=(data_da, data_a))
+                .annotate(periodo=Trunc("data"))
+            )
             .values("periodo")
-            .annotate(totale=Coalesce(Sum("prezzo_base"), Decimal("0")))
+            .annotate(totale=Coalesce(Sum("ricavo"), Decimal("0")))
             .order_by("periodo"),
             group_by,
         )
@@ -70,16 +100,16 @@ class RicaviPerTipoReport(BaseReport):
 
     def get_data(self, data_da, data_a, group_by="month"):
         from servizi.models import ODS, CondominioODS
-        from django.db.models import Sum
-        from django.db.models.functions import Coalesce
 
         tot_ods = float(
             ODS.objects.filter(stato="completato", data_servizio__range=(data_da, data_a))
             .aggregate(t=Coalesce(Sum("righe__prezzo"), Decimal("0")))["t"]
         )
         tot_con = float(
-            CondominioODS.objects.filter(stato="completato", data__range=(data_da, data_a))
-            .aggregate(t=Coalesce(Sum("prezzo_base"), Decimal("0")))["t"]
+            _con_ricavo_qs(
+                CondominioODS.objects.filter(stato="completato", data__range=(data_da, data_a))
+            )
+            .aggregate(t=Coalesce(Sum("ricavo"), Decimal("0")))["t"]
         )
 
         return {

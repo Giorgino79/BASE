@@ -91,7 +91,7 @@ def costi_servizi(request):
         CondominioODS.objects
         .filter(data__range=(data_da, data_a))
         .select_related("tecnico")
-        .prefetch_related("prodotti__prodotto")
+        .prefetch_related("prodotti__prodotto", "unita")
         .order_by("-data", "numero")
     )
 
@@ -147,7 +147,8 @@ def costi_servizi(request):
         })
 
     for con in con_qs:
-        ricavo = float(con.prezzo_base or 0)
+        n_esp = sum(1 for u in con.unita.all() if u.servizio_effettuato)
+        ricavo = float(con.prezzo_base or 0) * n_esp
         items, costo = _build_consumo_items(
             [(rp.prodotto, rp.quantita) for rp in con.prodotti.all()],
             prices,

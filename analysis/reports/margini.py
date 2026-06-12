@@ -3,13 +3,14 @@ from datetime import date
 from django.db.models import Sum
 from django.db.models.functions import Coalesce
 from .base import BaseReport
+from .ricavi import _con_ricavo_qs
 
 
 class MarginiReport(BaseReport):
     slug = "margini"
     nome = "Ricavi vs Costi"
     descrizione = "Confronto ricavi, costi e margine nel periodo"
-    chart_type = "line"
+    chart_type = "bar"
     icon = "bi-activity"
 
     def get_data(self, data_da, data_a, group_by="month"):
@@ -27,9 +28,13 @@ class MarginiReport(BaseReport):
             group_by,
         )
         con_map = self.build_map(
-            CondominioODS.objects.filter(stato="completato", data__range=(data_da, data_a))
-            .annotate(periodo=Trunc("data")).values("periodo")
-            .annotate(totale=Coalesce(Sum("prezzo_base"), Decimal("0"))).order_by("periodo"),
+            _con_ricavo_qs(
+                CondominioODS.objects.filter(stato="completato", data__range=(data_da, data_a))
+                .annotate(periodo=Trunc("data"))
+            )
+            .values("periodo")
+            .annotate(totale=Coalesce(Sum("ricavo"), Decimal("0")))
+            .order_by("periodo"),
             group_by,
         )
         ricavi_map = {p: ods_map.get(p, 0) + con_map.get(p, 0)
@@ -64,15 +69,16 @@ class MarginiReport(BaseReport):
             "labels": labels,
             "datasets": [
                 {
+                    "type": "bar",
                     "label": "Ricavi",
                     "data": r_data,
+                    "backgroundColor": "rgba(40,167,69,0.6)",
                     "borderColor": "#28a745",
-                    "backgroundColor": "rgba(40,167,69,0.08)",
-                    "fill": True,
-                    "tension": 0.3,
-                    "pointRadius": 4,
+                    "borderWidth": 1,
+                    "order": 2,
                 },
                 {
+                    "type": "line",
                     "label": "Costi",
                     "data": c_data,
                     "borderColor": "#dc3545",
@@ -80,8 +86,10 @@ class MarginiReport(BaseReport):
                     "fill": True,
                     "tension": 0.3,
                     "pointRadius": 4,
+                    "order": 1,
                 },
                 {
+                    "type": "line",
                     "label": "Margine",
                     "data": m_data,
                     "borderColor": "#5585b5",
@@ -90,6 +98,7 @@ class MarginiReport(BaseReport):
                     "tension": 0.3,
                     "pointRadius": 4,
                     "borderDash": [5, 3],
+                    "order": 1,
                 },
             ],
             "totale_ricavi": sum(r_data),
