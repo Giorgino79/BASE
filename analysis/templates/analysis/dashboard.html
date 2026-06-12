@@ -1,0 +1,268 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}Analisi{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-start mb-4">
+  <div>
+    <h1><i class="bi bi-bar-chart-line me-2 text-brand"></i>Analisi</h1>
+    <p class="text-muted mb-0" style="font-size:.875rem;">Costi, ricavi e margini aziendali</p>
+  </div>
+</div>
+
+{# ── Filtri ─────────────────────────────────────────────────────────────── #}
+<div class="card mb-4">
+  <div class="card-body py-2">
+    <form method="get" class="d-flex flex-wrap gap-2 align-items-end">
+      <div>
+        <label class="form-label-sm d-block">Da</label>
+        <input type="date" name="data_da" value="{{ data_da }}" class="form-control form-control-sm">
+      </div>
+      <div>
+        <label class="form-label-sm d-block">A</label>
+        <input type="date" name="data_a" value="{{ data_a }}" class="form-control form-control-sm">
+      </div>
+      <div>
+        <label class="form-label-sm d-block">Raggruppa per</label>
+        <select name="group_by" class="form-select form-select-sm">
+          <option value="month" {% if group_by == "month" %}selected{% endif %}>Mese</option>
+          <option value="week"  {% if group_by == "week"  %}selected{% endif %}>Settimana</option>
+          <option value="day"   {% if group_by == "day"   %}selected{% endif %}>Giorno</option>
+        </select>
+      </div>
+      <div class="d-flex gap-1 align-self-end">
+        <button type="submit" class="btn btn-sm btn-primary">Aggiorna</button>
+        <a href="{% url 'analysis:dashboard' %}" class="btn btn-sm btn-outline-secondary">Reset</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+{# ── KPI ────────────────────────────────────────────────────────────────── #}
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="card h-100">
+      <div class="card-body text-center py-3">
+        <div class="mb-1"><i class="bi bi-graph-up-arrow text-success" style="font-size:1.4rem;"></i></div>
+        <div class="fw-bold" style="font-size:1.3rem;color:var(--slate-800);">
+          € {{ kpi.ricavi|floatformat:0|intcomma }}
+        </div>
+        <div class="text-muted" style="font-size:.75rem;">Ricavi</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card h-100">
+      <div class="card-body text-center py-3">
+        <div class="mb-1"><i class="bi bi-receipt text-danger" style="font-size:1.4rem;"></i></div>
+        <div class="fw-bold" style="font-size:1.3rem;color:var(--slate-800);">
+          € {{ kpi.costi|floatformat:0|intcomma }}
+        </div>
+        <div class="text-muted" style="font-size:.75rem;">Costi</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card h-100">
+      <div class="card-body text-center py-3">
+        <div class="mb-1"><i class="bi bi-activity" style="font-size:1.4rem;color:var(--brand);"></i></div>
+        <div class="fw-bold" style="font-size:1.3rem;color:{% if kpi.margine >= 0 %}var(--color-1){% else %}#dc3545{% endif %};">
+          € {{ kpi.margine|floatformat:0|intcomma }}
+        </div>
+        <div class="text-muted" style="font-size:.75rem;">Margine</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card h-100">
+      <div class="card-body text-center py-3">
+        <div class="mb-1"><i class="bi bi-percent" style="font-size:1.4rem;color:var(--brand);"></i></div>
+        <div class="fw-bold" style="font-size:1.3rem;color:{% if kpi.margine_pct >= 0 %}var(--color-1){% else %}#dc3545{% endif %};">
+          {{ kpi.margine_pct|floatformat:1 }}%
+        </div>
+        <div class="text-muted" style="font-size:.75rem;">Margine %</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ── Riga 1: Ricavi (larga) + Ripartizione (piccola) ─────────────────── #}
+<div class="row g-3 mb-3">
+  <div class="col-lg-8">
+    <div class="card h-100">
+      <div class="card-header d-flex align-items-center gap-2">
+        <i class="bi bi-graph-up-arrow text-success"></i>
+        <span>Ricavi nel periodo</span>
+        <small class="text-muted ms-auto">ODS + Condomini completati</small>
+      </div>
+      <div class="card-body">
+        <canvas id="chart-ricavi" style="max-height:280px;"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card h-100">
+      <div class="card-header d-flex align-items-center gap-2">
+        <i class="bi bi-pie-chart text-success"></i>
+        <span>Ripartizione ricavi</span>
+      </div>
+      <div class="card-body d-flex align-items-center justify-content-center">
+        <canvas id="chart-tipo" style="max-height:240px;max-width:240px;"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ── Riga 2: Costi (larga) + spazio futuro ────────────────────────────── #}
+<div class="row g-3 mb-3">
+  <div class="col-lg-8">
+    <div class="card h-100">
+      <div class="card-header d-flex align-items-center gap-2">
+        <i class="bi bi-receipt text-danger"></i>
+        <span>Costi nel periodo</span>
+        <small class="text-muted ms-auto">Acquisti + Personale</small>
+      </div>
+      <div class="card-body">
+        <canvas id="chart-costi" style="max-height:280px;"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card h-100">
+      <div class="card-header d-flex align-items-center gap-2">
+        <i class="bi bi-pie-chart text-danger"></i>
+        <span>Ripartizione costi</span>
+      </div>
+      <div class="card-body d-flex align-items-center justify-content-center">
+        <canvas id="chart-costi-tipo" style="max-height:240px;max-width:240px;"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ── Riga 3: Ricavi vs Costi (piena larghezza) ────────────────────────── #}
+<div class="row g-3">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header d-flex align-items-center gap-2">
+        <i class="bi bi-activity" style="color:var(--brand);"></i>
+        <span>Ricavi vs Costi vs Margine</span>
+      </div>
+      <div class="card-body">
+        <canvas id="chart-margini" style="max-height:320px;"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script>
+(function() {
+  const FONT = "'Segoe UI', system-ui, sans-serif";
+  Chart.defaults.font.family = FONT;
+  Chart.defaults.font.size = 12;
+
+  const fmtEur = v => '€ ' + new Intl.NumberFormat('it-IT', {maximumFractionDigits: 0}).format(v);
+
+  const baseOptions = {
+    responsive: true,
+    maintainAspectRatio: true,
+    plugins: {
+      legend: { position: 'top', labels: { boxWidth: 12, padding: 12 } },
+      tooltip: {
+        callbacks: {
+          label: ctx => ' ' + ctx.dataset.label + ': ' + fmtEur(ctx.parsed.y ?? ctx.parsed)
+        }
+      }
+    },
+    scales: {
+      x: { grid: { display: false } },
+      y: {
+        ticks: { callback: v => fmtEur(v) },
+        grid: { color: 'rgba(0,0,0,0.05)' }
+      }
+    }
+  };
+
+  // ── Ricavi ──────────────────────────────────────────────────────────────
+  const ricaviData = {{ ricavi_json|safe }};
+  new Chart(document.getElementById('chart-ricavi'), {
+    type: 'bar',
+    data: ricaviData,
+    options: { ...baseOptions, plugins: { ...baseOptions.plugins } }
+  });
+
+  // ── Ripartizione ricavi ──────────────────────────────────────────────────
+  const tipoData = {{ tipo_json|safe }};
+  new Chart(document.getElementById('chart-tipo'), {
+    type: 'doughnut',
+    data: tipoData,
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'bottom', labels: { boxWidth: 12 } },
+        tooltip: {
+          callbacks: {
+            label: ctx => ' ' + ctx.label + ': ' + fmtEur(ctx.parsed)
+          }
+        }
+      }
+    }
+  });
+
+  // ── Costi ────────────────────────────────────────────────────────────────
+  const costiData = {{ costi_json|safe }};
+  new Chart(document.getElementById('chart-costi'), {
+    type: 'bar',
+    data: costiData,
+    options: { ...baseOptions }
+  });
+
+  // ── Ripartizione costi (doughnut ricalcolato dai dataset costi) ──────────
+  const costiTotAcq = costiData.datasets[0].data.reduce((a, b) => a + b, 0);
+  const costiTotPer = costiData.datasets[1].data.reduce((a, b) => a + b, 0);
+  new Chart(document.getElementById('chart-costi-tipo'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Acquisti', 'Personale'],
+      datasets: [{
+        data: [costiTotAcq, costiTotPer],
+        backgroundColor: ['rgba(220,53,69,0.85)', 'rgba(255,165,0,0.85)'],
+        borderWidth: 2,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'bottom', labels: { boxWidth: 12 } },
+        tooltip: {
+          callbacks: { label: ctx => ' ' + ctx.label + ': ' + fmtEur(ctx.parsed) }
+        }
+      }
+    }
+  });
+
+  // ── Ricavi vs Costi vs Margine ───────────────────────────────────────────
+  const marginiData = {{ margini_json|safe }};
+  new Chart(document.getElementById('chart-margini'), {
+    type: 'line',
+    data: marginiData,
+    options: {
+      ...baseOptions,
+      plugins: {
+        ...baseOptions.plugins,
+        tooltip: {
+          callbacks: {
+            label: ctx => ' ' + ctx.dataset.label + ': ' + fmtEur(ctx.parsed.y)
+          }
+        }
+      }
+    }
+  });
+})();
+</script>
+{% endblock %}
