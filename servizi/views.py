@@ -400,6 +400,86 @@ def contratto_filiale_gestisci(request, cf_pk):
     return render(request, "servizi/contratti/filiale_gestisci.html", ctx)
 
 
+@login_required
+def ods_bollettino_pdf(request, pk):
+    """Genera il bollettino di servizio PDF per un ODS."""
+    from django.template.loader import render_to_string
+    from django.utils import timezone
+    from core.pdf_generator import generate_pdf_from_html, PDFConfig
+
+    ods = get_object_or_404(
+        ODS.objects.select_related(
+            "filiale__cliente", "privato", "tecnico"
+        ).prefetch_related(
+            "righe__servizio",
+            "righe__consumi__prodotto",
+        ),
+        pk=pk,
+    )
+
+    # Dati cliente
+    if ods.filiale:
+        cliente_nome = ods.filiale.cliente.ragione_sociale
+        cliente_indirizzo = getattr(ods.filiale, "indirizzo", "") or getattr(ods.filiale.cliente, "indirizzo", "")
+        cliente_citta = getattr(ods.filiale, "citta", "") or getattr(ods.filiale.cliente, "citta", "")
+    elif ods.privato:
+        cliente_nome = str(ods.privato)
+        cliente_indirizzo = getattr(ods.privato, "indirizzo", "")
+        cliente_citta = getattr(ods.privato, "citta", "")
+    else:
+        cliente_nome = cliente_indirizzo = cliente_citta = ""
+
+    # Nomi servizi presenti nell'ODS (in minuscolo per confronto)
+    servizi_ods = {r.servizio.nome.strip().upper() for r in ods.righe.all()}
+
+    def _svc(nome):
+        return {"nome": nome, "selezionato": nome.upper() in servizi_ods}
+
+    servizi_sx = [
+        _svc("Profilassi"),
+        _svc("Disinfestazione"),
+        _svc("Derattizzazione"),
+        _svc("Sanificazione"),
+        _svc("Monitoraggio"),
+    ]
+    servizi_dx = [
+        _svc("Lotta Integrata"),
+        _svc("Demuscazione"),
+        _svc("Antimurina"),
+        _svc("Deblattizzazione"),
+        _svc("Deformicazione"),
+        _svc("Antilarvale"),
+    ]
+
+    # Prodotti effettivamente confermati (usati)
+    prodotti_usati = [
+        c for r in ods.righe.all() for c in r.consumi.all() if c.confermato
+    ]
+
+    ctx = {
+        "ods": ods,
+        "cliente_nome": cliente_nome,
+        "cliente_indirizzo": cliente_indirizzo,
+        "cliente_citta": cliente_citta,
+        "servizi_sx": servizi_sx,
+        "servizi_dx": servizi_dx,
+        "prodotti_usati": prodotti_usati,
+        "oggi": timezone.now().date(),
+        # Dati azienda — adattare se cambiano
+        "azienda_nome": "SERVAL SRLS UNIPERSONALE",
+        "azienda_indirizzo": "Via Polense 473, 00132 Roma",
+        "azienda_piva": "12894481006",
+        "azienda_email": "servalsrls@pec.it",
+        "azienda_tel": "340/8002527 - 342/5204852",
+    }
+    html = render_to_string("servizi/ods/bollettino_pdf.html", ctx, request=request)
+    return generate_pdf_from_html(
+        html,
+        PDFConfig(filename=f"bollettino_{ods.numero}.pdf"),
+        output_type="response",
+    )
+
+
 def contratto_pdf(request, pk):
     """Genera il PDF del contratto. View pubblica: necessario per l'invio via Green API."""
     from django.template.loader import render_to_string

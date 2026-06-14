@@ -10,13 +10,19 @@
       <li class="breadcrumb-item active">{{ ods.numero }}</li>
     </ol>
   </nav>
-  <h1>
-    <i class="bi bi-clipboard-check me-2 text-brand"></i>{{ ods.numero }}
-    {% if ods.stato == "da_espletare" %}<span class="badge badge-ko ms-2">Da espletare</span>
-    {% elif ods.stato == "programmato" %}<span class="badge badge-wait ms-2">Programmato</span>
-    {% elif ods.stato == "completato" %}<span class="badge badge-ok ms-2">Completato</span>
-    {% else %}<span class="badge badge-ko ms-2">Annullato</span>{% endif %}
-  </h1>
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+    <h1 class="mb-0">
+      <i class="bi bi-clipboard-check me-2 text-brand"></i>{{ ods.numero }}
+      {% if ods.stato == "da_espletare" %}<span class="badge badge-ko ms-2">Da espletare</span>
+      {% elif ods.stato == "programmato" %}<span class="badge badge-wait ms-2">Programmato</span>
+      {% elif ods.stato == "completato" %}<span class="badge badge-ok ms-2">Completato</span>
+      {% else %}<span class="badge badge-ko ms-2">Annullato</span>{% endif %}
+    </h1>
+    <a href="{% url 'servizi:ods_bollettino_pdf' ods.pk %}" target="_blank"
+       class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-printer me-1"></i>Stampa Bollettino
+    </a>
+  </div>
 </div>
 
 <div class="row g-3">

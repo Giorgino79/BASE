@@ -29,6 +29,7 @@ urlpatterns = [
     path("ods/<int:pk>/",          views.ODSDetailView.as_view(), name="ods_detail"),
     path("ods/<int:pk>/modifica/", views.ODSUpdateView.as_view(), name="ods_update"),
     path("ods/organizzazione-giri/",    views.organizzazione_giri,     name="organizzazione_giri"),
+    path("ods/<int:pk>/bollettino/",      views.ods_bollettino_pdf,      name="ods_bollettino_pdf"),
     path("ods/<int:pk>/assegna/",        views.ods_assegna_tecnico,     name="ods_assegna_tecnico"),
     path("ods/<int:pk>/personale/",      views.ods_cambia_personale,    name="ods_cambia_personale"),
     path("ods/<int:pk>/stato/",         views.ods_set_stato,           name="ods_set_stato"),

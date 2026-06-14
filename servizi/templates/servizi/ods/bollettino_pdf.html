@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<style>
+  @page { size: A4 portrait; margin: 1.2cm 1.5cm; }
+  body { font-family: Helvetica, Arial, sans-serif; font-size: 10pt; color: #111; margin: 0; padding: 0; }
+
+  /* Intestazione azienda */
+  .azienda-box { border: 1px solid #333; padding: 8px 12px; margin-bottom: 8px; }
+  .azienda-nome { font-size: 14pt; font-weight: bold; letter-spacing: 0.5px; }
+  .azienda-info { font-size: 8.5pt; color: #333; margin-top: 2px; }
+
+  /* Numero bollettino */
+  .bollettino-num { font-size: 11pt; font-weight: bold; margin: 6px 0 10px 0; }
+
+  /* Tabella cliente */
+  table.cliente { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+  table.cliente th { border: 1px solid #555; padding: 4px 8px; font-size: 8.5pt; text-align: left; background: #eee; font-weight: bold; text-transform: uppercase; }
+  table.cliente td { border: 1px solid #555; padding: 6px 8px; font-size: 10pt; min-height: 22px; }
+
+  /* Data e tecnico */
+  .data-tecnico { margin: 8px 0; font-size: 10pt; }
+  .data-tecnico span { display: inline-block; }
+  .dotted { display: inline-block; border-bottom: 1px dotted #555; min-width: 120px; margin-left: 4px; }
+
+  /* Griglia servizi */
+  table.servizi { width: 100%; border-collapse: collapse; border: 1px solid #555; margin: 10px 0; }
+  table.servizi td { border: 1px solid #555; padding: 5px 10px; width: 50%; vertical-align: top; }
+  .servizio-item { margin: 3px 0; font-size: 9.5pt; }
+  .servizio-item .bullet { font-weight: bold; margin-right: 4px; }
+  .servizio-item.selezionato { font-weight: bold; }
+  .servizio-item .check { display: inline-block; width: 12px; height: 12px; border: 1px solid #555; margin-right: 5px; vertical-align: middle; text-align: center; font-size: 9pt; line-height: 12px; }
+  .servizio-item .check.on { font-weight: bold; }
+
+  /* Esterna / Interna */
+  .localiz { text-align: center; margin: 10px 0; font-size: 11pt; letter-spacing: 2px; }
+  .localiz .opt { display: inline-block; margin: 0 30px; }
+  .localiz .x-mark { font-size: 14pt; font-weight: bold; vertical-align: middle; }
+
+  /* Box note */
+  .note-box { border: 1px solid #555; min-height: 80px; padding: 8px 10px; margin: 10px 0; font-size: 9.5pt; }
+
+  /* Firma */
+  .firma-area { margin-top: 20px; text-align: center; }
+  .firma-label { font-size: 9pt; font-weight: bold; margin-bottom: 40px; }
+  .firma-line { display: inline-block; border-top: 1px solid #555; width: 260px; margin-top: 50px; }
+
+  .footer { margin-top: 12px; font-size: 7.5pt; color: #888; text-align: center; border-top: 1px solid #ccc; padding-top: 4px; }
+</style>
+</head>
+<body>
+
+<!-- Intestazione azienda -->
+<div class="azienda-box">
+  <div class="azienda-nome">{{ azienda_nome }}</div>
+  <div class="azienda-info">
+    Sede legale: {{ azienda_indirizzo }}&nbsp;&nbsp;P.IVA {{ azienda_piva }}<br>
+    email: {{ azienda_email }}&nbsp;&nbsp;Tel. {{ azienda_tel }}
+  </div>
+</div>
+
+<!-- Numero bollettino -->
+<div class="bollettino-num">Bollettino di servizio &nbsp; {{ ods.numero }}</div>
+
+<!-- Cliente -->
+<table class="cliente">
+  <tr>
+    <th>Cliente</th>
+    <th>Indirizzo</th>
+    <th>Località</th>
+  </tr>
+  <tr>
+    <td>{{ cliente_nome }}</td>
+    <td>{{ cliente_indirizzo }}</td>
+    <td>{{ cliente_citta }}</td>
+  </tr>
+</table>
+
+<!-- Data e tecnico -->
+<div class="data-tecnico">
+  Intervento eseguito in data<span class="dotted">&nbsp;{{ ods.data_servizio|date:"d/m/Y" }}&nbsp;</span>
+</div>
+<div class="data-tecnico" style="margin-top:6px;">
+  Tecnico: <span class="dotted">&nbsp;{{ ods.tecnico.get_full_name|default:ods.tecnico.username }}&nbsp;</span>
+</div>
+
+<!-- Griglia servizi -->
+<table class="servizi">
+  <tr>
+    <td>
+      {% for s in servizi_sx %}
+      <div class="servizio-item {% if s.selezionato %}selezionato{% endif %}">
+        <span class="check {% if s.selezionato %}on{% endif %}">{% if s.selezionato %}✓{% endif %}</span>{{ s.nome }}
+      </div>
+      {% endfor %}
+    </td>
+    <td>
+      {% for s in servizi_dx %}
+      <div class="servizio-item {% if s.selezionato %}selezionato{% endif %}">
+        <span class="check {% if s.selezionato %}on{% endif %}">{% if s.selezionato %}✓{% endif %}</span>{{ s.nome }}
+      </div>
+      {% endfor %}
+    </td>
+  </tr>
+</table>
+
+<!-- Box note + prodotti -->
+<div class="note-box">
+  {% if ods.note_intervento %}{{ ods.note_intervento }}{% endif %}
+  {% if prodotti_usati %}
+  <br>
+  {% for p in prodotti_usati %}
+  Prodotto utilizzato: {{ p.prodotto.nome_prodotto }}{% if p.prodotto.numero_registrazione %} (PMC n°{{ p.prodotto.numero_registrazione }}){% endif %} — Qtà {{ p.quantita|floatformat:"-3" }}<br>
+  {% endfor %}
+  {% endif %}
+</div>
+
+<!-- Firma cliente -->
+<div class="firma-area">
+  <div class="firma-label">FIRMA PER ACCETTAZIONE DEL CLIENTE</div>
+  <div class="firma-line"></div>
+</div>
+
+<div class="footer">
+  Documento generato il {{ oggi|date:"d/m/Y" }} — {{ azienda_nome }}
+</div>
+
+</body>
+</html>
