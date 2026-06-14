@@ -5,69 +5,102 @@
 <style>
   @page { size: A4 portrait; margin: 2cm; }
   body { font-family: Arial, sans-serif; font-size: 12px; color: #333; }
+
   .header-bar { background: #5585b5; color: #fff; padding: 14px 18px; margin-bottom: 20px; }
   .header-bar h1 { margin: 0; font-size: 17px; }
-  .header-bar p { margin: 3px 0 0; font-size: 11px; opacity: 0.85; }
-  .meta-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-  .meta-table td { padding: 5px 8px; font-size: 12px; }
-  .meta-table td.lbl { color: #888; font-size: 10px; text-transform: uppercase; width: 50%; }
-  .meta-table td.val { font-weight: 700; }
+  .header-bar p  { margin: 3px 0 0; font-size: 11px; opacity: 0.85; }
+
+  /* Meta: 2 colonne fisse */
+  table.meta { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+  table.meta td.lbl { width: 140px; color: #888; font-size: 10px; text-transform: uppercase;
+                      padding: 4px 8px 4px 0; vertical-align: top; }
+  table.meta td.val { font-weight: 700; font-size: 12px;
+                      padding: 4px 8px; vertical-align: top; }
+
+  /* Riga separatrice tra le due colonne meta */
+  table.meta td.sep { width: 30px; }
+
+  /* Tabella righe prodotti */
   table.righe { width: 100%; border-collapse: collapse; margin-bottom: 18px; }
-  table.righe th { background: #f0f4f8; text-align: left; padding: 8px 10px; font-size: 11px;
-                   text-transform: uppercase; color: #666; border-bottom: 2px solid #dde3ea; }
-  table.righe td { padding: 8px 10px; border-bottom: 1px solid #eee; font-size: 12px; }
+  table.righe col.c-prod  { width: 38%; }
+  table.righe col.c-um    { width: 10%; }
+  table.righe col.c-qord  { width: 17%; }
+  table.righe col.c-qric  { width: 17%; }
+  table.righe col.c-pru   { width: 18%; }
+  table.righe th { background: #f0f4f8; text-align: left; padding: 8px 10px;
+                   font-size: 11px; text-transform: uppercase; color: #666;
+                   border-bottom: 2px solid #dde3ea; }
+  table.righe th.num { text-align: right; }
+  table.righe td { padding: 8px 10px; border-bottom: 1px solid #eee; font-size: 12px;
+                   vertical-align: top; }
   table.righe td.num { text-align: right; }
-  .rettifica-box { background: #fff8e1; border-left: 4px solid #f59e0b; padding: 12px 16px;
-                   margin-bottom: 18px; font-size: 12px; }
+  table.righe tbody tr:nth-child(even) td { background: #f9fafb; }
+
+  .rettifica-box { background: #fff8e1; border-left: 4px solid #f59e0b;
+                   padding: 12px 16px; margin-bottom: 18px; font-size: 12px; }
   .rettifica-box h3 { margin: 0 0 8px; font-size: 13px; color: #b45309; }
   .rettifica-box ul { margin: 0; padding-left: 18px; }
   .rettifica-box li { margin-bottom: 3px; }
-  .footer { margin-top: 30px; font-size: 10px; color: #aaa; text-align: center; }
+
+  .note-box { background: #f9fafb; border-left: 3px solid #5585b5;
+              padding: 10px 14px; font-size: 12px; margin-bottom: 18px; }
+
+  .footer { margin-top: 30px; font-size: 10px; color: #aaa; text-align: center;
+            border-top: 1px solid #eee; padding-top: 8px; }
 </style>
 </head>
 <body>
 
 <div class="header-bar">
   <h1>Conferma Ricezione — {{ ordine.numero_ordine }}</h1>
-  <p>Data ricezione: {{ ricezione.data_ricezione|date:"d/m/Y" }}{% if ricezione.numero_ddt %} — DDT: {{ ricezione.numero_ddt }}{% endif %}</p>
+  <p>Data ricezione: {{ ricezione.data_ricezione|date:"d/m/Y" }}{% if ricezione.numero_ddt %} &mdash; DDT: {{ ricezione.numero_ddt }}{% endif %}</p>
 </div>
 
-<table class="meta-table">
+<table class="meta">
   <tr>
     <td class="lbl">Fornitore</td>
     <td class="val">{{ ricezione.fornitore }}</td>
-    <td class="lbl">Ordine di Acquisto</td>
+    <td class="sep"></td>
+    <td class="lbl">Ordine di acquisto</td>
     <td class="val">{{ ordine.numero_ordine }} del {{ ordine.data_ordine|date:"d/m/Y" }}</td>
   </tr>
   <tr>
     <td class="lbl">Destinazione</td>
-    <td class="val">{% if ricezione.mezzo %}{{ ricezione.mezzo }}{% elif ricezione.stabilimento %}{{ ricezione.stabilimento }}{% else %}—{% endif %}</td>
+    <td class="val">{% if ricezione.mezzo %}{{ ricezione.mezzo }}{% elif ricezione.stabilimento %}{{ ricezione.stabilimento }}{% else %}&mdash;{% endif %}</td>
+    <td class="sep"></td>
     <td class="lbl">Registrato da</td>
-    <td class="val">{{ ricezione.created_by.get_full_name|default:"—" }}</td>
+    <td class="val">{{ ricezione.created_by.get_full_name|default:"&mdash;" }}</td>
   </tr>
 </table>
 
 <table class="righe">
+  <colgroup>
+    <col class="c-prod">
+    <col class="c-um">
+    <col class="c-qord">
+    <col class="c-qric">
+    <col class="c-pru">
+  </colgroup>
   <thead>
     <tr>
       <th>Prodotto</th>
       <th>UM</th>
-      <th style="text-align:right">Qt. ordinata</th>
-      <th style="text-align:right">Qt. ricevuta</th>
-      <th style="text-align:right">Prezzo unit.</th>
+      <th class="num">Qt. ordinata</th>
+      <th class="num">Qt. ricevuta</th>
+      <th class="num">Prezzo unit.</th>
     </tr>
   </thead>
   <tbody>
     {% for r in righe %}
     <tr>
       <td>{{ r.prodotto.nome_prodotto }}</td>
-      <td>{{ r.prodotto.unita_misura|default:"—" }}</td>
-      <td class="num">
-        {% if r.riga_ordine %}{{ r.riga_ordine.quantita_ordinata }}{% else %}—{% endif %}
-      </td>
+      <td>{{ r.prodotto.unita_misura|default:"&mdash;" }}</td>
+      <td class="num">{% if r.riga_ordine %}{{ r.riga_ordine.quantita_ordinata }}{% else %}&mdash;{% endif %}</td>
       <td class="num">{{ r.quantita_ricevuta }}</td>
-      <td class="num">{% if r.prezzo_unitario %}€ {{ r.prezzo_unitario }}{% else %}—{% endif %}</td>
+      <td class="num">{% if r.prezzo_unitario %}&euro; {{ r.prezzo_unitario }}{% else %}&mdash;{% endif %}</td>
     </tr>
+    {% empty %}
+    <tr><td colspan="5" style="text-align:center;color:#aaa;padding:14px;">Nessuna riga</td></tr>
     {% endfor %}
   </tbody>
 </table>
@@ -84,9 +117,7 @@
 {% endif %}
 
 {% if ricezione.note %}
-<div style="background:#f9fafb;border-left:3px solid #5585b5;padding:10px 14px;font-size:12px;margin-bottom:18px;">
-  <strong>Note:</strong> {{ ricezione.note }}
-</div>
+<div class="note-box"><strong>Note:</strong> {{ ricezione.note }}</div>
 {% endif %}
 
 <div class="footer">Documento generato automaticamente da RATTUS26</div>
