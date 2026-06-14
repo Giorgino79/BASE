@@ -83,21 +83,32 @@ def _notify_riferimento(cliente, oggetto, messaggio):
 # ── Autenticazione ────────────────────────────────────────────────────────────
 
 def portal_login(request):
-    if request.user.is_authenticated and _get_cliente(request):
-        return redirect('portale:dashboard')
+    # Se già autenticato come cliente portale → directo alla dashboard portale
+    if request.user.is_authenticated:
+        if _get_cliente(request):
+            return redirect('portale:dashboard')
+        # È un utente staff: forzalo al logout prima di accedere al portale
+        logout(request)
+
+    error = None
     if request.method == 'POST':
         user = authenticate(request,
-                            username=request.POST.get('username'),
-                            password=request.POST.get('password'))
-        if user and hasattr(user, 'cliente_portale'):
-            login(request, user)
-            return redirect(request.POST.get('next') or 'portale:dashboard')
-        from django.contrib.auth.forms import AuthenticationForm
-        form = AuthenticationForm(data=request.POST)
-    else:
-        from django.contrib.auth.forms import AuthenticationForm
-        form = AuthenticationForm()
-    return render(request, 'portale/login.html', {'form': form, 'next': request.GET.get('next', '')})
+                            username=request.POST.get('username', '').strip(),
+                            password=request.POST.get('password', '').strip())
+        if user is not None:
+            try:
+                cliente = user.cliente_portale  # verifica che sia un cliente portale
+                if cliente is not None:
+                    login(request, user)
+                    return redirect(request.POST.get('next') or 'portale:dashboard')
+            except Exception:
+                pass
+        error = 'Credenziali non valide o accesso non autorizzato.'
+
+    return render(request, 'portale/login.html', {
+        'error': error,
+        'next': request.GET.get('next', ''),
+    })
 
 
 def portal_logout(request):
