@@ -27,7 +27,7 @@
     <div class="row">
         <div class="col-12">
             <div class="card shadow">
-                <form method="post">
+                <form method="post" id="form-cliente">
                     {% csrf_token %}
 
                     <div class="card-body">
@@ -47,7 +47,7 @@
                                 <h5>Dati Anagrafici</h5>
 
                                 <div class="mb-3">
-                                    <label class="form-label">{{ form.ragione_sociale.label }}</label>
+                                    <label class="form-label" for="{{ form.ragione_sociale.id_for_label }}">{{ form.ragione_sociale.label }}</label>
                                     {{ form.ragione_sociale }}
                                     {% if form.ragione_sociale.errors %}
                                         <div class="text-danger small">{{ form.ragione_sociale.errors.0 }}</div>
@@ -55,7 +55,7 @@
                                 </div>
 
                                 <div class="mb-3">
-                                    <label class="form-label">{{ form.indirizzo.label }}</label>
+                                    <label class="form-label" for="{{ form.indirizzo.id_for_label }}">{{ form.indirizzo.label }}</label>
                                     {{ form.indirizzo }}
                                     {% if form.indirizzo.errors %}
                                         <div class="text-danger small">{{ form.indirizzo.errors.0 }}</div>
@@ -63,14 +63,14 @@
                                 </div>
 
                                 <div class="mb-3">
-                                    <label class="form-label">{{ form.citta.label }}</label>
+                                    <label class="form-label" for="{{ form.citta.id_for_label }}">{{ form.citta.label }}</label>
                                     {{ form.citta }}
                                     {% if form.citta.errors %}<div class="text-danger small">{{ form.citta.errors.0 }}</div>{% endif %}
                                     <div style="display:none">{{ form.cap }}{{ form.provincia }}{{ form.regione }}</div>
                                 </div>
 
                                 <div class="mb-3">
-                                    <label class="form-label">{{ form.telefono.label }}</label>
+                                    <label class="form-label" for="{{ form.telefono.id_for_label }}">{{ form.telefono.label }}</label>
                                     {{ form.telefono }}
                                     {% if form.telefono.errors %}
                                         <div class="text-danger small">{{ form.telefono.errors.0 }}</div>
@@ -78,7 +78,7 @@
                                 </div>
 
                                 <div class="mb-3">
-                                    <label class="form-label">{{ form.email.label }}</label>
+                                    <label class="form-label" for="{{ form.email.id_for_label }}">{{ form.email.label }}</label>
                                     {{ form.email }}
                                     {% if form.email.errors %}
                                         <div class="text-danger small">{{ form.email.errors.0 }}</div>
@@ -86,7 +86,7 @@
                                 </div>
 
                                 <div class="mb-3">
-                                    <label class="form-label">{{ form.pec.label }}</label>
+                                    <label class="form-label" for="{{ form.pec.id_for_label }}">{{ form.pec.label }}</label>
                                     {{ form.pec }}
                                     {% if form.pec.errors %}
                                         <div class="text-danger small">{{ form.pec.errors.0 }}</div>
@@ -99,7 +99,7 @@
                                 <h5>Dati Fiscali e Commerciali</h5>
 
                                 <div class="mb-3">
-                                    <label class="form-label">{{ form.partita_iva.label }}</label>
+                                    <label class="form-label" for="{{ form.partita_iva.id_for_label }}">{{ form.partita_iva.label }}</label>
                                     {{ form.partita_iva }}
                                     {% if form.partita_iva.errors %}
                                         <div class="text-danger small">{{ form.partita_iva.errors.0 }}</div>
@@ -110,7 +110,7 @@
                                 </div>
 
                                 <div class="mb-3">
-                                    <label class="form-label">{{ form.codice_fiscale.label }}</label>
+                                    <label class="form-label" for="{{ form.codice_fiscale.id_for_label }}">{{ form.codice_fiscale.label }}</label>
                                     {{ form.codice_fiscale }}
                                     {% if form.codice_fiscale.errors %}
                                         <div class="text-danger small">{{ form.codice_fiscale.errors.0 }}</div>
@@ -121,7 +121,7 @@
                                 </div>
 
                                 <div class="mb-3">
-                                    <label class="form-label">{{ form.codice_univoco.label }}</label>
+                                    <label class="form-label" for="{{ form.codice_univoco.id_for_label }}">{{ form.codice_univoco.label }}</label>
                                     {{ form.codice_univoco }}
                                     {% if form.codice_univoco.errors %}
                                         <div class="text-danger small">{{ form.codice_univoco.errors.0 }}</div>
@@ -132,7 +132,7 @@
                                 </div>
 
                                 <div class="mb-3">
-                                    <label class="form-label">{{ form.tipo_pagamento.label }}</label>
+                                    <label class="form-label" for="{{ form.tipo_pagamento.id_for_label }}">{{ form.tipo_pagamento.label }}</label>
                                     {{ form.tipo_pagamento }}
                                     {% if form.tipo_pagamento.errors %}
                                         <div class="text-danger small">{{ form.tipo_pagamento.errors.0 }}</div>
@@ -140,7 +140,7 @@
                                 </div>
 
                                 <div class="mb-3">
-                                    <label class="form-label">{{ form.limite_credito.label }}</label>
+                                    <label class="form-label" for="{{ form.limite_credito.id_for_label }}">{{ form.limite_credito.label }}</label>
                                     <div class="input-group">
                                         <span class="input-group-text">€</span>
                                         {{ form.limite_credito }}
@@ -151,7 +151,7 @@
                                 </div>
 
                                 <div class="mb-3">
-                                    <label class="form-label">{{ form.rappresentante.label }}</label>
+                                    <label class="form-label" for="{{ form.rappresentante.id_for_label }}">{{ form.rappresentante.label }}</label>
                                     {{ form.rappresentante }}
                                     {% if form.rappresentante.errors %}
                                         <div class="text-danger small">{{ form.rappresentante.errors.0 }}</div>
@@ -172,7 +172,7 @@
                                 </div>
 
                                 <div class="mb-3">
-                                    <label class="form-label">{{ form.note.label }}</label>
+                                    <label class="form-label" for="{{ form.note.id_for_label }}">{{ form.note.label }}</label>
                                     {{ form.note }}
                                     {% if form.note.errors %}
                                         <div class="text-danger small">{{ form.note.errors.0 }}</div>
@@ -195,7 +195,8 @@
                                 <a href="{% url 'anagrafica:cliente_list' %}" class="btn btn-outline-secondary me-2">
                                     <i class="bi bi-x me-1"></i>Annulla
                                 </a>
-                                <button type="submit" class="btn btn-primary">
+                                {% include "commons_templates/components/voice_assistant.html" with form_selector="#form-cliente" %}
+                                <button type="submit" class="btn btn-primary ms-2">
                                     <i class="bi bi-floppy me-1"></i>Salva Cliente
                                 </button>
                             </div>

@@ -2,13 +2,82 @@ import django.db.models.deletion
 from django.db import migrations, models
 
 
+def create_stabile_tables(apps, schema_editor):
+    vendor = schema_editor.connection.vendor
+    db = schema_editor.connection
+
+    # Evita di ricreare tabelle già esistenti (idempotente)
+    existing = db.introspection.table_names()
+
+    if 'servizi_condominiostabile' not in existing:
+        if vendor == 'sqlite':
+            schema_editor.execute(
+                "CREATE TABLE servizi_condominiostabile ("
+                "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+                "nome VARCHAR(200) NOT NULL,"
+                "indirizzo VARCHAR(300) NOT NULL,"
+                "prezzo_base DECIMAL(10,2) NOT NULL,"
+                "note TEXT NOT NULL DEFAULT ''"
+                ")"
+            )
+            schema_editor.execute("CREATE INDEX idx_svz_stabile_nome ON servizi_condominiostabile (nome)")
+        else:
+            schema_editor.execute(
+                "CREATE TABLE servizi_condominiostabile ("
+                "id BIGSERIAL PRIMARY KEY,"
+                "nome VARCHAR(200) NOT NULL,"
+                "indirizzo VARCHAR(300) NOT NULL,"
+                "prezzo_base DECIMAL(10,2) NOT NULL,"
+                "note TEXT NOT NULL DEFAULT ''"
+                ")"
+            )
+            schema_editor.execute("CREATE INDEX ON servizi_condominiostabile (nome)")
+
+    if 'servizi_unitaabitativabase' not in existing:
+        if vendor == 'sqlite':
+            schema_editor.execute(
+                "CREATE TABLE servizi_unitaabitativabase ("
+                "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+                "nome VARCHAR(200) NOT NULL,"
+                "importo_override DECIMAL(10,2),"
+                "stabile_id INTEGER NOT NULL REFERENCES servizi_condominiostabile(id)"
+                ")"
+            )
+            schema_editor.execute("CREATE INDEX idx_svz_unita_stabile ON servizi_unitaabitativabase (stabile_id)")
+            schema_editor.execute("CREATE INDEX idx_svz_unita_nome ON servizi_unitaabitativabase (nome)")
+        else:
+            schema_editor.execute(
+                "CREATE TABLE servizi_unitaabitativabase ("
+                "id BIGSERIAL PRIMARY KEY,"
+                "nome VARCHAR(200) NOT NULL,"
+                "importo_override DECIMAL(10,2),"
+                "stabile_id BIGINT NOT NULL REFERENCES servizi_condominiostabile(id) ON DELETE CASCADE"
+                ")"
+            )
+            schema_editor.execute("CREATE INDEX ON servizi_unitaabitativabase (stabile_id)")
+            schema_editor.execute("CREATE INDEX ON servizi_unitaabitativabase (nome)")
+
+    # Aggiunge stabile_id a condominioods solo se non esiste già
+    with db.cursor() as cursor:
+        cols = [c.name for c in db.introspection.get_table_description(cursor, 'servizi_condominioods')]
+    if 'stabile_id' not in cols:
+        if vendor == 'sqlite':
+            schema_editor.execute(
+                "ALTER TABLE servizi_condominioods "
+                "ADD COLUMN stabile_id INTEGER REFERENCES servizi_condominiostabile(id)"
+            )
+        else:
+            schema_editor.execute(
+                "ALTER TABLE servizi_condominioods "
+                "ADD COLUMN stabile_id BIGINT "
+                "REFERENCES servizi_condominiostabile(id) ON DELETE SET NULL"
+            )
+
+
 class Migration(migrations.Migration):
     """
     Crea CondominioStabile, UnitaAbitativaBase e aggiunge stabile a CondominioODS.
-    Usa SeparateDatabaseAndState + RunSQL per aggirare il bug Django 5.2 che
-    causa ValueError su resolve_related_fields per FK verso modelli creati
-    in precedenti migration. Tutto il DDL è in un unico RunSQL per garantire
-    l'ordine corretto (condominostabile prima di unitaabitativabase).
+    Usa SeparateDatabaseAndState + RunPython (cross-database: SQLite e PostgreSQL).
     """
 
     dependencies = [
@@ -60,37 +129,7 @@ class Migration(migrations.Migration):
                 ),
             ],
             database_operations=[
-                migrations.RunSQL(
-                    sql="""
-                        CREATE TABLE servizi_condominiostabile (
-                            id BIGSERIAL PRIMARY KEY,
-                            nome VARCHAR(200) NOT NULL,
-                            indirizzo VARCHAR(300) NOT NULL,
-                            prezzo_base DECIMAL(10,2) NOT NULL,
-                            note TEXT NOT NULL DEFAULT ''
-                        );
-                        CREATE INDEX ON servizi_condominiostabile (nome);
-
-                        CREATE TABLE servizi_unitaabitativabase (
-                            id BIGSERIAL PRIMARY KEY,
-                            nome VARCHAR(200) NOT NULL,
-                            importo_override DECIMAL(10,2),
-                            stabile_id BIGINT NOT NULL
-                                REFERENCES servizi_condominiostabile(id) ON DELETE CASCADE
-                        );
-                        CREATE INDEX ON servizi_unitaabitativabase (stabile_id);
-                        CREATE INDEX ON servizi_unitaabitativabase (nome);
-
-                        ALTER TABLE servizi_condominioods
-                            ADD COLUMN stabile_id BIGINT
-                            REFERENCES servizi_condominiostabile(id) ON DELETE SET NULL;
-                    """,
-                    reverse_sql="""
-                        ALTER TABLE servizi_condominioods DROP COLUMN IF EXISTS stabile_id;
-                        DROP TABLE IF EXISTS servizi_unitaabitativabase;
-                        DROP TABLE IF EXISTS servizi_condominiostabile;
-                    """,
-                ),
+                migrations.RunPython(create_stabile_tables, reverse_code=migrations.RunPython.noop),
             ],
         ),
     ]

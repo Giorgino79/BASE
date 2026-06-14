@@ -1,0 +1,35 @@
+{% load static %}
+{# Assistente vocale per form — Uso: {% include "commons_templates/components/voice_assistant.html" with form_selector="#id-del-form" %} #}
+
+<button type="button" id="vfa-btn-start" class="btn btn-outline-secondary btn-sm"
+        title="Compila il modulo con la voce (Chrome/Edge + HTTPS)"
+        style="display:none;">
+  <i class="bi bi-mic me-1"></i> Compila con la voce
+</button>
+
+<script src="{% static 'js/assistent_voice/voice_form_assistant.js' %}"></script>
+<script>
+(function () {
+  var formSelector = "{{ form_selector }}";
+  var btn = document.getElementById('vfa-btn-start');
+
+  if (!formSelector) {
+    console.warn('voice_assistant.html: parametro form_selector mancante.');
+    return;
+  }
+
+  // Mostra il bottone solo se il browser supporta il riconoscimento vocale
+  if (window.SpeechRecognition || window.webkitSpeechRecognition) {
+    btn.style.display = '';
+  }
+
+  btn.addEventListener('click', function () {
+    var assistant = new VoiceFormAssistant(formSelector, {
+      lang: 'it-IT',
+      confirmBeforeSubmit: true,
+      readBackValue: true,
+    });
+    assistant.start();
+  });
+})();
+</script>

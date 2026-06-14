@@ -12,7 +12,7 @@
   </nav>
   <h1><i class="bi bi-clipboard-check me-2 text-brand"></i>{{ titolo }}</h1>
 </div>
-<form method="post" novalidate>
+<form method="post" novalidate id="form-ods">
   {% csrf_token %}
   <div class="row g-3">
     <div class="col-lg-9">
@@ -22,13 +22,13 @@
         <div class="card-body">
           <div class="row g-3">
             <div class="col-sm-6">
-              <label class="form-label">{{ form.filiale.label }}</label>
+              <label class="form-label" for="{{ form.filiale.id_for_label }}">{{ form.filiale.label }}</label>
               {{ form.filiale }}
               {% if form.filiale.errors %}<div class="invalid-feedback d-block">{{ form.filiale.errors.0 }}</div>{% endif %}
               <div class="form-text">Sede di un cliente aziendale</div>
             </div>
             <div class="col-sm-6">
-              <label class="form-label">{{ form.privato.label }}</label>
+              <label class="form-label" for="{{ form.privato.id_for_label }}">{{ form.privato.label }}</label>
               {{ form.privato }}
               {% if form.privato.errors %}<div class="invalid-feedback d-block">{{ form.privato.errors.0 }}</div>{% endif %}
               <div class="form-text">Cliente privato</div>
@@ -130,19 +130,19 @@
         <div class="card-body">
           <div class="row g-3">
             <div class="col-sm-4">
-              <label class="form-label">{{ form.data_servizio.label }} <span class="text-danger">*</span></label>
+              <label class="form-label" for="{{ form.data_servizio.id_for_label }}">{{ form.data_servizio.label }} <span class="text-danger">*</span></label>
               {{ form.data_servizio }}
             </div>
             <div class="col-sm-4">
-              <label class="form-label">{{ form.ora_inizio.label }}</label>
+              <label class="form-label" for="{{ form.ora_inizio.id_for_label }}">{{ form.ora_inizio.label }}</label>
               {{ form.ora_inizio }}
             </div>
             <div class="col-sm-4">
-              <label class="form-label">{{ form.ora_fine.label }}</label>
+              <label class="form-label" for="{{ form.ora_fine.id_for_label }}">{{ form.ora_fine.label }}</label>
               {{ form.ora_fine }}
             </div>
             <div class="col-sm-6">
-              <label class="form-label">{{ form.stato.label }}</label>
+              <label class="form-label" for="{{ form.stato.id_for_label }}">{{ form.stato.label }}</label>
               {{ form.stato }}
             </div>
             <div class="col-12">
@@ -153,16 +153,17 @@
               </div>
             </div>
             <div class="col-12">
-              <label class="form-label">{{ form.note_intervento.label }}</label>
+              <label class="form-label" for="{{ form.note_intervento.id_for_label }}">{{ form.note_intervento.label }}</label>
               {{ form.note_intervento }}
             </div>
           </div>
         </div>
       </div>
 
-      <div class="d-flex gap-2">
+      <div class="d-flex gap-2 align-items-center">
         <button type="submit" class="btn btn-brand"><i class="bi bi-check-lg me-1"></i>Salva</button>
         <a href="{{ back_url }}" class="btn btn-outline-secondary">Annulla</a>
+        {% include "commons_templates/components/voice_assistant.html" with form_selector="#form-ods" %}
       </div>
     </div>
   </div>

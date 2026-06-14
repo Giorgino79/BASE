@@ -24,7 +24,7 @@
 </div>
 {% endif %}
 
-<form method="post" novalidate>
+<form method="post" novalidate id="form-cliente">
   {% csrf_token %}
 
   <div class="row g-3">
@@ -182,6 +182,7 @@
               <a href="{{ back_url }}" class="btn btn-outline-secondary">
                 <i class="bi bi-arrow-left me-1"></i>Annulla
               </a>
+              {% include "commons_templates/components/voice_assistant.html" with form_selector="#form-cliente" %}
             </div>
           </div>
         </div>
