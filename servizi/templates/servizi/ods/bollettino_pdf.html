@@ -27,11 +27,8 @@
   /* Griglia servizi */
   table.servizi { width: 100%; border-collapse: collapse; border: 1px solid #555; margin: 10px 0; }
   table.servizi td { border: 1px solid #555; padding: 5px 10px; width: 50%; vertical-align: top; }
-  .servizio-item { margin: 3px 0; font-size: 9.5pt; }
-  .servizio-item .bullet { font-weight: bold; margin-right: 4px; }
+  .servizio-item { margin: 4px 0; font-size: 9.5pt; }
   .servizio-item.selezionato { font-weight: bold; }
-  .servizio-item .check { display: inline-block; width: 12px; height: 12px; border: 1px solid #555; margin-right: 5px; vertical-align: middle; text-align: center; font-size: 9pt; line-height: 12px; }
-  .servizio-item .check.on { font-weight: bold; }
 
   /* Esterna / Interna */
   .localiz { text-align: center; margin: 10px 0; font-size: 11pt; letter-spacing: 2px; }
@@ -85,22 +82,18 @@
   Tecnico: <span class="dotted">&nbsp;{{ ods.tecnico.get_full_name|default:ods.tecnico.username }}&nbsp;</span>
 </div>
 
-<!-- Griglia servizi -->
+<!-- Servizi effettuati -->
 <table class="servizi">
   <tr>
     <td>
-      {% for s in servizi_sx %}
-      <div class="servizio-item {% if s.selezionato %}selezionato{% endif %}">
-        <span class="check {% if s.selezionato %}on{% endif %}">{% if s.selezionato %}✓{% endif %}</span>{{ s.nome }}
-      </div>
-      {% endfor %}
+      {% for s in servizi_sx %}{% if s.selezionato %}
+      <div class="servizio-item selezionato">&bull; {{ s.nome }}</div>
+      {% endif %}{% endfor %}
     </td>
     <td>
-      {% for s in servizi_dx %}
-      <div class="servizio-item {% if s.selezionato %}selezionato{% endif %}">
-        <span class="check {% if s.selezionato %}on{% endif %}">{% if s.selezionato %}✓{% endif %}</span>{{ s.nome }}
-      </div>
-      {% endfor %}
+      {% for s in servizi_dx %}{% if s.selezionato %}
+      <div class="servizio-item selezionato">&bull; {{ s.nome }}</div>
+      {% endif %}{% endfor %}
     </td>
   </tr>
 </table>

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load static %}
+{% load static invia_tags %}
 {% block extra_css %}<link rel="stylesheet" href="{% static 'css/detail.css' %}">{% endblock %}
 {% block content %}
 <div class="page-header mb-4">
@@ -18,10 +18,13 @@
       {% elif ods.stato == "completato" %}<span class="badge badge-ok ms-2">Completato</span>
       {% else %}<span class="badge badge-ko ms-2">Annullato</span>{% endif %}
     </h1>
-    <a href="{% url 'servizi:ods_bollettino_pdf' ods.pk %}" target="_blank"
-       class="btn btn-outline-secondary btn-sm">
-      <i class="bi bi-printer me-1"></i>Stampa Bollettino
-    </a>
+    <div class="d-flex gap-2 flex-wrap">
+      {% url 'servizi:ods_bollettino_pdf' ods.pk as bollettino_url %}
+      {% bottone_invia phone=invia_phone email=invia_email oggetto="Bollettino di servizio "|add:ods.numero pdf_url=bollettino_url destinatario_nome=invia_nome label="Invia" btn_class="btn-outline-success" btn_size="btn-sm" %}
+      <a href="{{ bollettino_url }}" target="_blank" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-printer me-1"></i>Stampa Bollettino
+      </a>
+    </div>
   </div>
 </div>
 

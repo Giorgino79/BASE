@@ -605,6 +605,19 @@ class ODSDetailView(LoginRequiredMixin, DetailView):
         ctx["object_id"] = self.object.pk
         from django.contrib.auth import get_user_model
         ctx["utenti"] = get_user_model().objects.filter(is_active=True).order_by("last_name", "first_name")
+
+        # Dati contatto per invio bollettino (WA / email)
+        ods = self.object
+        if ods.filiale:
+            ctx["invia_phone"] = ods.filiale.cliente.telefono or ""
+            ctx["invia_email"] = ods.filiale.cliente.email_operativo or ""
+            ctx["invia_nome"]  = ods.filiale.cliente.ragione_sociale
+        elif ods.privato:
+            ctx["invia_phone"] = getattr(ods.privato, "telefono", "")
+            ctx["invia_email"] = getattr(ods.privato, "email", "")
+            ctx["invia_nome"]  = str(ods.privato)
+        else:
+            ctx["invia_phone"] = ctx["invia_email"] = ctx["invia_nome"] = ""
         return ctx
 
 
