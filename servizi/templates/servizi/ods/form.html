@@ -10,7 +10,10 @@
       <li class="breadcrumb-item active">{{ titolo }}</li>
     </ol>
   </nav>
-  <h1><i class="bi bi-clipboard-check me-2 text-brand"></i>{{ titolo }}</h1>
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+    <h1 class="mb-0"><i class="bi bi-clipboard-check me-2 text-brand"></i>{{ titolo }}</h1>
+    {% include "commons_templates/components/voice_assistant.html" with form_selector="#form-ods" %}
+  </div>
 </div>
 <form method="post" novalidate id="form-ods">
   {% csrf_token %}
@@ -163,7 +166,6 @@
       <div class="d-flex gap-2 align-items-center">
         <button type="submit" class="btn btn-brand"><i class="bi bi-check-lg me-1"></i>Salva</button>
         <a href="{{ back_url }}" class="btn btn-outline-secondary">Annulla</a>
-        {% include "commons_templates/components/voice_assistant.html" with form_selector="#form-ods" %}
       </div>
     </div>
   </div>
