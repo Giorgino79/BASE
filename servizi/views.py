@@ -1,11 +1,14 @@
+from collections import defaultdict
 from datetime import timedelta
+from decimal import Decimal
+
 from django.shortcuts import render, get_object_or_404, redirect
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.urls import reverse_lazy, reverse
-from django.db.models import Q
+from django.db.models import Q, Sum
 from django.contrib.contenttypes.models import ContentType
 from django.http import JsonResponse
 from django.utils import timezone
@@ -73,11 +76,46 @@ def dashboard_tecnico(request):
             .order_by("prodotto__nome_prodotto")
         )
 
+    # Prodotti mancanti: confronta quantità previste (non confermate) vs scorte a bordo
+    prodotti_mancanti = []
+    if mezzo and distinte_aperte.exists():
+        distinta_ids = list(distinte_aperte.values_list("pk", flat=True))
+        needed = defaultdict(lambda: {"nome": "", "necessaria": Decimal(0)})
+
+        # Da ConsumoMateriale (ODS classici) non ancora confermati
+        for row in (ConsumoMateriale.objects
+                    .filter(riga__ods__distinta_id__in=distinta_ids, confermato=False)
+                    .values("prodotto_id", "prodotto__nome_prodotto")
+                    .annotate(tot=Sum("quantita"))):
+            needed[row["prodotto_id"]]["nome"] = row["prodotto__nome_prodotto"]
+            needed[row["prodotto_id"]]["necessaria"] += row["tot"]
+
+        # Da RigaProdottoCondominio (ODS condominio) non ancora confermati
+        for row in (RigaProdottoCondominio.objects
+                    .filter(condominio__distinta_id__in=distinta_ids, confermato=False)
+                    .values("prodotto_id", "prodotto__nome_prodotto")
+                    .annotate(tot=Sum("quantita"))):
+            needed[row["prodotto_id"]]["nome"] = row["prodotto__nome_prodotto"]
+            needed[row["prodotto_id"]]["necessaria"] += row["tot"]
+
+        stock = {s.prodotto_id: s.quantita for s in scorte}
+        for pid, info in needed.items():
+            a_bordo = stock.get(pid, Decimal(0))
+            if a_bordo < info["necessaria"]:
+                prodotti_mancanti.append({
+                    "nome": info["nome"],
+                    "necessaria": info["necessaria"],
+                    "a_bordo": a_bordo,
+                    "mancante": info["necessaria"] - a_bordo,
+                })
+        prodotti_mancanti.sort(key=lambda x: x["nome"])
+
     return render(request, "servizi/dashboard_tecnico.html", {
         "distinte_aperte": distinte_aperte,
         "n_distinte": distinte_aperte.count(),
         "mezzo": mezzo,
         "scorte": scorte,
+        "prodotti_mancanti": prodotti_mancanti,
     })
 
 
