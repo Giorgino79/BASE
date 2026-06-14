@@ -35,18 +35,21 @@ def portal_login_required(view_fn):
     return wrapper
 
 
-def _notify_riferimento(cliente, oggetto, messaggio):
-    """Invia email + chat all'utente di riferimento del cliente."""
+def _notify_riferimento(cliente, oggetto, messaggio, urgenza='media'):
+    """Invia email + promemoria + WhatsApp all'utente di riferimento del cliente."""
+    import threading
     ref = cliente.utente_riferimento
     if not ref:
         return
 
-    # Email
+    testo_completo = f"Cliente: {cliente.ragione_sociale}\n\n{messaggio}"
+
+    # ── Email ────────────────────────────────────────────────────────────────
     if ref.email:
         try:
             send_mail(
                 subject=f"[Portale Clienti] {oggetto}",
-                message=f"Cliente: {cliente.ragione_sociale}\n\n{messaggio}",
+                message=testo_completo,
                 from_email=django_settings.DEFAULT_FROM_EMAIL,
                 recipient_list=[ref.email],
                 fail_silently=True,
@@ -54,30 +57,35 @@ def _notify_riferimento(cliente, oggetto, messaggio):
         except Exception:
             pass
 
-    # Chat interna
+    # ── Promemoria interno ───────────────────────────────────────────────────
     try:
-        from comunicazioni.models import ChatConversazione, ChatMessaggio
-        from django.contrib.auth import get_user_model
-        User = get_user_model()
-
-        # Cerca o crea conversazione 1:1 tra sistema e riferimento
-        conv = (ChatConversazione.objects
-                .filter(partecipanti=ref)
-                .filter(partecipanti__pk=ref.pk)
-                .first())
-        if not conv:
-            conv = ChatConversazione.objects.create(creata_da=ref)
-            conv.partecipanti.add(ref)
-
-        ChatMessaggio.objects.create(
-            conversazione=conv,
-            mittente=ref,
-            testo=f"[Portale cliente — {cliente.ragione_sociale}]\n{oggetto}\n\n{messaggio}",
+        from comunicazioni.models import Promemoria
+        Promemoria.objects.create(
+            user=ref,
+            assegnato_a=ref,
+            titolo=f"[Portale] {oggetto}",
+            descrizione=testo_completo,
+            priorita=urgenza,
+            stato='pending',
         )
-        conv.last_message_at = timezone.now()
-        conv.save(update_fields=['last_message_at'])
     except Exception:
         pass
+
+    # ── WhatsApp (in thread per non bloccare la risposta) ────────────────────
+    telefono = getattr(ref, 'telefono', '').strip()
+    if telefono:
+        def _send_wa():
+            try:
+                from core.whatsapp_sender import WhatsAppSender, is_configured
+                if is_configured():
+                    WhatsAppSender.send_message(
+                        telefono,
+                        f"📋 *Portale Clienti — {cliente.ragione_sociale}*\n\n"
+                        f"*{oggetto}*\n\n{messaggio}",
+                    )
+            except Exception:
+                pass
+        threading.Thread(target=_send_wa, daemon=True).start()
 
 
 # ── Autenticazione ────────────────────────────────────────────────────────────
@@ -235,6 +243,7 @@ def intervento(request):
             data_preferita=request.POST.get('data_preferita') or None,
         )
         urgenza_label = dict(RichiestaIntervento.URGENZA_CHOICES).get(richiesta.urgenza, '')
+        priorita_map = {'normale': 'media', 'urgente': 'alta', 'emergenza': 'urgente'}
         _notify_riferimento(
             cliente,
             oggetto=f"Richiesta intervento [{urgenza_label.upper()}] — {richiesta.tipo_problema}",
@@ -243,6 +252,7 @@ def intervento(request):
                 f"Data preferita: {richiesta.data_preferita or 'non specificata'}\n\n"
                 f"{richiesta.descrizione}"
             ),
+            urgenza=priorita_map.get(richiesta.urgenza, 'media'),
         )
         messages.success(request, 'Richiesta inviata. Il nostro team ti contatterà a breve.')
         return redirect('portale:dashboard')
