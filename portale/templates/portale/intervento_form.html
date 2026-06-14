@@ -1,0 +1,52 @@
+{% extends "portale/base.html" %}
+{% block title %}Richiedi intervento{% endblock %}
+{% block content %}
+<div class="portal-header">
+  <div class="container">
+    <h1><i class="bi bi-plus-circle me-2"></i>Richiedi intervento</h1>
+    <div class="sub">Invia una richiesta al tuo responsabile SERVAL</div>
+  </div>
+</div>
+<div class="container pb-4">
+  <div class="card border-0 shadow-sm p-4" style="max-width:600px;">
+    <form method="post">
+      {% csrf_token %}
+      {% if filiali %}
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Sede <span class="text-danger">*</span></label>
+        <select name="filiale" class="form-select">
+          <option value="">— Sede principale —</option>
+          {% for f in filiali %}
+          <option value="{{ f.pk }}">{{ f.nome }} — {{ f.citta }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      {% endif %}
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Tipo problema / infestante <span class="text-danger">*</span></label>
+        <input type="text" name="tipo_problema" class="form-control" placeholder="Es: presenza topi, blatte, vespe…" required>
+      </div>
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Urgenza</label>
+        <select name="urgenza" class="form-select">
+          <option value="normale">Normale</option>
+          <option value="urgente">Urgente</option>
+          <option value="emergenza">Emergenza</option>
+        </select>
+      </div>
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Descrizione <span class="text-danger">*</span></label>
+        <textarea name="descrizione" class="form-control" rows="4"
+                  placeholder="Descrivi il problema, dove si trova, da quando…" required></textarea>
+      </div>
+      <div class="mb-4">
+        <label class="form-label fw-semibold">Data preferita (opzionale)</label>
+        <input type="date" name="data_preferita" class="form-control">
+      </div>
+      <button type="submit" class="btn w-100 py-2" style="background:#5585b5;color:#fff;">
+        <i class="bi bi-send me-1"></i>Invia richiesta
+      </button>
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,48 @@
+{% extends "portale/base.html" %}
+{% block title %}Segnala infestazione{% endblock %}
+{% block content %}
+<div class="portal-header">
+  <div class="container">
+    <h1><i class="bi bi-exclamation-triangle me-2"></i>Segnala infestazione</h1>
+    <div class="sub">Segnalazione rapida di un avvistamento o problema</div>
+  </div>
+</div>
+<div class="container pb-4">
+  <div class="card border-0 shadow-sm p-4" style="max-width:600px;">
+    <form method="post" enctype="multipart/form-data">
+      {% csrf_token %}
+      {% if filiali %}
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Sede</label>
+        <select name="filiale" class="form-select">
+          <option value="">— Sede principale —</option>
+          {% for f in filiali %}
+          <option value="{{ f.pk }}">{{ f.nome }} — {{ f.citta }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      {% endif %}
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Luogo / area <span class="text-danger">*</span></label>
+        <input type="text" name="luogo" class="form-control" placeholder="Es: magazzino nord, cucina, bagni piano 2…" required>
+      </div>
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Infestante osservato <span class="text-danger">*</span></label>
+        <input type="text" name="infestante" class="form-control" placeholder="Es: topo, blatta, vespa, formica…" required>
+      </div>
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Note</label>
+        <textarea name="note" class="form-control" rows="3" placeholder="Ulteriori dettagli…"></textarea>
+      </div>
+      <div class="mb-4">
+        <label class="form-label fw-semibold">Foto (opzionale)</label>
+        <input type="file" name="foto" class="form-control" accept="image/*" capture="environment">
+        <div class="form-text">Puoi scattare una foto direttamente con la fotocamera</div>
+      </div>
+      <button type="submit" class="btn w-100 py-2" style="background:#f59e0b;color:#fff;border:none;">
+        <i class="bi bi-send me-1"></i>Invia segnalazione
+      </button>
+    </form>
+  </div>
+</div>
+{% endblock %}

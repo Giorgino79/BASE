@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import models
 from django.urls import reverse
 from core.models_legacy import AllegatiMixin
@@ -55,6 +56,18 @@ class Azienda(AllegatiMixin, models.Model):
                                              help_text='Tutte le stazioni sono state installate')
     attivo            = models.BooleanField(default=True, verbose_name='Attivo')
     note              = models.TextField(blank=True, verbose_name='Note')
+
+    # Portale clienti
+    utente_riferimento = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True,
+        on_delete=models.SET_NULL, related_name='clienti_in_gestione',
+        verbose_name='Utente interno di riferimento',
+    )
+    portal_user = models.OneToOneField(
+        settings.AUTH_USER_MODEL, null=True, blank=True,
+        on_delete=models.SET_NULL, related_name='cliente_portale',
+        verbose_name='Utente portale cliente',
+    )
 
     created_at        = models.DateTimeField(auto_now_add=True)
     updated_at        = models.DateTimeField(auto_now=True)

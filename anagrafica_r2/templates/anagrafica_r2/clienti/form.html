@@ -189,6 +189,55 @@
           </div>
         </div>
 
+        <!-- Portale clienti -->
+        <div class="card mb-3">
+          <div class="card-header"><i class="bi bi-person-badge me-2"></i>Portale clienti</div>
+          <div class="card-body">
+            <div class="mb-3">
+              <label class="form-label form-label-sm" for="{{ form.utente_riferimento.id_for_label }}">Utente interno di riferimento</label>
+              {{ form.utente_riferimento }}
+              <div class="form-text">Riceverà notifiche e richieste dal cliente</div>
+            </div>
+            {% if not object %}
+            <hr class="my-2">
+            <div class="mb-2">
+              <label class="form-label form-label-sm fw-semibold">Accesso portale (opzionale)</label>
+            </div>
+            <div class="mb-2">
+              <label class="form-label form-label-sm">Username</label>
+              <input type="text" name="portal_username" class="form-control form-control-sm" placeholder="Lascia vuoto per non creare">
+            </div>
+            <div class="mb-0">
+              <label class="form-label form-label-sm">Password</label>
+              <input type="password" name="portal_password" class="form-control form-control-sm">
+            </div>
+            {% else %}
+            <div class="mb-2">
+              <label class="form-label form-label-sm">Utente portale attuale</label>
+              <div class="small">
+                {% if object.portal_user %}
+                <span class="badge bg-success">{{ object.portal_user.username }}</span>
+                {% else %}
+                <span class="text-muted">Nessun accesso configurato</span>
+                {% endif %}
+              </div>
+            </div>
+            <hr class="my-2">
+            <div class="mb-2">
+              <label class="form-label form-label-sm fw-semibold">Nuovo accesso / reset password</label>
+            </div>
+            <div class="mb-2">
+              <label class="form-label form-label-sm">Username</label>
+              <input type="text" name="portal_username" class="form-control form-control-sm" placeholder="Lascia vuoto per non modificare" value="{{ object.portal_user.username|default:'' }}">
+            </div>
+            <div class="mb-0">
+              <label class="form-label form-label-sm">Nuova password</label>
+              <input type="password" name="portal_password" class="form-control form-control-sm" placeholder="Lascia vuoto per non cambiare">
+            </div>
+            {% endif %}
+          </div>
+        </div>
+
         <div class="card">
           <div class="card-header"><i class="bi bi-toggle-on me-2"></i>Stato</div>
           <div class="card-body">

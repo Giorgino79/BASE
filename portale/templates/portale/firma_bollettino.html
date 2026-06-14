@@ -1,0 +1,88 @@
+{% extends "portale/base.html" %}
+{% block title %}Firma bollettino {{ ods.numero }}{% endblock %}
+{% block content %}
+<div class="portal-header">
+  <div class="container">
+    <h1><i class="bi bi-pen me-2"></i>Firma bollettino {{ ods.numero }}</h1>
+    <div class="sub">{{ ods.data_servizio|date:"d/m/Y" }} — {{ ods.filiale.nome|default:"Sede principale" }}</div>
+  </div>
+</div>
+<div class="container pb-4">
+  <div class="card border-0 shadow-sm p-4" style="max-width:560px;">
+    <p class="small text-muted mb-3">
+      Firma nel riquadro qui sotto per accettare il rapporto di servizio.
+      La firma sarà allegata al bollettino PDF.
+    </p>
+    <div class="mb-3">
+      <label class="form-label fw-semibold">Nome firmatario</label>
+      <input type="text" id="firmato-da" class="form-control" placeholder="Nome e cognome">
+    </div>
+    <div class="mb-3">
+      <label class="form-label fw-semibold">Firma</label>
+      <canvas id="firma-canvas"
+              style="border:2px solid #d1d5db;border-radius:8px;cursor:crosshair;touch-action:none;width:100%;height:160px;background:#fff;display:block;"></canvas>
+      <div class="d-flex gap-2 mt-2">
+        <button type="button" id="btn-clear" class="btn btn-sm btn-outline-secondary">
+          <i class="bi bi-eraser me-1"></i>Cancella
+        </button>
+      </div>
+    </div>
+    <form method="post" id="firma-form">
+      {% csrf_token %}
+      <input type="hidden" name="firma_data" id="firma-data">
+      <input type="hidden" name="firmato_da" id="firmato-da-hidden">
+      <button type="submit" class="btn w-100 py-2" style="background:#5585b5;color:#fff;" id="btn-firma">
+        <i class="bi bi-check-lg me-1"></i>Conferma firma
+      </button>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  const canvas = document.getElementById('firma-canvas');
+  const ctx    = canvas.getContext('2d');
+  let drawing  = false;
+
+  function resize() {
+    const rect = canvas.getBoundingClientRect();
+    const dpr  = window.devicePixelRatio || 1;
+    canvas.width  = rect.width  * dpr;
+    canvas.height = rect.height * dpr;
+    ctx.scale(dpr, dpr);
+    ctx.strokeStyle = '#1e293b';
+    ctx.lineWidth   = 2;
+    ctx.lineCap     = 'round';
+    ctx.lineJoin    = 'round';
+  }
+  resize();
+
+  function pos(e) {
+    const r = canvas.getBoundingClientRect();
+    const t = e.touches ? e.touches[0] : e;
+    return { x: t.clientX - r.left, y: t.clientY - r.top };
+  }
+
+  canvas.addEventListener('mousedown',  e => { drawing = true; ctx.beginPath(); const p = pos(e); ctx.moveTo(p.x, p.y); });
+  canvas.addEventListener('mousemove',  e => { if (!drawing) return; const p = pos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); });
+  canvas.addEventListener('mouseup',    () => { drawing = false; });
+  canvas.addEventListener('mouseleave', () => { drawing = false; });
+  canvas.addEventListener('touchstart', e => { e.preventDefault(); drawing = true; ctx.beginPath(); const p = pos(e); ctx.moveTo(p.x, p.y); });
+  canvas.addEventListener('touchmove',  e => { e.preventDefault(); if (!drawing) return; const p = pos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); });
+  canvas.addEventListener('touchend',   () => { drawing = false; });
+
+  document.getElementById('btn-clear').addEventListener('click', () => {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  });
+
+  document.getElementById('firma-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    document.getElementById('firma-data').value    = canvas.toDataURL('image/png');
+    document.getElementById('firmato-da-hidden').value = document.getElementById('firmato-da').value;
+    this.submit();
+  });
+})();
+</script>
+{% endblock %}

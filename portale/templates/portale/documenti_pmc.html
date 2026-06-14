@@ -1,0 +1,41 @@
+{% extends "portale/base.html" %}
+{% block title %}Documenti PMC{% endblock %}
+{% block content %}
+<div class="portal-header">
+  <div class="container">
+    <h1><i class="bi bi-file-earmark-check me-2"></i>Documenti PMC</h1>
+    <div class="sub">Registrazioni ministeriali dei prodotti biocidi utilizzati</div>
+  </div>
+</div>
+<div class="container pb-4">
+  {% if prodotti %}
+  <p class="text-muted small mb-3">
+    I seguenti prodotti biocidi sono stati utilizzati nei tuoi interventi.
+    Per ogni prodotto registrato (PMC) puoi verificare la scheda sul registro ministeriale.
+  </p>
+  <div class="row g-3">
+    {% for p in prodotti %}
+    <div class="col-sm-6 col-lg-4">
+      <div class="card border-0 shadow-sm p-3 h-100">
+        <div class="fw-semibold mb-1">{{ p.nome_prodotto }}</div>
+        {% if p.numero_registrazione %}
+        <div class="small text-muted mb-2">PMC n° {{ p.numero_registrazione }}</div>
+        <a href="https://www.salute.gov.it/portale/documentazione/p6_2_8_1.jsp?lingua=italiano&id={{ p.numero_registrazione }}"
+           target="_blank" rel="noopener" class="btn btn-sm btn-outline-success">
+          <i class="bi bi-box-arrow-up-right me-1"></i>Scheda Ministeriale
+        </a>
+        {% else %}
+        <div class="small text-muted">Numero registrazione non disponibile</div>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="text-center py-5 text-muted">
+    <i class="bi bi-file-earmark-x" style="font-size:2.5rem;display:block;margin-bottom:.5rem;"></i>
+    <div>Nessun documento disponibile</div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

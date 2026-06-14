@@ -18,6 +18,7 @@ class AziendaForm(forms.ModelForm):
             'referente', 'telefono',
             'email_direzione', 'email_amministrazione', 'email_operativo', 'email_operativo_2',
             'tipo_pagamento',
+            'utente_riferimento',
             'installato', 'attivo', 'note',
         ]
         widgets = {
@@ -39,6 +40,7 @@ class AziendaForm(forms.ModelForm):
             'email_operativo':      forms.EmailInput(attrs=W_EMAIL),
             'email_operativo_2':    forms.EmailInput(attrs=W_EMAIL),
             'tipo_pagamento':       forms.Select(attrs=W_SEL),
+            'utente_riferimento':   forms.Select(attrs=W_SEL),
             'installato':           forms.CheckboxInput(attrs=W_CHK),
             'attivo':               forms.CheckboxInput(attrs=W_CHK),
             'note':                 forms.Textarea(attrs=W_AREA),

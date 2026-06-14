@@ -124,8 +124,26 @@ class AziendaCreateView(AccessMixin, CreateView):
         return ctx
 
     def form_valid(self, form):
+        response = super().form_valid(form)
+        self._gestisci_portal_user(form.instance)
         messages.success(self.request, f'Cliente «{form.instance.ragione_sociale}» creato con successo.')
-        return super().form_valid(form)
+        return response
+
+    def _gestisci_portal_user(self, azienda):
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        username = self.request.POST.get('portal_username', '').strip()
+        password = self.request.POST.get('portal_password', '').strip()
+        if not username or not password:
+            return
+        user, created = User.objects.get_or_create(username=username, defaults={
+            'first_name': azienda.ragione_sociale[:30],
+            'is_staff': False, 'is_active': True,
+        })
+        user.set_password(password)
+        user.save()
+        azienda.portal_user = user
+        azienda.save(update_fields=['portal_user'])
 
 
 class AziendaUpdateView(AccessMixin, UpdateView):
@@ -141,8 +159,28 @@ class AziendaUpdateView(AccessMixin, UpdateView):
         return ctx
 
     def form_valid(self, form):
+        response = super().form_valid(form)
+        self._gestisci_portal_user(form.instance)
         messages.success(self.request, f'Cliente «{form.instance.ragione_sociale}» aggiornato.')
-        return super().form_valid(form)
+        return response
+
+    def _gestisci_portal_user(self, azienda):
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        username = self.request.POST.get('portal_username', '').strip()
+        password = self.request.POST.get('portal_password', '').strip()
+        if not username:
+            return
+        user, created = User.objects.get_or_create(username=username, defaults={
+            'first_name': azienda.ragione_sociale[:30],
+            'is_staff': False, 'is_active': True,
+        })
+        if password:
+            user.set_password(password)
+            user.save()
+        if azienda.portal_user != user:
+            azienda.portal_user = user
+            azienda.save(update_fields=['portal_user'])
 
 
 class AziendaDeleteView(AccessMixin, DeleteView):

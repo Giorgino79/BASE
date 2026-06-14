@@ -1,0 +1,48 @@
+{% extends "portale/base.html" %}
+{% block title %}Calendario interventi{% endblock %}
+{% block content %}
+<div class="portal-header">
+  <div class="container">
+    <h1><i class="bi bi-calendar3 me-2"></i>Calendario interventi</h1>
+    <div class="sub">Prossimi appuntamenti programmati</div>
+  </div>
+</div>
+<div class="container pb-4">
+  {% if ods_list %}
+  <div class="d-flex flex-column gap-3">
+    {% for o in ods_list %}
+    <div class="card border-0 shadow-sm p-3">
+      <div class="d-flex align-items-start gap-3">
+        <div class="text-center flex-shrink-0" style="width:52px;">
+          <div class="fw-bold" style="font-size:1.4rem;line-height:1;color:#5585b5;">{{ o.data_servizio|date:"d" }}</div>
+          <div class="text-uppercase text-muted small">{{ o.data_servizio|date:"M" }}</div>
+        </div>
+        <div class="flex-grow-1">
+          <div class="fw-semibold">{{ o.numero }}</div>
+          <div class="small text-muted">
+            {% if o.ora_inizio %}{{ o.ora_inizio|time:"H:i" }} — {% endif %}
+            {{ o.filiale.nome|default:o.filiale.cliente.ragione_sociale|default:"Sede principale" }}
+          </div>
+          <div class="small mt-1">
+            {% for r in o.righe.all %}
+            <span class="badge bg-light text-dark me-1">{{ r.servizio.nome }}</span>
+            {% endfor %}
+          </div>
+        </div>
+        {% if o.tecnico %}
+        <div class="text-muted small text-end flex-shrink-0">
+          <i class="bi bi-person me-1"></i>{{ o.tecnico.get_full_name }}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="text-center py-5 text-muted">
+    <i class="bi bi-calendar-x" style="font-size:2.5rem;display:block;margin-bottom:.5rem;"></i>
+    <div>Nessun intervento programmato</div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

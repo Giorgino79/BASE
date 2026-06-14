@@ -1,0 +1,121 @@
+{% extends "portale/base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<div class="portal-header">
+  <div class="container">
+    <h1><i class="bi bi-grid me-2"></i>Benvenuto, {{ cliente.ragione_sociale }}</h1>
+    <div class="sub">Area riservata clienti SERVAL</div>
+  </div>
+</div>
+
+<div class="container pb-4">
+  <div class="row g-3">
+
+    <!-- Bollettini -->
+    <div class="col-sm-6 col-lg-4">
+      <a href="{% url 'portale:bollettini' %}" class="text-decoration-none">
+        <div class="card card-portale h-100 p-3">
+          <div class="card-icon" style="background:#dbeafe;color:#1d4ed8;"><i class="bi bi-file-earmark-text"></i></div>
+          <div class="card-title">Bollettini interventi</div>
+          <div class="card-text">Scarica i rapporti di servizio dei tuoi interventi</div>
+        </div>
+      </a>
+    </div>
+
+    <!-- Richiedi intervento -->
+    <div class="col-sm-6 col-lg-4">
+      <a href="{% url 'portale:intervento' %}" class="text-decoration-none">
+        <div class="card card-portale h-100 p-3">
+          <div class="card-icon" style="background:#d1fae5;color:#065f46;"><i class="bi bi-plus-circle"></i></div>
+          <div class="card-title">Richiedi intervento</div>
+          <div class="card-text">Invia una richiesta al tuo responsabile SERVAL</div>
+        </div>
+      </a>
+    </div>
+
+    <!-- Segnalazione -->
+    <div class="col-sm-6 col-lg-4">
+      <a href="{% url 'portale:segnalazione' %}" class="text-decoration-none">
+        <div class="card card-portale h-100 p-3">
+          <div class="card-icon" style="background:#fef3c7;color:#92400e;"><i class="bi bi-exclamation-triangle"></i></div>
+          <div class="card-title">Segnala infestazione</div>
+          <div class="card-text">Segnala rapidamente un problema o avvistamento</div>
+        </div>
+      </a>
+    </div>
+
+    <!-- Calendario -->
+    <div class="col-sm-6 col-lg-4">
+      <a href="{% url 'portale:calendario' %}" class="text-decoration-none">
+        <div class="card card-portale h-100 p-3">
+          <div class="card-icon" style="background:#ede9fe;color:#6d28d9;"><i class="bi bi-calendar3"></i></div>
+          <div class="card-title">Calendario interventi</div>
+          <div class="card-text">Prossimi appuntamenti programmati per la tua azienda</div>
+        </div>
+      </a>
+    </div>
+
+    <!-- Storico prodotti -->
+    <div class="col-sm-6 col-lg-4">
+      <a href="{% url 'portale:storico_prodotti' %}" class="text-decoration-none">
+        <div class="card card-portale h-100 p-3">
+          <div class="card-icon" style="background:#fce7f3;color:#9d174d;"><i class="bi bi-droplet"></i></div>
+          <div class="card-title">Prodotti utilizzati</div>
+          <div class="card-text">Storico completo dei prodotti biocidi impiegati</div>
+        </div>
+      </a>
+    </div>
+
+    <!-- Documenti PMC -->
+    <div class="col-sm-6 col-lg-4">
+      <a href="{% url 'portale:documenti_pmc' %}" class="text-decoration-none">
+        <div class="card card-portale h-100 p-3">
+          <div class="card-icon" style="background:#f0fdf4;color:#15803d;"><i class="bi bi-file-earmark-check"></i></div>
+          <div class="card-title">Documenti PMC</div>
+          <div class="card-text">Schede tecniche e registrazioni ministeriali dei prodotti</div>
+        </div>
+      </a>
+    </div>
+
+    <!-- Contratto -->
+    <div class="col-sm-6 col-lg-4">
+      <a href="{% url 'portale:contratto' %}" class="text-decoration-none">
+        <div class="card card-portale h-100 p-3">
+          <div class="card-icon" style="background:#f0f9ff;color:#0369a1;"><i class="bi bi-file-earmark-ruled"></i></div>
+          <div class="card-title">Il mio contratto</div>
+          <div class="card-text">Visualizza i servizi inclusi nel tuo contratto attivo</div>
+        </div>
+      </a>
+    </div>
+
+    <!-- Fatture — placeholder -->
+    <div class="col-sm-6 col-lg-4">
+      <div class="card card-portale h-100 p-3 position-relative" style="opacity:.7;">
+        <div class="card-icon" style="background:#f3f4f6;color:#6b7280;"><i class="bi bi-receipt"></i></div>
+        <div class="card-title">Fatture</div>
+        <div class="card-text">Scarica le tue fatture elettroniche</div>
+        <div class="dev-overlay">
+          <i class="bi bi-tools fs-4 text-secondary mb-1"></i>
+          <span class="dev-badge">In fase di sviluppo</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  {% if richieste_aperte %}
+  <div class="mt-4">
+    <h6 class="fw-semibold mb-2"><i class="bi bi-clock-history me-1 text-warning"></i>Richieste in attesa</h6>
+    {% for r in richieste_aperte %}
+    <div class="card border-0 shadow-sm mb-2 p-3">
+      <div class="d-flex align-items-center gap-2">
+        <span class="badge badge-{{ r.urgenza }}">{{ r.get_urgenza_display }}</span>
+        <span class="fw-semibold">{{ r.tipo_problema }}</span>
+        <span class="text-muted small ms-auto">{{ r.creata_il|date:"d/m/Y" }}</span>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
