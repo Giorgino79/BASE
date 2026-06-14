@@ -755,7 +755,67 @@ def organizzazione_giri(request):
         })
 
     from cespiti.models import Automezzo
+    from magazzino.models import ScortaMezzo
     automezzi = Automezzo.objects.filter(attivo=True).order_by("targa")
+
+    # Prodotti mancanti per tecnico: confronta previsti vs scorte sul mezzo
+    avvisi_mancanti = []
+    for giro in giri_confermati:
+        tecnico = giro["tecnico"]
+
+        mezzo = None
+        distinta_con_mezzo = Distinta.objects.filter(
+            tecnico=tecnico, stato=Distinta.Stato.APERTA
+        ).exclude(mezzo=None).first()
+        if distinta_con_mezzo:
+            mezzo = distinta_con_mezzo.mezzo
+        if not mezzo:
+            mezzo = Automezzo.objects.filter(assegnato_a=tecnico, attivo=True).first()
+        if not mezzo:
+            continue
+
+        needed = defaultdict(lambda: {"nome": "", "necessaria": Decimal(0)})
+
+        ods_ids = [o.pk for o in giro["ods"]]
+        if ods_ids:
+            for row in (ConsumoMateriale.objects
+                        .filter(riga__ods_id__in=ods_ids, confermato=False)
+                        .values("prodotto_id", "prodotto__nome_prodotto")
+                        .annotate(tot=Sum("quantita"))):
+                needed[row["prodotto_id"]]["nome"] = row["prodotto__nome_prodotto"]
+                needed[row["prodotto_id"]]["necessaria"] += row["tot"]
+
+        cond_ids = [c.pk for c in giro["condomini"]]
+        if cond_ids:
+            for row in (RigaProdottoCondominio.objects
+                        .filter(condominio_id__in=cond_ids, confermato=False)
+                        .values("prodotto_id", "prodotto__nome_prodotto")
+                        .annotate(tot=Sum("quantita"))):
+                needed[row["prodotto_id"]]["nome"] = row["prodotto__nome_prodotto"]
+                needed[row["prodotto_id"]]["necessaria"] += row["tot"]
+
+        if not needed:
+            continue
+
+        stock = {s.prodotto_id: s.quantita
+                 for s in ScortaMezzo.objects.filter(mezzo=mezzo)}
+        mancanti = []
+        for pid, info in needed.items():
+            a_bordo = stock.get(pid, Decimal(0))
+            if a_bordo < info["necessaria"]:
+                mancanti.append({
+                    "nome": info["nome"],
+                    "necessaria": info["necessaria"],
+                    "a_bordo": a_bordo,
+                    "mancante": info["necessaria"] - a_bordo,
+                })
+        if mancanti:
+            mancanti.sort(key=lambda x: x["nome"])
+            avvisi_mancanti.append({
+                "tecnico": tecnico,
+                "mezzo": mezzo,
+                "prodotti": mancanti,
+            })
 
     return render(request, "servizi/ods/organizzazione_giri.html", {
         "gruppi_da_organizzare": gruppi_da_organizzare,
@@ -764,6 +824,7 @@ def organizzazione_giri(request):
         "utenti": utenti,
         "automezzi": automezzi,
         "today": timezone.localdate().isoformat(),
+        "avvisi_mancanti": avvisi_mancanti,
     })
 
 
