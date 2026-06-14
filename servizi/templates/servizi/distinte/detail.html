@@ -25,6 +25,42 @@
   {% endif %}
 </div>
 
+{% if prodotti_mancanti %}
+<div class="alert alert-danger border-danger shadow mb-4 p-0 overflow-hidden">
+  <div class="d-flex align-items-center gap-3 px-4 py-3" style="background:#b91c1c;">
+    <i class="bi bi-exclamation-triangle-fill text-white flex-shrink-0" style="font-size:2rem;"></i>
+    <div class="text-white">
+      <div class="fw-bold" style="font-size:1.15rem;">Prodotti mancanti sul mezzo!</div>
+      <div class="small opacity-75">I seguenti prodotti non sono sufficienti per completare i servizi di questa distinta</div>
+    </div>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-sm mb-0" style="background:#fff5f5;">
+      <thead style="background:#fee2e2;">
+        <tr>
+          <th class="ps-4 text-danger">Prodotto</th>
+          <th class="text-end text-danger">Necessario</th>
+          <th class="text-end text-danger">A bordo</th>
+          <th class="text-end pe-4 text-danger">Mancante</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in prodotti_mancanti %}
+        <tr>
+          <td class="ps-4 fw-semibold">{{ p.nome }}</td>
+          <td class="text-end">{{ p.necessaria|floatformat:"-3" }}</td>
+          <td class="text-end {% if p.a_bordo <= 0 %}text-danger fw-bold{% else %}text-warning fw-semibold{% endif %}">
+            {{ p.a_bordo|floatformat:"-3" }}
+          </td>
+          <td class="text-end pe-4 text-danger fw-bold">{{ p.mancante|floatformat:"-3" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
 <div class="row g-3 mb-4">
   <div class="col-sm-3">
     <div class="detail-field">

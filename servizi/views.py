@@ -919,8 +919,41 @@ class DistintaDetailView(LoginRequiredMixin, DetailView):
         ctx["chiudi_form"] = ChiudiServizioForm()
         ctx["consumo_form"] = ConsumoMaterialeForm(mezzo=mezzo)
         ctx["chiudi_choices"] = ChiudiServizioForm().fields["modalita_pagamento"].choices
-        from magazzino.models import Prodotto
+        from magazzino.models import Prodotto, ScortaMezzo
         ctx["prodotti_attivi"] = list(Prodotto.objects.filter(attivo=True).order_by("nome_prodotto"))
+
+        # Prodotti mancanti sul mezzo per questa distinta
+        prodotti_mancanti = []
+        if mezzo and self.object.stato == Distinta.Stato.APERTA:
+            needed = defaultdict(lambda: {"nome": "", "necessaria": Decimal(0)})
+
+            for row in (ConsumoMateriale.objects
+                        .filter(riga__ods__distinta=self.object, confermato=False)
+                        .values("prodotto_id", "prodotto__nome_prodotto")
+                        .annotate(tot=Sum("quantita"))):
+                needed[row["prodotto_id"]]["nome"] = row["prodotto__nome_prodotto"]
+                needed[row["prodotto_id"]]["necessaria"] += row["tot"]
+
+            for row in (RigaProdottoCondominio.objects
+                        .filter(condominio__distinta=self.object, confermato=False)
+                        .values("prodotto_id", "prodotto__nome_prodotto")
+                        .annotate(tot=Sum("quantita"))):
+                needed[row["prodotto_id"]]["nome"] = row["prodotto__nome_prodotto"]
+                needed[row["prodotto_id"]]["necessaria"] += row["tot"]
+
+            stock = {s.prodotto_id: s.quantita
+                     for s in ScortaMezzo.objects.filter(mezzo=mezzo)}
+            for pid, info in needed.items():
+                a_bordo = stock.get(pid, Decimal(0))
+                if a_bordo < info["necessaria"]:
+                    prodotti_mancanti.append({
+                        "nome": info["nome"],
+                        "necessaria": info["necessaria"],
+                        "a_bordo": a_bordo,
+                        "mancante": info["necessaria"] - a_bordo,
+                    })
+            prodotti_mancanti.sort(key=lambda x: x["nome"])
+        ctx["prodotti_mancanti"] = prodotti_mancanti
         return ctx
 
 
