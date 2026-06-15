@@ -184,6 +184,7 @@ class ODS(AllegatiMixin, models.Model):
         DA_ESPLETARE = "da_espletare", "Da espletare"
         PROGRAMMATO  = "programmato",  "Programmato"
         COMPLETATO   = "completato",   "Completato"
+        FATTURATO    = "fatturato",    "Fatturato"
         ANNULLATO    = "annullato",    "Annullato"
 
     numero            = models.CharField(max_length=30, unique=True, blank=True)

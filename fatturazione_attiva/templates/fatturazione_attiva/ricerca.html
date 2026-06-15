@@ -123,85 +123,113 @@
     </div>
   </div>
 
-  {# ── TABELLA ODS ─────────────────────────────────────────────── #}
+  {# ── TABELLA ODS con selezione ──────────────────────────────── #}
   {% if ods_righe %}
-  <div class="card mb-4">
-    <div class="card-header card-header-primary d-flex justify-content-between align-items-center">
-      <span><i class="bi bi-tools me-2"></i>Ordini di Servizio ({{ n_ods }})</span>
-      <span class="text-white-50 small">Totale: € {{ totale_ods }}</span>
+  <form method="post" action="{% url 'fatturazione_attiva:azione' %}" id="form-azione">
+    {% csrf_token %}
+    <input type="hidden" name="action" id="azione-input" value="pdf">
+
+    <div class="card mb-4">
+      <div class="card-header card-header-primary d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <span><i class="bi bi-tools me-2"></i>Ordini di Servizio ({{ n_ods }}) &mdash; Totale: € {{ totale_ods }}</span>
+        <div class="d-flex gap-2 flex-wrap">
+          <button type="button" class="btn btn-sm btn-outline-light" id="btn-seleziona-tutto" title="Seleziona / deseleziona tutto">
+            <i class="bi bi-check2-all me-1"></i>Tutto
+          </button>
+          <button type="button" class="btn btn-sm btn-light" onclick="submitAzione('pdf')">
+            <i class="bi bi-file-earmark-pdf me-1"></i>Stampa PDF
+          </button>
+          <button type="button" class="btn btn-sm btn-light" onclick="submitAzione('excel')">
+            <i class="bi bi-file-earmark-excel me-1"></i>Stampa Excel
+          </button>
+          <button type="button" class="btn btn-sm btn-warning fw-semibold"
+                  onclick="if(confirm('Elaborare la fattura e marcare gli ODS selezionati come Fatturati?')) submitAzione('fattura')">
+            <i class="bi bi-receipt me-1"></i>Elabora Fattura
+          </button>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="table table-sm mb-0 align-middle" style="border-collapse:collapse">
+          <thead class="bg-brand text-white">
+            <tr>
+              <th style="width:36px"><input type="checkbox" id="chk-all" class="form-check-input"></th>
+              <th>N° ODS</th>
+              <th>Data</th>
+              <th>Cliente / Sede</th>
+              <th>Stato</th>
+              <th>Tipo servizio</th>
+              <th class="text-end">Importo</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in ods_righe %}
+            <tr class="{% if row.is_first and not forloop.first %}border-top border-2{% endif %}">
+
+              {# Checkbox per questa riga servizio #}
+              <td class="text-center">
+                <input type="checkbox" name="sel" value="{{ row.sel_val }}" class="form-check-input chk-riga">
+              </td>
+
+              {# Celle ODS con rowspan #}
+              {% if row.is_first %}
+              <td rowspan="{{ row.rowspan }}" class="align-middle">
+                <a href="{{ row.ods.get_absolute_url }}" class="badge bg-secondary text-decoration-none" target="_blank">
+                  {{ row.ods.numero }}
+                </a>
+              </td>
+              <td rowspan="{{ row.rowspan }}" class="align-middle text-nowrap">
+                {{ row.ods.data_servizio|date:"d/m/Y" }}
+              </td>
+              <td rowspan="{{ row.rowspan }}" class="align-middle">
+                <div class="fw-semibold small">{{ row.ods.cliente_display }}</div>
+                {% if row.ods.filiale %}<div class="text-muted small">{{ row.ods.filiale.indirizzo }}</div>{% endif %}
+              </td>
+              <td rowspan="{{ row.rowspan }}" class="align-middle">
+                {% with s=row.ods.stato %}
+                {% if s == "completato" %}
+                  <span class="badge bg-success">{{ row.ods.get_stato_display }}</span>
+                {% elif s == "fatturato" %}
+                  <span class="badge bg-primary">{{ row.ods.get_stato_display }}</span>
+                {% elif s == "annullato" %}
+                  <span class="badge bg-danger">{{ row.ods.get_stato_display }}</span>
+                {% else %}
+                  <span class="badge bg-warning text-dark">{{ row.ods.get_stato_display }}</span>
+                {% endif %}
+                {% endwith %}
+              </td>
+              {% endif %}
+
+              {# Celle riga servizio #}
+              <td>
+                {% if row.riga %}
+                  {{ row.riga.servizio.nome }}
+                  {% if row.riga.note %}<div class="text-muted small">{{ row.riga.note }}</div>{% endif %}
+                {% else %}
+                  <span class="text-muted fst-italic">Nessun servizio registrato</span>
+                {% endif %}
+              </td>
+              <td class="text-end fw-semibold">
+                {% if row.riga and row.riga.prezzo %}
+                  € {{ row.riga.prezzo }}
+                {% else %}
+                  <span class="text-muted">—</span>
+                {% endif %}
+              </td>
+
+            </tr>
+            {% endfor %}
+          </tbody>
+          <tfoot class="table-light">
+            <tr>
+              <td colspan="6" class="text-end fw-semibold">Totale ODS</td>
+              <td class="text-end fw-bold text-brand">€ {{ totale_ods }}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
     </div>
-    <div class="table-responsive">
-      <table class="table table-sm mb-0 align-middle" style="border-collapse:collapse">
-        <thead class="bg-brand text-white">
-          <tr>
-            <th>N° ODS</th>
-            <th>Data</th>
-            <th>Cliente / Sede</th>
-            <th>Stato</th>
-            <th>Tipo servizio</th>
-            <th class="text-end">Importo</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for row in ods_righe %}
-          <tr class="{% if row.is_first and not forloop.first %}border-top border-2{% endif %}">
-
-            {# Celle ODS — rese solo sulla prima riga del gruppo, con rowspan #}
-            {% if row.is_first %}
-            <td rowspan="{{ row.rowspan }}" class="align-middle">
-              <a href="{{ row.ods.get_absolute_url }}" class="badge bg-secondary text-decoration-none" target="_blank">
-                {{ row.ods.numero }}
-              </a>
-            </td>
-            <td rowspan="{{ row.rowspan }}" class="align-middle text-nowrap">
-              {{ row.ods.data_servizio|date:"d/m/Y" }}
-            </td>
-            <td rowspan="{{ row.rowspan }}" class="align-middle">
-              <div class="fw-semibold small">{{ row.ods.cliente_display }}</div>
-              {% if row.ods.filiale %}<div class="text-muted small">{{ row.ods.filiale.indirizzo }}</div>{% endif %}
-            </td>
-            <td rowspan="{{ row.rowspan }}" class="align-middle">
-              {% with s=row.ods.stato %}
-              {% if s == "completato" %}
-                <span class="badge bg-success">{{ row.ods.get_stato_display }}</span>
-              {% elif s == "annullato" %}
-                <span class="badge bg-danger">{{ row.ods.get_stato_display }}</span>
-              {% else %}
-                <span class="badge bg-warning text-dark">{{ row.ods.get_stato_display }}</span>
-              {% endif %}
-              {% endwith %}
-            </td>
-            {% endif %}
-
-            {# Celle riga servizio #}
-            <td>
-              {% if row.riga %}
-                {{ row.riga.servizio.nome }}
-                {% if row.riga.note %}<div class="text-muted small">{{ row.riga.note }}</div>{% endif %}
-              {% else %}
-                <span class="text-muted fst-italic">Nessun servizio registrato</span>
-              {% endif %}
-            </td>
-            <td class="text-end fw-semibold">
-              {% if row.riga and row.riga.prezzo %}
-                € {{ row.riga.prezzo }}
-              {% else %}
-                <span class="text-muted">—</span>
-              {% endif %}
-            </td>
-
-          </tr>
-          {% endfor %}
-        </tbody>
-        <tfoot class="table-light">
-          <tr>
-            <td colspan="5" class="text-end fw-semibold">Totale ODS</td>
-            <td class="text-end fw-bold text-brand">€ {{ totale_ods }}</td>
-          </tr>
-        </tfoot>
-      </table>
-    </div>
-  </div>
+  </form>
   {% endif %}
 
   {# ── TABELLA CONDOMINI ───────────────────────────────────────── #}
@@ -277,6 +305,7 @@
 
 {% block extra_js %}
 <script>
+// ── Switcher tipo cliente ──────────────────────────────────────
 (function () {
   const radios = document.querySelectorAll('input[name="tipo"]');
   const campi = {
@@ -284,16 +313,45 @@
     privato:    document.getElementById('campo-privato'),
     condominio: document.getElementById('campo-condominio'),
   };
-
   function aggiorna() {
     const sel = document.querySelector('input[name="tipo"]:checked')?.value;
     Object.entries(campi).forEach(([k, el]) => {
       if (el) el.style.display = (k === sel) ? '' : 'none';
     });
   }
-
   radios.forEach(r => r.addEventListener('change', aggiorna));
   aggiorna();
+})();
+
+// ── Selezione righe e invio azione ────────────────────────────
+function submitAzione(action) {
+  const checked = document.querySelectorAll('.chk-riga:checked');
+  if (!checked.length) {
+    alert('Seleziona almeno una riga prima di procedere.');
+    return;
+  }
+  document.getElementById('azione-input').value = action;
+  document.getElementById('form-azione').submit();
+}
+
+// Seleziona / deseleziona tutto
+(function () {
+  const btnTutto = document.getElementById('btn-seleziona-tutto');
+  const chkAll   = document.getElementById('chk-all');
+
+  function toggleAll(checked) {
+    document.querySelectorAll('.chk-riga').forEach(c => c.checked = checked);
+    if (chkAll) chkAll.checked = checked;
+  }
+
+  if (btnTutto) btnTutto.addEventListener('click', function () {
+    const anyUnchecked = !!document.querySelector('.chk-riga:not(:checked)');
+    toggleAll(anyUnchecked);
+  });
+
+  if (chkAll) chkAll.addEventListener('change', function () {
+    toggleAll(this.checked);
+  });
 })();
 </script>
 {% endblock %}
