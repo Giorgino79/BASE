@@ -93,7 +93,7 @@
       <div class="card text-center">
         <div class="card-body py-3">
           <div class="text-muted small mb-1">ODS trovati</div>
-          <div class="fw-bold fs-4 text-brand">{{ ods_list|length }}</div>
+          <div class="fw-bold fs-4 text-brand">{{ n_ods }}</div>
         </div>
       </div>
     </div>
@@ -124,58 +124,79 @@
   </div>
 
   {# ── TABELLA ODS ─────────────────────────────────────────────── #}
-  {% if ods_list %}
+  {% if ods_righe %}
   <div class="card mb-4">
     <div class="card-header card-header-primary d-flex justify-content-between align-items-center">
-      <span><i class="bi bi-tools me-2"></i>Ordini di Servizio ({{ ods_list|length }})</span>
+      <span><i class="bi bi-tools me-2"></i>Ordini di Servizio ({{ n_ods }})</span>
       <span class="text-white-50 small">Totale: € {{ totale_ods }}</span>
     </div>
     <div class="table-responsive">
-      <table class="table table-hover table-sm mb-0 align-middle">
+      <table class="table table-sm mb-0 align-middle" style="border-collapse:collapse">
         <thead class="bg-brand text-white">
           <tr>
             <th>N° ODS</th>
             <th>Data</th>
             <th>Cliente / Sede</th>
             <th>Stato</th>
+            <th>Tipo servizio</th>
             <th class="text-end">Importo</th>
-            <th></th>
           </tr>
         </thead>
         <tbody>
-          {% for ods in ods_list %}
-          <tr>
-            <td><span class="badge bg-secondary">{{ ods.numero }}</span></td>
-            <td>{{ ods.data_servizio|date:"d/m/Y" }}</td>
-            <td>
-              <div class="fw-semibold small">{{ ods.cliente_display }}</div>
-              {% if ods.filiale %}<div class="text-muted small">{{ ods.filiale.indirizzo }}</div>{% endif %}
+          {% for row in ods_righe %}
+          <tr class="{% if row.is_first and not forloop.first %}border-top border-2{% endif %}">
+
+            {# Celle ODS — rese solo sulla prima riga del gruppo, con rowspan #}
+            {% if row.is_first %}
+            <td rowspan="{{ row.rowspan }}" class="align-middle">
+              <a href="{{ row.ods.get_absolute_url }}" class="badge bg-secondary text-decoration-none" target="_blank">
+                {{ row.ods.numero }}
+              </a>
             </td>
-            <td>
-              {% if ods.stato == "completato" %}
-                <span class="badge bg-success">{{ ods.get_stato_display }}</span>
-              {% elif ods.stato == "annullato" %}
-                <span class="badge bg-danger">{{ ods.get_stato_display }}</span>
+            <td rowspan="{{ row.rowspan }}" class="align-middle text-nowrap">
+              {{ row.ods.data_servizio|date:"d/m/Y" }}
+            </td>
+            <td rowspan="{{ row.rowspan }}" class="align-middle">
+              <div class="fw-semibold small">{{ row.ods.cliente_display }}</div>
+              {% if row.ods.filiale %}<div class="text-muted small">{{ row.ods.filiale.indirizzo }}</div>{% endif %}
+            </td>
+            <td rowspan="{{ row.rowspan }}" class="align-middle">
+              {% with s=row.ods.stato %}
+              {% if s == "completato" %}
+                <span class="badge bg-success">{{ row.ods.get_stato_display }}</span>
+              {% elif s == "annullato" %}
+                <span class="badge bg-danger">{{ row.ods.get_stato_display }}</span>
               {% else %}
-                <span class="badge bg-warning text-dark">{{ ods.get_stato_display }}</span>
+                <span class="badge bg-warning text-dark">{{ row.ods.get_stato_display }}</span>
+              {% endif %}
+              {% endwith %}
+            </td>
+            {% endif %}
+
+            {# Celle riga servizio #}
+            <td>
+              {% if row.riga %}
+                {{ row.riga.servizio.nome }}
+                {% if row.riga.note %}<div class="text-muted small">{{ row.riga.note }}</div>{% endif %}
+              {% else %}
+                <span class="text-muted fst-italic">Nessun servizio registrato</span>
               {% endif %}
             </td>
             <td class="text-end fw-semibold">
-              {% if ods.prezzo_totale %}€ {{ ods.prezzo_totale }}{% else %}<span class="text-muted">—</span>{% endif %}
+              {% if row.riga and row.riga.prezzo %}
+                € {{ row.riga.prezzo }}
+              {% else %}
+                <span class="text-muted">—</span>
+              {% endif %}
             </td>
-            <td class="text-end">
-              <a href="{{ ods.get_absolute_url }}" class="btn btn-outline-secondary btn-sm" target="_blank">
-                <i class="bi bi-eye"></i>
-              </a>
-            </td>
+
           </tr>
           {% endfor %}
         </tbody>
         <tfoot class="table-light">
           <tr>
-            <td colspan="4" class="text-end fw-semibold">Totale ODS</td>
+            <td colspan="5" class="text-end fw-semibold">Totale ODS</td>
             <td class="text-end fw-bold text-brand">€ {{ totale_ods }}</td>
-            <td></td>
           </tr>
         </tfoot>
       </table>
@@ -244,7 +265,7 @@
   </div>
   {% endif %}
 
-  {% if not ods_list and not condomini_list %}
+  {% if not ods_righe and not condomini_list %}
   <div class="alert alert-info">
     <i class="bi bi-info-circle me-2"></i>
     Nessun risultato trovato per i parametri selezionati.

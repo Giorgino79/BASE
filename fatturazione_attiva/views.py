@@ -58,25 +58,47 @@ class RicercaFatturazioneView(LoginRequiredMixin, TemplateView):
                 condomini_qs = condomini_qs.filter(data__lte=data_a)
             condomini_qs = condomini_qs.order_by("data")
 
-        totale_ods = sum(
-            (o.prezzo_totale for o in ods_qs if o.prezzo_totale), Decimal("0.00")
-        )
+        # Appiattisce ODS → una entry per riga servizio (con rowspan per le celle ODS)
+        ods_righe = []
+        totale_ods = Decimal("0.00")
+        for ods in ods_qs:
+            righe = list(ods.righe.select_related("servizio").order_by("ordine", "pk"))
+            if righe:
+                for i, riga in enumerate(righe):
+                    ods_righe.append({
+                        "ods":      ods,
+                        "riga":     riga,
+                        "is_first": i == 0,
+                        "rowspan":  len(righe) if i == 0 else 0,
+                    })
+                    if riga.prezzo:
+                        totale_ods += riga.prezzo
+            else:
+                ods_righe.append({
+                    "ods":      ods,
+                    "riga":     None,
+                    "is_first": True,
+                    "rowspan":  1,
+                })
+
         totale_condomini = sum(
             (c.totale_da_incassare for c in condomini_qs), Decimal("0.00")
         )
 
         return {
-            "ods_list": ods_qs,
-            "condomini_list": condomini_qs,
-            "totale_ods": totale_ods,
+            "ods_righe":        ods_righe,
+            "condomini_list":   condomini_qs,
+            "n_ods":            len({r["ods"].pk for r in ods_righe}),
+            "totale_ods":       totale_ods,
             "totale_condomini": totale_condomini,
-            "totale_generale": totale_ods + totale_condomini,
+            "totale_generale":  totale_ods + totale_condomini,
             "ricerca_eseguita": True,
         }
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        ctx.setdefault("ods_list", [])
+        ctx.setdefault("ods_righe", [])
         ctx.setdefault("condomini_list", [])
+        ctx.setdefault("n_ods", 0)
         ctx.setdefault("ricerca_eseguita", False)
         return ctx
