@@ -332,16 +332,21 @@
   });
 
   // ── Avviso se ci sono righe nuove non salvate ─────────────────
+  // intentionalSubmit evita che il dialog "Vuoi uscire?" blocchi il salvataggio
+  let intentionalSubmit = false;
+
   window.addEventListener('beforeunload', function (e) {
+    if (intentionalSubmit) return;
     const hasNew = !!body.querySelector('input[type=hidden][name$="-id"]:not([value])');
     if (hasNew) { e.preventDefault(); e.returnValue = ''; }
   });
-})();
 
-window.submitAction = function(action) {
-  document.getElementById('action-input').value = action;
-  document.getElementById('esegui-form').submit();
-};
+  window.submitAction = function(action) {
+    intentionalSubmit = true;
+    document.getElementById('action-input').value = action;
+    document.getElementById('esegui-form').submit();
+  };
+})();
 </script>
 
 <script>

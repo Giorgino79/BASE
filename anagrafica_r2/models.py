@@ -51,6 +51,13 @@ class Azienda(AllegatiMixin, models.Model):
     tipo_pagamento    = models.CharField(max_length=20, choices=TIPO_PAGAMENTO_CHOICES,
                                          default='immediato', verbose_name='Modalità Pagamento')
 
+    # Struttura sedi
+    sede_unica        = models.BooleanField(
+        default=True, verbose_name='Sede unica',
+        help_text='Il cliente ha un unico luogo di servizio coincidente con questo indirizzo. '
+                  'Non è necessario inserire filiali separate.',
+    )
+
     # Stato
     installato        = models.BooleanField(default=False, verbose_name='Installazione Completata',
                                              help_text='Tutte le stazioni sono state installate')

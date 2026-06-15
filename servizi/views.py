@@ -1691,8 +1691,9 @@ def condominio_esegui(request, pk):
         action = request.POST.get("action", "salva")
         fs_unita = RigaUnitaAbitativaEseguiFormSet(request.POST, instance=condominio, prefix="unita")
         fs_prodotti = RigaProdottoCondominioEseguiFormSet(request.POST, instance=condominio, prefix="prodotti")
-        if fs_unita.is_valid() and fs_prodotti.is_valid():
+        if fs_unita.is_valid():
             fs_unita.save()
+        if fs_prodotti.is_valid():
             fs_prodotti.save()
         if action == "chiudi":
             # Scala ScortaMezzo per tutti i prodotti non ancora confermati
@@ -1707,7 +1708,7 @@ def condominio_esegui(request, pk):
         elif action == "torna":
             messages.success(request, "Progresso salvato.")
             return redirect("servizi:condominio_detail", pk=pk)
-        elif fs_unita.is_valid():
+        else:
             messages.success(request, "Progresso salvato.")
             return redirect("servizi:condominio_esegui", pk=pk)
     else:

@@ -13,7 +13,13 @@ class AnagraficaR2Config(AppConfig):
 
         @receiver(post_save, sender='anagrafica.Azienda')
         def crea_sede_default(sender, instance, created, **kwargs):
-            """Crea automaticamente una filiale 'Sede' se l'Azienda non ne ha ancora."""
+            """
+            Se sede_unica=True crea automaticamente una Filiale 'Sede' che replica
+            l'indirizzo dell'Azienda, così il cliente appare subito come luogo
+            di espletazione del servizio senza dover inserire sedi separate.
+            """
+            if not instance.sede_unica:
+                return
             if created and not instance.filiali.exists():
                 from anagrafica_r2.models import Filiale
                 Filiale.objects.create(

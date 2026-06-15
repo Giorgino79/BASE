@@ -1,0 +1,278 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="page-header mb-4">
+  <h1><i class="bi bi-receipt me-2 text-brand"></i>Fatturazione Attiva</h1>
+  <p class="text-muted mb-0">Ricerca ODS e condomini da fatturare per cliente e periodo</p>
+</div>
+
+{# ── FORM DI RICERCA ─────────────────────────────────────────── #}
+<form method="get" id="form-ricerca">
+  <div class="card mb-4">
+    <div class="card-header card-header-primary">
+      <i class="bi bi-search me-2"></i>Parametri di ricerca
+    </div>
+    <div class="card-body">
+
+      {# Tipo cliente #}
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Tipo cliente</label>
+        <div class="d-flex gap-4">
+          {% for radio in form.tipo %}
+          <div class="form-check">
+            {{ radio.tag }}
+            <label class="form-check-label" for="{{ radio.id_for_label }}">{{ radio.choice_label }}</label>
+          </div>
+          {% endfor %}
+        </div>
+        {% if form.tipo.errors %}<div class="text-danger small mt-1">{{ form.tipo.errors }}</div>{% endif %}
+      </div>
+
+      <div class="row g-3">
+
+        {# Selettori cliente #}
+        <div class="col-md-5" id="campo-azienda" style="display:none">
+          <label class="form-label fw-semibold">{{ form.azienda.label }}</label>
+          {{ form.azienda }}
+          {% if form.azienda.errors %}<div class="text-danger small mt-1">{{ form.azienda.errors }}</div>{% endif %}
+        </div>
+
+        <div class="col-md-5" id="campo-privato" style="display:none">
+          <label class="form-label fw-semibold">{{ form.privato.label }}</label>
+          {{ form.privato }}
+          {% if form.privato.errors %}<div class="text-danger small mt-1">{{ form.privato.errors }}</div>{% endif %}
+        </div>
+
+        <div class="col-md-5" id="campo-condominio" style="display:none">
+          <label class="form-label fw-semibold">{{ form.stabile.label }}</label>
+          {{ form.stabile }}
+          {% if form.stabile.errors %}<div class="text-danger small mt-1">{{ form.stabile.errors }}</div>{% endif %}
+        </div>
+
+        {# Date #}
+        <div class="col-md-2">
+          <label class="form-label fw-semibold">{{ form.data_da.label }}</label>
+          {{ form.data_da }}
+          {% if form.data_da.errors %}<div class="text-danger small mt-1">{{ form.data_da.errors }}</div>{% endif %}
+        </div>
+        <div class="col-md-2">
+          <label class="form-label fw-semibold">{{ form.data_a.label }}</label>
+          {{ form.data_a }}
+          {% if form.data_a.errors %}<div class="text-danger small mt-1">{{ form.data_a.errors }}</div>{% endif %}
+        </div>
+
+        {# Filtro stato #}
+        <div class="col-md-3 d-flex align-items-end">
+          <div class="form-check">
+            {{ form.solo_completati }}
+            <label class="form-check-label" for="{{ form.solo_completati.id_for_label }}">
+              {{ form.solo_completati.label }}
+            </label>
+          </div>
+        </div>
+
+      </div>
+    </div>
+    <div class="card-footer d-flex gap-2">
+      <button type="submit" class="btn btn-primary btn-sm">
+        <i class="bi bi-search me-1"></i>Cerca
+      </button>
+      <a href="{% url 'fatturazione_attiva:ricerca' %}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-x-circle me-1"></i>Azzera
+      </a>
+    </div>
+  </div>
+</form>
+
+{% if ricerca_eseguita %}
+
+  {# ── RIEPILOGO TOTALI ────────────────────────────────────────── #}
+  <div class="row g-3 mb-4">
+    <div class="col-md-3">
+      <div class="card text-center">
+        <div class="card-body py-3">
+          <div class="text-muted small mb-1">ODS trovati</div>
+          <div class="fw-bold fs-4 text-brand">{{ ods_list|length }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card text-center">
+        <div class="card-body py-3">
+          <div class="text-muted small mb-1">Condomini trovati</div>
+          <div class="fw-bold fs-4 text-brand">{{ condomini_list|length }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card text-center">
+        <div class="card-body py-3">
+          <div class="text-muted small mb-1">Totale ODS</div>
+          <div class="fw-bold fs-4 text-brand">€ {{ totale_ods }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card text-center border-success">
+        <div class="card-body py-3">
+          <div class="text-muted small mb-1">Totale generale</div>
+          <div class="fw-bold fs-4 text-success">€ {{ totale_generale }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# ── TABELLA ODS ─────────────────────────────────────────────── #}
+  {% if ods_list %}
+  <div class="card mb-4">
+    <div class="card-header card-header-primary d-flex justify-content-between align-items-center">
+      <span><i class="bi bi-tools me-2"></i>Ordini di Servizio ({{ ods_list|length }})</span>
+      <span class="text-white-50 small">Totale: € {{ totale_ods }}</span>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover table-sm mb-0 align-middle">
+        <thead class="bg-brand text-white">
+          <tr>
+            <th>N° ODS</th>
+            <th>Data</th>
+            <th>Cliente / Sede</th>
+            <th>Stato</th>
+            <th class="text-end">Importo</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for ods in ods_list %}
+          <tr>
+            <td><span class="badge bg-secondary">{{ ods.numero }}</span></td>
+            <td>{{ ods.data_servizio|date:"d/m/Y" }}</td>
+            <td>
+              <div class="fw-semibold small">{{ ods.cliente_display }}</div>
+              {% if ods.filiale %}<div class="text-muted small">{{ ods.filiale.indirizzo }}</div>{% endif %}
+            </td>
+            <td>
+              {% if ods.stato == "completato" %}
+                <span class="badge bg-success">{{ ods.get_stato_display }}</span>
+              {% elif ods.stato == "annullato" %}
+                <span class="badge bg-danger">{{ ods.get_stato_display }}</span>
+              {% else %}
+                <span class="badge bg-warning text-dark">{{ ods.get_stato_display }}</span>
+              {% endif %}
+            </td>
+            <td class="text-end fw-semibold">
+              {% if ods.prezzo_totale %}€ {{ ods.prezzo_totale }}{% else %}<span class="text-muted">—</span>{% endif %}
+            </td>
+            <td class="text-end">
+              <a href="{{ ods.get_absolute_url }}" class="btn btn-outline-secondary btn-sm" target="_blank">
+                <i class="bi bi-eye"></i>
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot class="table-light">
+          <tr>
+            <td colspan="4" class="text-end fw-semibold">Totale ODS</td>
+            <td class="text-end fw-bold text-brand">€ {{ totale_ods }}</td>
+            <td></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+  {# ── TABELLA CONDOMINI ───────────────────────────────────────── #}
+  {% if condomini_list %}
+  <div class="card mb-4">
+    <div class="card-header card-header-primary d-flex justify-content-between align-items-center">
+      <span><i class="bi bi-buildings me-2"></i>Condomini ODS ({{ condomini_list|length }})</span>
+      <span class="text-white-50 small">Totale: € {{ totale_condomini }}</span>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover table-sm mb-0 align-middle">
+        <thead class="bg-brand text-white">
+          <tr>
+            <th>N°</th>
+            <th>Data</th>
+            <th>Titolo / Indirizzo</th>
+            <th>Stato</th>
+            <th class="text-end">Totale da incassare</th>
+            <th class="text-end">Incassato</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for con in condomini_list %}
+          <tr>
+            <td><span class="badge bg-secondary">{{ con.numero }}</span></td>
+            <td>{{ con.data|date:"d/m/Y" }}</td>
+            <td>
+              <div class="fw-semibold small">{{ con.titolo }}</div>
+              <div class="text-muted small">{{ con.indirizzo }}</div>
+            </td>
+            <td>
+              {% if con.stato == "completato" %}
+                <span class="badge bg-success">{{ con.get_stato_display }}</span>
+              {% elif con.stato == "annullato" %}
+                <span class="badge bg-danger">{{ con.get_stato_display }}</span>
+              {% else %}
+                <span class="badge bg-warning text-dark">{{ con.get_stato_display }}</span>
+              {% endif %}
+            </td>
+            <td class="text-end fw-semibold">€ {{ con.totale_da_incassare }}</td>
+            <td class="text-end">€ {{ con.totale_incassato }}</td>
+            <td class="text-end">
+              <a href="{{ con.get_absolute_url }}" class="btn btn-outline-secondary btn-sm" target="_blank">
+                <i class="bi bi-eye"></i>
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot class="table-light">
+          <tr>
+            <td colspan="4" class="text-end fw-semibold">Totale condomini</td>
+            <td class="text-end fw-bold text-brand">€ {{ totale_condomini }}</td>
+            <td></td>
+            <td></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if not ods_list and not condomini_list %}
+  <div class="alert alert-info">
+    <i class="bi bi-info-circle me-2"></i>
+    Nessun risultato trovato per i parametri selezionati.
+  </div>
+  {% endif %}
+
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  const radios = document.querySelectorAll('input[name="tipo"]');
+  const campi = {
+    azienda:    document.getElementById('campo-azienda'),
+    privato:    document.getElementById('campo-privato'),
+    condominio: document.getElementById('campo-condominio'),
+  };
+
+  function aggiorna() {
+    const sel = document.querySelector('input[name="tipo"]:checked')?.value;
+    Object.entries(campi).forEach(([k, el]) => {
+      if (el) el.style.display = (k === sel) ? '' : 'none';
+    });
+  }
+
+  radios.forEach(r => r.addEventListener('change', aggiorna));
+  aggiorna();
+})();
+</script>
+{% endblock %}
