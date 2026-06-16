@@ -1,15 +1,18 @@
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.conf import settings as django_settings
+from django.http import HttpResponse
 from django.shortcuts import redirect
+from django.template.loader import render_to_string
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 from django.views.generic import TemplateView
 
 from core.excel_generator import generate_excel_response
-from core.pdf_generator import generate_pdf_response
+from core.pdf_generator import generate_pdf_from_html, PDFConfig
 from servizi.models import ODS, CondominioODS, ODSRiga
 from .forms import RicercaFatturazioneForm
 
@@ -107,32 +110,27 @@ def azione_fatturazione(request):
         return _export_excel(righe_rows)
 
     if action in ("pdf", "fattura"):
-        cliente_label = _cliente_label(righe_rows)
-        titolo = (
-            f"Fattura — {cliente_label}"
-            if action == "fattura"
-            else f"Stampa di controllo — {cliente_label}"
-        )
-        nome_file = f"{'fattura' if action == 'fattura' else 'controllo'}_{timezone.localdate()}"
-        totale = sum(
-            r["riga"].prezzo for r in righe_rows
-            if r["riga"] and r["riga"].prezzo
-        )
+        is_fattura = action == "fattura"
+        nome_file  = f"{'fattura' if is_fattura else 'controllo'}_{timezone.localdate()}"
 
-        data = _rows_to_pdf_data(righe_rows)
-        resp = generate_pdf_response(
-            data=data,
-            filename=nome_file,
-            title=titolo,
-            landscape=True,
-            totals={"Importo": float(totale)},
-        )
+        # flag is_new_ods per separatori visivi
+        prev = None
+        for r in righe_rows:
+            r["is_new_ods"] = r["ods"].pk != prev
+            prev = r["ods"].pk
+
+        ctx = _build_pdf_ctx(righe_rows, is_fattura)
+        html = render_to_string("fatturazione_attiva/pdf_fattura.html", ctx)
+        buf  = generate_pdf_from_html(html, PDFConfig(filename=f"{nome_file}.pdf"), output_type="buffer")
 
         if action == "fattura":
             ods_ids = {r["ods"].pk for r in righe_rows}
             ODS.objects.filter(pk__in=ods_ids).update(stato=ODS.Stato.FATTURATO)
 
-        return resp
+        if buf:
+            resp = HttpResponse(buf.read(), content_type="application/pdf")
+            resp["Content-Disposition"] = f'inline; filename="{nome_file}.pdf"'
+            return resp
 
     return redirect(request.META.get("HTTP_REFERER", "fatturazione_attiva:ricerca"))
 
@@ -195,17 +193,63 @@ def _load_selezione(selezione):
     return rows
 
 
-def _rows_to_pdf_data(rows):
-    return [
-        {
-            "N° ODS":        r["ods"].numero,
-            "Data":          r["ods"].data_servizio,
-            "Cliente / Sede": r["ods"].cliente_display,
-            "Tipo servizio": r["riga"].servizio.nome if r["riga"] else "—",
-            "Importo":       r["riga"].prezzo if r["riga"] and r["riga"].prezzo else None,
+def _build_pdf_ctx(rows, is_fattura):
+    fat_cfg     = django_settings.FATTURAZIONE
+    aliquota    = Decimal(str(fat_cfg.get("ALIQUOTA_IVA", 22)))
+    imponibile  = sum(
+        r["riga"].prezzo for r in rows if r["riga"] and r["riga"].prezzo
+    )
+    importo_iva    = (imponibile * aliquota / 100).quantize(Decimal("0.01"), ROUND_HALF_UP)
+    totale_fattura = imponibile + importo_iva
+
+    # numero documento progressivo basato sul conteggio ODS fatturati oggi
+    oggi    = timezone.localdate()
+    n_oggi  = ODS.objects.filter(stato=ODS.Stato.FATTURATO,
+                                  updated_at__date=oggi).count() + 1
+    numero  = f"FA-{oggi.year}-{n_oggi:04d}"
+
+    return {
+        "righe":           rows,
+        "azienda":         fat_cfg,
+        "destinatario":    _build_destinatario(rows),
+        "is_fattura":      is_fattura,
+        "numero_documento": numero,
+        "data_documento":  oggi,
+        "aliquota_iva":    aliquota,
+        "imponibile":      imponibile,
+        "importo_iva":     importo_iva,
+        "totale_fattura":  totale_fattura,
+    }
+
+
+def _build_destinatario(rows):
+    ods = rows[0]["ods"]
+    if ods.filiale:
+        c = ods.filiale.cliente       # Azienda
+        return {
+            "nome":          c.ragione_sociale,
+            "indirizzo":     c.indirizzo,
+            "cap":           c.cap,
+            "citta":         c.citta,
+            "provincia":     getattr(c, "provincia", ""),
+            "partita_iva":   c.partita_iva,
+            "codice_fiscale": getattr(c, "codice_fiscale", ""),
+            "pec":           getattr(c, "pec", ""),
         }
-        for r in rows
-    ]
+    if ods.privato:
+        p = ods.privato
+        return {
+            "nome":          str(p),
+            "indirizzo":     p.indirizzo,
+            "cap":           p.cap,
+            "citta":         p.citta,
+            "provincia":     getattr(p, "provincia", ""),
+            "partita_iva":   "",
+            "codice_fiscale": p.codice_fiscale,
+            "pec":           "",
+        }
+    return {"nome": "—", "indirizzo": "", "cap": "", "citta": "", "provincia": "",
+            "partita_iva": "", "codice_fiscale": "", "pec": ""}
 
 
 def _export_excel(rows):

@@ -133,6 +133,20 @@ EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", EMAIL_HOST_USER)
 
+# Fatturazione attiva — dati emittente (configurabili via .env)
+FATTURAZIONE = {
+    "RAGIONE_SOCIALE": os.environ.get("FAT_RAGIONE_SOCIALE", ""),
+    "INDIRIZZO":       os.environ.get("FAT_INDIRIZZO", ""),
+    "CAP_CITTA":       os.environ.get("FAT_CAP_CITTA", ""),
+    "PARTITA_IVA":     os.environ.get("FAT_PIVA", ""),
+    "CODICE_FISCALE":  os.environ.get("FAT_CF", ""),
+    "TELEFONO":        os.environ.get("FAT_TEL", ""),
+    "EMAIL":           os.environ.get("FAT_EMAIL", ""),
+    "IBAN":            os.environ.get("FAT_IBAN", ""),
+    "ALIQUOTA_IVA":    int(os.environ.get("FAT_IVA", "22")),
+    "NOTE_PAGAMENTO":  os.environ.get("FAT_NOTE_PAG", "Bonifico bancario 30 gg d.f."),
+}
+
 # WhatsApp — Green API (green-api.com)
 GREENAPI_INSTANCE_ID = os.environ.get("GREENAPI_INSTANCE_ID", "")
 GREENAPI_TOKEN       = os.environ.get("GREENAPI_TOKEN", "")

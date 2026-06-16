@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<style>
+  @page {
+    size: A4 portrait;
+    margin: 1.8cm 1.5cm 2cm 1.5cm;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    font-family: Helvetica, Arial, sans-serif;
+    font-size: 9pt;
+    color: #1a1a2e;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* ── INTESTAZIONE ──────────────────────────────── */
+  .header-table {
+    width: 100%;
+    border-bottom: 3px solid #2c5f8a;
+    padding-bottom: 12px;
+    margin-bottom: 18px;
+  }
+  .header-table td { vertical-align: top; }
+  .company-name {
+    font-size: 16pt;
+    font-weight: bold;
+    color: #2c5f8a;
+    margin-bottom: 4px;
+  }
+  .company-info {
+    font-size: 8pt;
+    color: #555;
+    line-height: 1.5;
+  }
+  .doc-box {
+    border: 2px solid #2c5f8a;
+    border-radius: 4px;
+    padding: 8px 12px;
+    text-align: right;
+    min-width: 200px;
+  }
+  .doc-type {
+    font-size: 14pt;
+    font-weight: bold;
+    color: #2c5f8a;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .doc-numero {
+    font-size: 11pt;
+    font-weight: bold;
+    color: #1a1a2e;
+    margin-top: 2px;
+  }
+  .doc-data {
+    font-size: 8pt;
+    color: #555;
+    margin-top: 4px;
+  }
+
+  /* ── DESTINATARIO ──────────────────────────────── */
+  .dest-block {
+    margin: 0 0 20px 0;
+    text-align: right;
+  }
+  .dest-label {
+    font-size: 7.5pt;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 3px;
+  }
+  .dest-box {
+    display: inline-block;
+    border: 1px solid #ccd6e0;
+    border-left: 3px solid #2c5f8a;
+    padding: 8px 12px;
+    text-align: left;
+    min-width: 240px;
+    background: #f7fafd;
+  }
+  .dest-nome {
+    font-size: 10pt;
+    font-weight: bold;
+    color: #1a1a2e;
+    margin-bottom: 2px;
+  }
+  .dest-info {
+    font-size: 8pt;
+    color: #444;
+    line-height: 1.6;
+  }
+
+  /* ── SEPARATORE ────────────────────────────────── */
+  .sep {
+    border: none;
+    border-top: 1px solid #ccd6e0;
+    margin: 14px 0;
+  }
+
+  /* ── TABELLA RIGHE ─────────────────────────────── */
+  .righe-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 14px 0;
+    font-size: 8.5pt;
+  }
+  .righe-table thead tr {
+    background: #2c5f8a;
+    color: #fff;
+  }
+  .righe-table thead th {
+    padding: 7px 8px;
+    font-weight: bold;
+    font-size: 8pt;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
+  .righe-table thead th.r { text-align: right; }
+  .righe-table tbody tr { border-bottom: 1px solid #e8eef4; }
+  .righe-table tbody tr.alt { background: #f4f8fb; }
+  .righe-table tbody td { padding: 6px 8px; vertical-align: top; }
+  .righe-table tbody td.r { text-align: right; font-weight: 600; }
+  .righe-table tbody td.num { white-space: nowrap; color: #555; font-size: 8pt; }
+  .righe-table tbody td.data { white-space: nowrap; color: #555; font-size: 8pt; }
+  .ods-sep td { border-top: 2px solid #2c5f8a !important; }
+  .ods-num {
+    display: inline-block;
+    background: #e8eef4;
+    border-radius: 3px;
+    padding: 1px 5px;
+    font-size: 7.5pt;
+    color: #2c5f8a;
+    font-weight: bold;
+  }
+
+  /* ── TOTALI ────────────────────────────────────── */
+  .totali-wrapper { text-align: right; margin-top: 8px; }
+  .totali-table {
+    display: inline-table;
+    border-collapse: collapse;
+    min-width: 240px;
+    font-size: 9pt;
+  }
+  .totali-table td { padding: 4px 8px; }
+  .totali-table td.lab { color: #555; text-align: left; }
+  .totali-table td.val { text-align: right; font-weight: 600; min-width: 90px; }
+  .totali-table .riga-tot {
+    border-top: 2px solid #2c5f8a;
+    background: #eef4fa;
+  }
+  .totali-table .riga-tot td {
+    font-size: 11pt;
+    font-weight: bold;
+    color: #2c5f8a;
+    padding: 6px 8px;
+  }
+
+  /* ── FOOTER ────────────────────────────────────── */
+  .footer-block {
+    margin-top: 30px;
+    border-top: 1px solid #ccd6e0;
+    padding-top: 10px;
+    font-size: 7.5pt;
+    color: #666;
+  }
+  .footer-block .iban {
+    font-family: Courier, monospace;
+    font-size: 8.5pt;
+    font-weight: bold;
+    color: #2c5f8a;
+  }
+  .footer-block .note-pag {
+    margin-top: 4px;
+  }
+  .generated {
+    text-align: right;
+    font-size: 7pt;
+    color: #bbb;
+    margin-top: 10px;
+  }
+</style>
+</head>
+<body>
+
+{# ── INTESTAZIONE ───────────────────────────────────────────── #}
+<table class="header-table">
+  <tr>
+    <td style="width:60%">
+      <div class="company-name">{{ azienda.RAGIONE_SOCIALE }}</div>
+      <div class="company-info">
+        {% if azienda.INDIRIZZO %}{{ azienda.INDIRIZZO }}<br>{% endif %}
+        {% if azienda.CAP_CITTA %}{{ azienda.CAP_CITTA }}<br>{% endif %}
+        {% if azienda.PARTITA_IVA %}P.IVA: {{ azienda.PARTITA_IVA }}{% if azienda.CODICE_FISCALE %} &mdash; C.F.: {{ azienda.CODICE_FISCALE }}{% endif %}<br>{% endif %}
+        {% if azienda.TELEFONO %}Tel: {{ azienda.TELEFONO }}{% if azienda.EMAIL %} &mdash; {{ azienda.EMAIL }}{% endif %}{% endif %}
+      </div>
+    </td>
+    <td style="width:40%; text-align:right; vertical-align:top">
+      <div class="doc-box">
+        <div class="doc-type">{% if is_fattura %}Fattura{% else %}Nota di consegna{% endif %}</div>
+        <div class="doc-numero">N. {{ numero_documento }}</div>
+        <div class="doc-data">Del {{ data_documento|date:"d/m/Y" }}</div>
+      </div>
+    </td>
+  </tr>
+</table>
+
+{# ── DESTINATARIO ───────────────────────────────────────────── #}
+<div class="dest-block">
+  <div class="dest-label">Spett.le</div>
+  <div class="dest-box">
+    <div class="dest-nome">{{ destinatario.nome }}</div>
+    <div class="dest-info">
+      {% if destinatario.indirizzo %}{{ destinatario.indirizzo }}<br>{% endif %}
+      {% if destinatario.cap or destinatario.citta %}
+        {{ destinatario.cap }} {{ destinatario.citta }}{% if destinatario.provincia %} ({{ destinatario.provincia }}){% endif %}<br>
+      {% endif %}
+      {% if destinatario.partita_iva %}P.IVA: {{ destinatario.partita_iva }}<br>{% endif %}
+      {% if destinatario.codice_fiscale %}C.F.: {{ destinatario.codice_fiscale }}<br>{% endif %}
+      {% if destinatario.pec %}PEC: {{ destinatario.pec }}{% endif %}
+    </div>
+  </div>
+</div>
+
+<hr class="sep">
+
+{# ── TABELLA RIGHE ──────────────────────────────────────────── #}
+<table class="righe-table">
+  <thead>
+    <tr>
+      <th style="width:90px">N° ODS</th>
+      <th style="width:72px">Data</th>
+      <th>Descrizione servizio</th>
+      <th class="r" style="width:88px">Importo</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for r in righe %}
+    <tr class="{% if r.is_new_ods and not forloop.first %}ods-sep{% elif forloop.counter|divisibleby:2 %}alt{% endif %}">
+      <td class="num"><span class="ods-num">{{ r.ods.numero }}</span></td>
+      <td class="data">{{ r.ods.data_servizio|date:"d/m/Y" }}</td>
+      <td>
+        {% if r.riga %}
+          <strong>{{ r.riga.servizio.nome }}</strong>
+          {% if r.ods.filiale %}
+            <span style="color:#888"> &mdash; {{ r.ods.filiale.nome }}</span>
+          {% endif %}
+          {% if r.riga.note %}<br><span style="color:#888;font-size:7.5pt">{{ r.riga.note }}</span>{% endif %}
+        {% else %}
+          <span style="color:#aaa;font-style:italic">Servizio non specificato</span>
+        {% endif %}
+      </td>
+      <td class="r">
+        {% if r.riga and r.riga.prezzo %}€ {{ r.riga.prezzo }}{% else %}&mdash;{% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<hr class="sep">
+
+{# ── TOTALI ─────────────────────────────────────────────────── #}
+<div class="totali-wrapper">
+  <table class="totali-table">
+    <tr>
+      <td class="lab">Imponibile</td>
+      <td class="val">€ {{ imponibile }}</td>
+    </tr>
+    <tr>
+      <td class="lab">IVA {{ aliquota_iva }}%</td>
+      <td class="val">€ {{ importo_iva }}</td>
+    </tr>
+    <tr class="riga-tot">
+      <td>TOTALE FATTURA</td>
+      <td>€ {{ totale_fattura }}</td>
+    </tr>
+  </table>
+</div>
+
+{# ── FOOTER ─────────────────────────────────────────────────── #}
+<div class="footer-block">
+  {% if azienda.IBAN %}
+  <div>Bonifico bancario — IBAN: <span class="iban">{{ azienda.IBAN }}</span></div>
+  {% endif %}
+  <div class="note-pag">{{ azienda.NOTE_PAGAMENTO }}</div>
+</div>
+
+<div class="generated">
+  Documento generato il {{ data_documento|date:"d/m/Y" }} &mdash; RATTUS26
+</div>
+
+</body>
+</html>
