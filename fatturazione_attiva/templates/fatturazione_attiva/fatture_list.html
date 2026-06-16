@@ -1,0 +1,214 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header mb-4 d-flex justify-content-between align-items-start flex-wrap gap-2">
+  <div>
+    <h1><i class="bi bi-receipt-cutoff me-2 text-brand"></i>Fatture Emesse</h1>
+    <p class="text-muted mb-0">Ricerca fatture per cliente, periodo e stato incasso</p>
+  </div>
+  <a href="{% url 'fatturazione_attiva:ricerca' %}" class="btn btn-outline-primary btn-sm align-self-center">
+    <i class="bi bi-plus-circle me-1"></i>Nuova fattura
+  </a>
+</div>
+
+{# ── FORM RICERCA ─────────────────────────────────────────── #}
+<form method="get">
+  <div class="card mb-4">
+    <div class="card-header card-header-primary">
+      <i class="bi bi-funnel me-2"></i>Filtri
+    </div>
+    <div class="card-body">
+      <div class="row g-3 align-items-end">
+
+        <div class="col-md-2">
+          <label class="form-label fw-semibold">{{ form.tipo_cliente.label }}</label>
+          {{ form.tipo_cliente }}
+        </div>
+
+        <div class="col-md-3" id="campo-azienda">
+          <label class="form-label fw-semibold">{{ form.azienda.label }}</label>
+          {{ form.azienda }}
+          {% if form.azienda.errors %}<div class="text-danger small">{{ form.azienda.errors }}</div>{% endif %}
+        </div>
+
+        <div class="col-md-3" id="campo-privato" style="display:none">
+          <label class="form-label fw-semibold">{{ form.privato.label }}</label>
+          {{ form.privato }}
+        </div>
+
+        <div class="col-md-2">
+          <label class="form-label fw-semibold">{{ form.data_da.label }}</label>
+          {{ form.data_da }}
+        </div>
+
+        <div class="col-md-2">
+          <label class="form-label fw-semibold">{{ form.data_a.label }}</label>
+          {{ form.data_a }}
+          {% if form.data_a.errors %}<div class="text-danger small">{{ form.data_a.errors }}</div>{% endif %}
+        </div>
+
+        <div class="col-md-2">
+          <label class="form-label fw-semibold">{{ form.incasso.label }}</label>
+          {{ form.incasso }}
+        </div>
+
+        <div class="col-md-2">
+          <button type="submit" class="btn btn-primary btn-sm w-100">
+            <i class="bi bi-search me-1"></i>Cerca
+          </button>
+        </div>
+
+        <div class="col-md-2">
+          <a href="{% url 'fatturazione_attiva:fatture_list' %}" class="btn btn-outline-secondary btn-sm w-100">
+            <i class="bi bi-x-circle me-1"></i>Azzera
+          </a>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</form>
+
+{% if ricerca_eseguita %}
+
+  {# ── CARD RIEPILOGO ─────────────────────────────────────── #}
+  <div class="row g-3 mb-4">
+    <div class="col-md-3">
+      <div class="card text-center">
+        <div class="card-body py-3">
+          <div class="text-muted small mb-1">Fatture trovate</div>
+          <div class="fw-bold fs-4 text-brand">{{ fatture|length }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card text-center">
+        <div class="card-body py-3">
+          <div class="text-muted small mb-1">Da incassare</div>
+          <div class="fw-bold fs-4 text-warning">{{ n_da_incassare }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card text-center">
+        <div class="card-body py-3">
+          <div class="text-muted small mb-1">Totale imponibile</div>
+          <div class="fw-bold fs-4 text-brand">€ {{ totale_imponibile }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card text-center border-success">
+        <div class="card-body py-3">
+          <div class="text-muted small mb-1">Totale incassato</div>
+          <div class="fw-bold fs-4 text-success">€ {{ totale_incassato }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# ── TABELLA FATTURE ────────────────────────────────────── #}
+  {% if fatture %}
+  <div class="card">
+    <div class="card-header card-header-primary">
+      <i class="bi bi-table me-2"></i>Risultati ({{ fatture|length }})
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover table-sm mb-0 align-middle">
+        <thead class="bg-brand text-white">
+          <tr>
+            <th>N° ODS</th>
+            <th>Data servizio</th>
+            <th>Cliente / Sede</th>
+            <th>Servizi</th>
+            <th class="text-end">Imponibile</th>
+            <th class="text-center">Incasso</th>
+            <th class="text-end">Incassato</th>
+            <th class="text-center">Data incasso</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for ods in fatture %}
+          <tr>
+            <td>
+              <a href="{{ ods.get_absolute_url }}" class="badge bg-primary text-decoration-none" target="_blank">
+                {{ ods.numero }}
+              </a>
+            </td>
+            <td class="text-nowrap">{{ ods.data_servizio|date:"d/m/Y" }}</td>
+            <td>
+              <div class="fw-semibold small">{{ ods.cliente_display }}</div>
+              {% if ods.filiale %}<div class="text-muted small">{{ ods.filiale.indirizzo }}</div>{% endif %}
+            </td>
+            <td>
+              {% for riga in ods.righe.all %}
+                <span class="badge bg-light text-dark border me-1">{{ riga.servizio.nome }}</span>
+              {% empty %}
+                <span class="text-muted fst-italic small">—</span>
+              {% endfor %}
+            </td>
+            <td class="text-end fw-semibold">
+              {% if ods.prezzo_totale %}€ {{ ods.prezzo_totale }}{% else %}<span class="text-muted">—</span>{% endif %}
+            </td>
+            <td class="text-center">
+              {% if ods.incassato %}
+                <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Incassato</span>
+              {% else %}
+                <span class="badge bg-warning text-dark"><i class="bi bi-hourglass-split me-1"></i>Da incassare</span>
+              {% endif %}
+            </td>
+            <td class="text-end">
+              {% if ods.importo_incassato %}€ {{ ods.importo_incassato }}{% else %}<span class="text-muted">—</span>{% endif %}
+            </td>
+            <td class="text-center text-nowrap text-muted small">
+              {% if ods.data_incasso %}{{ ods.data_incasso|date:"d/m/Y" }}{% else %}—{% endif %}
+            </td>
+            <td class="text-end">
+              <a href="{{ ods.get_absolute_url }}" class="btn btn-outline-secondary btn-sm" target="_blank" title="Dettaglio ODS">
+                <i class="bi bi-eye"></i>
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot class="table-light fw-semibold">
+          <tr>
+            <td colspan="4" class="text-end">Totale</td>
+            <td class="text-end text-brand">€ {{ totale_imponibile }}</td>
+            <td></td>
+            <td class="text-end text-success">€ {{ totale_incassato }}</td>
+            <td colspan="2"></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+
+  {% else %}
+  <div class="alert alert-info">
+    <i class="bi bi-info-circle me-2"></i>Nessuna fattura trovata con i filtri selezionati.
+  </div>
+  {% endif %}
+
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  const sel = document.querySelector('[name="tipo_cliente"]');
+  const campoAz = document.getElementById('campo-azienda');
+  const campoPriv = document.getElementById('campo-privato');
+
+  function aggiorna() {
+    const v = sel ? sel.value : '';
+    if (campoAz)  campoAz.style.display  = (v === 'privato')  ? 'none' : '';
+    if (campoPriv) campoPriv.style.display = (v === 'privato') ? '' : 'none';
+  }
+
+  if (sel) sel.addEventListener('change', aggiorna);
+  aggiorna();
+})();
+</script>
+{% endblock %}

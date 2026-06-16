@@ -1,6 +1,6 @@
 from django import forms
 from anagrafica_r2.models import Azienda, Privato
-from servizi.models import CondominioStabile
+from servizi.models import CondominioStabile, ODS
 
 W = {"class": "form-control form-control-sm"}
 W_SEL = {"class": "form-select form-select-sm"}
@@ -70,6 +70,67 @@ class RicercaFatturazioneForm(forms.Form):
             self.add_error("stabile", "Seleziona uno stabile.")
         da = cd.get("data_da")
         a = cd.get("data_a")
+        if da and a and da > a:
+            self.add_error("data_a", "La data di fine deve essere successiva alla data di inizio.")
+        return cd
+
+
+INCASSO_CHOICES = [
+    ("tutti",        "Tutte le fatture"),
+    ("da_incassare", "Da incassare"),
+    ("incassate",    "Incassate"),
+]
+
+TIPO_CLIENTE_CHOICES = [
+    ("",       "— Tutti i tipi —"),
+    ("azienda", "Cliente aziendale"),
+    ("privato", "Cliente privato"),
+]
+
+
+class RicercaFattureForm(forms.Form):
+    tipo_cliente = forms.ChoiceField(
+        choices=TIPO_CLIENTE_CHOICES,
+        required=False,
+        label="Tipo cliente",
+        widget=forms.Select(attrs=W_SEL),
+    )
+    azienda = forms.ModelChoiceField(
+        queryset=Azienda.objects.filter(attivo=True).order_by("ragione_sociale"),
+        required=False,
+        empty_label="— Seleziona cliente —",
+        label="Cliente aziendale",
+        widget=forms.Select(attrs=W_SEL),
+    )
+    privato = forms.ModelChoiceField(
+        queryset=Privato.objects.filter(attivo=True).order_by("cognome", "nome"),
+        required=False,
+        empty_label="— Seleziona privato —",
+        label="Cliente privato",
+        widget=forms.Select(attrs=W_SEL),
+    )
+    data_da = forms.DateField(
+        required=False,
+        label="Data servizio dal",
+        widget=forms.DateInput(attrs=W_DATE),
+    )
+    data_a = forms.DateField(
+        required=False,
+        label="Data servizio al",
+        widget=forms.DateInput(attrs=W_DATE),
+    )
+    incasso = forms.ChoiceField(
+        choices=INCASSO_CHOICES,
+        initial="tutti",
+        required=False,
+        label="Stato incasso",
+        widget=forms.Select(attrs=W_SEL),
+    )
+
+    def clean(self):
+        cd = super().clean()
+        da = cd.get("data_da")
+        a  = cd.get("data_a")
         if da and a and da > a:
             self.add_error("data_a", "La data di fine deve essere successiva alla data di inizio.")
         return cd

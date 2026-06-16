@@ -14,7 +14,7 @@ from django.views.generic import TemplateView
 from core.excel_generator import generate_excel_response
 from core.pdf_generator import generate_pdf_from_html, PDFConfig
 from servizi.models import ODS, CondominioODS, ODSRiga
-from .forms import RicercaFatturazioneForm
+from .forms import RicercaFatturazioneForm, RicercaFattureForm
 
 
 class RicercaFatturazioneView(LoginRequiredMixin, TemplateView):
@@ -275,3 +275,73 @@ def _export_excel(rows):
 def _cliente_label(rows):
     ods = rows[0]["ods"]
     return str(ods.filiale.cliente) if ods.filiale else str(ods.privato) if ods.privato else "—"
+
+
+# ── RICERCA FATTURE ───────────────────────────────────────────────────────────
+
+class FattureListView(LoginRequiredMixin, TemplateView):
+    template_name = "fatturazione_attiva/fatture_list.html"
+
+    def get(self, request, *args, **kwargs):
+        form = RicercaFattureForm(request.GET or None)
+        ctx  = self.get_context_data(form=form)
+        if request.GET and form.is_valid():
+            ctx.update(self._cerca(form.cleaned_data))
+        return self.render_to_response(ctx)
+
+    def _cerca(self, cd):
+        qs = (ODS.objects
+              .filter(stato=ODS.Stato.FATTURATO)
+              .select_related("filiale__cliente", "privato")
+              .prefetch_related("righe__servizio"))
+
+        tipo = cd.get("tipo_cliente")
+        if tipo == "azienda" and cd.get("azienda"):
+            qs = qs.filter(filiale__cliente=cd["azienda"])
+        elif tipo == "privato" and cd.get("privato"):
+            qs = qs.filter(privato=cd["privato"])
+        elif cd.get("azienda"):
+            qs = qs.filter(filiale__cliente=cd["azienda"])
+        elif cd.get("privato"):
+            qs = qs.filter(privato=cd["privato"])
+
+        if cd.get("data_da"):
+            qs = qs.filter(data_servizio__gte=cd["data_da"])
+        if cd.get("data_a"):
+            qs = qs.filter(data_servizio__lte=cd["data_a"])
+
+        incasso = cd.get("incasso", "tutti")
+        if incasso == "da_incassare":
+            qs = qs.filter(incassato=False)
+        elif incasso == "incassate":
+            qs = qs.filter(incassato=True)
+
+        qs = qs.order_by("-data_servizio")
+
+        totale_imponibile = Decimal("0.00")
+        totale_incassato  = Decimal("0.00")
+        n_da_incassare    = 0
+
+        fatture = list(qs)
+        for ods in fatture:
+            pt = ods.prezzo_totale
+            if pt:
+                totale_imponibile += pt
+            if ods.incassato:
+                totale_incassato += (ods.importo_incassato or ods.prezzo_totale or Decimal("0"))
+            else:
+                n_da_incassare += 1
+
+        return {
+            "fatture":           fatture,
+            "totale_imponibile": totale_imponibile,
+            "totale_incassato":  totale_incassato,
+            "n_da_incassare":    n_da_incassare,
+            "ricerca_eseguita":  True,
+        }
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx.setdefault("fatture", [])
+        ctx.setdefault("ricerca_eseguita", False)
+        return ctx
