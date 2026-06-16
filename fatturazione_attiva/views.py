@@ -2,20 +2,23 @@ from decimal import Decimal, ROUND_HALF_UP
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.mixins import LoginRequiredMixin
 from django.conf import settings as django_settings
 from django.http import HttpResponse
-from django.shortcuts import redirect
+from django.shortcuts import redirect, get_object_or_404
 from django.template.loader import render_to_string
 from django.utils import timezone
 from django.views.decorators.http import require_POST
-from django.views.generic import TemplateView
+from django.views.generic import TemplateView, DetailView
+from django.contrib.auth.mixins import LoginRequiredMixin
 
 from core.excel_generator import generate_excel_response
 from core.pdf_generator import generate_pdf_from_html, PDFConfig
 from servizi.models import ODS, CondominioODS, ODSRiga
 from .forms import RicercaFatturazioneForm, RicercaFattureForm
+from .models import Fattura, RigaFattura
 
+
+# ── Ricerca ODS da fatturare ──────────────────────────────────────────────────
 
 class RicercaFatturazioneView(LoginRequiredMixin, TemplateView):
     template_name = "fatturazione_attiva/ricerca.html"
@@ -39,7 +42,7 @@ class RicercaFatturazioneView(LoginRequiredMixin, TemplateView):
         if tipo in ("azienda", "privato"):
             ods_qs = (ODS.objects
                       .select_related("filiale__cliente", "privato", "tecnico")
-                      .exclude(stato=ODS.Stato.FATTURATO))   # mai mostrare già fatturati
+                      .exclude(stato=ODS.Stato.FATTURATO))
 
             if tipo == "azienda":
                 ods_qs = ods_qs.filter(filiale__cliente=cd["azienda"])
@@ -90,6 +93,8 @@ class RicercaFatturazioneView(LoginRequiredMixin, TemplateView):
         return ctx
 
 
+# ── Azione fatturazione ───────────────────────────────────────────────────────
+
 @login_required
 @require_POST
 def azione_fatturazione(request):
@@ -109,33 +114,174 @@ def azione_fatturazione(request):
     if action == "excel":
         return _export_excel(righe_rows)
 
-    if action in ("pdf", "fattura"):
-        is_fattura = action == "fattura"
-        nome_file  = f"{'fattura' if is_fattura else 'controllo'}_{timezone.localdate()}"
-
-        # flag is_new_ods per separatori visivi
-        prev = None
-        for r in righe_rows:
-            r["is_new_ods"] = r["ods"].pk != prev
-            prev = r["ods"].pk
-
-        ctx = _build_pdf_ctx(righe_rows, is_fattura)
+    if action == "pdf":
+        # Anteprima senza salvare
+        ctx = _build_pdf_ctx_da_righe(righe_rows, is_fattura=False)
         html = render_to_string("fatturazione_attiva/pdf_fattura.html", ctx)
-        buf  = generate_pdf_from_html(html, PDFConfig(filename=f"{nome_file}.pdf"), output_type="buffer")
-
-        if action == "fattura":
-            ods_ids = {r["ods"].pk for r in righe_rows}
-            ODS.objects.filter(pk__in=ods_ids).update(stato=ODS.Stato.FATTURATO)
-
+        buf = generate_pdf_from_html(html, PDFConfig(filename="controllo.pdf"), output_type="buffer")
         if buf:
             resp = HttpResponse(buf.read(), content_type="application/pdf")
-            resp["Content-Disposition"] = f'inline; filename="{nome_file}.pdf"'
+            resp["Content-Disposition"] = 'inline; filename="controllo.pdf"'
             return resp
+
+    if action == "fattura":
+        # Crea la fattura nel DB e genera il PDF
+        fattura = Fattura.crea(righe_rows, emessa_da=request.user)
+        messages.success(request, f"Fattura {fattura.numero} emessa con successo.")
+        return redirect("fatturazione_attiva:fattura_detail", pk=fattura.pk)
 
     return redirect(request.META.get("HTTP_REFERER", "fatturazione_attiva:ricerca"))
 
 
-# ── helpers ───────────────────────────────────────────────────────────────────
+# ── Lista fatture emesse ──────────────────────────────────────────────────────
+
+class FattureListView(LoginRequiredMixin, TemplateView):
+    template_name = "fatturazione_attiva/fatture_list.html"
+
+    def get(self, request, *args, **kwargs):
+        form = RicercaFattureForm(request.GET or None)
+        ctx  = self.get_context_data(form=form)
+        if request.GET and form.is_valid():
+            ctx.update(self._cerca(form.cleaned_data))
+        return self.render_to_response(ctx)
+
+    def _cerca(self, cd):
+        qs = Fattura.objects.prefetch_related("righe")
+
+        tipo = cd.get("tipo_cliente")
+        if tipo == "azienda" and cd.get("azienda"):
+            qs = qs.filter(
+                ods__filiale__cliente=cd["azienda"]
+            ).distinct()
+        elif tipo == "privato" and cd.get("privato"):
+            qs = qs.filter(ods__privato=cd["privato"]).distinct()
+
+        if cd.get("data_da"):
+            qs = qs.filter(data_emissione__gte=cd["data_da"])
+        if cd.get("data_a"):
+            qs = qs.filter(data_emissione__lte=cd["data_a"])
+
+        incasso = cd.get("incasso", "tutti")
+        if incasso == "da_incassare":
+            qs = qs.filter(stato=Fattura.Stato.EMESSA)
+        elif incasso == "incassate":
+            qs = qs.filter(stato=Fattura.Stato.PAGATA)
+
+        qs = qs.order_by("-anno", "-progressivo")
+        fatture = list(qs)
+
+        totale_emesso  = sum((f.totale for f in fatture if f.stato != Fattura.Stato.ANNULLATA), Decimal("0.00"))
+        totale_pagato  = sum((f.totale for f in fatture if f.stato == Fattura.Stato.PAGATA), Decimal("0.00"))
+        n_da_incassare = sum(1 for f in fatture if f.stato == Fattura.Stato.EMESSA)
+
+        return {
+            "fatture":          fatture,
+            "totale_emesso":    totale_emesso,
+            "totale_pagato":    totale_pagato,
+            "n_da_incassare":   n_da_incassare,
+            "ricerca_eseguita": True,
+        }
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx.setdefault("fatture", [])
+        ctx.setdefault("ricerca_eseguita", False)
+        return ctx
+
+
+# ── Dettaglio fattura (con download PDF) ─────────────────────────────────────
+
+class FatturaDetailView(LoginRequiredMixin, DetailView):
+    model = Fattura
+    template_name = "fatturazione_attiva/fattura_detail.html"
+    context_object_name = "fattura"
+
+
+@login_required
+def fattura_pdf(request, pk):
+    """Rigenera il PDF di una fattura già emessa dai dati salvati nel DB."""
+    fattura = get_object_or_404(Fattura, pk=pk)
+
+    # Adatta le righe salvate al formato dict atteso dal template
+    from types import SimpleNamespace
+    righe = []
+    prev_ods = None
+    for r in fattura.righe.all():
+        is_new = r.ods_numero != prev_ods
+        ods_ns  = SimpleNamespace(numero=r.ods_numero, data_servizio=r.data_servizio, filiale=None)
+        riga_ns = SimpleNamespace(
+            servizio=SimpleNamespace(nome=r.descrizione),
+            prezzo=r.importo,
+            note=r.note,
+        )
+        righe.append({"ods": ods_ns, "riga": riga_ns, "is_new_ods": is_new})
+        prev_ods = r.ods_numero
+
+    ctx = {
+        "righe": righe,
+        "azienda": {
+            "RAGIONE_SOCIALE": fattura.emit_ragione_sociale,
+            "INDIRIZZO":       fattura.emit_indirizzo,
+            "CAP_CITTA":       fattura.emit_cap_citta,
+            "PARTITA_IVA":     fattura.emit_partita_iva,
+            "CODICE_FISCALE":  fattura.emit_codice_fiscale,
+            "TELEFONO":        fattura.emit_telefono,
+            "EMAIL":           fattura.emit_email,
+            "IBAN":            fattura.emit_iban,
+            "NOTE_PAGAMENTO":  fattura.note_pagamento,
+        },
+        "destinatario": {
+            "nome":            fattura.dest_nome,
+            "indirizzo":       fattura.dest_indirizzo,
+            "cap":             fattura.dest_cap,
+            "citta":           fattura.dest_citta,
+            "provincia":       fattura.dest_provincia,
+            "partita_iva":     fattura.dest_partita_iva,
+            "codice_fiscale":  fattura.dest_codice_fiscale,
+            "pec":             fattura.dest_pec,
+        },
+        "is_fattura":       True,
+        "numero_documento": fattura.numero,
+        "data_documento":   fattura.data_emissione,
+        "aliquota_iva":     fattura.aliquota_iva,
+        "imponibile":       fattura.imponibile,
+        "importo_iva":      fattura.importo_iva,
+        "totale_fattura":   fattura.totale,
+    }
+    html = render_to_string("fatturazione_attiva/pdf_fattura.html", ctx, request=request)
+    return generate_pdf_from_html(
+        html,
+        PDFConfig(filename=f"{fattura.numero}.pdf"),
+        output_type="response",
+    )
+
+
+@login_required
+@require_POST
+def fattura_segna_pagata(request, pk):
+    fattura = get_object_or_404(Fattura, pk=pk)
+    if fattura.stato == Fattura.Stato.EMESSA:
+        fattura.stato = Fattura.Stato.PAGATA
+        fattura.data_pagamento = timezone.localdate()
+        fattura.save(update_fields=["stato", "data_pagamento", "updated_at"])
+        messages.success(request, f"Fattura {fattura.numero} segnata come pagata.")
+    return redirect("fatturazione_attiva:fattura_detail", pk=pk)
+
+
+@login_required
+@require_POST
+def fattura_annulla(request, pk):
+    fattura = get_object_or_404(Fattura, pk=pk)
+    if fattura.stato != Fattura.Stato.PAGATA:
+        fattura.stato = Fattura.Stato.ANNULLATA
+        fattura.save(update_fields=["stato", "updated_at"])
+        # Rimetti gli ODS in stato completato
+        fattura.ods.all().update(stato=ODS.Stato.COMPLETATO)
+        messages.success(request, f"Fattura {fattura.numero} annullata. Gli ODS sono tornati in stato 'completato'.")
+    return redirect("fatturazione_attiva:fatture_list")
+
+
+# ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _build_ods_righe(ods_qs):
     rows   = []
@@ -182,74 +328,38 @@ def _load_selezione(selezione):
                      .select_related("ods__filiale__cliente", "ods__privato", "servizio")
                      .order_by("ods__data_servizio", "ods__pk", "ordine")):
             rows.append({"ods": riga.ods, "riga": riga})
-
     if ods_ids:
         for ods in (ODS.objects
                     .filter(pk__in=ods_ids)
                     .select_related("filiale__cliente", "privato")
                     .order_by("data_servizio")):
             rows.append({"ods": ods, "riga": None})
-
     return rows
 
 
-def _build_pdf_ctx(rows, is_fattura):
-    fat_cfg     = django_settings.FATTURAZIONE
-    aliquota    = Decimal(str(fat_cfg.get("ALIQUOTA_IVA", 22)))
-    imponibile  = sum(
-        r["riga"].prezzo for r in rows if r["riga"] and r["riga"].prezzo
+def _build_pdf_ctx_da_righe(rows, is_fattura):
+    """Context per anteprima PDF (senza salvare nel DB)."""
+    fat_cfg    = django_settings.FATTURAZIONE
+    aliquota   = Decimal(str(fat_cfg.get("ALIQUOTA_IVA", 22)))
+    imponibile = sum(
+        (r["riga"].prezzo for r in rows if r["riga"] and r["riga"].prezzo),
+        Decimal("0.00"),
     )
     importo_iva    = (imponibile * aliquota / 100).quantize(Decimal("0.01"), ROUND_HALF_UP)
     totale_fattura = imponibile + importo_iva
-
-    # numero documento progressivo basato sul conteggio ODS fatturati oggi
-    oggi    = timezone.localdate()
-    n_oggi  = ODS.objects.filter(stato=ODS.Stato.FATTURATO,
-                                  updated_at__date=oggi).count() + 1
-    numero  = f"FA-{oggi.year}-{n_oggi:04d}"
-
+    from .models import _build_destinatario
     return {
-        "righe":           rows,
-        "azienda":         fat_cfg,
-        "destinatario":    _build_destinatario(rows),
-        "is_fattura":      is_fattura,
-        "numero_documento": numero,
-        "data_documento":  oggi,
-        "aliquota_iva":    aliquota,
-        "imponibile":      imponibile,
-        "importo_iva":     importo_iva,
-        "totale_fattura":  totale_fattura,
+        "righe":             rows,
+        "azienda":           fat_cfg,
+        "destinatario":      _build_destinatario(rows),
+        "is_fattura":        is_fattura,
+        "numero_documento":  "BOZZA",
+        "data_documento":    timezone.localdate(),
+        "aliquota_iva":      aliquota,
+        "imponibile":        imponibile,
+        "importo_iva":       importo_iva,
+        "totale_fattura":    totale_fattura,
     }
-
-
-def _build_destinatario(rows):
-    ods = rows[0]["ods"]
-    if ods.filiale:
-        c = ods.filiale.cliente       # Azienda
-        return {
-            "nome":          c.ragione_sociale,
-            "indirizzo":     c.indirizzo,
-            "cap":           c.cap,
-            "citta":         c.citta,
-            "provincia":     getattr(c, "provincia", ""),
-            "partita_iva":   c.partita_iva,
-            "codice_fiscale": getattr(c, "codice_fiscale", ""),
-            "pec":           getattr(c, "pec", ""),
-        }
-    if ods.privato:
-        p = ods.privato
-        return {
-            "nome":          str(p),
-            "indirizzo":     p.indirizzo,
-            "cap":           p.cap,
-            "citta":         p.citta,
-            "provincia":     getattr(p, "provincia", ""),
-            "partita_iva":   "",
-            "codice_fiscale": p.codice_fiscale,
-            "pec":           "",
-        }
-    return {"nome": "—", "indirizzo": "", "cap": "", "citta": "", "provincia": "",
-            "partita_iva": "", "codice_fiscale": "", "pec": ""}
 
 
 def _export_excel(rows):
@@ -270,78 +380,3 @@ def _export_excel(rows):
         filename=f"fatturazione_{timezone.localdate()}",
         sheet_name="Fatturazione",
     )
-
-
-def _cliente_label(rows):
-    ods = rows[0]["ods"]
-    return str(ods.filiale.cliente) if ods.filiale else str(ods.privato) if ods.privato else "—"
-
-
-# ── RICERCA FATTURE ───────────────────────────────────────────────────────────
-
-class FattureListView(LoginRequiredMixin, TemplateView):
-    template_name = "fatturazione_attiva/fatture_list.html"
-
-    def get(self, request, *args, **kwargs):
-        form = RicercaFattureForm(request.GET or None)
-        ctx  = self.get_context_data(form=form)
-        if request.GET and form.is_valid():
-            ctx.update(self._cerca(form.cleaned_data))
-        return self.render_to_response(ctx)
-
-    def _cerca(self, cd):
-        qs = (ODS.objects
-              .filter(stato=ODS.Stato.FATTURATO)
-              .select_related("filiale__cliente", "privato")
-              .prefetch_related("righe__servizio"))
-
-        tipo = cd.get("tipo_cliente")
-        if tipo == "azienda" and cd.get("azienda"):
-            qs = qs.filter(filiale__cliente=cd["azienda"])
-        elif tipo == "privato" and cd.get("privato"):
-            qs = qs.filter(privato=cd["privato"])
-        elif cd.get("azienda"):
-            qs = qs.filter(filiale__cliente=cd["azienda"])
-        elif cd.get("privato"):
-            qs = qs.filter(privato=cd["privato"])
-
-        if cd.get("data_da"):
-            qs = qs.filter(data_servizio__gte=cd["data_da"])
-        if cd.get("data_a"):
-            qs = qs.filter(data_servizio__lte=cd["data_a"])
-
-        incasso = cd.get("incasso", "tutti")
-        if incasso == "da_incassare":
-            qs = qs.filter(incassato=False)
-        elif incasso == "incassate":
-            qs = qs.filter(incassato=True)
-
-        qs = qs.order_by("-data_servizio")
-
-        totale_imponibile = Decimal("0.00")
-        totale_incassato  = Decimal("0.00")
-        n_da_incassare    = 0
-
-        fatture = list(qs)
-        for ods in fatture:
-            pt = ods.prezzo_totale
-            if pt:
-                totale_imponibile += pt
-            if ods.incassato:
-                totale_incassato += (ods.importo_incassato or ods.prezzo_totale or Decimal("0"))
-            else:
-                n_da_incassare += 1
-
-        return {
-            "fatture":           fatture,
-            "totale_imponibile": totale_imponibile,
-            "totale_incassato":  totale_incassato,
-            "n_da_incassare":    n_da_incassare,
-            "ricerca_eseguita":  True,
-        }
-
-    def get_context_data(self, **kwargs):
-        ctx = super().get_context_data(**kwargs)
-        ctx.setdefault("fatture", [])
-        ctx.setdefault("ricerca_eseguita", False)
-        return ctx
