@@ -680,7 +680,9 @@ class ODSCreateView(LoginRequiredMixin, CreateView):
         ctx["back_url"] = reverse("servizi:ods_list")
         ctx["api_prezzo_url"] = reverse("servizi:api_prezzo_contratto")
         if "formset" not in ctx:
-            ctx["formset"] = ODSRigaFormSet(prefix="righe")
+            servizio_pk = self.request.GET.get("servizio")
+            initial = [{"servizio": servizio_pk}] if servizio_pk else []
+            ctx["formset"] = ODSRigaFormSet(prefix="righe", initial=initial)
         from magazzino.models import Prodotto
         ctx["prodotti"] = Prodotto.objects.filter(attivo=True).order_by("nome_prodotto")
         ctx["formset_data"] = [(f, []) for f in ctx["formset"]]
