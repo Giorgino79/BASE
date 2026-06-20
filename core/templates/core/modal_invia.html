@@ -23,7 +23,7 @@ Parametri (tutti opzionali):
         class="btn {{ btn_class|default:'btn-primary' }} {{ btn_size }}"
         data-bs-toggle="modal"
         data-bs-target="#{{ modal_id }}">
-    <i class="bi bi-send-fill me-1"></i>{{ label|default:"Invia" }}
+    <i class="bi bi-whatsapp{% if label %} me-1{% endif %}"></i>{% if label %}{{ label }}{% endif %}
 </button>
 
 <!-- MODAL -->
@@ -112,6 +112,11 @@ Parametri (tutti opzionali):
                 <div class="alert alert-secondary py-2 mb-2 d-flex align-items-center">
                     <i class="bi bi-file-earmark-pdf-fill text-danger me-2 fs-5"></i>
                     <small>PDF allegato: <strong>{{ oggetto|default:"documento" }}.pdf</strong></small>
+                </div>
+                {% elif link_url %}
+                <div class="alert alert-info py-2 mb-2 d-flex align-items-center">
+                    <i class="bi bi-link-45deg text-info me-2 fs-5"></i>
+                    <small>Link allegato: <strong>{{ oggetto }}</strong></small>
                 </div>
                 {% endif %}
 
@@ -247,6 +252,7 @@ Parametri (tutti opzionali):
                 canale: canale, telefono: telefono, email: email,
                 oggetto: oggetto, messaggio: messaggio,
                 pdf_url: "{{ pdf_url }}", pdf_path: "{{ pdf_path }}",
+                link_url: "{{ link_url }}",
                 destinatario_nome: "{{ destinatario_nome }}",
             }),
         })

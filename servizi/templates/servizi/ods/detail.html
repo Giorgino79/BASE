@@ -18,11 +18,11 @@
       {% elif ods.stato == "completato" %}<span class="badge badge-ok ms-2">Completato</span>
       {% else %}<span class="badge badge-ko ms-2">Annullato</span>{% endif %}
     </h1>
-    <div class="d-flex gap-2 flex-wrap">
+    <div class="d-grid gap-2 d-md-flex">
       {% url 'servizi:ods_bollettino_pdf' ods.pk as bollettino_url %}
-      {% bottone_invia phone=invia_phone email=invia_email oggetto="Bollettino di servizio "|add:ods.numero pdf_url=bollettino_url destinatario_nome=invia_nome label="Invia" btn_class="btn-outline-success" btn_size="btn-sm" %}
-      <a href="{{ bollettino_url }}" target="_blank" class="btn btn-outline-secondary btn-sm">
-        <i class="bi bi-printer me-1"></i>Stampa Bollettino
+      {% bottone_invia phone=invia_phone email=invia_email oggetto="Bollettino di servizio "|add:ods.numero link_url=ods.get_absolute_url destinatario_nome=invia_nome label="" btn_class="btn-outline-success" btn_size="btn-sm rounded-0" %}
+      <a href="{{ bollettino_url }}" target="_blank" class="btn btn-outline-primary btn-sm rounded-0">
+        <i class="bi bi-printer"></i>
       </a>
     </div>
   </div>

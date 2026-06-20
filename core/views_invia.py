@@ -56,6 +56,7 @@ def invia_documento(request):
     messaggio = data.get("messaggio", "").strip()
     pdf_url = data.get("pdf_url", "").strip()
     pdf_local_path = data.get("pdf_path", "").strip()
+    link_url = data.get("link_url", "").strip()
     destinatario_nome = data.get("destinatario_nome", "").strip()
 
     # Validazione
@@ -75,6 +76,11 @@ def invia_documento(request):
         abs_pdf_url = request.build_absolute_uri(pdf_url)
     else:
         abs_pdf_url = pdf_url
+
+    if link_url and not link_url.startswith("http"):
+        abs_link_url = request.build_absolute_uri(link_url)
+    else:
+        abs_link_url = link_url
 
     # Se la pdf_url punta a una view Django (non a un file statico/media),
     # la scarica subito con il session cookie dell'utente, prima del thread.
@@ -103,8 +109,13 @@ def invia_documento(request):
         tmp_to_delete = pre_downloaded_path
         local_path = pre_downloaded_path or pdf_local_path or None
 
+        # Testo finale: messaggio + link (se presente)
+        testo_extra = messaggio
+        if abs_link_url:
+            testo_extra = f"{messaggio}\n\n{abs_link_url}".strip() if messaggio else abs_link_url
+
         try:
-            caption = messaggio or oggetto
+            caption = testo_extra or oggetto
 
             # --- WhatsApp ---
             if canale in ("whatsapp", "entrambi"):
@@ -119,12 +130,12 @@ def invia_documento(request):
                         filename += ".pdf"
                     WhatsAppSender.send_pdf_by_url(telefono, abs_pdf_url, filename=filename, caption=caption, log_entry=wa_log)
                 else:
-                    testo = f"{oggetto}\n\n{messaggio}".strip() if messaggio else oggetto
+                    testo = f"{oggetto}\n\n{testo_extra}".strip() if testo_extra else oggetto
                     WhatsAppSender.send_message(telefono, testo, log_entry=wa_log)
 
             # --- Email ---
             if canale in ("email", "entrambi"):
-                _send_email(email_dest, oggetto, messaggio, local_path)
+                _send_email(email_dest, oggetto, testo_extra or messaggio, local_path)
                 if canale == "email":
                     log.stato = "inviato"
                     log.save(update_fields=["stato", "updated_at"])
