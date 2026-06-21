@@ -794,14 +794,23 @@ def organizzazione_giri(request):
     )
     da_organizzare_sorted = sorted(
         da_organizzare_qs,
-        key=lambda o: (o.zona or "\xff", o.data_servizio.isoformat(), o.ora_inizio.isoformat() if o.ora_inizio else ""),
+        key=lambda o: (o.data_servizio.isoformat(), o.ora_inizio.isoformat() if o.ora_inizio else ""),
     )
     gruppi_da_organizzare = []
-    for (zona, data), items in groupby(
+    for data, items in groupby(
         da_organizzare_sorted,
-        key=lambda o: (o.zona or "—", o.data_servizio),
+        key=lambda o: o.data_servizio,
     ):
-        gruppi_da_organizzare.append({"zona": zona, "data": data, "ods": list(items)})
+        ods_list = list(items)
+        processed = []
+        sep_done = False
+        for o in ods_list:
+            is_pom = bool(o.ora_inizio and o.ora_inizio.hour >= 13)
+            if is_pom and not sep_done:
+                processed.append({"sep": True})
+                sep_done = True
+            processed.append({"sep": False, "ods": o})
+        gruppi_da_organizzare.append({"data": data, "items": processed})
 
     # ── Condomini da organizzare (senza tecnico) ──────────────────────────────
     condomini_da_organizzare = list(
