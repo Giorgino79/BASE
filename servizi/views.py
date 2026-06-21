@@ -1298,10 +1298,8 @@ def aggiungi_consumo(request, ods_pk):
     if request.method != "POST":
         return redirect(ods.distinta.get_absolute_url() if ods.distinta else "servizi:distinta_list")
 
-    from cespiti.models import Automezzo
-    mezzo = Automezzo.objects.filter(
-        assegnato_a=ods.tecnico, attivo=True
-    ).first() if ods.tecnico else None
+    # Usa il mezzo della distinta (coerente con quello mostrato nel template)
+    mezzo = ods.distinta.mezzo if ods.distinta else None
 
     form = ConsumoMaterialeForm(request.POST, mezzo=mezzo)
     if form.is_valid():

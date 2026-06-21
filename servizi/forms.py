@@ -189,7 +189,7 @@ class ConsumoMaterialeForm(forms.ModelForm):
         from magazzino.models import Prodotto, ScortaMezzo
         if mezzo:
             ids = ScortaMezzo.objects.filter(
-                mezzo=mezzo, quantita__gt=0
+                mezzo=mezzo
             ).values_list("prodotto_id", flat=True)
             self.fields["prodotto"].queryset = Prodotto.objects.filter(pk__in=ids, attivo=True).order_by("nome_prodotto")
         else:
