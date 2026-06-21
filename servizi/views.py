@@ -1149,10 +1149,12 @@ def crea_distinta(request, tecnico_pk):
         messages.warning(request, f"Nessun servizio da includere per {tecnico.get_full_name() or tecnico.username}.")
         return redirect("servizi:organizzazione_giri")
 
-    mezzo_id = request.POST.get("mezzo") or None
+    mezzo_id      = request.POST.get("mezzo") or None
+    assistente_id = request.POST.get("assistente") or None
     distinta = Distinta.objects.create(
         data=data,
         tecnico=tecnico,
+        assistente_id=assistente_id,
         mezzo_id=mezzo_id,
         creata_da=request.user,
     )

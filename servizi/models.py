@@ -353,6 +353,11 @@ class Distinta(models.Model):
         settings.AUTH_USER_MODEL, on_delete=models.PROTECT,
         related_name="distinte", verbose_name="Tecnico",
     )
+    assistente = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+        null=True, blank=True, related_name="distinte_assistente",
+        verbose_name="Assistente",
+    )
     mezzo     = models.ForeignKey(
         "cespiti.Automezzo", on_delete=models.SET_NULL,
         null=True, blank=True, related_name="distinte_mezzo",

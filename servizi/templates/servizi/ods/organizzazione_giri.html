@@ -320,6 +320,13 @@
           <label class="form-label">Data distinta <span class="text-danger">*</span></label>
           <input type="date" name="data" value="{{ today }}"
                  class="form-control form-control-sm mb-3" required>
+          <label class="form-label">Assistente</label>
+          <select name="assistente" class="form-select form-select-sm mb-3">
+            <option value="">— nessuno —</option>
+            {% for u in utenti %}{% if u.pk != giro.tecnico.pk %}
+            <option value="{{ u.pk }}">{{ u.get_full_name|default:u.username }}</option>
+            {% endif %}{% endfor %}
+          </select>
           <label class="form-label">Mezzo (targa) <span class="text-danger">*</span></label>
           <select name="mezzo" class="form-select form-select-sm" required>
             <option value="">— seleziona mezzo —</option>

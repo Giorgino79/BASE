@@ -21,6 +21,7 @@
     <table class="table mb-0 align-middle">
       <thead class="bg-brand text-white">
         <tr>
+          <th>Numero</th>
           <th>Data</th>
           <th>Tecnico</th>
           <th>Mezzo</th>
@@ -33,6 +34,9 @@
       <tbody>
         {% for d in distinte %}
         <tr>
+          <td class="fw-semibold text-nowrap">
+            <a href="{{ d.get_absolute_url }}" class="text-brand text-decoration-none">{{ d.numero }}</a>
+          </td>
           <td class="fw-semibold text-nowrap">{{ d.data|date:"d/m/Y" }}</td>
           <td>{{ d.tecnico.get_full_name|default:d.tecnico.username }}</td>
           <td class="small text-muted">{{ d.mezzo|default:"—" }}</td>
