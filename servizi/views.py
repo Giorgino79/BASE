@@ -1494,7 +1494,7 @@ def chiudi_distinta_ufficio(request, pk):
 def situazione_incassi(request):
     """Panoramica degli incassi per tecnico: distintas chiuse con riconciliazione."""
     from django.contrib.auth import get_user_model
-    from django.db.models import Sum, Q
+    from django.db.models import Sum, Q, Count
     from decimal import Decimal
 
     User = get_user_model()
@@ -1503,8 +1503,7 @@ def situazione_incassi(request):
     tecnico_id = request.GET.get("tecnico") or None
     tecnico_sel = None
 
-    from django.db.models import Count
-    qs = (
+    base_qs = (
         Distinta.objects
         .select_related("tecnico", "mezzo", "chiusa_da")
         .annotate(
@@ -1514,26 +1513,30 @@ def situazione_incassi(request):
                 filter=Q(ods_set__incassato=True),
             ),
         )
-        .order_by("-data")
     )
 
     if tecnico_id:
         try:
             tecnico_sel = User.objects.get(pk=tecnico_id)
-            qs = qs.filter(tecnico=tecnico_sel)
+            base_qs = base_qs.filter(tecnico=tecnico_sel)
         except User.DoesNotExist:
             pass
 
-    distinte = []
+    distinte_aperte = []
+    for d in base_qs.filter(stato="aperta").order_by("-data"):
+        previsto = d.totale_calcolato or Decimal("0")
+        distinte_aperte.append({"obj": d, "previsto": previsto})
+
+    distinte_chiuse = []
     grand_previsto = Decimal("0")
     grand_ricevuto = Decimal("0")
-    for d in qs:
+    for d in base_qs.filter(stato="chiusa").order_by("-data")[:5]:
         previsto = d.totale_calcolato or Decimal("0")
         ricevuto = d.importo_ricevuto or Decimal("0")
         grand_previsto += previsto
         grand_ricevuto += ricevuto
         diff = ricevuto - previsto
-        distinte.append({
+        distinte_chiuse.append({
             "obj": d,
             "previsto": previsto,
             "ricevuto": ricevuto,
@@ -1543,7 +1546,8 @@ def situazione_incassi(request):
 
     grand_diff = grand_ricevuto - grand_previsto
     return render(request, "servizi/distinte/situazione_incassi.html", {
-        "distinte": distinte,
+        "distinte_aperte": distinte_aperte,
+        "distinte_chiuse": distinte_chiuse,
         "utenti": utenti,
         "tecnico_sel": tecnico_sel,
         "grand_previsto": grand_previsto,

@@ -39,6 +39,58 @@
   </div>
 </form>
 
+{# Distinte aperte #}
+<h5 class="mb-2"><i class="bi bi-unlock me-2 text-warning"></i>Distinte aperte</h5>
+<div class="card mb-4">
+  <div class="table-responsive">
+    <table class="table mb-0 align-middle">
+      <thead class="bg-brand text-white">
+        <tr>
+          <th>Numero</th>
+          <th>Data</th>
+          <th>Tecnico</th>
+          <th>Mezzo</th>
+          <th class="text-center">ODS</th>
+          <th class="text-end">Previsto</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in distinte_aperte %}
+        <tr>
+          <td class="fw-semibold text-nowrap">
+            <a href="{{ row.obj.get_absolute_url }}" class="text-brand text-decoration-none">{{ row.obj.numero }}</a>
+          </td>
+          <td class="text-nowrap">{{ row.obj.data|date:"d/m/Y" }}</td>
+          <td>{{ row.obj.tecnico.get_full_name|default:row.obj.tecnico.username }}</td>
+          <td class="small text-muted">{{ row.obj.mezzo|default:"—" }}</td>
+          <td class="text-center">
+            <span class="badge bg-secondary">{{ row.obj.n_ods|default:"—" }}</span>
+          </td>
+          <td class="text-end fw-semibold">
+            {% if row.previsto %}€ {{ row.previsto }}{% else %}<span class="text-muted">—</span>{% endif %}
+          </td>
+          <td class="text-end">
+            <a href="{{ row.obj.get_absolute_url }}" class="btn btn-sm btn-outline-secondary">
+              <i class="bi bi-eye"></i>
+            </a>
+            <a href="{% url 'servizi:chiudi_distinta_ufficio' row.obj.pk %}" class="btn btn-sm btn-brand ms-1" title="Chiudi distinta">
+              <i class="bi bi-lock"></i>
+            </a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7" class="text-center text-muted py-3">
+          <i class="bi bi-check-circle me-2 text-success"></i>Nessuna distinta aperta.
+        </td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{# Ultime 5 distinte chiuse #}
+<h5 class="mb-2"><i class="bi bi-lock me-2 text-secondary"></i>Ultime 5 distinte chiuse</h5>
 <div class="card">
   <div class="table-responsive">
     <table class="table mb-0 align-middle">
@@ -57,9 +109,11 @@
         </tr>
       </thead>
       <tbody>
-        {% for row in distinte %}
+        {% for row in distinte_chiuse %}
         <tr>
-          <td class="fw-semibold text-nowrap">{{ row.obj.numero }}</td>
+          <td class="fw-semibold text-nowrap">
+            <a href="{{ row.obj.get_absolute_url }}" class="text-brand text-decoration-none">{{ row.obj.numero }}</a>
+          </td>
           <td class="text-nowrap">{{ row.obj.data|date:"d/m/Y" }}</td>
           <td>{{ row.obj.tecnico.get_full_name|default:row.obj.tecnico.username }}</td>
           <td class="small text-muted">{{ row.obj.mezzo|default:"—" }}</td>
@@ -73,11 +127,7 @@
             {% if row.obj.importo_ricevuto is not None %}
               € {{ row.obj.importo_ricevuto }}
             {% else %}
-              {% if row.obj.stato == "aperta" %}
-                <span class="badge badge-wait">Aperta</span>
-              {% else %}
-                <span class="text-muted">—</span>
-              {% endif %}
+              <span class="text-muted">—</span>
             {% endif %}
           </td>
           <td class="text-end fw-semibold">
@@ -103,20 +153,15 @@
             <a href="{{ row.obj.get_absolute_url }}" class="btn btn-sm btn-outline-secondary">
               <i class="bi bi-eye"></i>
             </a>
-            {% if row.obj.stato == "aperta" %}
-            <a href="{% url 'servizi:chiudi_distinta_ufficio' row.obj.pk %}" class="btn btn-sm btn-brand ms-1">
-              <i class="bi bi-lock"></i>
-            </a>
-            {% endif %}
           </td>
         </tr>
         {% empty %}
-        <tr><td colspan="9" class="text-center text-muted py-4">
-          <i class="bi bi-inbox me-2"></i>Nessuna distinta trovata.
+        <tr><td colspan="10" class="text-center text-muted py-4">
+          <i class="bi bi-inbox me-2"></i>Nessuna distinta chiusa.
         </td></tr>
         {% endfor %}
       </tbody>
-      {% if distinte %}
+      {% if distinte_chiuse %}
       <tfoot class="table-light fw-bold">
         <tr>
           <td colspan="5" class="text-end text-muted">Totali</td>
