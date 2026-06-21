@@ -782,7 +782,7 @@ def organizzazione_giri(request):
     from itertools import groupby
 
     User = get_user_model()
-    utenti = User.objects.filter(is_active=True).order_by("last_name", "first_name")
+    utenti = User.objects.filter(is_active=True, cliente_portale__isnull=True).order_by("last_name", "first_name")
 
     # ── ODS da organizzare ────────────────────────────────────────────────────
     da_organizzare_qs = (
@@ -1498,7 +1498,7 @@ def situazione_incassi(request):
     from decimal import Decimal
 
     User = get_user_model()
-    utenti = User.objects.filter(is_active=True).order_by("last_name", "first_name")
+    utenti = User.objects.filter(is_active=True, cliente_portale__isnull=True).order_by("last_name", "first_name")
 
     tecnico_id = request.GET.get("tecnico") or None
     tecnico_sel = None
