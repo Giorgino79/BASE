@@ -265,41 +265,71 @@
 {# ── Modale: Sollecito ─────────────────────────────────────────────────────── #}
 {% if fattura.stato == 'emessa' %}
 <div class="modal fade" id="modalSollecito" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-lg">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title">
-          <i class="bi bi-envelope me-2"></i>Sollecito — {{ fattura.numero }}
+          <i class="bi bi-envelope me-2"></i>Sollecito pagamento — {{ fattura.numero }}
         </h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
-        <div class="mb-3">
-          <label class="form-label fw-semibold small">Oggetto</label>
+
+        {# ── Destinatari ──────────────────────────────────────────────────── #}
+        <div class="card border-0 bg-light mb-3 p-3">
+          <div class="mb-2">
+            <label class="form-label fw-semibold small mb-1">
+              A <span class="text-muted fw-normal">(destinatario principale)</span>
+            </label>
+            <div class="input-group input-group-sm">
+              <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+              <input type="email" id="sollecitoEmailA" class="form-control"
+                     placeholder="email@cliente.it">
+            </div>
+          </div>
+          <div id="emailCcWrapper" class="mb-1" style="display:none">
+            <label class="form-label fw-semibold small mb-1">CC</label>
+            <div id="emailCcList"></div>
+          </div>
+          <div>
+            <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none"
+                    id="btnAggiungiCc">
+              <i class="bi bi-plus-circle me-1"></i>Aggiungi destinatario CC
+            </button>
+          </div>
+        </div>
+
+        {# ── Oggetto ──────────────────────────────────────────────────────── #}
+        <div class="mb-2">
+          <label class="form-label fw-semibold small mb-1">Oggetto</label>
           <div class="input-group input-group-sm">
-            <input type="text" id="sollecitoSoggetto" class="form-control" readonly>
+            <input type="text" id="sollecitoSoggetto" class="form-control">
             <button class="btn btn-outline-secondary" type="button"
                     onclick="copiaInAppunti('sollecitoSoggetto')" title="Copia">
               <i class="bi bi-clipboard"></i>
             </button>
           </div>
         </div>
+
+        {# ── Corpo ────────────────────────────────────────────────────────── #}
         <div class="mb-0">
-          <label class="form-label fw-semibold small">Corpo email</label>
+          <label class="form-label fw-semibold small mb-1">Testo email</label>
           <div class="position-relative">
-            <textarea id="sollecitoCorpo" class="form-control" rows="13" readonly></textarea>
+            <textarea id="sollecitoCorpo" class="form-control" rows="12"></textarea>
             <button class="btn btn-outline-secondary btn-sm position-absolute top-0 end-0 m-2"
                     type="button" onclick="copiaInAppunti('sollecitoCorpo')">
               <i class="bi bi-clipboard"></i> Copia
             </button>
           </div>
         </div>
+
       </div>
-      <div class="modal-footer">
-        <small class="text-muted me-auto" id="sollecitoNote"></small>
-        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Chiudi</button>
-        <button type="button" class="btn btn-primary btn-sm" id="btnSegnaSollecito">
-          <i class="bi bi-send me-1"></i>Segna inviato
+      <div class="modal-footer flex-wrap gap-2">
+        <small class="text-muted me-auto" id="sollecitoFeedback"></small>
+        <button type="button" class="btn btn-outline-secondary btn-sm"
+                data-bs-dismiss="modal">Chiudi</button>
+        <button type="button" class="btn btn-primary btn-sm" id="btnInviaSollecito">
+          <i class="bi bi-send me-1"></i>Invia email
         </button>
       </div>
     </div>
@@ -396,26 +426,84 @@ const ALIQUOTA = {{ fattura.aliquota_iva }};
 const IMPONIBILE_MAX = {{ fattura.imponibile }};
 
 {% if fattura.stato == 'emessa' %}
-{# ── Sollecito ────────────────────────────────────────────────────────────── #}
-const sollecitoUrl = "{% url 'fatturazione_attiva:fattura_sollecito' fattura.pk %}";
+const sollecitoUrl     = "{% url 'fatturazione_attiva:fattura_sollecito' fattura.pk %}";
+const inviaSollecitoUrl = "{% url 'fatturazione_attiva:invia_sollecito' fattura.pk %}";
+const CSRF = '{{ csrf_token }}';
 
+// Carica dati sollecito all'apertura del modale
 document.getElementById('modalSollecito').addEventListener('show.bs.modal', function () {
   if (document.getElementById('sollecitoSoggetto').value) return;
   fetch(sollecitoUrl)
     .then(r => r.json())
     .then(data => {
-      document.getElementById('sollecitoSoggetto').value = data.soggetto;
-      document.getElementById('sollecitoCorpo').value    = data.corpo;
+      document.getElementById('sollecitoEmailA').value  = data.email_a  || '';
+      document.getElementById('sollecitoSoggetto').value = data.soggetto || '';
+      document.getElementById('sollecitoCorpo').value    = data.corpo    || '';
     });
 });
 
-document.getElementById('btnSegnaSollecito').addEventListener('click', function () {
-  fetch(sollecitoUrl, {
+// Aggiungi riga CC
+let ccCount = 0;
+document.getElementById('btnAggiungiCc').addEventListener('click', function () {
+  ccCount++;
+  const wrapper = document.getElementById('emailCcWrapper');
+  const list    = document.getElementById('emailCcList');
+  wrapper.style.display = '';
+  const row = document.createElement('div');
+  row.className = 'input-group input-group-sm mb-1';
+  row.innerHTML = `
+    <span class="input-group-text"><i class="bi bi-at"></i></span>
+    <input type="email" class="form-control cc-input" placeholder="cc@esempio.it">
+    <button class="btn btn-outline-secondary" type="button"
+            onclick="this.closest('.input-group').remove(); if(!document.querySelector('.cc-input')) document.getElementById('emailCcWrapper').style.display='none';">
+      <i class="bi bi-x"></i>
+    </button>`;
+  list.appendChild(row);
+});
+
+// Invia email sollecito
+document.getElementById('btnInviaSollecito').addEventListener('click', function () {
+  const emailA = document.getElementById('sollecitoEmailA').value.trim();
+  if (!emailA) {
+    document.getElementById('sollecitoFeedback').textContent = 'Inserisci almeno un destinatario.';
+    document.getElementById('sollecitoFeedback').className = 'text-danger small me-auto';
+    return;
+  }
+  const ccInputs = [...document.querySelectorAll('.cc-input')].map(i => i.value.trim()).filter(Boolean);
+  const fd = new FormData();
+  fd.append('email_a',  emailA);
+  fd.append('email_cc', ccInputs.join(','));
+  fd.append('oggetto',  document.getElementById('sollecitoSoggetto').value);
+  fd.append('corpo',    document.getElementById('sollecitoCorpo').value);
+
+  const btn = this;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Invio…';
+
+  fetch(inviaSollecitoUrl, {
     method: 'POST',
-    headers: { 'X-CSRFToken': '{{ csrf_token }}' },
-  }).then(() => {
-    document.getElementById('sollecitoNote').textContent = 'Sollecito registrato ✓';
-    this.disabled = true;
+    headers: { 'X-CSRFToken': CSRF },
+    body: fd,
+  })
+  .then(r => r.json())
+  .then(data => {
+    const fb = document.getElementById('sollecitoFeedback');
+    if (data.ok) {
+      fb.textContent = '✓ Email inviata — sollecito registrato.';
+      fb.className = 'text-success small me-auto';
+      btn.innerHTML = '<i class="bi bi-check-circle me-1"></i>Inviato';
+    } else {
+      fb.textContent = 'Errore: ' + (data.error || 'invio fallito.');
+      fb.className = 'text-danger small me-auto';
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-send me-1"></i>Invia email';
+    }
+  })
+  .catch(() => {
+    document.getElementById('sollecitoFeedback').textContent = 'Errore di rete.';
+    document.getElementById('sollecitoFeedback').className = 'text-danger small me-auto';
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-send me-1"></i>Invia email';
   });
 });
 {% endif %}

@@ -64,13 +64,71 @@ class FattureDaIncassareView(LoginRequiredMixin, TemplateView):
 
 # ── Sollecito pagamento (JSON) ─────────────────────────────────────────────────
 
+def _email_cliente(fattura):
+    """Restituisce (email_principale, email_secondaria) dal cliente collegato alla fattura."""
+    ods = fattura.ods.select_related(
+        "filiale__cliente", "privato"
+    ).first()
+    if not ods:
+        return fattura.dest_pec or "", ""
+    if ods.filiale and ods.filiale.cliente:
+        c = ods.filiale.cliente
+        prima    = c.email_amministrazione or ""
+        seconda  = c.email_operativo if prima else ""
+        if not prima:
+            prima = c.email_operativo or ""
+        return prima, seconda
+    if ods.privato:
+        return ods.privato.email or "", ""
+    return fattura.dest_pec or "", ""
+
+
 @login_required
 def fattura_sollecito(request, pk):
     fattura = get_object_or_404(Fattura, pk=pk)
     if request.method == "POST":
+        # Segna sollecito inviato (data)
         fattura.data_ultimo_sollecito = timezone.localdate()
         fattura.save(update_fields=["data_ultimo_sollecito", "updated_at"])
-    return JsonResponse(fattura.get_sollecito())
+        return JsonResponse({"ok": True})
+    # GET — restituisce testo sollecito + email di default
+    email_a, email_cc = _email_cliente(fattura)
+    data = fattura.get_sollecito()
+    data["email_a"]  = email_a
+    data["email_cc"] = email_cc
+    return JsonResponse(data)
+
+
+@login_required
+@require_POST
+def invia_sollecito(request, pk):
+    """Invia il sollecito via email e segna la data."""
+    from django.core.mail import EmailMessage as DjangoEmail
+    from django.conf import settings as cfg
+
+    fattura   = get_object_or_404(Fattura, pk=pk)
+    email_a   = request.POST.get("email_a", "").strip()
+    email_cc  = [e.strip() for e in request.POST.get("email_cc", "").split(",") if e.strip()]
+    oggetto   = request.POST.get("oggetto", fattura.get_sollecito()["soggetto"]).strip()
+    corpo     = request.POST.get("corpo", fattura.get_sollecito()["corpo"]).strip()
+
+    if not email_a:
+        return JsonResponse({"ok": False, "error": "Indirizzo email obbligatorio."})
+
+    try:
+        msg = DjangoEmail(
+            subject=oggetto,
+            body=corpo,
+            from_email=cfg.DEFAULT_FROM_EMAIL,
+            to=[email_a],
+            cc=email_cc,
+        )
+        msg.send()
+        fattura.data_ultimo_sollecito = timezone.localdate()
+        fattura.save(update_fields=["data_ultimo_sollecito", "updated_at"])
+        return JsonResponse({"ok": True})
+    except Exception as exc:
+        return JsonResponse({"ok": False, "error": str(exc)})
 
 
 # ── Ricerca ODS da fatturare ──────────────────────────────────────────────────
