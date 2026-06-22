@@ -164,9 +164,11 @@
       </div>
       <div class="card-body">
         <div class="mb-3">
-          <label class="form-label fw-semibold small">{{ form.data_emissione.label }}</label>
-          {{ form.data_emissione }}
-          {% if form.data_emissione.errors %}<div class="text-danger small">{{ form.data_emissione.errors }}</div>{% endif %}
+          <label class="form-label fw-semibold small">Data emissione</label>
+          <div class="form-control form-control-sm bg-light">
+            {{ data_emissione|date:"d/m/Y" }}
+            <small class="d-block text-muted" style="font-size:0.75em">Assegnata automaticamente</small>
+          </div>
         </div>
         <div class="mb-3">
           <label class="form-label fw-semibold small">{{ form.note_pagamento.label }}</label>

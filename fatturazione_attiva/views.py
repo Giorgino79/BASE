@@ -393,6 +393,7 @@ class FatturaLiberaView(LoginRequiredMixin, TemplateView):
         ctx["form"]         = FatturaLiberaForm(initial={
             "note_pagamento": cfg.FATTURAZIONE.get("NOTE_PAGAMENTO", ""),
         })
+        ctx["data_emissione"] = timezone.localdate()
         ctx["aliquota_iva"] = cfg.FATTURAZIONE.get("ALIQUOTA_IVA", 22)
         return self.render_to_response(ctx)
 
@@ -458,7 +459,6 @@ class FatturaLiberaView(LoginRequiredMixin, TemplateView):
             fattura = Fattura.crea_libera(
                 righe_libere=righe_libere,
                 destinatario=dest,
-                data_emissione=cd["data_emissione"],
                 note_pagamento=cd["note_pagamento"],
                 note=cd["note"],
                 emessa_da=request.user,

@@ -164,11 +164,6 @@ class FatturaLiberaForm(forms.Form):
         label="Cliente privato",
         widget=forms.Select(attrs=W_SEL),
     )
-    data_emissione = forms.DateField(
-        initial=timezone.localdate,
-        label="Data emissione",
-        widget=forms.DateInput(attrs=W_DATE),
-    )
     note_pagamento = forms.CharField(
         required=False,
         label="Condizioni di pagamento",

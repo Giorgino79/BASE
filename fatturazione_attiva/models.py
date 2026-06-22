@@ -129,19 +129,21 @@ class Fattura(models.Model):
         return {"soggetto": soggetto, "corpo": corpo}
 
     @classmethod
-    def crea_libera(cls, righe_libere, destinatario, data_emissione, note_pagamento, note, emessa_da):
+    def crea_libera(cls, righe_libere, destinatario, note_pagamento, note, emessa_da):
         """
         Crea una Fattura senza ODS (fattura libera).
         righe_libere: lista di dict {descrizione, imponibile, note}
         destinatario: dict con chiavi nome, indirizzo, cap, citta, provincia,
                       partita_iva, codice_fiscale, pec, codice_univoco
+        La data di emissione è sempre oggi — non accettabile dall'esterno.
         """
         from django.db import transaction
         from django.conf import settings as s
 
-        fat_cfg  = s.FATTURAZIONE
-        aliquota = Decimal(str(fat_cfg.get('ALIQUOTA_IVA', 22)))
-        anno     = data_emissione.year
+        fat_cfg       = s.FATTURAZIONE
+        aliquota      = Decimal(str(fat_cfg.get('ALIQUOTA_IVA', 22)))
+        data_emissione = timezone.localdate()
+        anno           = data_emissione.year
 
         imponibile  = sum((r['imponibile'] for r in righe_libere), Decimal('0.00'))
         importo_iva = (imponibile * aliquota / 100).quantize(Decimal('0.01'), ROUND_HALF_UP)
