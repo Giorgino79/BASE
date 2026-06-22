@@ -509,30 +509,37 @@ document.getElementById('btnInviaSollecito').addEventListener('click', function 
 {% endif %}
 
 {# ── Nota credito — mostra/nasconde campo parziale e calcola IVA ─────────── #}
-(function () {
-  const radios  = document.querySelectorAll('[name="tipo"]');
-  const campo   = document.getElementById('campoParziale');
-  const input   = document.getElementById('inputImponibile');
-  const calcDiv = document.getElementById('calcoloIva');
+const modalNC   = document.getElementById('modalNotaCredito');
+const campoParz = document.getElementById('campoParziale');
+const inputImp  = document.getElementById('inputImponibile');
+const calcDiv   = document.getElementById('calcoloIva');
 
-  function aggiornaTipo() {
-    const parziale = document.getElementById('tipoParziale').checked;
-    campo.style.display = parziale ? '' : 'none';
-    if (!parziale) calcDiv.textContent = '';
-  }
+function ncAggiornaTipo() {
+  const parziale = document.getElementById('tipoParziale').checked;
+  campoParz.style.display = parziale ? '' : 'none';
+  if (!parziale) { calcDiv.textContent = ''; inputImp.value = ''; }
+  else inputImp.focus();
+}
 
-  function aggiornCalcolo() {
-    const v = parseFloat(input.value);
-    if (isNaN(v) || v <= 0) { calcDiv.textContent = ''; return; }
-    const iva    = Math.round(v * ALIQUOTA) / 100;
-    const totale = (v + iva).toFixed(2);
-    calcDiv.textContent = `IVA (${ALIQUOTA}%): € ${iva.toFixed(2)} — Totale NC: € ${totale}`;
-  }
+function ncAggiornaCalcolo() {
+  const v = parseFloat(inputImp.value);
+  if (isNaN(v) || v <= 0) { calcDiv.textContent = ''; return; }
+  const iva    = (v * ALIQUOTA / 100).toFixed(2);
+  const totale = (v + parseFloat(iva)).toFixed(2);
+  calcDiv.textContent = `IVA (${ALIQUOTA}%): € ${iva} — Totale NC: € ${totale}`;
+}
 
-  radios.forEach(r => r.addEventListener('change', aggiornaTipo));
-  if (input) input.addEventListener('input', aggiornCalcolo);
-  aggiornaTipo();
-})();
+// Inizializza all'apertura del modal (così lo stato è sempre pulito)
+modalNC.addEventListener('show.bs.modal', function () {
+  document.getElementById('tipoTotale').checked = true;
+  campoParz.style.display = 'none';
+  inputImp.value = '';
+  calcDiv.textContent = '';
+});
+
+document.getElementById('tipoTotale').addEventListener('change', ncAggiornaTipo);
+document.getElementById('tipoParziale').addEventListener('change', ncAggiornaTipo);
+inputImp.addEventListener('input', ncAggiornaCalcolo);
 
 function copiaInAppunti(id) {
   const el = document.getElementById(id);
