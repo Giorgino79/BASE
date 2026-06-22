@@ -15,7 +15,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from core.excel_generator import generate_excel_response
 from core.pdf_generator import generate_pdf_from_html, PDFConfig
 from servizi.models import ODS, CondominioODS, ODSRiga
-from .forms import RicercaFatturazioneForm, RicercaFattureForm
+from .forms import RicercaFatturazioneForm, RicercaFattureForm, FatturaLiberaForm
 from .models import Fattura, RigaFattura, NotaCredito
 
 
@@ -354,6 +354,7 @@ def fattura_pdf(request, pk):
             "pec":             fattura.dest_pec,
         },
         "is_fattura":       True,
+        "is_libera":        fattura.is_libera,
         "numero_documento": fattura.numero,
         "data_documento":   fattura.data_emissione,
         "aliquota_iva":     fattura.aliquota_iva,
@@ -379,6 +380,116 @@ def fattura_segna_pagata(request, pk):
         fattura.save(update_fields=["stato", "data_pagamento", "updated_at"])
         messages.success(request, f"Fattura {fattura.numero} segnata come pagata.")
     return redirect("fatturazione_attiva:fattura_detail", pk=pk)
+
+
+# ── Fattura libera (senza ODS) ────────────────────────────────────────────────
+
+class FatturaLiberaView(LoginRequiredMixin, TemplateView):
+    template_name = "fatturazione_attiva/fattura_libera.html"
+
+    def get(self, request, *args, **kwargs):
+        from django.conf import settings as cfg
+        ctx = self.get_context_data()
+        ctx["form"]         = FatturaLiberaForm(initial={
+            "note_pagamento": cfg.FATTURAZIONE.get("NOTE_PAGAMENTO", ""),
+        })
+        ctx["aliquota_iva"] = cfg.FATTURAZIONE.get("ALIQUOTA_IVA", 22)
+        return self.render_to_response(ctx)
+
+    def post(self, request, *args, **kwargs):
+        form = FatturaLiberaForm(request.POST)
+        descrizioni    = request.POST.getlist("riga_descrizione")
+        imponibili_raw = request.POST.getlist("riga_imponibile")
+        note_righe     = request.POST.getlist("riga_note")
+
+        righe_libere = []
+        errori_righe = []
+
+        for i, (desc, imp_raw, nota) in enumerate(
+            zip(descrizioni, imponibili_raw, note_righe or [""] * len(descrizioni)), start=1
+        ):
+            desc    = desc.strip()
+            imp_raw = imp_raw.replace(",", ".").strip()
+            if not desc:
+                errori_righe.append(f"Riga {i}: la descrizione è obbligatoria.")
+                continue
+            try:
+                imp = Decimal(imp_raw)
+                if imp <= 0:
+                    raise ValueError
+            except Exception:
+                errori_righe.append(f"Riga {i}: inserisci un imponibile valido e positivo.")
+                continue
+            righe_libere.append({"descrizione": desc, "imponibile": imp, "note": nota.strip()})
+
+        if not righe_libere and not errori_righe:
+            errori_righe.append("Inserisci almeno una riga.")
+
+        if form.is_valid() and not errori_righe:
+            cd   = form.cleaned_data
+            tipo = cd["tipo_cliente"]
+            if tipo == "azienda":
+                c    = cd["azienda"]
+                dest = {
+                    "nome":            c.ragione_sociale,
+                    "indirizzo":       c.indirizzo,
+                    "cap":             c.cap,
+                    "citta":           c.citta,
+                    "provincia":       getattr(c, "provincia", ""),
+                    "partita_iva":     c.partita_iva,
+                    "codice_fiscale":  getattr(c, "codice_fiscale", ""),
+                    "pec":             c.pec or "",
+                    "codice_univoco":  getattr(c, "codice_univoco", ""),
+                }
+            else:
+                p    = cd["privato"]
+                dest = {
+                    "nome":            str(p),
+                    "indirizzo":       p.indirizzo,
+                    "cap":             p.cap,
+                    "citta":           p.citta,
+                    "provincia":       getattr(p, "provincia", ""),
+                    "partita_iva":     "",
+                    "codice_fiscale":  p.codice_fiscale,
+                    "pec":             getattr(p, "pec", ""),
+                    "codice_univoco":  "",
+                }
+
+            fattura = Fattura.crea_libera(
+                righe_libere=righe_libere,
+                destinatario=dest,
+                data_emissione=cd["data_emissione"],
+                note_pagamento=cd["note_pagamento"],
+                note=cd["note"],
+                emessa_da=request.user,
+            )
+            messages.success(request, f"Fattura {fattura.numero} emessa con successo.")
+            return redirect("fatturazione_attiva:fattura_detail", pk=fattura.pk)
+
+        from django.conf import settings as cfg
+        ctx = self.get_context_data()
+        ctx["form"]              = form
+        ctx["errori_righe"]      = errori_righe
+        ctx["aliquota_iva"]      = cfg.FATTURAZIONE.get("ALIQUOTA_IVA", 22)
+        ctx["righe_precedenti"]  = list(zip(
+            descrizioni,
+            imponibili_raw,
+            note_righe or [""] * len(descrizioni),
+        ))
+        return self.render_to_response(ctx)
+
+
+# ── Lista Note di Credito ──────────────────────────────────────────────────────
+
+class NoteCreditoListView(LoginRequiredMixin, TemplateView):
+    template_name = "fatturazione_attiva/nc_list.html"
+
+    def get_context_data(self, **kwargs):
+        ctx  = super().get_context_data(**kwargs)
+        note = NotaCredito.objects.select_related("fattura", "emessa_da").order_by("-anno", "-progressivo")
+        ctx["note"]   = note
+        ctx["totale"] = note.aggregate(t=Sum("totale"))["t"] or Decimal("0.00")
+        return ctx
 
 
 # ── Nota di Credito ───────────────────────────────────────────────────────────

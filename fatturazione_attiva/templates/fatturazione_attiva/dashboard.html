@@ -60,8 +60,17 @@
     <a href="{% url 'fatturazione_attiva:ricerca' %}" class="text-decoration-none">
       <div class="card h-100 text-center py-4">
         <div class="mb-2"><i class="bi bi-search fs-1 text-brand"></i></div>
-        <div class="fw-semibold">Nuova fattura</div>
+        <div class="fw-semibold">Fattura da ODS</div>
         <div class="text-muted small">Cerca ODS e condomini da fatturare</div>
+      </div>
+    </a>
+  </div>
+  <div class="col-md-4">
+    <a href="{% url 'fatturazione_attiva:fattura_libera' %}" class="text-decoration-none">
+      <div class="card h-100 text-center py-4">
+        <div class="mb-2"><i class="bi bi-receipt-cutoff fs-1 text-brand"></i></div>
+        <div class="fw-semibold">Fattura libera</div>
+        <div class="text-muted small">Emetti una fattura manuale con righe libere</div>
       </div>
     </a>
   </div>
@@ -69,7 +78,7 @@
     <a href="{% url 'fatturazione_attiva:da_incassare' %}" class="text-decoration-none">
       <div class="card h-100 text-center py-4 {% if n_da_incassare %}border-warning{% endif %}">
         <div class="mb-2"><i class="bi bi-hourglass-split fs-1 {% if n_da_incassare %}text-warning{% else %}text-brand{% endif %}"></i></div>
-        <div class="fw-semibold">Fatture da incassare</div>
+        <div class="fw-semibold">Da incassare</div>
         <div class="text-muted small">{{ n_da_incassare }} fattur{{ n_da_incassare|pluralize:"a,e" }} in attesa di pagamento</div>
       </div>
     </a>
@@ -77,9 +86,18 @@
   <div class="col-md-4">
     <a href="{% url 'fatturazione_attiva:fatture_list' %}" class="text-decoration-none">
       <div class="card h-100 text-center py-4">
-        <div class="mb-2"><i class="bi bi-receipt-cutoff fs-1 text-brand"></i></div>
+        <div class="mb-2"><i class="bi bi-table fs-1 text-brand"></i></div>
         <div class="fw-semibold">Tutte le fatture</div>
         <div class="text-muted small">Ricerca per cliente, periodo e stato</div>
+      </div>
+    </a>
+  </div>
+  <div class="col-md-4">
+    <a href="{% url 'fatturazione_attiva:nc_list' %}" class="text-decoration-none">
+      <div class="card h-100 text-center py-4">
+        <div class="mb-2"><i class="bi bi-arrow-counterclockwise fs-1 text-danger"></i></div>
+        <div class="fw-semibold">Note di credito</div>
+        <div class="text-muted small">Tutte le note di credito emesse</div>
       </div>
     </a>
   </div>

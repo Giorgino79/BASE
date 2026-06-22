@@ -233,8 +233,7 @@
 <table class="righe-table">
   <thead>
     <tr>
-      <th style="width:90px">N° ODS</th>
-      <th style="width:72px">Data</th>
+      {% if not is_libera %}<th style="width:90px">N° ODS</th><th style="width:72px">Data</th>{% endif %}
       <th>Descrizione servizio</th>
       <th class="r" style="width:88px">Importo</th>
     </tr>
@@ -242,12 +241,14 @@
   <tbody>
     {% for r in righe %}
     <tr class="{% if r.is_new_ods and not forloop.first %}ods-sep{% elif forloop.counter|divisibleby:2 %}alt{% endif %}">
+      {% if not is_libera %}
       <td class="num"><span class="ods-num">{{ r.ods.numero }}</span></td>
       <td class="data">{{ r.ods.data_servizio|date:"d/m/Y" }}</td>
+      {% endif %}
       <td>
         {% if r.riga %}
           <strong>{{ r.riga.servizio.nome }}</strong>
-          {% if r.ods.filiale %}
+          {% if not is_libera and r.ods.filiale %}
             <span style="color:#888"> &mdash; {{ r.ods.filiale.nome }}</span>
           {% endif %}
           {% if r.riga.note %}<br><span style="color:#888;font-size:7.5pt">{{ r.riga.note }}</span>{% endif %}

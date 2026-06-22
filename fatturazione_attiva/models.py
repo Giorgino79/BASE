@@ -92,6 +92,11 @@ class Fattura(models.Model):
         return self.numero
 
     @property
+    def is_libera(self):
+        """True se la fattura è stata emessa senza ODS collegati (fattura libera)."""
+        return not self.ods.exists()
+
+    @property
     def giorni_attesa(self):
         from django.utils import timezone
         return (timezone.localdate() - self.data_emissione).days
@@ -122,6 +127,71 @@ class Fattura(models.Model):
             f"Email: {self.emit_email}"
         )
         return {"soggetto": soggetto, "corpo": corpo}
+
+    @classmethod
+    def crea_libera(cls, righe_libere, destinatario, data_emissione, note_pagamento, note, emessa_da):
+        """
+        Crea una Fattura senza ODS (fattura libera).
+        righe_libere: lista di dict {descrizione, imponibile, note}
+        destinatario: dict con chiavi nome, indirizzo, cap, citta, provincia,
+                      partita_iva, codice_fiscale, pec, codice_univoco
+        """
+        from django.db import transaction
+        from django.conf import settings as s
+
+        fat_cfg  = s.FATTURAZIONE
+        aliquota = Decimal(str(fat_cfg.get('ALIQUOTA_IVA', 22)))
+        anno     = data_emissione.year
+
+        imponibile  = sum((r['imponibile'] for r in righe_libere), Decimal('0.00'))
+        importo_iva = (imponibile * aliquota / 100).quantize(Decimal('0.01'), ROUND_HALF_UP)
+        totale      = imponibile + importo_iva
+
+        with transaction.atomic():
+            prog   = _next_numero(anno)
+            numero = f"FA-{anno}-{prog:04d}"
+            fattura = cls.objects.create(
+                anno=anno, progressivo=prog, numero=numero,
+                data_emissione=data_emissione,
+                stato=cls.Stato.EMESSA,
+                dest_nome=destinatario['nome'],
+                dest_indirizzo=destinatario.get('indirizzo', ''),
+                dest_cap=destinatario.get('cap', ''),
+                dest_citta=destinatario.get('citta', ''),
+                dest_provincia=destinatario.get('provincia', ''),
+                dest_partita_iva=destinatario.get('partita_iva', ''),
+                dest_codice_fiscale=destinatario.get('codice_fiscale', ''),
+                dest_pec=destinatario.get('pec', ''),
+                dest_codice_univoco=destinatario.get('codice_univoco', ''),
+                emit_ragione_sociale=fat_cfg.get('RAGIONE_SOCIALE', ''),
+                emit_indirizzo=fat_cfg.get('INDIRIZZO', ''),
+                emit_cap_citta=fat_cfg.get('CAP_CITTA', ''),
+                emit_partita_iva=fat_cfg.get('PARTITA_IVA', ''),
+                emit_codice_fiscale=fat_cfg.get('CODICE_FISCALE', ''),
+                emit_telefono=fat_cfg.get('TELEFONO', ''),
+                emit_email=fat_cfg.get('EMAIL', ''),
+                emit_iban=fat_cfg.get('IBAN', ''),
+                aliquota_iva=aliquota,
+                imponibile=imponibile,
+                importo_iva=importo_iva,
+                totale=totale,
+                note_pagamento=note_pagamento or fat_cfg.get('NOTE_PAGAMENTO', ''),
+                note=note,
+                emessa_da=emessa_da,
+            )
+            righe_db = [
+                RigaFattura(
+                    fattura=fattura,
+                    ods_numero='',
+                    data_servizio=data_emissione,
+                    descrizione=r['descrizione'],
+                    note=r.get('note', ''),
+                    importo=r['imponibile'],
+                )
+                for r in righe_libere
+            ]
+            RigaFattura.objects.bulk_create(righe_db)
+        return fattura
 
     @classmethod
     def crea(cls, righe_rows, emessa_da, note=''):

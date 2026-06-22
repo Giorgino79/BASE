@@ -2,10 +2,12 @@ from django.urls import path
 from .views import (
     FatturazioneDashboardView, FattureDaIncassareView,
     fattura_sollecito, invia_sollecito,
+    FatturaLiberaView,
     RicercaFatturazioneView, azione_fatturazione,
     FattureListView, FatturaDetailView,
     fattura_pdf, fattura_segna_pagata, fattura_annulla,
     emetti_nota_credito, NotaCreditoDetailView, nc_pdf,
+    NoteCreditoListView,
 )
 
 app_name = "fatturazione_attiva"
@@ -13,6 +15,8 @@ app_name = "fatturazione_attiva"
 urlpatterns = [
     path("",                                FatturazioneDashboardView.as_view(), name="dashboard"),
     path("da-incassare/",                   FattureDaIncassareView.as_view(),    name="da_incassare"),
+    path("libera/",                         FatturaLiberaView.as_view(),         name="fattura_libera"),
+    path("note-credito/",                   NoteCreditoListView.as_view(),       name="nc_list"),
     path("ricerca/",                        RicercaFatturazioneView.as_view(),   name="ricerca"),
     path("azione/",                         azione_fatturazione,                 name="azione"),
     path("fatture/",                        FattureListView.as_view(),           name="fatture_list"),

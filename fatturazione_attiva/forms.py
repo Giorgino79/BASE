@@ -1,4 +1,5 @@
 from django import forms
+from django.utils import timezone
 from anagrafica_r2.models import Azienda, Privato
 from servizi.models import CondominioStabile, ODS
 
@@ -133,4 +134,57 @@ class RicercaFattureForm(forms.Form):
         a  = cd.get("data_a")
         if da and a and da > a:
             self.add_error("data_a", "La data di fine deve essere successiva alla data di inizio.")
+        return cd
+
+
+TIPO_CLIENTE_LIBERA = [
+    ("azienda", "Cliente aziendale"),
+    ("privato", "Cliente privato"),
+]
+
+
+class FatturaLiberaForm(forms.Form):
+    tipo_cliente = forms.ChoiceField(
+        choices=TIPO_CLIENTE_LIBERA,
+        initial="azienda",
+        widget=forms.RadioSelect(attrs={"class": "form-check-input"}),
+        label="Tipo cliente",
+    )
+    azienda = forms.ModelChoiceField(
+        queryset=Azienda.objects.filter(attivo=True).order_by("ragione_sociale"),
+        required=False,
+        empty_label="— Seleziona cliente —",
+        label="Cliente aziendale",
+        widget=forms.Select(attrs=W_SEL),
+    )
+    privato = forms.ModelChoiceField(
+        queryset=Privato.objects.filter(attivo=True).order_by("cognome", "nome"),
+        required=False,
+        empty_label="— Seleziona privato —",
+        label="Cliente privato",
+        widget=forms.Select(attrs=W_SEL),
+    )
+    data_emissione = forms.DateField(
+        initial=timezone.localdate,
+        label="Data emissione",
+        widget=forms.DateInput(attrs=W_DATE),
+    )
+    note_pagamento = forms.CharField(
+        required=False,
+        label="Condizioni di pagamento",
+        widget=forms.TextInput(attrs=W),
+    )
+    note = forms.CharField(
+        required=False,
+        label="Note generali",
+        widget=forms.Textarea(attrs={**W, "rows": "2"}),
+    )
+
+    def clean(self):
+        cd = super().clean()
+        tipo = cd.get("tipo_cliente")
+        if tipo == "azienda" and not cd.get("azienda"):
+            self.add_error("azienda", "Seleziona un cliente aziendale.")
+        if tipo == "privato" and not cd.get("privato"):
+            self.add_error("privato", "Seleziona un cliente privato.")
         return cd

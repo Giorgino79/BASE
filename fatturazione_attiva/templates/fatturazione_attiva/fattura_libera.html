@@ -1,0 +1,282 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Nuova fattura libera{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'fatturazione_attiva:dashboard' %}">Fatturazione</a></li>
+      <li class="breadcrumb-item active">Nuova fattura libera</li>
+    </ol>
+  </nav>
+  <h1 class="mb-0"><i class="bi bi-receipt-cutoff me-2 text-brand"></i>Nuova fattura libera</h1>
+  <p class="text-muted">Emetti una fattura manuale senza ordini di servizio collegati</p>
+</div>
+
+{% if messages %}
+{% for msg in messages %}
+<div class="alert alert-{{ msg.tags }} alert-dismissible fade show">{{ msg }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+{% endfor %}
+{% endif %}
+
+<form method="post" id="formFatturaLibera">
+{% csrf_token %}
+
+<div class="row g-3">
+
+  {# ── Colonna principale ──────────────────────────────────────────────────── #}
+  <div class="col-lg-8">
+
+    {# Cliente #}
+    <div class="card mb-3">
+      <div class="card-header card-header-primary"><i class="bi bi-building me-2"></i>Cliente</div>
+      <div class="card-body">
+
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Tipo cliente</label>
+          <div class="d-flex gap-4">
+            {% for radio in form.tipo_cliente %}
+            <div class="form-check">
+              {{ radio.tag }}
+              <label class="form-check-label" for="{{ radio.id_for_label }}">{{ radio.choice_label }}</label>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+
+        <div id="campoAzienda">
+          <label class="form-label fw-semibold">{{ form.azienda.label }}</label>
+          {{ form.azienda }}
+          {% if form.azienda.errors %}<div class="text-danger small mt-1">{{ form.azienda.errors }}</div>{% endif %}
+        </div>
+
+        <div id="campoPrivato" style="display:none">
+          <label class="form-label fw-semibold">{{ form.privato.label }}</label>
+          {{ form.privato }}
+          {% if form.privato.errors %}<div class="text-danger small mt-1">{{ form.privato.errors }}</div>{% endif %}
+        </div>
+
+      </div>
+    </div>
+
+    {# Righe fattura #}
+    <div class="card mb-3">
+      <div class="card-header card-header-primary d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-list-ul me-2"></i>Righe fattura</span>
+        <button type="button" class="btn btn-sm btn-outline-light" id="btnAggiungiRiga">
+          <i class="bi bi-plus-lg me-1"></i>Aggiungi riga
+        </button>
+      </div>
+      <div class="card-body pb-0">
+
+        {% if errori_righe %}
+        <div class="alert alert-danger py-2 small">
+          {% for e in errori_righe %}<div>{{ e }}</div>{% endfor %}
+        </div>
+        {% endif %}
+
+        <div id="righeContainer">
+
+          {# Riga iniziale obbligatoria #}
+          {% if righe_precedenti %}
+            {% for desc, imp, nota in righe_precedenti %}
+            <div class="riga-fattura border rounded p-3 mb-2 position-relative">
+              {% if not forloop.first %}
+              <button type="button" class="btn btn-sm btn-outline-danger position-absolute top-0 end-0 m-1 rimuovi-riga">
+                <i class="bi bi-x"></i>
+              </button>
+              {% endif %}
+              <div class="row g-2">
+                <div class="col-md-6">
+                  <label class="form-label small fw-semibold mb-1">Descrizione <span class="text-danger">*</span></label>
+                  <input type="text" name="riga_descrizione" class="form-control form-control-sm"
+                         value="{{ desc }}" placeholder="Descrizione del servizio…" required>
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label small fw-semibold mb-1">Imponibile € <span class="text-danger">*</span></label>
+                  <input type="number" name="riga_imponibile" class="form-control form-control-sm imponibile-input"
+                         value="{{ imp }}" step="0.01" min="0.01" placeholder="0.00" required>
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label small fw-semibold mb-1">Note riga</label>
+                  <input type="text" name="riga_note" class="form-control form-control-sm"
+                         value="{{ nota }}" placeholder="Opzionale">
+                </div>
+              </div>
+            </div>
+            {% endfor %}
+          {% else %}
+          <div class="riga-fattura border rounded p-3 mb-2">
+            <div class="row g-2">
+              <div class="col-md-6">
+                <label class="form-label small fw-semibold mb-1">Descrizione <span class="text-danger">*</span></label>
+                <input type="text" name="riga_descrizione" class="form-control form-control-sm"
+                       placeholder="Descrizione del servizio…" required autofocus>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label small fw-semibold mb-1">Imponibile € <span class="text-danger">*</span></label>
+                <input type="number" name="riga_imponibile" class="form-control form-control-sm imponibile-input"
+                       step="0.01" min="0.01" placeholder="0.00" required>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label small fw-semibold mb-1">Note riga</label>
+                <input type="text" name="riga_note" class="form-control form-control-sm"
+                       placeholder="Opzionale">
+              </div>
+            </div>
+          </div>
+          {% endif %}
+
+        </div>{# /righeContainer #}
+      </div>
+
+      {# Riepilogo totali #}
+      <div class="table-responsive">
+        <table class="table table-sm mb-0 align-middle">
+          <tfoot class="table-light">
+            <tr>
+              <td class="text-end fw-semibold">Imponibile</td>
+              <td class="text-end fw-semibold" id="totImponibile" style="width:130px">€ 0,00</td>
+            </tr>
+            <tr>
+              <td class="text-end text-muted" id="labelIva">IVA 22%</td>
+              <td class="text-end text-muted" id="totIva">€ 0,00</td>
+            </tr>
+            <tr>
+              <td class="text-end fw-bold fs-5">Totale fattura</td>
+              <td class="text-end fw-bold fs-5" id="totTotale" style="color:var(--color-1)">€ 0,00</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  {# ── Sidebar destra ──────────────────────────────────────────────────────── #}
+  <div class="col-lg-4">
+
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-header bg-transparent fw-semibold small text-uppercase py-2"
+           style="color:var(--slate-500);">
+        <i class="bi bi-info-circle me-1"></i>Dati documento
+      </div>
+      <div class="card-body">
+        <div class="mb-3">
+          <label class="form-label fw-semibold small">{{ form.data_emissione.label }}</label>
+          {{ form.data_emissione }}
+          {% if form.data_emissione.errors %}<div class="text-danger small">{{ form.data_emissione.errors }}</div>{% endif %}
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold small">{{ form.note_pagamento.label }}</label>
+          {{ form.note_pagamento }}
+        </div>
+        <div class="mb-0">
+          <label class="form-label fw-semibold small">{{ form.note.label }}</label>
+          {{ form.note }}
+        </div>
+      </div>
+    </div>
+
+    <div class="d-grid gap-2">
+      <button type="submit" class="btn btn-primary">
+        <i class="bi bi-receipt me-1"></i>Emetti fattura
+      </button>
+      <a href="{% url 'fatturazione_attiva:dashboard' %}" class="btn btn-outline-secondary btn-sm">
+        Annulla
+      </a>
+    </div>
+
+  </div>
+</div>
+
+</form>
+
+{# Template riga (clonato via JS) #}
+<template id="rigaTemplate">
+  <div class="riga-fattura border rounded p-3 mb-2 position-relative">
+    <button type="button" class="btn btn-sm btn-outline-danger position-absolute top-0 end-0 m-1 rimuovi-riga">
+      <i class="bi bi-x"></i>
+    </button>
+    <div class="row g-2">
+      <div class="col-md-6">
+        <label class="form-label small fw-semibold mb-1">Descrizione <span class="text-danger">*</span></label>
+        <input type="text" name="riga_descrizione" class="form-control form-control-sm"
+               placeholder="Descrizione del servizio…" required>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label small fw-semibold mb-1">Imponibile € <span class="text-danger">*</span></label>
+        <input type="number" name="riga_imponibile" class="form-control form-control-sm imponibile-input"
+               step="0.01" min="0.01" placeholder="0.00" required>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label small fw-semibold mb-1">Note riga</label>
+        <input type="text" name="riga_note" class="form-control form-control-sm"
+               placeholder="Opzionale">
+      </div>
+    </div>
+  </div>
+</template>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const ALIQUOTA_IVA = {{ aliquota_iva|default:22 }};
+
+// ── Mostra/nascondi campi cliente ─────────────────────────────────────────────
+(function () {
+  const radios      = document.querySelectorAll('[name="tipo_cliente"]');
+  const campoAz     = document.getElementById('campoAzienda');
+  const campoPriv   = document.getElementById('campoPrivato');
+
+  function aggiorna() {
+    const isPriv = document.querySelector('[name="tipo_cliente"]:checked')?.value === 'privato';
+    campoAz.style.display   = isPriv ? 'none' : '';
+    campoPriv.style.display  = isPriv ? '' : 'none';
+  }
+  radios.forEach(r => r.addEventListener('change', aggiorna));
+  aggiorna();
+})();
+
+// ── Aggiungi/rimuovi righe ───────────────────────────────────────────────────
+document.getElementById('btnAggiungiRiga').addEventListener('click', function () {
+  const tmpl  = document.getElementById('rigaTemplate');
+  const clone = tmpl.content.cloneNode(true);
+  document.getElementById('righeContainer').appendChild(clone);
+  document.getElementById('righeContainer').lastElementChild
+    .querySelector('input').focus();
+  bindRimuovi();
+  aggiornaRiepilogo();
+});
+
+function bindRimuovi() {
+  document.querySelectorAll('.rimuovi-riga').forEach(btn => {
+    btn.onclick = function () {
+      this.closest('.riga-fattura').remove();
+      aggiornaRiepilogo();
+    };
+  });
+}
+
+// ── Calcolo totali in tempo reale ─────────────────────────────────────────────
+function aggiornaRiepilogo() {
+  let imp = 0;
+  document.querySelectorAll('.imponibile-input').forEach(inp => {
+    const v = parseFloat(inp.value);
+    if (!isNaN(v) && v > 0) imp += v;
+  });
+  const iva    = Math.round(imp * ALIQUOTA_IVA) / 100;
+  const totale = imp + iva;
+  const fmt    = v => '€ ' + v.toFixed(2).replace('.', ',');
+  document.getElementById('totImponibile').textContent = fmt(imp);
+  document.getElementById('totIva').textContent        = fmt(iva);
+  document.getElementById('totTotale').textContent     = fmt(totale);
+  document.getElementById('labelIva').textContent      = `IVA ${ALIQUOTA_IVA}%`;
+}
+
+document.getElementById('righeContainer').addEventListener('input', aggiornaRiepilogo);
+bindRimuovi();
+aggiornaRiepilogo();
+</script>
+{% endblock %}
