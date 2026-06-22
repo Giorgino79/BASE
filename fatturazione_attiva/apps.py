@@ -7,4 +7,18 @@ class FatturazioneAttivaConfig(AppConfig):
     verbose_name = "Fatturazione Attiva"
 
     def ready(self):
-        pass
+        from core.sidebar import register_nav
+        register_nav(
+            section_key="fatturazione",
+            section_label="Fatturazione",
+            items=[
+                {
+                    "label": "Fatturazione",
+                    "url":   "fatturazione_attiva:dashboard",
+                    "icon":  "bi-receipt",
+                    "active_app": "fatturazione_attiva",
+                    "active_url_contains": ["dashboard", "ricerca", "fatture", "da-incassare"],
+                },
+            ],
+            order=35,
+        )

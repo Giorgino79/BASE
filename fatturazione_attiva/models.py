@@ -70,6 +70,10 @@ class Fattura(models.Model):
     ods = models.ManyToManyField('servizi.ODS', blank=True, related_name='fatture',
                                   verbose_name='ODS collegati')
 
+    # Sollecito — data dell'ultimo sollecito inviato
+    data_ultimo_sollecito = models.DateField(null=True, blank=True,
+                                              verbose_name='Ultimo sollecito')
+
     # Audit
     emessa_da  = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL,
@@ -86,6 +90,38 @@ class Fattura(models.Model):
 
     def __str__(self):
         return self.numero
+
+    @property
+    def giorni_attesa(self):
+        from django.utils import timezone
+        return (timezone.localdate() - self.data_emissione).days
+
+    def get_sollecito(self):
+        """Restituisce soggetto e corpo standardizzati per il sollecito di pagamento."""
+        giorni = self.giorni_attesa
+        soggetto = f"Sollecito pagamento — {self.numero}"
+        corpo = (
+            f"Gentile {self.dest_nome},\n\n"
+            f"con la presente siamo a sollecitare cortesemente il pagamento della seguente fattura "
+            f"rimasta inevasa:\n\n"
+            f"  Numero fattura:  {self.numero}\n"
+            f"  Data emissione:  {self.data_emissione.strftime('%d/%m/%Y')}\n"
+            f"  Importo totale:  € {self.totale}\n"
+            f"  Condizioni:      {self.note_pagamento or 'Bonifico bancario 30 gg d.f.'}\n\n"
+            f"La fattura risulta emessa {giorni} giorni fa e non risulta ancora saldata.\n\n"
+            f"Vi preghiamo di provvedere al bonifico alle seguenti coordinate:\n\n"
+            f"  IBAN:          {self.emit_iban}\n"
+            f"  Intestatario:  {self.emit_ragione_sociale}\n"
+            f"  Causale:       pagamento {self.numero}\n\n"
+            f"Qualora il pagamento fosse già stato effettuato, Vi preghiamo di ignorare "
+            f"questa comunicazione e di inviarci la relativa contabile.\n\n"
+            f"Restiamo a disposizione per qualsiasi chiarimento.\n\n"
+            f"Cordiali saluti,\n"
+            f"{self.emit_ragione_sociale}\n"
+            f"Tel.: {self.emit_telefono}\n"
+            f"Email: {self.emit_email}"
+        )
+        return {"soggetto": soggetto, "corpo": corpo}
 
     @classmethod
     def crea(cls, righe_rows, emessa_da, note=''):
@@ -188,6 +224,143 @@ class RigaFattura(models.Model):
 
     def __str__(self):
         return f"{self.fattura.numero} — {self.descrizione}"
+
+
+# ── Nota di Credito ───────────────────────────────────────────────────────────
+
+def _next_numero_nc(anno):
+    """Progressivo note credito per anno: NC-2026-0001, NC-2026-0002, ..."""
+    ultimo = (NotaCredito.objects
+               .filter(anno=anno)
+               .aggregate(m=models.Max('progressivo'))['m'] or 0)
+    return ultimo + 1
+
+
+class NotaCredito(models.Model):
+
+    class Tipo(models.TextChoices):
+        TOTALE   = 'totale',   'Totale'
+        PARZIALE = 'parziale', 'Parziale'
+
+    # Riferimento alla fattura
+    fattura = models.ForeignKey(
+        Fattura, on_delete=models.PROTECT,
+        related_name='note_credito', verbose_name='Fattura di riferimento',
+    )
+
+    # Identificazione
+    anno        = models.PositiveSmallIntegerField(verbose_name='Anno')
+    progressivo = models.PositiveIntegerField(verbose_name='Progressivo')
+    numero      = models.CharField(max_length=30, unique=True, verbose_name='Numero NC')
+
+    # Data
+    data_emissione = models.DateField(verbose_name='Data emissione')
+
+    # Tipo
+    tipo = models.CharField(max_length=10, choices=Tipo.choices, verbose_name='Tipo')
+
+    # Importi
+    aliquota_iva = models.DecimalField(max_digits=5, decimal_places=2, verbose_name='Aliquota IVA %')
+    imponibile   = models.DecimalField(max_digits=12, decimal_places=2, verbose_name='Imponibile')
+    importo_iva  = models.DecimalField(max_digits=12, decimal_places=2, verbose_name='IVA')
+    totale       = models.DecimalField(max_digits=12, decimal_places=2, verbose_name='Totale')
+
+    # Descrizione riga (auto-generata, include rif. fattura)
+    descrizione_riga = models.CharField(max_length=500, verbose_name='Descrizione riga')
+    note             = models.TextField(blank=True, verbose_name='Note / Motivo')
+
+    # Snapshot destinatario (copiato dalla fattura)
+    dest_nome           = models.CharField(max_length=300)
+    dest_indirizzo      = models.CharField(max_length=300, blank=True)
+    dest_cap            = models.CharField(max_length=10, blank=True)
+    dest_citta          = models.CharField(max_length=100, blank=True)
+    dest_provincia      = models.CharField(max_length=5, blank=True)
+    dest_partita_iva    = models.CharField(max_length=20, blank=True)
+    dest_codice_fiscale = models.CharField(max_length=16, blank=True)
+    dest_pec            = models.EmailField(blank=True)
+    dest_codice_univoco = models.CharField(max_length=7, blank=True)
+
+    # Snapshot emittente (copiato dalla fattura)
+    emit_ragione_sociale = models.CharField(max_length=300, blank=True)
+    emit_indirizzo       = models.CharField(max_length=300, blank=True)
+    emit_cap_citta       = models.CharField(max_length=200, blank=True)
+    emit_partita_iva     = models.CharField(max_length=20, blank=True)
+    emit_codice_fiscale  = models.CharField(max_length=16, blank=True)
+    emit_telefono        = models.CharField(max_length=30, blank=True)
+    emit_email           = models.EmailField(blank=True)
+    emit_iban            = models.CharField(max_length=40, blank=True)
+
+    # Audit
+    emessa_da  = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL,
+        related_name='note_credito_emesse', verbose_name='Emessa da',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Nota di credito'
+        verbose_name_plural = 'Note di credito'
+        ordering = ['-anno', '-progressivo']
+        unique_together = [('anno', 'progressivo')]
+
+    def __str__(self):
+        return self.numero
+
+    @classmethod
+    def crea(cls, fattura, imponibile, note, emessa_da):
+        from django.db import transaction
+        aliquota    = fattura.aliquota_iva
+        importo_iva = (imponibile * aliquota / 100).quantize(Decimal('0.01'), ROUND_HALF_UP)
+        totale      = imponibile + importo_iva
+        oggi        = timezone.localdate()
+        anno        = oggi.year
+
+        desc = (
+            f"Nota di credito a storno fattura {fattura.numero} "
+            f"del {fattura.data_emissione.strftime('%d/%m/%Y')}"
+        )
+        if note:
+            desc += f" — {note}"
+
+        tipo = cls.Tipo.TOTALE if imponibile == fattura.imponibile else cls.Tipo.PARZIALE
+
+        with transaction.atomic():
+            prog   = _next_numero_nc(anno)
+            numero = f"NC-{anno}-{prog:04d}"
+            nc = cls.objects.create(
+                fattura=fattura,
+                anno=anno, progressivo=prog, numero=numero,
+                data_emissione=oggi,
+                tipo=tipo,
+                aliquota_iva=aliquota,
+                imponibile=imponibile,
+                importo_iva=importo_iva,
+                totale=totale,
+                descrizione_riga=desc,
+                note=note,
+                # destinatario
+                dest_nome=fattura.dest_nome,
+                dest_indirizzo=fattura.dest_indirizzo,
+                dest_cap=fattura.dest_cap,
+                dest_citta=fattura.dest_citta,
+                dest_provincia=fattura.dest_provincia,
+                dest_partita_iva=fattura.dest_partita_iva,
+                dest_codice_fiscale=fattura.dest_codice_fiscale,
+                dest_pec=fattura.dest_pec,
+                dest_codice_univoco=fattura.dest_codice_univoco,
+                # emittente
+                emit_ragione_sociale=fattura.emit_ragione_sociale,
+                emit_indirizzo=fattura.emit_indirizzo,
+                emit_cap_citta=fattura.emit_cap_citta,
+                emit_partita_iva=fattura.emit_partita_iva,
+                emit_codice_fiscale=fattura.emit_codice_fiscale,
+                emit_telefono=fattura.emit_telefono,
+                emit_email=fattura.emit_email,
+                emit_iban=fattura.emit_iban,
+                emessa_da=emessa_da,
+            )
+        return nc
 
 
 # ── helper condiviso ──────────────────────────────────────────────────────────

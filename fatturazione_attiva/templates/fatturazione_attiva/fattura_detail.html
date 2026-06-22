@@ -4,70 +4,67 @@
 {% block title %}Fattura {{ fattura.numero }}{% endblock %}
 
 {% block content %}
-<div class="page-header d-flex justify-content-between align-items-start mb-4">
-  <div>
-    <nav aria-label="breadcrumb">
-      <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="{% url 'fatturazione_attiva:fatture_list' %}">Fatture</a></li>
-        <li class="breadcrumb-item active">{{ fattura.numero }}</li>
-      </ol>
-    </nav>
-    <h1>
-      <i class="bi bi-receipt me-2 text-brand"></i>{{ fattura.numero }}
-      {% if fattura.stato == 'emessa' %}<span class="badge badge-wait ms-2">Emessa</span>
-      {% elif fattura.stato == 'pagata' %}<span class="badge badge-ok ms-2">Pagata</span>
-      {% else %}<span class="badge badge-ko ms-2">Annullata</span>{% endif %}
-    </h1>
-  </div>
-  <div class="d-flex gap-2">
-    <a href="{% url 'fatturazione_attiva:fattura_pdf' fattura.pk %}" target="_blank"
-       class="btn btn-outline-secondary btn-sm">
-      <i class="bi bi-download me-1"></i>PDF
-    </a>
-    {% if fattura.stato == 'emessa' %}
-    <form method="post" action="{% url 'fatturazione_attiva:fattura_pagata' fattura.pk %}">
-      {% csrf_token %}
-      <button type="submit" class="btn btn-success btn-sm">
-        <i class="bi bi-check-circle me-1"></i>Segna pagata
-      </button>
-    </form>
-    <form method="post" action="{% url 'fatturazione_attiva:fattura_annulla' fattura.pk %}"
-          onsubmit="return confirm('Annullare la fattura? Gli ODS torneranno in stato Completato.')">
-      {% csrf_token %}
-      <button type="submit" class="btn btn-outline-danger btn-sm">
-        <i class="bi bi-x-circle me-1"></i>Annulla fattura
-      </button>
-    </form>
-    {% endif %}
-  </div>
+<div class="page-header mb-4">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'fatturazione_attiva:dashboard' %}">Fatturazione</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'fatturazione_attiva:fatture_list' %}">Fatture</a></li>
+      <li class="breadcrumb-item active">{{ fattura.numero }}</li>
+    </ol>
+  </nav>
+  <h1 class="mb-0">
+    <i class="bi bi-receipt me-2 text-brand"></i>{{ fattura.numero }}
+    {% if fattura.stato == 'emessa' %}<span class="badge badge-wait ms-2">Emessa</span>
+    {% elif fattura.stato == 'pagata' %}<span class="badge badge-ok ms-2">Pagata</span>
+    {% else %}<span class="badge badge-secondary ms-2">{{ fattura.get_stato_display }}</span>{% endif %}
+  </h1>
 </div>
 
 <div class="row g-3">
+
+  {# ── Colonna principale ──────────────────────────────────────────────────── #}
   <div class="col-lg-8">
 
+    {# Destinatario #}
     <div class="card mb-3">
       <div class="card-header card-header-primary"><i class="bi bi-building me-2"></i>Destinatario</div>
       <div class="card-body">
         <div class="row">
           <div class="col-sm-6">
-            <div class="detail-field"><div class="detail-field-label">Ragione sociale</div><div class="detail-field-value fw-bold">{{ fattura.dest_nome }}</div></div>
+            <div class="detail-field">
+              <div class="detail-field-label">Ragione sociale</div>
+              <div class="detail-field-value fw-bold">{{ fattura.dest_nome }}</div>
+            </div>
           </div>
           <div class="col-sm-6">
-            <div class="detail-field"><div class="detail-field-label">Partita IVA</div><div class="detail-field-value">{{ fattura.dest_partita_iva|default:"—" }}</div></div>
+            <div class="detail-field">
+              <div class="detail-field-label">Partita IVA</div>
+              <div class="detail-field-value">{{ fattura.dest_partita_iva|default:"—" }}</div>
+            </div>
           </div>
           <div class="col-sm-6">
-            <div class="detail-field"><div class="detail-field-label">Indirizzo</div><div class="detail-field-value">{{ fattura.dest_indirizzo }}</div></div>
+            <div class="detail-field">
+              <div class="detail-field-label">Indirizzo</div>
+              <div class="detail-field-value">{{ fattura.dest_indirizzo }} — {{ fattura.dest_citta }}</div>
+            </div>
           </div>
           <div class="col-sm-3">
-            <div class="detail-field"><div class="detail-field-label">Città</div><div class="detail-field-value">{{ fattura.dest_citta }}</div></div>
+            <div class="detail-field">
+              <div class="detail-field-label">Cod. fiscale</div>
+              <div class="detail-field-value">{{ fattura.dest_codice_fiscale|default:"—" }}</div>
+            </div>
           </div>
           <div class="col-sm-3">
-            <div class="detail-field"><div class="detail-field-label">PEC</div><div class="detail-field-value">{{ fattura.dest_pec|default:"—" }}</div></div>
+            <div class="detail-field">
+              <div class="detail-field-label">PEC</div>
+              <div class="detail-field-value">{{ fattura.dest_pec|default:"—" }}</div>
+            </div>
           </div>
         </div>
       </div>
     </div>
 
+    {# Righe #}
     <div class="card mb-3">
       <div class="card-header card-header-primary"><i class="bi bi-list-ul me-2"></i>Righe</div>
       <div class="table-responsive">
@@ -84,7 +81,7 @@
             {% for r in fattura.righe.all %}
             <tr>
               <td class="fw-semibold small">{{ r.ods_numero }}</td>
-              <td class="small">{{ r.data_servizio|date:"d/m/Y" }}</td>
+              <td class="small text-nowrap">{{ r.data_servizio|date:"d/m/Y" }}</td>
               <td>{{ r.descrizione }}{% if r.note %} <span class="text-muted small">— {{ r.note }}</span>{% endif %}</td>
               <td class="text-end">€ {{ r.importo }}</td>
             </tr>
@@ -96,8 +93,8 @@
               <td class="text-end fw-semibold">€ {{ fattura.imponibile }}</td>
             </tr>
             <tr>
-              <td colspan="3" class="text-end">IVA {{ fattura.aliquota_iva }}%</td>
-              <td class="text-end">€ {{ fattura.importo_iva }}</td>
+              <td colspan="3" class="text-end text-muted">IVA {{ fattura.aliquota_iva }}%</td>
+              <td class="text-end text-muted">€ {{ fattura.importo_iva }}</td>
             </tr>
             <tr>
               <td colspan="3" class="text-end fw-bold fs-5">Totale</td>
@@ -108,22 +105,351 @@
       </div>
     </div>
 
-  </div>
-  <div class="col-lg-4">
+    {# Note di credito collegate #}
+    {% with nc_list=fattura.note_credito.all %}
+    {% if nc_list %}
     <div class="card mb-3">
-      <div class="card-header"><i class="bi bi-info-circle me-2"></i>Dati documento</div>
-      <div class="card-body">
-        <div class="detail-field"><div class="detail-field-label">Numero</div><div class="detail-field-value fw-bold">{{ fattura.numero }}</div></div>
-        <div class="detail-field"><div class="detail-field-label">Data emissione</div><div class="detail-field-value">{{ fattura.data_emissione|date:"d/m/Y" }}</div></div>
+      <div class="card-header card-header-primary">
+        <i class="bi bi-arrow-counterclockwise me-2"></i>Note di credito collegate
+      </div>
+      <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Numero NC</th>
+              <th>Data</th>
+              <th>Tipo</th>
+              <th class="text-end">Importo</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for nc in nc_list %}
+            <tr>
+              <td class="fw-semibold">{{ nc.numero }}</td>
+              <td class="small text-nowrap">{{ nc.data_emissione|date:"d/m/Y" }}</td>
+              <td>
+                <span class="badge bg-secondary">{{ nc.get_tipo_display }}</span>
+              </td>
+              <td class="text-end text-danger fw-semibold">— € {{ nc.totale }}</td>
+              <td class="text-end">
+                <a href="{% url 'fatturazione_attiva:nc_detail' nc.pk %}"
+                   class="btn btn-outline-secondary btn-sm">
+                  <i class="bi bi-eye"></i>
+                </a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+    {% endwith %}
+
+  </div>
+
+  {# ── Sidebar destra ──────────────────────────────────────────────────────── #}
+  <div class="col-lg-4">
+
+    {# Azioni #}
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-header bg-transparent fw-semibold small text-uppercase py-2"
+           style="color:var(--slate-500);">
+        <i class="bi bi-lightning-charge me-1"></i>Azioni
+      </div>
+      <div class="list-group list-group-flush">
+
+        {# PDF #}
+        <a href="{% url 'fatturazione_attiva:fattura_pdf' fattura.pk %}" target="_blank"
+           class="list-group-item list-group-item-action py-2" style="color:var(--slate-700);">
+          <i class="bi bi-file-earmark-pdf me-2" style="color:var(--color-1);"></i>Scarica PDF
+        </a>
+
+        {% if fattura.stato == 'emessa' %}
+        {# Sollecito #}
+        <button type="button"
+                class="list-group-item list-group-item-action py-2 text-start border-0"
+                style="color:var(--slate-700);"
+                data-bs-toggle="modal" data-bs-target="#modalSollecito">
+          <i class="bi bi-envelope me-2" style="color:var(--color-1);"></i>Genera sollecito
+        </button>
+
+        {# Segna pagata #}
+        <form method="post" action="{% url 'fatturazione_attiva:fattura_pagata' fattura.pk %}">
+          {% csrf_token %}
+          <button type="submit"
+                  class="list-group-item list-group-item-action py-2 w-100 text-start border-0"
+                  style="color:var(--slate-700);"
+                  onclick="return confirm('Segnare {{ fattura.numero }} come pagata?')">
+            <i class="bi bi-check-circle me-2" style="color:#198754;"></i>Segna pagata
+          </button>
+        </form>
+        {% endif %}
+
+        {# Emetti Nota Credito #}
+        <button type="button"
+                class="list-group-item list-group-item-action py-2 text-start border-0"
+                style="color:var(--slate-700);"
+                data-bs-toggle="modal" data-bs-target="#modalNotaCredito">
+          <i class="bi bi-arrow-counterclockwise me-2" style="color:#dc3545;"></i>Emetti nota di credito
+        </button>
+
+        {# Torna alla lista #}
+        <a href="{% url 'fatturazione_attiva:fatture_list' %}"
+           class="list-group-item list-group-item-action py-2" style="color:var(--slate-600);">
+          <i class="bi bi-arrow-left me-2"></i>Torna alla lista
+        </a>
+
+      </div>
+    </div>
+
+    {# Dati documento #}
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-header bg-transparent fw-semibold small text-uppercase py-2"
+           style="color:var(--slate-500);">
+        <i class="bi bi-info-circle me-1"></i>Dati documento
+      </div>
+      <div class="card-body py-2 px-3 small">
+        <div class="d-flex justify-content-between py-1 border-bottom">
+          <span style="color:var(--slate-500);">Numero</span>
+          <span class="fw-bold" style="color:var(--slate-800);">{{ fattura.numero }}</span>
+        </div>
+        <div class="d-flex justify-content-between py-1 border-bottom">
+          <span style="color:var(--slate-500);">Data emissione</span>
+          <span style="color:var(--slate-700);">{{ fattura.data_emissione|date:"d/m/Y" }}</span>
+        </div>
         {% if fattura.data_pagamento %}
-        <div class="detail-field"><div class="detail-field-label">Data pagamento</div><div class="detail-field-value">{{ fattura.data_pagamento|date:"d/m/Y" }}</div></div>
+        <div class="d-flex justify-content-between py-1 border-bottom">
+          <span style="color:var(--slate-500);">Data pagamento</span>
+          <span class="text-success">{{ fattura.data_pagamento|date:"d/m/Y" }}</span>
+        </div>
         {% endif %}
-        <div class="detail-field"><div class="detail-field-label">Emessa da</div><div class="detail-field-value">{{ fattura.emessa_da.get_full_name|default:"—" }}</div></div>
+        <div class="d-flex justify-content-between py-1 border-bottom">
+          <span style="color:var(--slate-500);">Emessa da</span>
+          <span style="color:var(--slate-700);">{{ fattura.emessa_da.get_full_name|default:"—" }}</span>
+        </div>
         {% if fattura.note_pagamento %}
-        <div class="detail-field"><div class="detail-field-label">Condizioni pagamento</div><div class="detail-field-value small">{{ fattura.note_pagamento }}</div></div>
+        <div class="py-1 border-bottom">
+          <div style="color:var(--slate-500);">Condizioni</div>
+          <div style="color:var(--slate-700);">{{ fattura.note_pagamento }}</div>
+        </div>
         {% endif %}
+        {% if fattura.emit_iban %}
+        <div class="py-1 border-bottom">
+          <div style="color:var(--slate-500);">IBAN</div>
+          <div class="font-monospace small" style="color:var(--slate-700);">{{ fattura.emit_iban }}</div>
+        </div>
+        {% endif %}
+        <div class="d-flex justify-content-between py-1">
+          <span style="color:var(--slate-500);">ID</span>
+          <span class="font-monospace" style="color:var(--slate-600);">{{ fattura.pk }}</span>
+        </div>
+      </div>
+    </div>
+
+    {# Ultimo sollecito #}
+    {% if fattura.data_ultimo_sollecito %}
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-body py-2 small text-muted">
+        <i class="bi bi-send me-1"></i>Ultimo sollecito inviato il
+        <strong>{{ fattura.data_ultimo_sollecito|date:"d/m/Y" }}</strong>
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+
+
+{# ── Modale: Sollecito ─────────────────────────────────────────────────────── #}
+{% if fattura.stato == 'emessa' %}
+<div class="modal fade" id="modalSollecito" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">
+          <i class="bi bi-envelope me-2"></i>Sollecito — {{ fattura.numero }}
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label fw-semibold small">Oggetto</label>
+          <div class="input-group input-group-sm">
+            <input type="text" id="sollecitoSoggetto" class="form-control" readonly>
+            <button class="btn btn-outline-secondary" type="button"
+                    onclick="copiaInAppunti('sollecitoSoggetto')" title="Copia">
+              <i class="bi bi-clipboard"></i>
+            </button>
+          </div>
+        </div>
+        <div class="mb-0">
+          <label class="form-label fw-semibold small">Corpo email</label>
+          <div class="position-relative">
+            <textarea id="sollecitoCorpo" class="form-control" rows="13" readonly></textarea>
+            <button class="btn btn-outline-secondary btn-sm position-absolute top-0 end-0 m-2"
+                    type="button" onclick="copiaInAppunti('sollecitoCorpo')">
+              <i class="bi bi-clipboard"></i> Copia
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <small class="text-muted me-auto" id="sollecitoNote"></small>
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Chiudi</button>
+        <button type="button" class="btn btn-primary btn-sm" id="btnSegnaSollecito">
+          <i class="bi bi-send me-1"></i>Segna inviato
+        </button>
       </div>
     </div>
   </div>
 </div>
+{% endif %}
+
+
+{# ── Modale: Nota di Credito ───────────────────────────────────────────────── #}
+<div class="modal fade" id="modalNotaCredito" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-md">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">
+          <i class="bi bi-arrow-counterclockwise me-2 text-danger"></i>Emetti nota di credito
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" action="{% url 'fatturazione_attiva:emetti_nc' fattura.pk %}">
+        {% csrf_token %}
+        <div class="modal-body">
+
+          {# Fattura di riferimento (riepilogo) #}
+          <div class="alert alert-light border small mb-3 py-2">
+            <div><strong>Fattura:</strong> {{ fattura.numero }} del {{ fattura.data_emissione|date:"d/m/Y" }}</div>
+            <div><strong>Destinatario:</strong> {{ fattura.dest_nome }}</div>
+            <div><strong>Importo totale:</strong> € {{ fattura.totale }}
+              (imponibile € {{ fattura.imponibile }})</div>
+          </div>
+
+          {# Tipo NC #}
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Importo da accreditare</label>
+            <div class="d-flex flex-column gap-2">
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="tipo" id="tipoTotale"
+                       value="totale" checked>
+                <label class="form-check-label" for="tipoTotale">
+                  Intero importo della fattura
+                  <span class="text-muted small">(€ {{ fattura.totale }})</span>
+                </label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="tipo" id="tipoParziale"
+                       value="parziale">
+                <label class="form-check-label" for="tipoParziale">
+                  Importo parziale (inserisci imponibile)
+                </label>
+              </div>
+            </div>
+          </div>
+
+          {# Imponibile parziale #}
+          <div id="campoParziale" class="mb-3" style="display:none">
+            <label for="inputImponibile" class="form-label fw-semibold small">
+              Imponibile da accreditare (max € {{ fattura.imponibile }})
+            </label>
+            <div class="input-group input-group-sm">
+              <span class="input-group-text">€</span>
+              <input type="number" id="inputImponibile" name="imponibile"
+                     class="form-control"
+                     step="0.01" min="0.01" max="{{ fattura.imponibile }}"
+                     placeholder="0.00">
+            </div>
+            <div class="mt-2 small text-muted" id="calcoloIva"></div>
+          </div>
+
+          {# Note / Motivo #}
+          <div class="mb-0">
+            <label for="noteNc" class="form-label fw-semibold small">
+              Note / Motivo <span class="text-muted fw-normal">(sarà incluso nella riga della NC)</span>
+            </label>
+            <textarea id="noteNc" name="note" class="form-control form-control-sm"
+                      rows="3" placeholder="Es. Servizio non eseguito, errore importo, resa parziale…"></textarea>
+          </div>
+
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Annulla</button>
+          <button type="submit" class="btn btn-danger btn-sm">
+            <i class="bi bi-arrow-counterclockwise me-1"></i>Emetti nota di credito
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const ALIQUOTA = {{ fattura.aliquota_iva }};
+const IMPONIBILE_MAX = {{ fattura.imponibile }};
+
+{% if fattura.stato == 'emessa' %}
+{# ── Sollecito ────────────────────────────────────────────────────────────── #}
+const sollecitoUrl = "{% url 'fatturazione_attiva:fattura_sollecito' fattura.pk %}";
+
+document.getElementById('modalSollecito').addEventListener('show.bs.modal', function () {
+  if (document.getElementById('sollecitoSoggetto').value) return;
+  fetch(sollecitoUrl)
+    .then(r => r.json())
+    .then(data => {
+      document.getElementById('sollecitoSoggetto').value = data.soggetto;
+      document.getElementById('sollecitoCorpo').value    = data.corpo;
+    });
+});
+
+document.getElementById('btnSegnaSollecito').addEventListener('click', function () {
+  fetch(sollecitoUrl, {
+    method: 'POST',
+    headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+  }).then(() => {
+    document.getElementById('sollecitoNote').textContent = 'Sollecito registrato ✓';
+    this.disabled = true;
+  });
+});
+{% endif %}
+
+{# ── Nota credito — mostra/nasconde campo parziale e calcola IVA ─────────── #}
+(function () {
+  const radios  = document.querySelectorAll('[name="tipo"]');
+  const campo   = document.getElementById('campoParziale');
+  const input   = document.getElementById('inputImponibile');
+  const calcDiv = document.getElementById('calcoloIva');
+
+  function aggiornaTipo() {
+    const parziale = document.getElementById('tipoParziale').checked;
+    campo.style.display = parziale ? '' : 'none';
+    if (!parziale) calcDiv.textContent = '';
+  }
+
+  function aggiornCalcolo() {
+    const v = parseFloat(input.value);
+    if (isNaN(v) || v <= 0) { calcDiv.textContent = ''; return; }
+    const iva    = Math.round(v * ALIQUOTA) / 100;
+    const totale = (v + iva).toFixed(2);
+    calcDiv.textContent = `IVA (${ALIQUOTA}%): € ${iva.toFixed(2)} — Totale NC: € ${totale}`;
+  }
+
+  radios.forEach(r => r.addEventListener('change', aggiornaTipo));
+  if (input) input.addEventListener('input', aggiornCalcolo);
+  aggiornaTipo();
+})();
+
+function copiaInAppunti(id) {
+  const el = document.getElementById(id);
+  el.select();
+  document.execCommand('copy');
+}
+</script>
 {% endblock %}

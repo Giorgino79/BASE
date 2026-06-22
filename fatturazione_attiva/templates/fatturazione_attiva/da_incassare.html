@@ -1,0 +1,203 @@
+{% extends "base.html" %}
+
+{% block title %}Fatture da incassare{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-start mb-4">
+  <div>
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'fatturazione_attiva:dashboard' %}">Fatturazione</a></li>
+        <li class="breadcrumb-item active">Da incassare</li>
+      </ol>
+    </nav>
+    <h1><i class="bi bi-hourglass-split me-2 text-warning"></i>Fatture da incassare</h1>
+    <p class="text-muted mb-0">Elenco di tutte le fatture emesse non ancora saldate</p>
+  </div>
+</div>
+
+{# ── KPI ──────────────────────────────────────────────────────────────────── #}
+<div class="row g-3 mb-4">
+  <div class="col-sm-6">
+    <div class="card text-center border-warning">
+      <div class="card-body py-3">
+        <div class="text-muted small mb-1">Fatture in attesa</div>
+        <div class="fw-bold fs-2 text-warning">{{ n }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6">
+    <div class="card text-center border-warning">
+      <div class="card-body py-3">
+        <div class="text-muted small mb-1">Totale da incassare</div>
+        <div class="fw-bold fs-2 text-warning">€ {{ totale }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if fatture %}
+<div class="card">
+  <div class="card-header card-header-primary">
+    <i class="bi bi-table me-2"></i>Fatture in attesa ({{ n }}) — ordinate dalla più vecchia
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover table-sm mb-0 align-middle">
+      <thead class="table-light">
+        <tr>
+          <th>Numero</th>
+          <th>Data emissione</th>
+          <th>Destinatario</th>
+          <th class="text-end">Totale</th>
+          <th class="text-center">Giorni attesa</th>
+          <th class="text-center">Ultimo sollecito</th>
+          <th class="text-end">Azioni</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for f in fatture %}
+        <tr {% if f._giorni > 60 %}class="table-danger"{% elif f._giorni > 30 %}class="table-warning"{% endif %}>
+          <td class="fw-semibold">{{ f.numero }}</td>
+          <td class="text-nowrap small">{{ f.data_emissione|date:"d/m/Y" }}</td>
+          <td>
+            <div class="fw-semibold small">{{ f.dest_nome }}</div>
+            {% if f.dest_pec %}<div class="text-muted small">{{ f.dest_pec }}</div>{% endif %}
+          </td>
+          <td class="text-end fw-semibold">€ {{ f.totale }}</td>
+          <td class="text-center">
+            <span class="badge {% if f._giorni > 60 %}bg-danger{% elif f._giorni > 30 %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
+              {{ f._giorni }} gg
+            </span>
+          </td>
+          <td class="text-center text-muted small">
+            {% if f.data_ultimo_sollecito %}{{ f.data_ultimo_sollecito|date:"d/m/Y" }}{% else %}—{% endif %}
+          </td>
+          <td class="text-end">
+            <div class="d-flex gap-1 justify-content-end">
+              <a href="{% url 'fatturazione_attiva:fattura_detail' f.pk %}"
+                 class="btn btn-outline-secondary btn-sm" title="Dettaglio">
+                <i class="bi bi-eye"></i>
+              </a>
+              <button type="button" class="btn btn-outline-primary btn-sm"
+                      title="Genera sollecito"
+                      data-bs-toggle="modal" data-bs-target="#modalSollecito"
+                      data-url="{% url 'fatturazione_attiva:fattura_sollecito' f.pk %}"
+                      data-numero="{{ f.numero }}">
+                <i class="bi bi-envelope"></i>
+              </button>
+              <form method="post" action="{% url 'fatturazione_attiva:fattura_pagata' f.pk %}">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-success btn-sm" title="Segna pagata"
+                        onclick="return confirm('Segnare {{ f.numero }} come pagata?')">
+                  <i class="bi bi-check-circle"></i>
+                </button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot class="table-light fw-semibold">
+        <tr>
+          <td colspan="3" class="text-end">Totale</td>
+          <td class="text-end text-warning">€ {{ totale }}</td>
+          <td colspan="3"></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>
+
+{% else %}
+<div class="alert alert-success">
+  <i class="bi bi-check-circle me-2"></i>Nessuna fattura in attesa di pagamento. Tutto incassato!
+</div>
+{% endif %}
+
+{# ── Modale sollecito ─────────────────────────────────────────────────────── #}
+<div class="modal fade" id="modalSollecito" tabindex="-1" aria-labelledby="modalSollecitoLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalSollecitoLabel">
+          <i class="bi bi-envelope me-2"></i>Sollecito pagamento — <span id="sollecitoNumero"></span>
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label fw-semibold small">Oggetto</label>
+          <div class="input-group input-group-sm">
+            <input type="text" id="sollecitoSoggetto" class="form-control" readonly>
+            <button class="btn btn-outline-secondary" type="button"
+                    onclick="copiaInAppunti('sollecitoSoggetto')" title="Copia">
+              <i class="bi bi-clipboard"></i>
+            </button>
+          </div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold small">Corpo email</label>
+          <div class="position-relative">
+            <textarea id="sollecitoCorpo" class="form-control" rows="14" readonly></textarea>
+            <button class="btn btn-outline-secondary btn-sm position-absolute top-0 end-0 m-2"
+                    type="button" onclick="copiaInAppunti('sollecitoCorpo')" title="Copia corpo">
+              <i class="bi bi-clipboard"></i> Copia
+            </button>
+          </div>
+        </div>
+        <div id="sollecitoSpinner" class="text-center py-4 d-none">
+          <div class="spinner-border text-primary" role="status"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <small class="text-muted me-auto" id="sollecitoNote"></small>
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Chiudi</button>
+        <button type="button" class="btn btn-primary btn-sm" id="btnSegnaSollecito">
+          <i class="bi bi-send me-1"></i>Segna sollecito inviato
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  const modal = document.getElementById('modalSollecito');
+  let currentUrl = null;
+
+  modal.addEventListener('show.bs.modal', function (e) {
+    const btn = e.relatedTarget;
+    currentUrl = btn.dataset.url;
+    document.getElementById('sollecitoNumero').textContent = btn.dataset.numero;
+    document.getElementById('sollecitoSoggetto').value = '';
+    document.getElementById('sollecitoCorpo').value = '';
+    document.getElementById('sollecitoNote').textContent = '';
+
+    fetch(currentUrl)
+      .then(r => r.json())
+      .then(data => {
+        document.getElementById('sollecitoSoggetto').value = data.soggetto;
+        document.getElementById('sollecitoCorpo').value    = data.corpo;
+      });
+  });
+
+  document.getElementById('btnSegnaSollecito').addEventListener('click', function () {
+    if (!currentUrl) return;
+    const csrf = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    fetch(currentUrl, { method: 'POST', headers: { 'X-CSRFToken': csrf } })
+      .then(() => {
+        document.getElementById('sollecitoNote').textContent = 'Sollecito registrato ✓';
+        this.disabled = true;
+      });
+  });
+})();
+
+function copiaInAppunti(id) {
+  const el = document.getElementById(id);
+  el.select();
+  document.execCommand('copy');
+}
+</script>
+{% endblock %}

@@ -3,7 +3,8 @@ from decimal import Decimal, ROUND_HALF_UP
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.conf import settings as django_settings
-from django.http import HttpResponse
+from django.db.models import Sum
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect, get_object_or_404
 from django.template.loader import render_to_string
 from django.utils import timezone
@@ -15,7 +16,64 @@ from core.excel_generator import generate_excel_response
 from core.pdf_generator import generate_pdf_from_html, PDFConfig
 from servizi.models import ODS, CondominioODS, ODSRiga
 from .forms import RicercaFatturazioneForm, RicercaFattureForm
-from .models import Fattura, RigaFattura
+from .models import Fattura, RigaFattura, NotaCredito
+
+
+# ── Dashboard fatturazione ────────────────────────────────────────────────────
+
+class FatturazioneDashboardView(LoginRequiredMixin, TemplateView):
+    template_name = "fatturazione_attiva/dashboard.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        anno = timezone.localdate().year
+
+        fatture_anno = Fattura.objects.filter(anno=anno).exclude(stato=Fattura.Stato.ANNULLATA)
+        da_incassare = Fattura.objects.filter(stato=Fattura.Stato.EMESSA)
+
+        ctx["anno"] = anno
+        ctx["n_fatture_anno"]        = fatture_anno.count()
+        ctx["totale_fatturato_anno"] = fatture_anno.aggregate(t=Sum("totale"))["t"] or Decimal("0.00")
+        ctx["n_da_incassare"]        = da_incassare.count()
+        ctx["totale_da_incassare"]   = da_incassare.aggregate(t=Sum("totale"))["t"] or Decimal("0.00")
+        ctx["ultime_fatture"]        = Fattura.objects.order_by("-anno", "-progressivo")[:6]
+        return ctx
+
+
+# ── Fatture da incassare ──────────────────────────────────────────────────────
+
+class FattureDaIncassareView(LoginRequiredMixin, TemplateView):
+    template_name = "fatturazione_attiva/da_incassare.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        oggi = timezone.localdate()
+
+        fatture = list(
+            Fattura.objects
+            .filter(stato=Fattura.Stato.EMESSA)
+            .prefetch_related("righe")
+            .order_by("data_emissione")
+        )
+        for f in fatture:
+            f._giorni = (oggi - f.data_emissione).days
+
+        totale = sum((f.totale for f in fatture), Decimal("0.00"))
+        ctx["fatture"] = fatture
+        ctx["totale"]  = totale
+        ctx["n"]       = len(fatture)
+        return ctx
+
+
+# ── Sollecito pagamento (JSON) ─────────────────────────────────────────────────
+
+@login_required
+def fattura_sollecito(request, pk):
+    fattura = get_object_or_404(Fattura, pk=pk)
+    if request.method == "POST":
+        fattura.data_ultimo_sollecito = timezone.localdate()
+        fattura.save(update_fields=["data_ultimo_sollecito", "updated_at"])
+    return JsonResponse(fattura.get_sollecito())
 
 
 # ── Ricerca ODS da fatturare ──────────────────────────────────────────────────
@@ -266,6 +324,76 @@ def fattura_segna_pagata(request, pk):
         fattura.save(update_fields=["stato", "data_pagamento", "updated_at"])
         messages.success(request, f"Fattura {fattura.numero} segnata come pagata.")
     return redirect("fatturazione_attiva:fattura_detail", pk=pk)
+
+
+# ── Nota di Credito ───────────────────────────────────────────────────────────
+
+@login_required
+@require_POST
+def emetti_nota_credito(request, pk):
+    fattura = get_object_or_404(Fattura, pk=pk)
+    tipo    = request.POST.get("tipo", "totale")
+    note    = request.POST.get("note", "").strip()
+
+    if tipo == "totale":
+        imponibile = fattura.imponibile
+    else:
+        raw = request.POST.get("imponibile", "").replace(",", ".")
+        try:
+            imponibile = Decimal(raw)
+        except Exception:
+            messages.error(request, "Importo non valido.")
+            return redirect("fatturazione_attiva:fattura_detail", pk=pk)
+        if imponibile <= 0 or imponibile > fattura.imponibile:
+            messages.error(
+                request,
+                f"L'importo deve essere positivo e non superiore a € {fattura.imponibile}.",
+            )
+            return redirect("fatturazione_attiva:fattura_detail", pk=pk)
+
+    nc = NotaCredito.crea(fattura=fattura, imponibile=imponibile, note=note, emessa_da=request.user)
+    messages.success(request, f"Nota di credito {nc.numero} emessa con successo.")
+    return redirect("fatturazione_attiva:nc_detail", pk=nc.pk)
+
+
+class NotaCreditoDetailView(LoginRequiredMixin, DetailView):
+    model = NotaCredito
+    template_name = "fatturazione_attiva/nc_detail.html"
+    context_object_name = "nc"
+
+
+@login_required
+def nc_pdf(request, pk):
+    nc = get_object_or_404(NotaCredito, pk=pk)
+    ctx = {
+        "nc": nc,
+        "azienda": {
+            "RAGIONE_SOCIALE": nc.emit_ragione_sociale,
+            "INDIRIZZO":       nc.emit_indirizzo,
+            "CAP_CITTA":       nc.emit_cap_citta,
+            "PARTITA_IVA":     nc.emit_partita_iva,
+            "CODICE_FISCALE":  nc.emit_codice_fiscale,
+            "TELEFONO":        nc.emit_telefono,
+            "EMAIL":           nc.emit_email,
+            "IBAN":            nc.emit_iban,
+        },
+        "destinatario": {
+            "nome":            nc.dest_nome,
+            "indirizzo":       nc.dest_indirizzo,
+            "cap":             nc.dest_cap,
+            "citta":           nc.dest_citta,
+            "provincia":       nc.dest_provincia,
+            "partita_iva":     nc.dest_partita_iva,
+            "codice_fiscale":  nc.dest_codice_fiscale,
+            "pec":             nc.dest_pec,
+        },
+    }
+    html = render_to_string("fatturazione_attiva/pdf_nc.html", ctx, request=request)
+    return generate_pdf_from_html(
+        html,
+        PDFConfig(filename=f"{nc.numero}.pdf"),
+        output_type="response",
+    )
 
 
 @login_required

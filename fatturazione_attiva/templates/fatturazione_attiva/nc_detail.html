@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+{% load static %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/detail.css' %}">{% endblock %}
+{% block title %}Nota di credito {{ nc.numero }}{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'fatturazione_attiva:dashboard' %}">Fatturazione</a></li>
+      <li class="breadcrumb-item">
+        <a href="{% url 'fatturazione_attiva:fattura_detail' nc.fattura.pk %}">{{ nc.fattura.numero }}</a>
+      </li>
+      <li class="breadcrumb-item active">{{ nc.numero }}</li>
+    </ol>
+  </nav>
+  <h1 class="mb-0">
+    <i class="bi bi-arrow-counterclockwise me-2 text-danger"></i>{{ nc.numero }}
+    <span class="badge bg-danger ms-2 fs-6">Nota di credito</span>
+    <span class="badge bg-secondary ms-1 fs-6">{{ nc.get_tipo_display }}</span>
+  </h1>
+</div>
+
+<div class="row g-3">
+
+  {# ── Colonna principale ──────────────────────────────────────────────────── #}
+  <div class="col-lg-8">
+
+    {# Destinatario #}
+    <div class="card mb-3">
+      <div class="card-header card-header-primary"><i class="bi bi-building me-2"></i>Destinatario</div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-sm-6">
+            <div class="detail-field">
+              <div class="detail-field-label">Ragione sociale</div>
+              <div class="detail-field-value fw-bold">{{ nc.dest_nome }}</div>
+            </div>
+          </div>
+          <div class="col-sm-6">
+            <div class="detail-field">
+              <div class="detail-field-label">Partita IVA</div>
+              <div class="detail-field-value">{{ nc.dest_partita_iva|default:"—" }}</div>
+            </div>
+          </div>
+          <div class="col-sm-6">
+            <div class="detail-field">
+              <div class="detail-field-label">Indirizzo</div>
+              <div class="detail-field-value">{{ nc.dest_indirizzo }} — {{ nc.dest_citta }}</div>
+            </div>
+          </div>
+          <div class="col-sm-6">
+            <div class="detail-field">
+              <div class="detail-field-label">PEC</div>
+              <div class="detail-field-value">{{ nc.dest_pec|default:"—" }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {# Riga NC #}
+    <div class="card mb-3">
+      <div class="card-header card-header-primary">
+        <i class="bi bi-list-ul me-2"></i>Riga nota di credito
+      </div>
+      <div class="table-responsive">
+        <table class="table align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Descrizione</th>
+              <th class="text-end">Importo accreditato</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>{{ nc.descrizione_riga }}</td>
+              <td class="text-end fw-semibold text-danger">€ {{ nc.imponibile }}</td>
+            </tr>
+          </tbody>
+          <tfoot class="table-light">
+            <tr>
+              <td class="text-end fw-semibold">Imponibile</td>
+              <td class="text-end fw-semibold">€ {{ nc.imponibile }}</td>
+            </tr>
+            <tr>
+              <td class="text-end text-muted">IVA {{ nc.aliquota_iva }}%</td>
+              <td class="text-end text-muted">€ {{ nc.importo_iva }}</td>
+            </tr>
+            <tr>
+              <td class="text-end fw-bold fs-5">Totale NC</td>
+              <td class="text-end fw-bold fs-5 text-danger">€ {{ nc.totale }}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+
+    {% if nc.note %}
+    <div class="card mb-3">
+      <div class="card-header"><i class="bi bi-chat-left-text me-2"></i>Note / Motivo</div>
+      <div class="card-body">
+        <p class="mb-0">{{ nc.note }}</p>
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+
+  {# ── Sidebar destra ──────────────────────────────────────────────────────── #}
+  <div class="col-lg-4">
+
+    {# Azioni #}
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-header bg-transparent fw-semibold small text-uppercase py-2"
+           style="color:var(--slate-500);">
+        <i class="bi bi-lightning-charge me-1"></i>Azioni
+      </div>
+      <div class="list-group list-group-flush">
+        <a href="{% url 'fatturazione_attiva:nc_pdf' nc.pk %}" target="_blank"
+           class="list-group-item list-group-item-action py-2" style="color:var(--slate-700);">
+          <i class="bi bi-file-earmark-pdf me-2" style="color:var(--color-1);"></i>Scarica PDF
+        </a>
+        <a href="{% url 'fatturazione_attiva:fattura_detail' nc.fattura.pk %}"
+           class="list-group-item list-group-item-action py-2" style="color:var(--slate-700);">
+          <i class="bi bi-receipt me-2" style="color:var(--color-1);"></i>Vai alla fattura {{ nc.fattura.numero }}
+        </a>
+        <a href="{% url 'fatturazione_attiva:dashboard' %}"
+           class="list-group-item list-group-item-action py-2" style="color:var(--slate-600);">
+          <i class="bi bi-arrow-left me-2"></i>Dashboard fatturazione
+        </a>
+      </div>
+    </div>
+
+    {# Dati documento #}
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-header bg-transparent fw-semibold small text-uppercase py-2"
+           style="color:var(--slate-500);">
+        <i class="bi bi-info-circle me-1"></i>Dati documento
+      </div>
+      <div class="card-body py-2 px-3 small">
+        <div class="d-flex justify-content-between py-1 border-bottom">
+          <span style="color:var(--slate-500);">Numero NC</span>
+          <span class="fw-bold text-danger" style="color:var(--slate-800);">{{ nc.numero }}</span>
+        </div>
+        <div class="d-flex justify-content-between py-1 border-bottom">
+          <span style="color:var(--slate-500);">Data emissione</span>
+          <span style="color:var(--slate-700);">{{ nc.data_emissione|date:"d/m/Y" }}</span>
+        </div>
+        <div class="d-flex justify-content-between py-1 border-bottom">
+          <span style="color:var(--slate-500);">Tipo</span>
+          <span style="color:var(--slate-700);">{{ nc.get_tipo_display }}</span>
+        </div>
+        <div class="d-flex justify-content-between py-1 border-bottom">
+          <span style="color:var(--slate-500);">Fattura rif.</span>
+          <span style="color:var(--slate-700);">{{ nc.fattura.numero }}</span>
+        </div>
+        <div class="d-flex justify-content-between py-1 border-bottom">
+          <span style="color:var(--slate-500);">Emessa da</span>
+          <span style="color:var(--slate-700);">{{ nc.emessa_da.get_full_name|default:"—" }}</span>
+        </div>
+        <div class="d-flex justify-content-between py-1">
+          <span style="color:var(--slate-500);">ID</span>
+          <span class="font-monospace" style="color:var(--slate-600);">{{ nc.pk }}</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

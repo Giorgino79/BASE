@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+
+{% block title %}Fatturazione{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-start mb-4">
+  <div>
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb"><li class="breadcrumb-item active">Fatturazione</li></ol>
+    </nav>
+    <h1><i class="bi bi-receipt me-2 text-brand"></i>Fatturazione</h1>
+    <p class="text-muted mb-0">Emissione fatture, incassi e solleciti</p>
+  </div>
+  <div class="d-flex gap-2 flex-wrap">
+    <a href="{% url 'fatturazione_attiva:ricerca' %}" class="btn btn-primary btn-sm">
+      <i class="bi bi-plus-lg me-1"></i>Nuova fattura
+    </a>
+  </div>
+</div>
+
+{# ── KPI ──────────────────────────────────────────────────────────────────── #}
+<div class="row g-3 mb-4">
+  <div class="col-sm-6 col-lg-3">
+    <div class="card text-center h-100">
+      <div class="card-body py-4">
+        <div class="text-muted small mb-1">Fatture {{ anno }}</div>
+        <div class="fw-bold fs-2 text-brand">{{ n_fatture_anno }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-lg-3">
+    <div class="card text-center h-100">
+      <div class="card-body py-4">
+        <div class="text-muted small mb-1">Fatturato {{ anno }}</div>
+        <div class="fw-bold fs-2 text-brand">€ {{ totale_fatturato_anno }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-lg-3">
+    <div class="card text-center h-100 border-warning">
+      <div class="card-body py-4">
+        <div class="text-muted small mb-1">Fatture da incassare</div>
+        <div class="fw-bold fs-2 text-warning">{{ n_da_incassare }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-lg-3">
+    <div class="card text-center h-100 border-warning">
+      <div class="card-body py-4">
+        <div class="text-muted small mb-1">Totale da incassare</div>
+        <div class="fw-bold fs-2 text-warning">€ {{ totale_da_incassare }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ── Quick links ──────────────────────────────────────────────────────────── #}
+<div class="row g-3 mb-4">
+  <div class="col-md-4">
+    <a href="{% url 'fatturazione_attiva:ricerca' %}" class="text-decoration-none">
+      <div class="card h-100 text-center py-4">
+        <div class="mb-2"><i class="bi bi-search fs-1 text-brand"></i></div>
+        <div class="fw-semibold">Nuova fattura</div>
+        <div class="text-muted small">Cerca ODS e condomini da fatturare</div>
+      </div>
+    </a>
+  </div>
+  <div class="col-md-4">
+    <a href="{% url 'fatturazione_attiva:da_incassare' %}" class="text-decoration-none">
+      <div class="card h-100 text-center py-4 {% if n_da_incassare %}border-warning{% endif %}">
+        <div class="mb-2"><i class="bi bi-hourglass-split fs-1 {% if n_da_incassare %}text-warning{% else %}text-brand{% endif %}"></i></div>
+        <div class="fw-semibold">Fatture da incassare</div>
+        <div class="text-muted small">{{ n_da_incassare }} fattur{{ n_da_incassare|pluralize:"a,e" }} in attesa di pagamento</div>
+      </div>
+    </a>
+  </div>
+  <div class="col-md-4">
+    <a href="{% url 'fatturazione_attiva:fatture_list' %}" class="text-decoration-none">
+      <div class="card h-100 text-center py-4">
+        <div class="mb-2"><i class="bi bi-receipt-cutoff fs-1 text-brand"></i></div>
+        <div class="fw-semibold">Tutte le fatture</div>
+        <div class="text-muted small">Ricerca per cliente, periodo e stato</div>
+      </div>
+    </a>
+  </div>
+</div>
+
+{# ── Ultime fatture ───────────────────────────────────────────────────────── #}
+{% if ultime_fatture %}
+<div class="card">
+  <div class="card-header card-header-primary">
+    <i class="bi bi-clock-history me-2"></i>Ultime fatture emesse
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover table-sm mb-0 align-middle">
+      <thead class="table-light">
+        <tr>
+          <th>Numero</th>
+          <th>Data</th>
+          <th>Destinatario</th>
+          <th class="text-end">Totale</th>
+          <th class="text-center">Stato</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for f in ultime_fatture %}
+        <tr>
+          <td class="fw-semibold">{{ f.numero }}</td>
+          <td class="text-nowrap small">{{ f.data_emissione|date:"d/m/Y" }}</td>
+          <td>{{ f.dest_nome }}</td>
+          <td class="text-end">€ {{ f.totale }}</td>
+          <td class="text-center">
+            {% if f.stato == 'emessa' %}
+              <span class="badge badge-wait">Emessa</span>
+            {% elif f.stato == 'pagata' %}
+              <span class="badge badge-ok">Pagata</span>
+            {% else %}
+              <span class="badge badge-ko">Annullata</span>
+            {% endif %}
+          </td>
+          <td class="text-end">
+            <a href="{% url 'fatturazione_attiva:fattura_detail' f.pk %}"
+               class="btn btn-outline-secondary btn-sm">
+              <i class="bi bi-eye"></i>
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
