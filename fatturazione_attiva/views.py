@@ -55,9 +55,6 @@ class FattureDaIncassareView(LoginRequiredMixin, TemplateView):
             .prefetch_related("righe")
             .order_by("data_emissione")
         )
-        for f in fatture:
-            f.giorni_attesa = (oggi - f.data_emissione).days
-
         totale = sum((f.totale for f in fatture), Decimal("0.00"))
         ctx["fatture"] = fatture
         ctx["totale"]  = totale
