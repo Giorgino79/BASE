@@ -56,7 +56,7 @@
       </thead>
       <tbody>
         {% for f in fatture %}
-        <tr {% if f._giorni > 60 %}class="table-danger"{% elif f._giorni > 30 %}class="table-warning"{% endif %}>
+        <tr {% if f.giorni_attesa > 60 %}class="table-danger"{% elif f.giorni_attesa > 30 %}class="table-warning"{% endif %}>
           <td class="fw-semibold">{{ f.numero }}</td>
           <td class="text-nowrap small">{{ f.data_emissione|date:"d/m/Y" }}</td>
           <td>
@@ -65,8 +65,8 @@
           </td>
           <td class="text-end fw-semibold">€ {{ f.totale }}</td>
           <td class="text-center">
-            <span class="badge {% if f._giorni > 60 %}bg-danger{% elif f._giorni > 30 %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
-              {{ f._giorni }} gg
+            <span class="badge {% if f.giorni_attesa > 60 %}bg-danger{% elif f.giorni_attesa > 30 %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
+              {{ f.giorni_attesa }} gg
             </span>
           </td>
           <td class="text-center text-muted small">
