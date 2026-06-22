@@ -15,7 +15,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from core.excel_generator import generate_excel_response
 from core.pdf_generator import generate_pdf_from_html, PDFConfig
 from servizi.models import ODS, CondominioODS, ODSRiga
-from .forms import RicercaFatturazioneForm, RicercaFattureForm, FatturaLiberaForm
+from .forms import RicercaFatturazioneForm, RicercaFattureForm, FatturaLiberaForm, RicercaNoteCreditoForm
 from .models import Fattura, RigaFattura, NotaCredito
 
 
@@ -484,11 +484,43 @@ class FatturaLiberaView(LoginRequiredMixin, TemplateView):
 class NoteCreditoListView(LoginRequiredMixin, TemplateView):
     template_name = "fatturazione_attiva/nc_list.html"
 
+    def get(self, request, *args, **kwargs):
+        form = RicercaNoteCreditoForm(request.GET or None)
+        ctx  = self.get_context_data(form=form)
+        if request.GET and form.is_valid():
+            ctx.update(self._cerca(form.cleaned_data))
+        return self.render_to_response(ctx)
+
+    def _cerca(self, cd):
+        qs = NotaCredito.objects.select_related("fattura", "emessa_da")
+
+        q = cd.get("q", "").strip()
+        if q:
+            from django.db.models import Q
+            qs = qs.filter(
+                Q(numero__icontains=q) |
+                Q(dest_nome__icontains=q) |
+                Q(fattura__numero__icontains=q)
+            )
+
+        if cd.get("tipo"):
+            qs = qs.filter(tipo=cd["tipo"])
+
+        if cd.get("data_da"):
+            qs = qs.filter(data_emissione__gte=cd["data_da"])
+        if cd.get("data_a"):
+            qs = qs.filter(data_emissione__lte=cd["data_a"])
+
+        qs = qs.order_by("-anno", "-progressivo")
+        note = list(qs)
+        totale = sum((n.totale for n in note), Decimal("0.00"))
+        return {"note": note, "totale": totale, "ricerca_eseguita": True}
+
     def get_context_data(self, **kwargs):
-        ctx  = super().get_context_data(**kwargs)
-        note = NotaCredito.objects.select_related("fattura", "emessa_da").order_by("-anno", "-progressivo")
-        ctx["note"]   = note
-        ctx["totale"] = note.aggregate(t=Sum("totale"))["t"] or Decimal("0.00")
+        ctx = super().get_context_data(**kwargs)
+        ctx.setdefault("note", [])
+        ctx.setdefault("totale", Decimal("0.00"))
+        ctx.setdefault("ricerca_eseguita", False)
         return ctx
 
 

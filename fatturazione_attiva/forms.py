@@ -188,3 +188,42 @@ class FatturaLiberaForm(forms.Form):
         if tipo == "privato" and not cd.get("privato"):
             self.add_error("privato", "Seleziona un cliente privato.")
         return cd
+
+
+TIPO_NC_CHOICES = [
+    ("",         "— Tutti i tipi —"),
+    ("totale",   "Totale"),
+    ("parziale", "Parziale"),
+]
+
+
+class RicercaNoteCreditoForm(forms.Form):
+    q = forms.CharField(
+        required=False,
+        label="Cerca",
+        widget=forms.TextInput(attrs={**W, "placeholder": "N° NC, n° fattura, destinatario…"}),
+    )
+    tipo = forms.ChoiceField(
+        choices=TIPO_NC_CHOICES,
+        required=False,
+        label="Tipo",
+        widget=forms.Select(attrs=W_SEL),
+    )
+    data_da = forms.DateField(
+        required=False,
+        label="Data emissione dal",
+        widget=forms.DateInput(attrs=W_DATE),
+    )
+    data_a = forms.DateField(
+        required=False,
+        label="Data emissione al",
+        widget=forms.DateInput(attrs=W_DATE),
+    )
+
+    def clean(self):
+        cd = super().clean()
+        da = cd.get("data_da")
+        a  = cd.get("data_a")
+        if da and a and da > a:
+            self.add_error("data_a", "La data di fine deve essere successiva alla data di inizio.")
+        return cd

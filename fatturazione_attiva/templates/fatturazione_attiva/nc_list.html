@@ -10,76 +10,128 @@
     </ol>
   </nav>
   <h1 class="mb-0"><i class="bi bi-arrow-counterclockwise me-2 text-danger"></i>Note di credito</h1>
-  <p class="text-muted mb-0">Tutte le note di credito emesse</p>
+  <p class="text-muted mb-0">Ricerca e gestione note di credito emesse</p>
 </div>
 
-<div class="row g-3 mb-4">
-  <div class="col-sm-6">
-    <div class="card text-center">
-      <div class="card-body py-3">
-        <div class="text-muted small mb-1">Note emesse</div>
-        <div class="fw-bold fs-2 text-danger">{{ note|length }}</div>
-      </div>
-    </div>
-  </div>
-  <div class="col-sm-6">
-    <div class="card text-center">
-      <div class="card-body py-3">
-        <div class="text-muted small mb-1">Totale accreditato</div>
-        <div class="fw-bold fs-2 text-danger">€ {{ totale }}</div>
-      </div>
-    </div>
-  </div>
-</div>
-
-{% if note %}
-<div class="card">
+{# ── Form di ricerca ──────────────────────────────────────────────────────── #}
+<div class="card mb-4">
   <div class="card-header card-header-primary">
-    <i class="bi bi-table me-2"></i>Elenco note di credito ({{ note|length }})
+    <i class="bi bi-search me-2"></i>Ricerca note di credito
   </div>
-  <div class="table-responsive">
-    <table class="table table-hover table-sm mb-0 align-middle">
-      <thead class="table-light">
-        <tr>
-          <th>Numero NC</th>
-          <th>Data</th>
-          <th>Fattura rif.</th>
-          <th>Destinatario</th>
-          <th>Tipo</th>
-          <th class="text-end">Totale NC</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for nc in note %}
-        <tr>
-          <td class="fw-semibold text-danger">{{ nc.numero }}</td>
-          <td class="text-nowrap small">{{ nc.data_emissione|date:"d/m/Y" }}</td>
-          <td>
-            <a href="{% url 'fatturazione_attiva:fattura_detail' nc.fattura.pk %}"
-               class="text-decoration-none fw-semibold small">{{ nc.fattura.numero }}</a>
-          </td>
-          <td class="small">{{ nc.dest_nome }}</td>
-          <td><span class="badge bg-secondary">{{ nc.get_tipo_display }}</span></td>
-          <td class="text-end fw-semibold text-danger">€ {{ nc.totale }}</td>
-          <td class="text-end">
-            <a href="{% url 'fatturazione_attiva:nc_detail' nc.pk %}"
-               class="btn btn-outline-secondary btn-sm"><i class="bi bi-eye"></i></a>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-      <tfoot class="table-light fw-semibold">
-        <tr>
-          <td colspan="5" class="text-end">Totale</td>
-          <td class="text-end text-danger">€ {{ totale }}</td>
-          <td></td>
-        </tr>
-      </tfoot>
-    </table>
+  <div class="card-body">
+    <form method="get" class="row g-3 align-items-end">
+
+      <div class="col-md-4">
+        <label class="form-label fw-semibold small">{{ form.q.label }}</label>
+        {{ form.q }}
+      </div>
+
+      <div class="col-md-2">
+        <label class="form-label fw-semibold small">{{ form.tipo.label }}</label>
+        {{ form.tipo }}
+      </div>
+
+      <div class="col-md-2">
+        <label class="form-label fw-semibold small">{{ form.data_da.label }}</label>
+        {{ form.data_da }}
+        {% if form.data_da.errors %}<div class="text-danger small mt-1">{{ form.data_da.errors }}</div>{% endif %}
+      </div>
+
+      <div class="col-md-2">
+        <label class="form-label fw-semibold small">{{ form.data_a.label }}</label>
+        {{ form.data_a }}
+        {% if form.data_a.errors %}<div class="text-danger small mt-1">{{ form.data_a.errors }}</div>{% endif %}
+      </div>
+
+      <div class="col-md-2 d-flex gap-2">
+        <button type="submit" class="btn btn-primary btn-sm flex-grow-1">
+          <i class="bi bi-search me-1"></i>Cerca
+        </button>
+        <a href="{% url 'fatturazione_attiva:nc_list' %}" class="btn btn-outline-secondary btn-sm">
+          <i class="bi bi-x"></i>
+        </a>
+      </div>
+
+    </form>
   </div>
 </div>
-{% else %}
-<div class="alert alert-info"><i class="bi bi-info-circle me-2"></i>Nessuna nota di credito emessa.</div>
+
+{# ── Risultati ─────────────────────────────────────────────────────────────── #}
+{% if ricerca_eseguita %}
+
+  {% if note %}
+
+  <div class="row g-3 mb-4">
+    <div class="col-sm-6">
+      <div class="card text-center">
+        <div class="card-body py-3">
+          <div class="text-muted small mb-1">Note trovate</div>
+          <div class="fw-bold fs-2 text-danger">{{ note|length }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-6">
+      <div class="card text-center">
+        <div class="card-body py-3">
+          <div class="text-muted small mb-1">Totale accreditato</div>
+          <div class="fw-bold fs-2 text-danger">€ {{ totale }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header card-header-primary">
+      <i class="bi bi-table me-2"></i>Note di credito ({{ note|length }})
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover table-sm mb-0 align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>Numero NC</th>
+            <th>Data</th>
+            <th>Fattura rif.</th>
+            <th>Destinatario</th>
+            <th>Tipo</th>
+            <th class="text-end">Totale NC</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for nc in note %}
+          <tr>
+            <td class="fw-semibold text-danger">{{ nc.numero }}</td>
+            <td class="text-nowrap small">{{ nc.data_emissione|date:"d/m/Y" }}</td>
+            <td>
+              <a href="{% url 'fatturazione_attiva:fattura_detail' nc.fattura.pk %}"
+                 class="text-decoration-none fw-semibold small">{{ nc.fattura.numero }}</a>
+            </td>
+            <td class="small">{{ nc.dest_nome }}</td>
+            <td><span class="badge bg-secondary">{{ nc.get_tipo_display }}</span></td>
+            <td class="text-end fw-semibold text-danger">€ {{ nc.totale }}</td>
+            <td class="text-end">
+              <a href="{% url 'fatturazione_attiva:nc_detail' nc.pk %}"
+                 class="btn btn-outline-secondary btn-sm"><i class="bi bi-eye"></i></a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot class="table-light fw-semibold">
+          <tr>
+            <td colspan="5" class="text-end">Totale</td>
+            <td class="text-end text-danger">€ {{ totale }}</td>
+            <td></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+
+  {% else %}
+  <div class="alert alert-info">
+    <i class="bi bi-info-circle me-2"></i>Nessuna nota di credito trovata con i criteri selezionati.
+  </div>
+  {% endif %}
+
 {% endif %}
 {% endblock %}
