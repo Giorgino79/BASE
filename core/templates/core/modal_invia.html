@@ -18,13 +18,14 @@ Parametri (tutti opzionali):
   btn_size         — "btn-sm" / "btn-lg" / "" (default "")
 {% endcomment %}
 
-<!-- BOTTONE -->
+{% if not hide_button %}<!-- BOTTONE -->
 <button type="button"
         class="btn {{ btn_class|default:'btn-primary' }} {{ btn_size }}"
         data-bs-toggle="modal"
         data-bs-target="#{{ modal_id }}">
     <i class="bi bi-whatsapp{% if label %} me-1{% endif %}"></i>{% if label %}{{ label }}{% endif %}
 </button>
+{% endif %}
 
 <!-- MODAL -->
 <div class="modal fade" id="{{ modal_id }}" tabindex="-1" aria-labelledby="{{ modal_id }}Label" aria-hidden="true">

@@ -29,6 +29,13 @@ Variabili opzionali:
       <i class="bi bi-pencil-square me-2" style="color:var(--color-1);"></i>Modifica
     </a>
     {% endif %}
+    {% if print_url %}
+    <a href="{{ print_url }}" target="_blank"
+       class="list-group-item list-group-item-action py-2"
+       style="color:var(--slate-700);">
+      <i class="bi bi-printer me-2" style="color:var(--color-1);"></i>Stampa scheda
+    </a>
+    {% endif %}
     {% for action in extra_actions %}
     <a href="{{ action.url }}" class="list-group-item list-group-item-action py-2"
        style="color:var(--slate-700);">

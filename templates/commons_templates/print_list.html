@@ -1,0 +1,56 @@
+{% extends 'commons_templates/print_base.html' %}
+{% load print_tags %}
+
+{% block page_orientation %}{{ print_orientation|default:'landscape' }}{% endblock %}
+{% block sheet_width %}{% if print_orientation == 'portrait' %}210mm{% else %}297mm{% endif %}{% endblock %}
+
+{% block print_title_tag %}{{ print_title }}{% endblock %}
+{% block print_title %}{{ print_title }}{% endblock %}
+{% block header_title %}{{ print_title }}{% endblock %}
+
+{% block print_meta %}
+  {% now "d/m/Y H:i" %}<br>
+  {{ request.user.get_full_name|default:request.user.username }}<br>
+  <strong>{{ object_list|length }} record</strong>
+{% endblock %}
+
+{% block content %}
+<table class="list-table">
+  <thead>
+    <tr>
+      <th>#</th>
+      {% for field_name, label in print_fields %}
+      <th>{{ label }}</th>
+      {% endfor %}
+    </tr>
+  </thead>
+  <tbody>
+    {% for obj in object_list %}
+    <tr>
+      <td style="color:#94a3b8;">{{ forloop.counter }}</td>
+      {% for field_name, label in print_fields %}
+      <td>{{ obj|get_field_value:field_name }}</td>
+      {% endfor %}
+    </tr>
+    {% empty %}
+    <tr>
+      <td colspan="{{ print_fields|length|add:1 }}"
+          style="text-align:center;color:#94a3b8;padding:8mm;">
+        Nessun record trovato.
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+  {% if object_list %}
+  <tfoot>
+    <tr>
+      <td colspan="{{ print_fields|length|add:1 }}">
+        Totale: <strong>{{ object_list|length }}</strong> record
+      </td>
+    </tr>
+  </tfoot>
+  {% endif %}
+</table>
+{% endblock %}
+
+{% block footer_left %}{{ print_title }} — {{ object_list|length }} record{% endblock %}

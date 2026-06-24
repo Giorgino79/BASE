@@ -1,0 +1,33 @@
+{% extends 'commons_templates/print_base.html' %}
+{% load print_tags %}
+
+{% block print_title_tag %}{{ print_title }}{% endblock %}
+{% block print_title %}{{ print_title }}{% endblock %}
+{% block header_title %}{{ print_title }}{% endblock %}
+
+{% block content %}
+{% if print_sections %}
+  {% for section_title, fields in print_sections %}
+  <div class="section-title">{{ section_title }}</div>
+  <table class="detail-table">
+    {% for field_name, label in fields %}
+    <tr>
+      <th>{{ label }}</th>
+      <td>{{ object|get_field_value:field_name }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% endfor %}
+{% else %}
+  <table class="detail-table">
+    {% for field_name, label in print_fields %}
+    <tr>
+      <th>{{ label }}</th>
+      <td>{{ object|get_field_value:field_name }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+{% endif %}
+{% endblock %}
+
+{% block footer_left %}{{ print_title }}{% endblock %}

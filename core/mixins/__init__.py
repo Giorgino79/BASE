@@ -24,6 +24,9 @@ def __getattr__(name):
                 "FilterMixin", "SearchMixin", "BreadcrumbMixin"):
         from . import view_mixins
         return getattr(view_mixins, name)
+    if name in ("PrintListMixin", "PrintDetailMixin"):
+        from . import print_mixins
+        return getattr(print_mixins, name)
     raise AttributeError(f"module '{__name__}' has no attribute '{name}'")
 
 __all__ = [
@@ -38,4 +41,7 @@ __all__ = [
     "PermissionRequiredMixin",
     "AjaxRequiredMixin",
     "JSONResponseMixin",
+    # Print Mixins (lazy loaded)
+    "PrintListMixin",
+    "PrintDetailMixin",
 ]

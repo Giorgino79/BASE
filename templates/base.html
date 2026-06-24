@@ -35,6 +35,12 @@
 
   <nav class="sidebar-nav">
     <ul class="nav flex-column">
+      <li class="nav-item">
+        <a href="{% url 'dashboard' %}"
+           class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+          <i class="bi bi-house-fill"></i> Home
+        </a>
+      </li>
       {% for group in sidebar_nav %}
       {% for item in group.items %}
       <li class="nav-item">
@@ -368,5 +374,9 @@
 {% include 'commons_templates/components/allegato_upload_modal.html' %}
 {% include 'commons_templates/components/allegati_gestione_modal.html' %}
 {% block modals %}{% endblock %}
+{% if request.user.is_authenticated %}
+{% include 'core/modal_invia.html' with modal_id="fabInviaModal" hide_button=True %}
+{% include 'commons_templates/components/fab_tools.html' %}
+{% endif %}
 </body>
 </html>

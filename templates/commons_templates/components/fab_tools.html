@@ -1,0 +1,255 @@
+{% comment %}
+FAB Strumenti — card fissa in basso a destra con funzioni generali.
+Appare su tutte le pagine (incluso in base.html).
+
+Item context-aware (appaiono solo se il contesto è disponibile):
+  print_url       → Stampa (iniettato da PrintListMixin / PrintDetailMixin)
+  object_id +
+  content_type_id → Allegati, QR Code, Invia (iniettato da SidebarQrAllegatiMixin)
+
+Item globali (sempre visibili):
+  Calendario Aziendale, Calendario Personale, Promemoria, Chat
+{% endcomment %}
+
+<div id="fab-tools" class="fab-tools-container">
+
+  <!-- Sub-items: si espandono verso l'alto al click sul FAB principale -->
+  <div id="fab-tools-items" class="fab-tools-items" aria-hidden="true">
+
+    {% if print_url %}
+    <div class="fab-tool-row">
+      <span class="fab-tool-label">Stampa</span>
+      <a href="{{ print_url }}" target="_blank" class="fab-tool-btn" title="Stampa">
+        <i class="bi bi-printer"></i>
+      </a>
+    </div>
+    {% endif %}
+
+    {% if object_id and content_type_id %}
+    <div class="fab-tool-row">
+      <span class="fab-tool-label">Allegati</span>
+      <button type="button" class="fab-tool-btn" id="fab-allegati-btn" title="Allegati">
+        <i class="bi bi-paperclip"></i>
+      </button>
+    </div>
+
+    <div class="fab-tool-row">
+      <span class="fab-tool-label">QR Code</span>
+      <button type="button" class="fab-tool-btn" id="fab-qr-btn" title="QR Code">
+        <i class="bi bi-qr-code"></i>
+      </button>
+    </div>
+
+    <div class="fab-tool-row">
+      <span class="fab-tool-label">Invia (WhatsApp / Email)</span>
+      <button type="button" class="fab-tool-btn"
+              data-bs-toggle="modal" data-bs-target="#fabInviaModal"
+              title="Invia">
+        <i class="bi bi-send"></i>
+      </button>
+    </div>
+    {% endif %}
+
+    <div class="fab-tool-row">
+      <span class="fab-tool-label">Cal. Aziendale</span>
+      <a href="{% url 'core:calendario_aziendale' %}" class="fab-tool-btn" title="Calendario Aziendale">
+        <i class="bi bi-calendar2-week"></i>
+      </a>
+    </div>
+
+    <div class="fab-tool-row">
+      <span class="fab-tool-label">Il mio Calendario</span>
+      <a href="{% url 'core:calendario_personale' %}" class="fab-tool-btn" title="Calendario Personale">
+        <i class="bi bi-person-calendar"></i>
+      </a>
+    </div>
+
+    <div class="fab-tool-row">
+      <span class="fab-tool-label">Promemoria</span>
+      <a href="{% url 'comunicazioni:promemoria_list' %}" class="fab-tool-btn" title="Promemoria">
+        <i class="bi bi-bell"></i>
+      </a>
+    </div>
+
+    <div class="fab-tool-row">
+      <span class="fab-tool-label">Chat</span>
+      <a href="{% url 'comunicazioni:chat_list' %}" class="fab-tool-btn" title="Chat">
+        <i class="bi bi-chat-dots"></i>
+      </a>
+    </div>
+
+  </div>
+
+  <!-- Bottone principale -->
+  <button id="fab-tools-main" class="fab-tools-main" aria-label="Strumenti" aria-expanded="false">
+    <i class="bi bi-tools fab-icon-open"></i>
+    <i class="bi bi-x-lg fab-icon-close"></i>
+  </button>
+
+</div>
+
+<style>
+/* ── Contenitore ──────────────────────────────────────── */
+.fab-tools-container {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  z-index: 1040;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+/* ── Bottone principale ───────────────────────────────── */
+.fab-tools-main {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: var(--color-1, #2563eb);
+  color: #fff;
+  border: none;
+  box-shadow: 0 4px 14px rgba(0,0,0,.25);
+  font-size: 1.1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform .2s, box-shadow .2s;
+  flex-shrink: 0;
+}
+.fab-tools-main:hover {
+  transform: scale(1.08);
+  box-shadow: 0 6px 18px rgba(0,0,0,.3);
+}
+
+/* ── Icone open/close ─────────────────────────────────── */
+.fab-icon-close { display: none; }
+.fab-tools-container.open .fab-icon-open  { display: none; }
+.fab-tools-container.open .fab-icon-close { display: inline; }
+
+/* ── Lista sub-item ───────────────────────────────────── */
+.fab-tools-items {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  /* nascosto di default */
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(8px);
+  transition: opacity .18s ease, transform .18s ease;
+}
+.fab-tools-container.open .fab-tools-items {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+/* ── Riga singolo item ────────────────────────────────── */
+.fab-tool-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ── Label tooltip ────────────────────────────────────── */
+.fab-tool-label {
+  background: rgba(15,23,42,.82);
+  color: #fff;
+  padding: 3px 9px;
+  border-radius: 5px;
+  font-size: .73rem;
+  white-space: nowrap;
+  pointer-events: none;
+  backdrop-filter: blur(4px);
+}
+
+/* ── Bottoni rotondi ──────────────────────────────────── */
+.fab-tool-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #fff;
+  border: 1px solid rgba(0,0,0,.1);
+  box-shadow: 0 2px 8px rgba(0,0,0,.14);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--slate-700, #374151);
+  font-size: .95rem;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background .15s, color .15s, transform .15s;
+  flex-shrink: 0;
+}
+.fab-tool-btn:hover, .fab-tool-btn:focus {
+  background: var(--color-1, #2563eb);
+  color: #fff;
+  border-color: transparent;
+  transform: scale(1.1);
+  outline: none;
+}
+
+/* ── Non mostrare in stampa ───────────────────────────── */
+@media print {
+  .fab-tools-container { display: none; }
+}
+</style>
+
+<script>
+(function () {
+  const container = document.getElementById('fab-tools');
+  const mainBtn   = document.getElementById('fab-tools-main');
+  const items     = document.getElementById('fab-tools-items');
+  if (!mainBtn) return;
+
+  function toggle() {
+    const open = container.classList.toggle('open');
+    mainBtn.setAttribute('aria-expanded', open);
+    items.setAttribute('aria-hidden', !open);
+  }
+
+  mainBtn.addEventListener('click', function (e) {
+    e.stopPropagation();
+    toggle();
+  });
+
+  // Chiudi cliccando fuori
+  document.addEventListener('click', function (e) {
+    if (container.classList.contains('open') && !container.contains(e.target)) {
+      container.classList.remove('open');
+      mainBtn.setAttribute('aria-expanded', 'false');
+      items.setAttribute('aria-hidden', 'true');
+    }
+  });
+
+  const fabCtId  = '{{ content_type_id }}';
+  const fabObjId = '{{ object_id }}';
+
+  // Allegati — apre il modal DOPO aver impostato il dataset, evitando race con show.bs.modal
+  const allegatiBtn = document.getElementById('fab-allegati-btn');
+  if (allegatiBtn) {
+    allegatiBtn.addEventListener('click', function () {
+      const modal = document.getElementById('allegatiGestioneModal');
+      if (!modal) return;
+      modal.dataset.contentTypeId = fabCtId;
+      modal.dataset.objectId      = fabObjId;
+      bootstrap.Modal.getOrCreateInstance(modal).show();
+    });
+  }
+
+  // QR Code — mostra il QR dell'oggetto corrente (se disponibile)
+  const qrBtn = document.getElementById('fab-qr-btn');
+  if (qrBtn) {
+    qrBtn.addEventListener('click', function () {
+      if (!fabCtId || !fabObjId) return;
+      window.open(
+        '/core/qrcode/' + fabCtId + '/' + fabObjId + '/stampa/',
+        '_blank',
+        'width=500,height=500'
+      );
+    });
+  }
+})();
+</script>

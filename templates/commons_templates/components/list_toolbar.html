@@ -1,0 +1,33 @@
+{% comment %}
+Toolbar per pagine lista con azioni contestuali.
+Includere sopra la card tabella, dopo l'header pagina.
+
+Variabili opzionali (iniettate da PrintListMixin):
+  print_url — URL stampa lista con filtri correnti
+
+Esempio uso nel template:
+  {% include 'commons_templates/components/list_toolbar.html' %}
+{% endcomment %}
+
+{% if print_url or extra_toolbar_actions %}
+<div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
+
+  {% if print_url %}
+  <a href="{{ print_url }}" target="_blank"
+     class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-printer me-1"></i>Stampa lista
+  </a>
+  {% endif %}
+
+  {% for action in extra_toolbar_actions %}
+  <a href="{{ action.url }}"
+     class="btn btn-outline-secondary btn-sm {{ action.css_class|default:'' }}"
+     {% if action.target %}target="{{ action.target }}"{% endif %}>
+    <i class="bi {{ action.icon|default:'bi-arrow-right' }} me-1"></i>{{ action.label }}
+  </a>
+  {% endfor %}
+
+  {% block extra_tools %}{% endblock %}
+
+</div>
+{% endif %}

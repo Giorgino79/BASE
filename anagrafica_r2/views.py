@@ -12,6 +12,7 @@ from datetime import timedelta
 import csv
 
 from core.pdf_generator import generate_pdf_response
+from core.mixins import PrintListMixin, PrintDetailMixin
 
 from .models import Azienda, Filiale, Fornitore, Privato
 from .forms import AziendaForm, FilialeForm, FornitoreForm, PrivatoForm
@@ -45,11 +46,17 @@ def dashboard(request):
 
 # ── Clienti (Aziende) ────────────────────────────────────────────────────────
 
-class AziendaListView(AccessMixin, ListView):
+class AziendaListView(PrintListMixin, AccessMixin, ListView):
     model = Azienda
     template_name = 'anagrafica_r2/clienti/elenco.html'
     context_object_name = 'clienti'
     paginate_by = 25
+    print_title = 'Elenco Clienti'
+    print_fields = [
+        'ragione_sociale', 'citta', 'provincia',
+        'telefono', 'email_operativo', 'partita_iva',
+        'referente', 'installato', 'attivo',
+    ]
 
     def get_queryset(self):
         qs = Azienda.objects.annotate(n_sedi=Count('filiali'))
@@ -92,10 +99,25 @@ class AziendaListView(AccessMixin, ListView):
         return ctx
 
 
-class AziendaDetailView(AccessMixin, DetailView):
+class AziendaDetailView(PrintDetailMixin, AccessMixin, DetailView):
     model = Azienda
     template_name = 'anagrafica_r2/clienti/dettaglio.html'
     context_object_name = 'cliente'
+    print_sections = [
+        ('Dati Anagrafici', [
+            'ragione_sociale', 'indirizzo', 'citta', 'cap', 'provincia', 'zona',
+        ]),
+        ('Contatti', [
+            'referente', 'telefono', 'email_operativo', 'email_operativo_2',
+            'email_direzione', 'pec',
+        ]),
+        ('Dati Fiscali', [
+            'partita_iva', 'codice_univoco',
+        ]),
+        ('Stato', [
+            'installato', 'attivo', 'note',
+        ]),
+    ]
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
