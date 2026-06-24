@@ -131,6 +131,8 @@ def invia_documento(request):
                     WhatsAppSender.send_pdf_by_url(telefono, abs_pdf_url, filename=filename, caption=caption, log_entry=wa_log)
                 else:
                     testo = f"{oggetto}\n\n{testo_extra}".strip() if testo_extra else oggetto
+                    if not testo:
+                        testo = "Messaggio da Rattus26"
                     WhatsAppSender.send_message(telefono, testo, log_entry=wa_log)
 
             # --- Email ---

@@ -242,6 +242,9 @@ Parametri (tutti opzionali):
         if ((canale === "email" || canale === "entrambi") && !email) {
             showFeedback("warning", "Inserisci l'email del destinatario."); return;
         }
+        if (!oggetto && !messaggio) {
+            showFeedback("warning", "Inserisci almeno un oggetto o un messaggio."); return;
+        }
 
         setLoading(true);
         clearFeedback();
