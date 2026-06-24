@@ -42,6 +42,26 @@
               <div class="detail-field-value">{{ inst.data_installazione|date:"d/m/Y" }}</div>
             </div>
           </div>
+          <div class="col-sm-6">
+            <div class="detail-field">
+              <div class="detail-field-label">ODS collegato</div>
+              <div class="detail-field-value">
+                {% if inst.ods_creato %}
+                  <a href="{{ inst.ods_creato.get_absolute_url }}" class="text-decoration-none text-brand fw-semibold">
+                    {{ inst.ods_creato.numero }}
+                  </a>
+                  <span class="badge ms-1
+                    {% if inst.ods_creato.stato == 'completato' %}badge-ok
+                    {% elif inst.ods_creato.stato == 'annullato' %}badge-ko
+                    {% else %}badge-info{% endif %}">
+                    {{ inst.ods_creato.get_stato_display }}
+                  </span>
+                {% else %}
+                  <span class="text-muted">—</span>
+                {% endif %}
+              </div>
+            </div>
+          </div>
           {% if inst.prodotto_principale %}
           <div class="col-sm-6">
             <div class="detail-field">

@@ -12,6 +12,7 @@ from .forms import (
     InterventoInstallazioneForm, RiscontroPostazioneForm,
 )
 from magazzino.models import Prodotto
+from servizi.models import ODS, ODSRiga
 
 
 # ── Installazioni ─────────────────────────────────────────────────────────────
@@ -59,6 +60,7 @@ def installazione_detail(request, pk):
 
 
 @login_required
+@transaction.atomic
 def installazione_create(request):
     if request.method == "POST":
         form = InstallazioneForm(request.POST)
@@ -66,7 +68,26 @@ def installazione_create(request):
             inst = form.save(commit=False)
             inst.created_by = request.user
             inst.save()
-            messages.success(request, f"Installazione {inst.numero} creata.")
+
+            # ODS automatico
+            ods = ODS.objects.create(
+                filiale=inst.filiale,
+                privato=inst.privato,
+                data_servizio=inst.data_installazione,
+                stato=ODS.Stato.DA_ESPLETARE,
+                note_intervento=f"Installazione {inst.numero} — {inst.servizio.nome}",
+                created_by=request.user,
+            )
+            ODSRiga.objects.create(
+                ods=ods,
+                servizio=inst.servizio,
+                prezzo=inst.servizio.tariffa_cartello,
+                ordine=1,
+            )
+            inst.ods_creato = ods
+            inst.save(update_fields=["ods_creato"])
+
+            messages.success(request, f"Installazione {inst.numero} creata — ODS {ods.numero} generato automaticamente.")
             return redirect(inst.get_absolute_url())
     else:
         form = InstallazioneForm()

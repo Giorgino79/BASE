@@ -49,6 +49,12 @@ class Installazione(AllegatiMixin, models.Model):
     attiva = models.BooleanField(default=True, verbose_name="Attiva")
     note = models.TextField(blank=True, verbose_name="Note")
 
+    ods_creato = models.OneToOneField(
+        "servizi.ODS", on_delete=models.SET_NULL,
+        null=True, blank=True, related_name="installazione_collegata",
+        verbose_name="ODS creato",
+    )
+
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
         null=True, blank=True, related_name="installazioni_create",
