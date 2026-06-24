@@ -42,9 +42,7 @@ Item globali (sempre visibili):
 
     <div class="fab-tool-row">
       <span class="fab-tool-label">Invia (WhatsApp / Email)</span>
-      <button type="button" class="fab-tool-btn"
-              data-bs-toggle="modal" data-bs-target="#fabInviaModal"
-              title="Invia">
+      <button type="button" class="fab-tool-btn" id="fab-invia-btn" title="Invia">
         <i class="bi bi-send"></i>
       </button>
     </div>
@@ -235,6 +233,24 @@ Item globali (sempre visibili):
       if (!modal) return;
       modal.dataset.contentTypeId = fabCtId;
       modal.dataset.objectId      = fabObjId;
+      bootstrap.Modal.getOrCreateInstance(modal).show();
+    });
+  }
+
+  // Invia — pre-compila oggetto e link alla pagina corrente prima di aprire il modal
+  const inviaBtn = document.getElementById('fab-invia-btn');
+  if (inviaBtn) {
+    inviaBtn.addEventListener('click', function () {
+      const modal = document.getElementById('fabInviaModal');
+      if (!modal) return;
+      const oggettoEl  = document.getElementById('fabInviaModal_oggetto');
+      const messaggioEl = document.getElementById('fabInviaModal_messaggio');
+      if (oggettoEl && !oggettoEl.value) {
+        oggettoEl.value = '{{ object }}';
+      }
+      if (messaggioEl && !messaggioEl.value) {
+        messaggioEl.value = window.location.href;
+      }
       bootstrap.Modal.getOrCreateInstance(modal).show();
     });
   }
