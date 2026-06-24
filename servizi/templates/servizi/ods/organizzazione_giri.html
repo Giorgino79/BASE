@@ -18,48 +18,6 @@
   </a>
 </div>
 
-{# ── ALERT PRODOTTI MANCANTI ────────────────────────────────────────────────── #}
-{% if avvisi_mancanti %}
-<div class="alert alert-danger border-danger shadow mb-4 p-0 overflow-hidden">
-  <div class="d-flex align-items-center gap-3 px-4 py-3" style="background:#b91c1c;">
-    <i class="bi bi-exclamation-triangle-fill text-white flex-shrink-0" style="font-size:2rem;"></i>
-    <div class="text-white">
-      <div class="fw-bold" style="font-size:1.15rem;">Prodotti mancanti sui mezzi!</div>
-      <div class="small opacity-75">Alcuni tecnici non hanno prodotti sufficienti per completare i servizi assegnati</div>
-    </div>
-  </div>
-  {% for avviso in avvisi_mancanti %}
-  <div class="px-4 py-2 fw-semibold" style="background:#fee2e2;border-top:1px solid #fca5a5;">
-    <i class="bi bi-person me-1 text-danger"></i>{{ avviso.tecnico.get_full_name }}
-    <span class="text-muted fw-normal small ms-2"><i class="bi bi-truck me-1"></i>{{ avviso.mezzo }}</span>
-  </div>
-  <div class="table-responsive">
-    <table class="table table-sm mb-0" style="background:#fff5f5;">
-      <thead style="background:#fee2e2;">
-        <tr>
-          <th class="ps-4 text-danger">Prodotto</th>
-          <th class="text-end text-danger">Necessario</th>
-          <th class="text-end text-danger">A bordo</th>
-          <th class="text-end pe-4 text-danger">Mancante</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for p in avviso.prodotti %}
-        <tr>
-          <td class="ps-4 fw-semibold">{{ p.nome }}</td>
-          <td class="text-end">{{ p.necessaria|floatformat:"-3" }}</td>
-          <td class="text-end {% if p.a_bordo <= 0 %}text-danger fw-bold{% else %}text-warning fw-semibold{% endif %}">
-            {{ p.a_bordo|floatformat:"-3" }}
-          </td>
-          <td class="text-end pe-4 text-danger fw-bold">{{ p.mancante|floatformat:"-3" }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-  {% endfor %}
-</div>
-{% endif %}
 
 {# ── DA ORGANIZZARE ─────────────────────────────────────────────────────────── #}
 {% if gruppi_da_organizzare %}
@@ -200,7 +158,7 @@
 
 {% for giro in giri_confermati %}
 <div class="card mb-3">
-  <div class="card-header d-flex justify-content-between align-items-center">
+  <div class="card-header d-flex justify-content-between align-items-center{% if giro.tecnico.pk in tecnici_con_mancanze %}" style="background:#fee2e2;{% endif %}">
     <div>
       <i class="bi bi-person-fill me-2"></i>
       <span class="fw-semibold">
@@ -209,6 +167,9 @@
       <span class="badge badge-info ms-2">{{ giro.ods|length }} ODS{% if giro.condomini %} + {{ giro.condomini|length }} cond.{% endif %}</span>
       {% if giro.senza_distinta > 0 %}
       <span class="badge bg-warning text-dark ms-1">{{ giro.senza_distinta }} senza distinta</span>
+      {% endif %}
+      {% if giro.tecnico.pk in tecnici_con_mancanze %}
+      <span class="badge ms-1" style="background:#f87171;color:#fff;"><i class="bi bi-box-seam me-1"></i>prodotti mancanti</span>
       {% endif %}
     </div>
     {% if giro.tecnico and giro.senza_distinta > 0 %}

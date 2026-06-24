@@ -929,6 +929,7 @@ def organizzazione_giri(request):
         "automezzi": automezzi,
         "today": timezone.localdate().isoformat(),
         "avvisi_mancanti": avvisi_mancanti,
+        "tecnici_con_mancanze": {a["tecnico"].pk for a in avvisi_mancanti},
     })
 
 
