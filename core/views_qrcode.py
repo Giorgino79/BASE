@@ -208,7 +208,11 @@ def qrcode_stampa(request, content_type_id, object_id):
         defaults={"created_by": request.user}
     )
 
-    has_image = bool(qr_obj.qr_image) and qr_obj.qr_image.name
+    has_image = (
+        bool(qr_obj.qr_image) and
+        qr_obj.qr_image.name and
+        qr_obj.qr_image.storage.exists(qr_obj.qr_image.name)
+    )
 
     if created or not has_image:
         if hasattr(linked_obj, 'get_absolute_url'):
