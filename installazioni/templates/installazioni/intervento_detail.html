@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% load static %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/detail.css' %}">{% endblock %}
+{% block content %}
+<div class="page-header mb-4">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'installazioni:installazione_list' %}">Installazioni</a></li>
+      <li class="breadcrumb-item"><a href="{{ inst.get_absolute_url }}">{{ inst.numero }}</a></li>
+      <li class="breadcrumb-item active">Intervento {{ intervento.data_intervento|date:"d/m/Y" }}</li>
+    </ol>
+  </nav>
+  <h1><i class="bi bi-clipboard-check me-2 text-brand"></i>Intervento del {{ intervento.data_intervento|date:"d/m/Y" }}</h1>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-8">
+
+    <!-- Dati -->
+    <div class="card mb-3">
+      <div class="card-header card-header-primary"><i class="bi bi-info-circle me-2"></i>Dati intervento</div>
+      <div class="card-body">
+        <div class="row g-3">
+          <div class="col-sm-6">
+            <div class="detail-field">
+              <div class="detail-field-label">Installazione</div>
+              <div class="detail-field-value">
+                <a href="{{ inst.get_absolute_url }}" class="text-brand text-decoration-none fw-semibold">{{ inst.numero }}</a>
+              </div>
+            </div>
+          </div>
+          <div class="col-sm-6">
+            <div class="detail-field">
+              <div class="detail-field-label">Tecnico</div>
+              <div class="detail-field-value">{{ intervento.tecnico|default:"—" }}</div>
+            </div>
+          </div>
+          {% if intervento.prodotto %}
+          <div class="col-sm-6">
+            <div class="detail-field">
+              <div class="detail-field-label">Prodotto usato</div>
+              <div class="detail-field-value">{{ intervento.prodotto }}</div>
+            </div>
+          </div>
+          <div class="col-sm-6">
+            <div class="detail-field">
+              <div class="detail-field-label">Quantità</div>
+              <div class="detail-field-value">{{ intervento.quantita_prodotto|default:"—" }}</div>
+            </div>
+          </div>
+          {% endif %}
+          {% if intervento.ods %}
+          <div class="col-sm-6">
+            <div class="detail-field">
+              <div class="detail-field-label">ODS collegato</div>
+              <div class="detail-field-value">
+                <a href="{{ intervento.ods.get_absolute_url }}" class="text-decoration-none">{{ intervento.ods }}</a>
+              </div>
+            </div>
+          </div>
+          {% endif %}
+          {% if intervento.note %}
+          <div class="col-12">
+            <div class="detail-field mb-0">
+              <div class="detail-field-label">Note</div>
+              <div class="detail-field-value">{{ intervento.note|linebreaksbr }}</div>
+            </div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Riscontri per postazione -->
+    <div class="card mb-3">
+      <div class="card-header"><i class="bi bi-geo-alt me-2"></i>Riscontri postazioni</div>
+      <div class="table-responsive">
+        <table class="table mb-0">
+          <thead class="bg-brand text-white">
+            <tr><th>Postazione</th><th>Descrizione</th><th>Esito</th><th>Note</th></tr>
+          </thead>
+          <tbody>
+            {% for r in riscontri %}
+            <tr>
+              <td>
+                <a href="{{ r.postazione.get_absolute_url }}" class="text-decoration-none">
+                  {{ r.postazione.label }}
+                </a>
+              </td>
+              <td class="small text-muted">{{ r.postazione.descrizione_luogo|default:"—"|truncatechars:50 }}</td>
+              <td>
+                <span class="badge
+                  {% if r.esito == 'roditori' or r.esito == 'insetti' %}bg-danger
+                  {% elif r.esito == 'danneggiata' or r.esito == 'assente' %}bg-warning text-dark
+                  {% elif r.esito == 'innescata' %}bg-info text-dark
+                  {% else %}bg-success{% endif %}">
+                  {{ r.get_esito_display }}
+                </span>
+              </td>
+              <td class="small">{{ r.note|default:"—" }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4" class="text-center text-muted py-3"><i class="bi bi-inbox me-2"></i>Nessun riscontro registrato</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="col-lg-4">
+    {% if request.user.is_staff %}
+    <div class="card mb-3">
+      <div class="card-header"><i class="bi bi-gear me-2"></i>Azioni</div>
+      <div class="list-group list-group-flush">
+        <a href="{% url 'installazioni:intervento_delete' intervento.pk %}" class="list-group-item list-group-item-action text-danger">
+          <i class="bi bi-trash me-2"></i>Elimina intervento
+        </a>
+      </div>
+    </div>
+    {% endif %}
+    <div class="mt-2">
+      <a href="{{ inst.get_absolute_url }}" class="btn btn-outline-secondary btn-sm w-100">
+        <i class="bi bi-arrow-left me-1"></i>Torna all'installazione
+      </a>
+    </div>
+  </div>
+</div>
+{% endblock %}

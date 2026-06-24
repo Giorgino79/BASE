@@ -44,7 +44,11 @@ class Servizio(AllegatiMixin, models.Model):
         verbose_name="Tariffa di cartello",
         help_text="Prezzo di riferimento se non specificato nel contratto o nell'ODS",
     )
-    attivo           = models.BooleanField(default=True, verbose_name="Attivo")
+    attivo                 = models.BooleanField(default=True, verbose_name="Attivo")
+    richiede_installazione = models.BooleanField(
+        default=False, verbose_name="Richiede installazione",
+        help_text="Se attivo, questo servizio prevede postazioni fisse da installare e monitorare",
+    )
     created_at       = models.DateTimeField(auto_now_add=True)
     updated_at       = models.DateTimeField(auto_now=True)
 

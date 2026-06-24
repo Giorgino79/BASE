@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+{% load static %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/detail.css' %}">{% endblock %}
+{% block content %}
+<div class="page-header mb-4">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'installazioni:installazione_list' %}">Installazioni</a></li>
+      <li class="breadcrumb-item"><a href="{{ inst.get_absolute_url }}">{{ inst.numero }}</a></li>
+      <li class="breadcrumb-item active">{{ post.label }}</li>
+    </ol>
+  </nav>
+  <h1>
+    <i class="bi bi-geo-alt-fill me-2 text-brand"></i>{{ post.label }}
+    <span class="text-muted fs-5 ms-2">— {{ inst.numero }}</span>
+  </h1>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-8">
+
+    <!-- Dati postazione -->
+    <div class="card mb-3">
+      <div class="card-header card-header-primary"><i class="bi bi-info-circle me-2"></i>Dati postazione</div>
+      <div class="card-body">
+        <div class="row g-3">
+          <div class="col-sm-6">
+            <div class="detail-field">
+              <div class="detail-field-label">Installazione</div>
+              <div class="detail-field-value">
+                <a href="{{ inst.get_absolute_url }}" class="text-decoration-none text-brand fw-semibold">{{ inst.numero }}</a>
+              </div>
+            </div>
+          </div>
+          <div class="col-sm-6">
+            <div class="detail-field">
+              <div class="detail-field-label">Cliente</div>
+              <div class="detail-field-value">{{ inst.cliente_display }}</div>
+            </div>
+          </div>
+          <div class="col-sm-6">
+            <div class="detail-field">
+              <div class="detail-field-label">Tipo</div>
+              <div class="detail-field-value"><span class="badge bg-secondary">{{ inst.servizio.nome }}</span></div>
+            </div>
+          </div>
+          {% if inst.prodotto_principale %}
+          <div class="col-sm-6">
+            <div class="detail-field">
+              <div class="detail-field-label">Prodotto</div>
+              <div class="detail-field-value">{{ inst.prodotto_principale }}</div>
+            </div>
+          </div>
+          {% endif %}
+          <div class="col-sm-6">
+            <div class="detail-field">
+              <div class="detail-field-label">Cartello segnaletico</div>
+              <div class="detail-field-value">
+                {% if post.ha_cartello %}
+                  <i class="bi bi-check-circle-fill text-success me-1"></i>Presente
+                  {% if post.numero_cartello %} — <strong>{{ post.numero_cartello }}</strong>{% endif %}
+                {% else %}
+                  <i class="bi bi-x-circle text-muted me-1"></i>Non presente
+                {% endif %}
+              </div>
+            </div>
+          </div>
+          {% if post.descrizione_luogo %}
+          <div class="col-12">
+            <div class="detail-field mb-0">
+              <div class="detail-field-label">Descrizione luogo</div>
+              <div class="detail-field-value">{{ post.descrizione_luogo|linebreaksbr }}</div>
+            </div>
+          </div>
+          {% endif %}
+          {% if post.note %}
+          <div class="col-12">
+            <div class="detail-field mb-0">
+              <div class="detail-field-label">Note</div>
+              <div class="detail-field-value">{{ post.note|linebreaksbr }}</div>
+            </div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Foto / allegati della postazione -->
+    {% if post.get_allegati_immagini %}
+    <div class="card mb-3">
+      <div class="card-header"><i class="bi bi-images me-2"></i>Foto postazione</div>
+      <div class="card-body">
+        <div class="row g-2">
+          {% for img in post.get_allegati_immagini %}
+          <div class="col-6 col-md-4">
+            <a href="{{ img.file.url }}" target="_blank">
+              <img src="{{ img.file.url }}" class="img-fluid rounded" alt="{{ img.descrizione|default:img.nome_originale }}" style="max-height:160px;object-fit:cover;width:100%;">
+            </a>
+            {% if img.descrizione %}<div class="small text-muted mt-1">{{ img.descrizione }}</div>{% endif %}
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Storico interventi dell'installazione -->
+    <div class="card mb-3">
+      <div class="card-header"><i class="bi bi-clipboard-check me-2"></i>Interventi sull'installazione</div>
+      <div class="table-responsive">
+        <table class="table mb-0">
+          <thead class="bg-brand text-white">
+            <tr>
+              <th>Data</th>
+              <th>Tecnico</th>
+              <th>Prodotto</th>
+              <th>Esito questa postazione</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for interv in interventi %}
+            {% with riscontro=interv.riscontri.all|dictsort:"postazione.numero" %}
+            <tr>
+              <td>{{ interv.data_intervento|date:"d/m/Y" }}</td>
+              <td>{{ interv.tecnico|default:"—" }}</td>
+              <td>{{ interv.prodotto|default:"—" }}</td>
+              <td>
+                {% for r in interv.riscontri.all %}
+                  {% if r.postazione_id == post.pk %}
+                    <span class="badge
+                      {% if r.esito == 'roditori' or r.esito == 'insetti' %}bg-danger
+                      {% elif r.esito == 'danneggiata' or r.esito == 'assente' %}bg-warning text-dark
+                      {% elif r.esito == 'innescata' %}bg-info text-dark
+                      {% else %}bg-success{% endif %}">
+                      {{ r.get_esito_display }}
+                    </span>
+                    {% if r.note %}<span class="small text-muted ms-1">{{ r.note }}</span>{% endif %}
+                  {% endif %}
+                {% endfor %}
+              </td>
+              <td class="text-end">
+                <a href="{{ interv.get_absolute_url }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-eye"></i></a>
+              </td>
+            </tr>
+            {% endwith %}
+            {% empty %}
+            <tr><td colspan="5" class="text-center text-muted py-3"><i class="bi bi-inbox me-2"></i>Nessun intervento registrato</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Sidebar -->
+  <div class="col-lg-4">
+    {% if request.user.is_staff %}
+    <div class="card mb-3">
+      <div class="card-header"><i class="bi bi-gear me-2"></i>Azioni</div>
+      <div class="list-group list-group-flush">
+        <a href="{% url 'installazioni:postazione_update' post.pk %}" class="list-group-item list-group-item-action">
+          <i class="bi bi-pencil me-2"></i>Modifica postazione
+        </a>
+        <a href="{% url 'installazioni:intervento_create' inst.pk %}" class="list-group-item list-group-item-action text-success">
+          <i class="bi bi-plus-circle me-2"></i>Nuovo intervento
+        </a>
+        <a href="{% url 'installazioni:postazione_delete' post.pk %}" class="list-group-item list-group-item-action text-danger">
+          <i class="bi bi-trash me-2"></i>Elimina postazione
+        </a>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- QR Code -->
+    <div class="card mb-3">
+      <div class="card-header"><i class="bi bi-qr-code me-2"></i>QR Code postazione</div>
+      <div class="card-body text-center">
+        <img src="{% url 'installazioni:postazione_qrcode' post.pk %}" alt="QR Code" class="img-fluid" style="max-width:200px;">
+        <div class="mt-2">
+          <a href="{% url 'installazioni:postazione_qrcode' post.pk %}" download="QR_{{ post.installazione.numero }}_P{{ post.numero|stringformat:'02d' }}.png" class="btn btn-sm btn-outline-secondary w-100">
+            <i class="bi bi-download me-1"></i>Scarica QR
+          </a>
+        </div>
+        <div class="small text-muted mt-2">Scansionando questo QR si accede direttamente a questa pagina</div>
+      </div>
+    </div>
+
+    {% include 'commons_templates/components/sidebar_allegati_qr.html' with object=post %}
+
+    <div class="mt-2">
+      <a href="{{ inst.get_absolute_url }}" class="btn btn-outline-secondary btn-sm w-100">
+        <i class="bi bi-arrow-left me-1"></i>Torna all'installazione
+      </a>
+    </div>
+  </div>
+</div>
+{% endblock %}

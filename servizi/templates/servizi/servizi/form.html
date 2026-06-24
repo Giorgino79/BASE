@@ -41,6 +41,15 @@
                 <label class="form-check-label">{{ form.attivo.label }}</label>
               </div>
             </div>
+            <div class="col-12">
+              <div class="form-check">
+                {{ form.richiede_installazione }}
+                <label class="form-check-label">{{ form.richiede_installazione.label }}</label>
+              </div>
+              {% if form.richiede_installazione.help_text %}
+              <div class="form-text">{{ form.richiede_installazione.help_text }}</div>
+              {% endif %}
+            </div>
           </div>
         </div>
       </div>

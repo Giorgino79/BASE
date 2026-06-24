@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% load static %}
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-start mb-4">
+  <div>
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item active">Installazioni</li>
+      </ol>
+    </nav>
+    <h1><i class="bi bi-pin-map me-2 text-brand"></i>Installazioni</h1>
+  </div>
+  {% if request.user.is_staff %}
+  <a href="{% url 'installazioni:installazione_create' %}" class="btn btn-primary btn-sm">
+    <i class="bi bi-plus-lg me-1"></i>Nuova installazione
+  </a>
+  {% endif %}
+</div>
+
+<div class="card mb-3">
+  <div class="card-body py-2">
+    <form method="get" class="row g-2 align-items-end">
+      <div class="col-md-3">
+        <select name="stato" class="form-select form-select-sm">
+          <option value="attive" {% if stato_sel == "attive" %}selected{% endif %}>Solo attive</option>
+          <option value="inattive" {% if stato_sel == "inattive" %}selected{% endif %}>Solo inattive</option>
+          <option value="tutte" {% if stato_sel == "tutte" %}selected{% endif %}>Tutte</option>
+        </select>
+      </div>
+      <div class="col-md-4">
+        <input type="text" name="q" value="{{ cerca }}" class="form-control form-control-sm" placeholder="Cerca per numero…">
+      </div>
+      <div class="col-md-2">
+        <button type="submit" class="btn btn-sm btn-outline-secondary w-100">Filtra</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table mb-0">
+      <thead class="bg-brand text-white">
+        <tr>
+          <th>Numero</th>
+          <th>Cliente</th>
+          <th>Tipo</th>
+          <th class="text-center">Postazioni</th>
+          <th>Data</th>
+          <th>Stato</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for inst in installazioni %}
+        <tr>
+          <td><a href="{{ inst.get_absolute_url }}" class="text-brand fw-semibold text-decoration-none">{{ inst.numero }}</a></td>
+          <td>{{ inst.cliente_display }}</td>
+          <td><span class="badge bg-secondary">{{ inst.servizio.nome }}</span></td>
+          <td class="text-center"><span class="badge badge-info">{{ inst.n_postazioni }}</span></td>
+          <td>{{ inst.data_installazione|date:"d/m/Y" }}</td>
+          <td>
+            {% if inst.attiva %}
+              <span class="badge badge-ok">Attiva</span>
+            {% else %}
+              <span class="badge badge-ko">Inattiva</span>
+            {% endif %}
+          </td>
+          <td class="text-end">
+            <a href="{{ inst.get_absolute_url }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-eye"></i></a>
+            {% if request.user.is_staff %}
+            <a href="{% url 'installazioni:installazione_update' inst.pk %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></a>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7" class="text-center text-muted py-3"><i class="bi bi-inbox me-2"></i>Nessuna installazione presente</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

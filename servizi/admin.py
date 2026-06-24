@@ -4,8 +4,8 @@ from .models import Servizio, Contratto, ContrattoFiliale, ContrattoFilialeRiga,
 
 @admin.register(Servizio)
 class ServizioAdmin(admin.ModelAdmin):
-    list_display = ["nome", "tariffa_cartello", "attivo"]
-    list_filter = ["attivo"]
+    list_display = ["nome", "tariffa_cartello", "attivo", "richiede_installazione"]
+    list_filter = ["attivo", "richiede_installazione"]
     search_fields = ["nome"]
 
 

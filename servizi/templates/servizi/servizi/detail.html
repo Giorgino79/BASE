@@ -27,6 +27,18 @@
               <div class="detail-field-value fw-bold text-brand">€ {{ servizio.tariffa_cartello }}</div>
             </div>
           </div>
+          <div class="col-sm-4">
+            <div class="detail-field">
+              <div class="detail-field-label">Gestione installazioni</div>
+              <div class="detail-field-value">
+                {% if servizio.richiede_installazione %}
+                  <span class="badge bg-primary"><i class="bi bi-pin-map me-1"></i>Sì</span>
+                {% else %}
+                  <span class="text-muted">—</span>
+                {% endif %}
+              </div>
+            </div>
+          </div>
           {% if servizio.descrizione %}
           <div class="col-12">
             <div class="detail-field mb-0">

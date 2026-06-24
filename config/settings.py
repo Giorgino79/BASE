@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     "acquisti",
     "magazzino",
     "servizi",
+    "installazioni",
     "analysis",
     "portale",
     "fatturazione_attiva",
