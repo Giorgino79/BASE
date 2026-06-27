@@ -2,7 +2,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.urls import reverse
-from django.db import transaction
+from django.db import transaction, models as django_models
 from django.forms import modelformset_factory
 from django.contrib.contenttypes.models import ContentType
 
@@ -147,6 +147,9 @@ def postazione_create(request, inst_pk):
             post = form.save(commit=False)
             post.installazione = inst
             post.save()
+            foto = request.FILES.get("foto")
+            if foto:
+                post.aggiungi_allegato(foto, descrizione="Foto postazione", user=request.user)
             messages.success(request, f"Postazione {post.numero:02d} aggiunta.")
             return redirect(inst.get_absolute_url() + "#postazioni")
     else:
@@ -184,6 +187,42 @@ def postazione_delete(request, pk):
         return redirect(inst.get_absolute_url())
     return render(request, "installazioni/postazione_confirm_delete.html", {
         "post": post, "inst": inst,
+    })
+
+
+# ── Galleria foto postazioni ──────────────────────────────────────────────────
+
+@login_required
+def installazione_galleria(request, pk):
+    inst = get_object_or_404(Installazione, pk=pk)
+    from core.models_legacy import Allegato
+
+    post_ct = ContentType.objects.get_for_model(Postazione)
+    postazioni = list(inst.postazioni.all())
+    post_ids = [str(p.pk) for p in postazioni]
+
+    foto_qs = Allegato.objects.filter(
+        content_type=post_ct,
+        object_id__in=post_ids,
+    ).filter(
+        django_models.Q(tipo_file__startswith="image/") |
+        django_models.Q(nome_originale__iregex=r"\.(jpg|jpeg|png|gif|bmp|webp)$")
+    ).order_by("object_id", "created_at")
+
+    foto_map = {}
+    for f in foto_qs:
+        foto_map.setdefault(int(f.object_id), []).append(f)
+
+    sezioni = [
+        (post, foto_map[post.pk])
+        for post in postazioni
+        if post.pk in foto_map
+    ]
+
+    return render(request, "installazioni/installazione_galleria.html", {
+        "inst": inst,
+        "sezioni": sezioni,
+        "n_foto": sum(len(f) for _, f in sezioni),
     })
 
 

@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% load static %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/detail.css' %}">{% endblock %}
+{% block content %}
+<div class="page-header mb-4">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'installazioni:installazione_list' %}">Installazioni</a></li>
+      <li class="breadcrumb-item"><a href="{{ inst.get_absolute_url }}">{{ inst.numero }}</a></li>
+      <li class="breadcrumb-item active">Galleria foto</li>
+    </ol>
+  </nav>
+  <h1><i class="bi bi-images me-2 text-brand"></i>Galleria foto postazioni</h1>
+  <p class="text-muted mb-0">{{ n_foto }} foto in {{ sezioni|length }} postazion{{ sezioni|length|pluralize:"e,i" }}</p>
+</div>
+
+{% if sezioni %}
+
+{% for post, foto in sezioni %}
+<h6 class="text-brand mb-2 mt-4 {% if not forloop.first %}mt-4{% endif %}">
+  <i class="bi bi-geo-alt-fill me-1"></i>
+  <a href="{{ post.get_absolute_url }}" class="text-decoration-none text-brand">
+    Postazione {{ post.numero|stringformat:"02d" }}
+  </a>
+  {% if post.descrizione_luogo %}
+  <span class="text-muted fw-normal small ms-1">— {{ post.descrizione_luogo|truncatechars:60 }}</span>
+  {% endif %}
+  <span class="badge badge-info ms-1">{{ foto|length }}</span>
+</h6>
+
+<div class="row g-2 mb-2">
+  {% for f in foto %}
+  <div class="col-6 col-md-3 col-lg-2">
+    <div class="card p-1 h-100" role="button"
+         data-bs-toggle="modal" data-bs-target="#lightbox"
+         data-img="{{ f.file.url }}"
+         data-caption="{{ f.descrizione|default:f.nome_originale }}"
+         data-post="Postazione {{ post.numero|stringformat:'02d' }}{% if post.descrizione_luogo %} — {{ post.descrizione_luogo|truncatechars:40 }}{% endif %}">
+      <img src="{{ f.file.url }}" class="img-fluid rounded"
+           style="width:100%; height:120px; object-fit:cover;"
+           alt="{{ f.descrizione|default:f.nome_originale }}">
+      {% if f.descrizione %}
+      <div class="text-muted small text-truncate mt-1 px-1">{{ f.descrizione }}</div>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endfor %}
+
+{% else %}
+<div class="text-center text-muted py-5">
+  <i class="bi bi-camera d-block mb-2" style="font-size:3rem;"></i>
+  Nessuna foto caricata per le postazioni di questa installazione.
+</div>
+{% endif %}
+
+<div class="mt-4">
+  <a href="{{ inst.get_absolute_url }}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left me-1"></i>Torna all'installazione
+  </a>
+</div>
+
+<!-- Lightbox modal -->
+<div class="modal fade" id="lightbox" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content bg-dark border-0">
+      <div class="modal-header border-0 pb-0">
+        <div>
+          <div class="text-white fw-semibold small" id="lb-post"></div>
+          <div class="text-secondary small" id="lb-caption"></div>
+        </div>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body text-center p-2">
+        <img id="lb-img" src="" class="img-fluid rounded" style="max-height:75vh;" alt="">
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.querySelectorAll('[data-bs-target="#lightbox"]').forEach(function(el) {
+  el.addEventListener('click', function() {
+    document.getElementById('lb-img').src = this.dataset.img;
+    document.getElementById('lb-caption').textContent = this.dataset.caption;
+    document.getElementById('lb-post').textContent = this.dataset.post;
+  });
+});
+</script>
+{% endblock %}

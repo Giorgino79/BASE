@@ -10,6 +10,8 @@ urlpatterns = [
     path("<int:pk>/", views.installazione_detail, name="installazione_detail"),
     path("<int:pk>/modifica/", views.installazione_update, name="installazione_update"),
 
+    path("<int:pk>/galleria/", views.installazione_galleria, name="installazione_galleria"),
+
     # Postazioni
     path("<int:inst_pk>/postazione/nuova/", views.postazione_create, name="postazione_create"),
     path("postazione/<int:pk>/", views.postazione_detail, name="postazione_detail"),
