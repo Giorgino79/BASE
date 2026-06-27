@@ -166,6 +166,9 @@ def postazione_update(request, pk):
         form = PostazioneForm(request.POST, instance=post)
         if form.is_valid():
             form.save()
+            foto = request.FILES.get("foto")
+            if foto:
+                post.aggiungi_allegato(foto, descrizione="Foto postazione", user=request.user)
             messages.success(request, "Postazione aggiornata.")
             return redirect(post.get_absolute_url())
     else:

@@ -16,9 +16,31 @@
   <div class="col-lg-7">
     <div class="card">
       <div class="card-body">
-        <form method="post" novalidate>
+        <form method="post" enctype="multipart/form-data" novalidate>
           {% csrf_token %}
           {{ form|crispy }}
+          <div class="mb-3">
+            <label class="form-label">Aggiungi foto <span class="text-muted small">(opzionale)</span></label>
+            <input type="file" name="foto" accept="image/*" class="form-control">
+          </div>
+          {% if post %}
+          {% with foto_esistenti=post.allegati %}
+          {% if foto_esistenti %}
+          <div class="mb-3">
+            <label class="form-label text-muted small">Foto già caricate</label>
+            <div class="d-flex flex-wrap gap-2">
+              {% for f in foto_esistenti %}
+              {% if f.tipo_file|slice:":6" == "image/" or f.nome_originale|lower|slice:"-4:" == ".jpg" or f.nome_originale|lower|slice:"-5:" == ".jpeg" or f.nome_originale|lower|slice:"-4:" == ".png" or f.nome_originale|lower|slice:"-5:" == ".webp" %}
+              <a href="{{ f.file.url }}" target="_blank">
+                <img src="{{ f.file.url }}" style="height:64px;width:64px;object-fit:cover;border-radius:4px;" alt="{{ f.nome_originale }}">
+              </a>
+              {% endif %}
+              {% endfor %}
+            </div>
+          </div>
+          {% endif %}
+          {% endwith %}
+          {% endif %}
           <div class="d-grid gap-2 d-md-flex justify-content-md-between mt-3">
             <button type="submit" class="btn btn-primary order-md-2">
               <i class="bi bi-check-lg me-1"></i>Salva
