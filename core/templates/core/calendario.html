@@ -32,6 +32,10 @@
   .provider-btn.inactive { opacity: .45; background: var(--slate-50); color: var(--slate-500); }
   .provider-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
 
+  /* Separatore pomeriggio in list view */
+  .fc-list-event.sep-pomeriggio td { padding: 2px 0 !important; border: none !important; }
+  .fc-list-event.sep-pomeriggio { background: transparent !important; }
+
   /* Tooltip */
   #evento-tooltip {
     display: none; position: fixed; z-index: 9999;
@@ -157,6 +161,40 @@ document.addEventListener('DOMContentLoaded', function () {
     height: 'auto',
     navLinks: true,
     editable: false,
+    eventOrder: 'start,-duration,allDay,title',
+    eventContent: function(info) {
+      if (info.event.extendedProps.tipo === 'separatore') {
+        if (calendar.view.type.startsWith('list')) {
+          return { html:
+            '<div style="display:flex;align-items:center;gap:10px;width:100%;padding:4px 0">'
+            + '<hr style="flex:1;margin:0;border:0;border-top:1px solid #dee2e6">'
+            + '<small style="color:#6c757d;white-space:nowrap;font-size:.72rem">'
+            + '<i class="bi bi-sun" style="margin-right:4px"></i>Pomeriggio'
+            + '</small>'
+            + '<hr style="flex:1;margin:0;border:0;border-top:1px solid #dee2e6">'
+            + '</div>'
+          };
+        }
+        return { html: '<span></span>' };
+      }
+    },
+    eventDidMount: function(info) {
+      if (info.event.extendedProps.tipo === 'separatore') {
+        if (!calendar.view.type.startsWith('list')) {
+          info.el.style.display = 'none';
+          const harness = info.el.closest('.fc-daygrid-event-harness, .fc-timegrid-event-harness');
+          if (harness) harness.style.display = 'none';
+        } else {
+          const tr = info.el.closest('tr');
+          if (tr) {
+            const dot = tr.querySelector('.fc-list-event-dot');
+            if (dot) dot.style.display = 'none';
+            const timeEl = tr.querySelector('.fc-list-event-time');
+            if (timeEl) timeEl.textContent = '';
+          }
+        }
+      }
+    },
     {% if user.is_staff %}
     dateClick: function (info) {
       document.getElementById('modal-data-label').textContent = 'Data: ' + info.date.toLocaleDateString('it-IT', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
@@ -179,6 +217,7 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     },
     eventMouseEnter: function (info) {
+      if (info.event.extendedProps.tipo === 'separatore') return;
       const p = info.event.extendedProps;
       let html = `<strong style="color:var(--slate-900);">${info.event.title}</strong>`;
       if (info.event.start) {

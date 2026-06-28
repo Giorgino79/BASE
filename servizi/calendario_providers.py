@@ -1,4 +1,5 @@
 from django.urls import reverse
+from django.db.models import F
 
 
 def get_ods_eventi(user, start_date, end_date):
@@ -7,11 +8,14 @@ def get_ods_eventi(user, start_date, end_date):
     Mostra tutti gli ODS non ancora completati/annullati nel periodo.
     """
     from .models import ODS
+    from datetime import datetime
 
     qs = ODS.objects.select_related(
         "filiale__cliente", "privato", "tecnico"
     ).prefetch_related("righe__servizio").exclude(stato__in=["completato", "annullato"])
 
+    if start_date:
+        qs = qs.filter(data_servizio__gte=start_date.date())
     if end_date:
         qs = qs.filter(data_servizio__lte=end_date.date())
 
@@ -21,11 +25,15 @@ def get_ods_eventi(user, start_date, end_date):
     }
 
     eventi = []
-    for ods in qs.order_by("data_servizio")[:300]:
+    for ods in qs.order_by("data_servizio", F("ora_inizio").asc(nulls_last=True))[:300]:
         cliente = ods.cliente_display
         tecnico = ods.tecnico.get_full_name() if ods.tecnico else ""
         servizio = ods.servizio_principale
-        title = f"{servizio or 'N/D'} — {cliente}"
+
+        if ods.ora_inizio:
+            title = f"{ods.ora_inizio.strftime('%H:%M')} — {servizio or 'N/D'} — {cliente}"
+        else:
+            title = f"{servizio or 'N/D'} — {cliente}"
         if tecnico:
             title += f" [{tecnico}]"
         if ods.incasso_al_servizio:
@@ -33,11 +41,9 @@ def get_ods_eventi(user, start_date, end_date):
 
         start = ods.data_servizio.isoformat()
         if ods.ora_inizio:
-            from datetime import datetime
             start = datetime.combine(ods.data_servizio, ods.ora_inizio).isoformat()
         end = None
         if ods.ora_fine:
-            from datetime import datetime
             end = datetime.combine(ods.data_servizio, ods.ora_fine).isoformat()
 
         eventi.append({
@@ -57,6 +63,25 @@ def get_ods_eventi(user, start_date, end_date):
                 "tecnico": tecnico,
                 "incasso_al_servizio": ods.incasso_al_servizio,
             },
+        })
+
+    # Divisori pomeriggio: solo per giorni con eventi sia mattina (<13:00) che pomeriggio (≥13:00)
+    am_dates, pm_dates = set(), set()
+    for ev in eventi:
+        if not ev.get("allDay") and "T" in ev["start"]:
+            date = ev["start"][:10]
+            (am_dates if int(ev["start"][11:13]) < 13 else pm_dates).add(date)
+
+    for date in sorted(am_dates & pm_dates):
+        eventi.append({
+            "id": f"sep-pm-{date}",
+            "title": "Pomeriggio",
+            "start": f"{date}T13:00:00",
+            "allDay": False,
+            "color": "#f8f9fa",
+            "textColor": "#6c757d",
+            "classNames": ["sep-pomeriggio"],
+            "extendedProps": {"tipo": "separatore"},
         })
 
     return eventi
