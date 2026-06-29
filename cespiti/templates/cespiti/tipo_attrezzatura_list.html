@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% load static %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/detail.css' %}">{% endblock %}
+{% block content %}
+<div class="page-header mb-4">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'cespiti:dashboard' %}">Cespiti</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'cespiti:automezzo_list' %}">Automezzi</a></li>
+      <li class="breadcrumb-item active">Tipi attrezzatura</li>
+    </ol>
+  </nav>
+  <h1><i class="bi bi-tools me-2 text-brand"></i>Tipi di attrezzatura</h1>
+  <p class="text-muted mb-0">Catalogo delle attrezzature associabili agli automezzi</p>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="card">
+      <div class="card-header card-header-primary"><i class="bi bi-list-ul me-2"></i>Tipi definiti</div>
+      <div class="table-responsive">
+        <table class="table mb-0 align-middle">
+          <thead class="bg-brand text-white">
+            <tr>
+              <th>Nome</th>
+              <th>Descrizione</th>
+              <th class="text-end" style="width:80px">In uso</th>
+              {% if request.user.is_staff %}<th style="width:60px"></th>{% endif %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for t in tipi %}
+            <tr>
+              <td class="fw-semibold">{{ t.nome }}</td>
+              <td class="small text-muted">{{ t.descrizione|default:"—" }}</td>
+              <td class="text-end small">{{ t.attrezzature_automezzo.count }}</td>
+              {% if request.user.is_staff %}
+              <td>
+                <form method="post" action="{% url 'cespiti:tipo_attrezzatura_delete' t.pk %}">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-sm btn-outline-danger"
+                          onclick="return confirm('Eliminare «{{ t.nome }}»?')" title="Elimina">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </form>
+              </td>
+              {% endif %}
+            </tr>
+            {% empty %}
+            <tr><td colspan="4" class="text-center text-muted py-3"><i class="bi bi-inbox me-2"></i>Nessun tipo definito</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  {% if request.user.is_staff %}
+  <div class="col-lg-5">
+    <div class="card">
+      <div class="card-header"><i class="bi bi-plus-circle me-2"></i>Nuovo tipo</div>
+      <div class="card-body">
+        <form method="post" novalidate>
+          {% csrf_token %}
+          <div class="mb-3">
+            <label class="form-label">Nome <span class="text-danger">*</span></label>
+            <input type="text" name="nome" class="form-control" placeholder="es. Nebbiogeno, Atomizzatore, Trappola…" required autofocus>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Descrizione <span class="text-muted small">(opzionale)</span></label>
+            <textarea name="descrizione" class="form-control" rows="2" placeholder="Descrizione breve"></textarea>
+          </div>
+          <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+            <a href="{% url 'cespiti:automezzo_list' %}" class="btn btn-outline-secondary order-md-1">Torna agli automezzi</a>
+            <button type="submit" class="btn btn-primary order-md-2">
+              <i class="bi bi-plus-lg me-1"></i>Aggiungi tipo
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

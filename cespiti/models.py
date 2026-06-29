@@ -85,6 +85,41 @@ class Automezzo(AllegatiMixin, models.Model):
         return date.today().year - self.anno_immatricolazione
 
 
+class TipoAttrezzatura(models.Model):
+    nome = models.CharField(max_length=100, unique=True, verbose_name="Nome")
+    descrizione = models.TextField(blank=True, verbose_name="Descrizione")
+
+    class Meta:
+        verbose_name = "Tipo attrezzatura"
+        verbose_name_plural = "Tipi attrezzatura"
+        ordering = ["nome"]
+
+    def __str__(self):
+        return self.nome
+
+
+class AttrezzaturaAutomezzo(models.Model):
+    automezzo = models.ForeignKey(
+        Automezzo, on_delete=models.CASCADE,
+        related_name="attrezzature", verbose_name="Automezzo",
+    )
+    tipo = models.ForeignKey(
+        TipoAttrezzatura, on_delete=models.PROTECT,
+        related_name="attrezzature_automezzo", verbose_name="Tipo attrezzatura",
+    )
+    fissa = models.BooleanField(default=True, verbose_name="Fissa")
+    note = models.TextField(blank=True, verbose_name="Note")
+
+    class Meta:
+        verbose_name = "Attrezzatura automezzo"
+        verbose_name_plural = "Attrezzature automezzo"
+        ordering = ["tipo__nome"]
+        unique_together = [("automezzo", "tipo")]
+
+    def __str__(self):
+        return f"{self.tipo} — {self.automezzo.targa}"
+
+
 class Manutenzione(AllegatiMixin, models.Model):
     STATO_CHOICES = [
         ("aperta", "Manutenzione Aperta"),

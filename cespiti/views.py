@@ -15,6 +15,7 @@ from .models import (
     Automezzo, Manutenzione, AllegatoManutenzione,
     Rifornimento, EventoAutomezzo,
     Stabilimento, CostiStabilimento, DocStabilimento,
+    TipoAttrezzatura, AttrezzaturaAutomezzo,
 )
 from .forms import (
     AutomezzoForm,
@@ -131,6 +132,10 @@ class AutomezzoDetailView(LoginRequiredMixin, DetailView):
                 ctx["urgenza_assicurazione"] = "in_scadenza"
             else:
                 ctx["urgenza_assicurazione"] = "ok"
+
+        # Attrezzature
+        ctx["attrezzature"] = a.attrezzature.select_related("tipo").all()
+        ctx["tipi_attrezzatura"] = TipoAttrezzatura.objects.all()
 
         # Scorte a bordo
         from magazzino.models import ScortaMezzo
@@ -797,6 +802,72 @@ def documento_create(request, stabilimento_pk):
 # ============================================================
 # SCADENZE
 # ============================================================
+
+# ── Attrezzature automezzo ─────────────────────────────────────────────────────
+
+@login_required
+def attrezzatura_add(request, automezzo_pk):
+    automezzo = get_object_or_404(Automezzo, pk=automezzo_pk)
+    if request.method == "POST":
+        tipo_pk = request.POST.get("tipo")
+        fissa = request.POST.get("fissa") == "on"
+        note = request.POST.get("note", "").strip()
+        if tipo_pk:
+            tipo = get_object_or_404(TipoAttrezzatura, pk=tipo_pk)
+            obj, created = AttrezzaturaAutomezzo.objects.get_or_create(
+                automezzo=automezzo, tipo=tipo,
+                defaults={"fissa": fissa, "note": note},
+            )
+            if created:
+                messages.success(request, f"Attrezzatura «{tipo}» aggiunta.")
+            else:
+                messages.info(request, f"Attrezzatura «{tipo}» già presente.")
+    return redirect(automezzo.get_absolute_url() + "#attrezzature")
+
+
+@login_required
+def attrezzatura_remove(request, pk):
+    attr = get_object_or_404(AttrezzaturaAutomezzo, pk=pk)
+    automezzo = attr.automezzo
+    if request.method == "POST":
+        nome = str(attr.tipo)
+        attr.delete()
+        messages.success(request, f"Attrezzatura «{nome}» rimossa.")
+    return redirect(automezzo.get_absolute_url() + "#attrezzature")
+
+
+@login_required
+def tipo_attrezzatura_list(request):
+    if request.method == "POST":
+        nome = request.POST.get("nome", "").strip()
+        descrizione = request.POST.get("descrizione", "").strip()
+        if nome:
+            _, created = TipoAttrezzatura.objects.get_or_create(
+                nome=nome, defaults={"descrizione": descrizione},
+            )
+            if created:
+                messages.success(request, f"Tipo «{nome}» aggiunto.")
+            else:
+                messages.warning(request, f"Tipo «{nome}» già esistente.")
+        return redirect(reverse("cespiti:tipo_attrezzatura_list"))
+    tipi = TipoAttrezzatura.objects.all()
+    return render(request, "cespiti/tipo_attrezzatura_list.html", {"tipi": tipi})
+
+
+@login_required
+def tipo_attrezzatura_delete(request, pk):
+    tipo = get_object_or_404(TipoAttrezzatura, pk=pk)
+    if request.method == "POST":
+        nome = tipo.nome
+        try:
+            tipo.delete()
+            messages.success(request, f"Tipo «{nome}» eliminato.")
+        except Exception:
+            messages.error(request, f"Non è possibile eliminare «{nome}»: è in uso su alcuni automezzi.")
+    return redirect(reverse("cespiti:tipo_attrezzatura_list"))
+
+
+# ── Scadenze ───────────────────────────────────────────────────────────────────
 
 @login_required
 def scadenze_dashboard(request):

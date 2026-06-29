@@ -4,6 +4,8 @@ from .views import (
     # Automezzi
     AutomezzoListView, AutomezzoDetailView, AutomezzoCreateView,
     AutomezzoUpdateView, AutomezzoDeleteView,
+    attrezzatura_add, attrezzatura_remove,
+    tipo_attrezzatura_list, tipo_attrezzatura_delete,
     # Manutenzioni
     ManutenzioneListView, ManutenzioneDetailView, ManutenzioneCreateView,
     ManutenzioneUpdateView, ManutenzioneDeleteView,
@@ -41,6 +43,11 @@ urlpatterns = [
     path("automezzi/<int:pk>/", AutomezzoDetailView.as_view(), name="automezzo_detail"),
     path("automezzi/<int:pk>/modifica/", AutomezzoUpdateView.as_view(), name="automezzo_update"),
     path("automezzi/<int:pk>/elimina/", AutomezzoDeleteView.as_view(), name="automezzo_delete"),
+
+    path("automezzi/<int:automezzo_pk>/attrezzature/aggiungi/", attrezzatura_add, name="attrezzatura_add"),
+    path("automezzi/attrezzature/<int:pk>/rimuovi/", attrezzatura_remove, name="attrezzatura_remove"),
+    path("tipi-attrezzatura/", tipo_attrezzatura_list, name="tipo_attrezzatura_list"),
+    path("tipi-attrezzatura/<int:pk>/elimina/", tipo_attrezzatura_delete, name="tipo_attrezzatura_delete"),
 
     # ── MANUTENZIONI ───────────────────────────────────────────
     path("manutenzioni/", ManutenzioneListView.as_view(), name="manutenzione_list"),
