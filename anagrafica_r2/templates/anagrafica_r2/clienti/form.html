@@ -245,12 +245,21 @@
               {{ form.attivo }}
               <label class="form-check-label" for="{{ form.attivo.id_for_label }}">Cliente attivo</label>
             </div>
-            <div class="form-check">
+            <div class="form-check mb-2">
               {{ form.installato }}
               <label class="form-check-label" for="{{ form.installato.id_for_label }}">
                 Installazione completata
               </label>
             </div>
+            <div class="form-check">
+              {{ form.sede_unica }}
+              <label class="form-check-label" for="{{ form.sede_unica.id_for_label }}">
+                {{ form.sede_unica.label }}
+              </label>
+            </div>
+            {% if form.sede_unica.help_text %}
+            <div class="form-text mt-1">{{ form.sede_unica.help_text }}</div>
+            {% endif %}
           </div>
         </div>
 
