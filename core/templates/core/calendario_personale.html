@@ -34,6 +34,21 @@
   .tipo-compleanno { background: #fce7f3; color: #9d174d; }
   .tipo-scadenza { background: #fee2e2; color: #991b1b; }
   .tipo-altro { background: var(--slate-100); color: var(--slate-600); }
+
+  /* ── List view ── */
+  .fc-list-table { color: var(--slate-900); }
+  .fc-list-event td { color: var(--slate-900) !important; background: #fff; }
+  .fc-list-event:hover td { background: var(--slate-50) !important; }
+  .fc-list-day-cushion,
+  .fc-list-day-cushion a { background: var(--slate-100) !important; color: var(--slate-600) !important; font-weight: 600; }
+  .fc-list-empty { color: var(--slate-500); padding: 2rem; text-align: center; }
+  .fc-list-event-title a { color: var(--slate-900) !important; text-decoration: none; }
+  .fc-list-event-title a:hover { text-decoration: underline; }
+  /* ── Popover "+N altri" ── */
+  .fc-more-popover { background: #fff !important; border: 1px solid var(--slate-200) !important; border-radius: 10px !important; box-shadow: 0 6px 20px rgba(0,0,0,.12) !important; }
+  .fc-popover-header { background: var(--slate-50) !important; color: var(--slate-900) !important; border-radius: 10px 10px 0 0 !important; padding: 8px 12px !important; font-size: .8rem !important; font-weight: 600 !important; }
+  .fc-popover-body { background: #fff !important; border-radius: 0 0 10px 10px !important; padding: 6px 8px !important; }
+  .fc-popover-body .fc-daygrid-event { color: #fff !important; }
 </style>
 {% endblock %}
 
