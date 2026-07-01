@@ -270,6 +270,11 @@ class ODS(AllegatiMixin, models.Model):
         if self.filiale and self.privato:
             raise ValidationError("Seleziona solo una sede oppure un privato, non entrambi.")
 
+    piano = models.ForeignKey(
+        "PianoServizio", on_delete=models.SET_NULL,
+        null=True, blank=True, related_name="ods_set", verbose_name="Piano",
+    )
+
     @property
     def zona(self):
         if self.filiale_id:
@@ -732,3 +737,50 @@ class RigaProdottoCondominio(models.Model):
                         quantita=F("quantita") + self.quantita
                     )
         super().delete(*args, **kwargs)
+
+
+# ── PIANIFICAZIONE SERVIZI ────────────────────────────────────
+
+class PianoServizio(models.Model):
+
+    class Frequenza(models.TextChoices):
+        MENSILE     = "mensile",     "Mensile (12/anno)"
+        BIMESTRALE  = "bimestrale",  "Bimestrale (6/anno)"
+        TRIMESTRALE = "trimestrale", "Trimestrale (4/anno)"
+        SEMESTRALE  = "semestrale",  "Semestrale (2/anno)"
+        ANNUALE     = "annuale",     "Annuale (1/anno)"
+
+    cliente   = models.ForeignKey(
+        "anagrafica.Azienda", on_delete=models.PROTECT,
+        related_name="piani_servizio", verbose_name="Cliente",
+    )
+    filiale   = models.ForeignKey(
+        "anagrafica.Filiale", on_delete=models.PROTECT,
+        null=True, blank=True, related_name="piani_servizio", verbose_name="Sede",
+    )
+    servizio  = models.ForeignKey(
+        Servizio, on_delete=models.PROTECT,
+        related_name="piani_servizio", verbose_name="Servizio",
+    )
+    anno      = models.PositiveSmallIntegerField(verbose_name="Anno")
+    frequenza = models.CharField(
+        max_length=20, choices=Frequenza.choices, verbose_name="Frequenza",
+    )
+    note      = models.TextField(blank=True, verbose_name="Note")
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+        null=True, blank=True, related_name="piani_creati",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Piano servizio"
+        verbose_name_plural = "Piani servizio"
+        ordering = ["-anno", "cliente__ragione_sociale"]
+
+    def __str__(self):
+        sede = self.filiale.nome if self.filiale else "—"
+        return f"{self.cliente} / {sede} — {self.servizio} {self.anno}"
+
+    def get_absolute_url(self):
+        return reverse("servizi:piano_detail", kwargs={"pk": self.pk})

@@ -24,6 +24,13 @@ class ServiziConfig(AppConfig):
                     'active_app': 'servizi',
                     'active_url_contains': 'tecnico',
                 },
+                {
+                    'label': 'Pianificazione',
+                    'url': 'servizi:pianificazione',
+                    'icon': 'bi-calendar2-range',
+                    'active_app': 'servizi',
+                    'active_url_contains': 'pianificazione',
+                },
             ],
             order=30,
         )

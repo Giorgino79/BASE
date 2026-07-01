@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Piano {{ piano }}{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center gap-3 mb-4">
+  <a href="{% url 'servizi:pianificazione' %}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left"></i>
+  </a>
+  <div>
+    <h1 class="h4 fw-bold mb-0" style="color:var(--slate-900);">{{ piano }}</h1>
+    <p class="text-muted mb-0" style="font-size:.85rem;">
+      {{ piano.get_frequenza_display }} · {{ piano.anno }} · {{ ods_list.count }} interventi
+    </p>
+  </div>
+  <span class="ms-auto badge rounded-pill px-3 py-2" style="background:{{ color }}20;color:{{ color }};font-size:.78rem;">
+    {{ piano.filiale.nome }}
+  </span>
+</div>
+
+<div class="card">
+  <div class="card-body p-0">
+    <table class="table table-hover mb-0" style="font-size:.85rem;">
+      <thead style="background:var(--slate-50);">
+        <tr>
+          <th class="ps-3 py-2">Data</th>
+          <th class="py-2">Numero ODS</th>
+          <th class="py-2">Servizio</th>
+          <th class="py-2">Tecnico</th>
+          <th class="py-2">Stato</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for ods in ods_list %}
+        <tr>
+          <td class="ps-3">{{ ods.data_servizio|date:"d/m/Y" }}</td>
+          <td>
+            <a href="{{ ods.get_absolute_url }}" class="fw-semibold text-decoration-none" style="color:var(--indigo-600);">
+              {{ ods.numero }}
+            </a>
+          </td>
+          <td>{{ ods.servizio_principale|default:"—" }}</td>
+          <td>{{ ods.tecnico.get_full_name|default:"—" }}</td>
+          <td>
+            {% if ods.stato == "programmato" %}
+              <span class="badge" style="background:#fff3cd;color:#856404;">{{ ods.get_stato_display }}</span>
+            {% elif ods.stato == "completato" %}
+              <span class="badge" style="background:#d1e7dd;color:#0f5132;">{{ ods.get_stato_display }}</span>
+            {% elif ods.stato == "da_espletare" %}
+              <span class="badge" style="background:#f8d7da;color:#842029;">{{ ods.get_stato_display }}</span>
+            {% elif ods.stato == "fatturato" %}
+              <span class="badge" style="background:#cfe2ff;color:#084298;">{{ ods.get_stato_display }}</span>
+            {% else %}
+              <span class="badge bg-secondary">{{ ods.get_stato_display }}</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="5" class="text-center text-muted py-4">Nessun ODS in questo piano.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

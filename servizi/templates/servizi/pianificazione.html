@@ -1,0 +1,612 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Pianificazione servizi{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet">
+<style>
+  /* ── layout ── */
+  .piano-layout { display: grid; grid-template-columns: 280px 1fr; gap: 1rem; align-items: start; }
+  @media (max-width: 991px) { .piano-layout { grid-template-columns: 1fr; } }
+
+  /* ── sidebar ── */
+  .piano-sidebar .card { border: 1px solid var(--slate-200); border-radius: 10px; }
+  .piano-sidebar .card-body { padding: 1rem; }
+  .piano-sidebar h6 {
+    font-size: .7rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .07em; color: var(--slate-400); margin-bottom: .6rem;
+  }
+
+  /* ── select cliente ── */
+  #select-cliente {
+    width: 100%; padding: .45rem .75rem; font-size: .85rem;
+    border: 1px solid var(--slate-200); border-radius: 8px;
+    background: #fff; color: var(--slate-900); cursor: pointer;
+    transition: border-color .15s;
+  }
+  #select-cliente:focus { outline: none; border-color: var(--indigo-500); }
+
+  /* ── legenda filiali ── */
+  #legenda-filiali { list-style: none; padding: 0; margin: 0; }
+  #legenda-filiali li {
+    display: flex; align-items: center; gap: 8px;
+    padding: 5px 0; font-size: .82rem; color: var(--slate-700);
+    border-bottom: 1px solid var(--slate-100);
+  }
+  #legenda-filiali li:last-child { border-bottom: none; }
+  .dot-filiale {
+    width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0;
+  }
+  .filiale-citta { font-size: .72rem; color: var(--slate-400); }
+
+  /* ── pulsante genera ── */
+  #btn-genera {
+    width: 100%; padding: .55rem; font-size: .85rem; font-weight: 600;
+    border-radius: 8px; border: none; cursor: pointer;
+    background: var(--indigo-600); color: #fff; transition: background .15s;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  #btn-genera:hover { background: var(--color-1-dark); }
+  #btn-genera:disabled { opacity: .5; cursor: not-allowed; }
+
+  /* ── FullCalendar overrides ── */
+  .fc { font-family: inherit; }
+  .fc-toolbar-title { font-size: 1rem; font-weight: 700; color: var(--slate-900); }
+  .fc-button { font-size: .78rem !important; padding: .28rem .6rem !important; }
+  .fc-button-primary { background: var(--indigo-600) !important; border-color: var(--indigo-600) !important; }
+  .fc-button-primary:hover { background: var(--color-1-dark) !important; border-color: var(--color-1-dark) !important; }
+  .fc-button-active { background: #312e81 !important; border-color: #312e81 !important; }
+  .fc-event { cursor: grab; border: none !important; border-radius: 5px; font-size: .74rem; }
+  .fc-event:active { cursor: grabbing; }
+  .fc-event:hover { opacity: .85; }
+  .fc-daygrid-event { padding: 2px 5px; }
+  .fc-day-today { background: #eff6ff !important; }
+  .fc-col-header-cell {
+    font-size: .72rem; font-weight: 700; color: var(--slate-500);
+    text-transform: uppercase; letter-spacing: .05em;
+  }
+  .fc-event.dimmed { opacity: .4; }
+
+  /* ── stato badge nel tooltip ── */
+  .stato-badge {
+    display: inline-block; font-size: .7rem; font-weight: 600;
+    padding: 2px 7px; border-radius: 4px; margin-top: 4px;
+  }
+  .stato-programmato  { background: #fff3cd; color: #856404; }
+  .stato-da_espletare { background: #f8d7da; color: #842029; }
+  .stato-completato   { background: #d1e7dd; color: #0f5132; }
+  .stato-fatturato    { background: #cfe2ff; color: #084298; }
+
+  /* ── tooltip ── */
+  #piani-tooltip {
+    display: none; position: fixed; z-index: 9999;
+    background: #fff; border: 1px solid var(--slate-200);
+    border-radius: 10px; padding: 12px 14px;
+    box-shadow: 0 6px 20px rgba(0,0,0,.12);
+    max-width: 240px; pointer-events: none; font-size: .8rem;
+  }
+
+  /* ── modale genera ── */
+  .modal-genera .modal-content { border-radius: 14px; }
+  .modal-genera .modal-header { border-bottom: 1px solid var(--slate-100); padding: 1.1rem 1.4rem .9rem; }
+  .modal-genera .modal-body { padding: 1.2rem 1.4rem; }
+  .modal-genera .modal-footer { border-top: 1px solid var(--slate-100); padding: .9rem 1.4rem; }
+  .modal-genera label { font-size: .8rem; font-weight: 600; color: var(--slate-600); margin-bottom: 4px; }
+  .modal-genera select, .modal-genera input {
+    font-size: .85rem; border: 1px solid var(--slate-200);
+    border-radius: 8px; padding: .42rem .75rem; width: 100%;
+    transition: border-color .15s;
+  }
+  .modal-genera select:focus, .modal-genera input:focus {
+    outline: none; border-color: var(--indigo-500);
+    box-shadow: 0 0 0 3px rgba(99,102,241,.1);
+  }
+
+  /* ── anteprima date ── */
+  #preview-date {
+    display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px;
+  }
+  .preview-chip {
+    font-size: .72rem; padding: 3px 8px; border-radius: 5px;
+    background: var(--indigo-50); color: var(--indigo-700);
+    border: 1px solid var(--indigo-200); font-weight: 500;
+  }
+
+  /* ── toast notifica ── */
+  #piano-toast {
+    position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 11000;
+    background: #fff; border: 1px solid var(--slate-200);
+    border-radius: 10px; padding: 12px 16px;
+    box-shadow: 0 4px 20px rgba(0,0,0,.12);
+    font-size: .83rem; display: none; max-width: 320px;
+  }
+  #piano-toast.ok  { border-left: 4px solid #198754; }
+  #piano-toast.err { border-left: 4px solid #dc3545; }
+
+  /* ── empty state ── */
+  .empty-state {
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; padding: 3rem 1rem; color: var(--slate-400);
+    text-align: center;
+  }
+  .empty-state i { font-size: 2.5rem; margin-bottom: .75rem; }
+  .empty-state p { font-size: .85rem; margin: 0; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+  <div>
+    <h1 class="h4 fw-bold mb-1" style="color:var(--slate-900);">Pianificazione servizi</h1>
+    <p class="text-muted mb-0" style="font-size:.875rem;">Programma gli interventi ricorrenti per cliente e sede</p>
+  </div>
+</div>
+
+<div class="piano-layout">
+
+  <!-- ═══ SIDEBAR ═══ -->
+  <aside class="piano-sidebar">
+
+    <!-- selezione cliente -->
+    <div class="card mb-3">
+      <div class="card-body">
+        <h6><i class="bi bi-building me-1"></i>Cliente</h6>
+        <select id="select-cliente">
+          <option value="">— Seleziona cliente —</option>
+          {% for c in clienti %}
+          <option value="{{ c.pk }}">{{ c.ragione_sociale }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <!-- legenda filiali -->
+    <div class="card mb-3" id="card-filiali" style="display:none!important;">
+      <div class="card-body">
+        <h6><i class="bi bi-geo-alt me-1"></i>Sedi</h6>
+        <ul id="legenda-filiali"></ul>
+      </div>
+    </div>
+
+    <!-- azione -->
+    <button id="btn-genera" disabled>
+      <i class="bi bi-magic"></i> Genera piano
+    </button>
+
+  </aside>
+
+  <!-- ═══ CALENDARIO ═══ -->
+  <div>
+    <div class="card p-3">
+      <div id="empty-hint" class="empty-state">
+        <i class="bi bi-calendar2-range"></i>
+        <p>Seleziona un cliente per visualizzare<br>e pianificare i servizi.</p>
+      </div>
+      <div id="calendario" style="display:none;"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══ TOOLTIP ═══ -->
+<div id="piani-tooltip"></div>
+
+<!-- ═══ TOAST ═══ -->
+<div id="piano-toast"></div>
+
+<!-- ═══ MODAL GENERA PIANO ═══ -->
+<div class="modal fade modal-genera" id="modal-genera" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" style="max-width:480px;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h6 class="modal-title fw-bold" style="color:var(--slate-900);">
+          <i class="bi bi-magic me-2" style="color:var(--indigo-500);"></i>Genera piano interventi
+        </h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label for="gen-filiale">Sede</label>
+          <select id="gen-filiale">
+            <option value="">— Seleziona sede —</option>
+          </select>
+        </div>
+        <div class="mb-3">
+          <label for="gen-servizio">Servizio</label>
+          <select id="gen-servizio" disabled>
+            <option value="">— Seleziona prima la sede —</option>
+          </select>
+          <div id="badge-da-contratto" style="display:none;margin-top:5px;">
+            <span class="badge" style="background:var(--indigo-100);color:var(--indigo-700);font-size:.7rem;">
+              <i class="bi bi-file-earmark-check me-1"></i>Prezzi da contratto
+            </span>
+          </div>
+        </div>
+        <div class="row g-2 mb-3">
+          <div class="col-6">
+            <label for="gen-anno">Anno</label>
+            <input type="number" id="gen-anno" min="2024" max="2035" value="{{ anno_corrente }}">
+          </div>
+          <div class="col-6">
+            <label for="gen-frequenza">Frequenza</label>
+            <select id="gen-frequenza">
+              <option value="mensile">Mensile (12/anno)</option>
+              <option value="bimestrale">Bimestrale (6/anno)</option>
+              <option value="trimestrale">Trimestrale (4/anno)</option>
+              <option value="semestrale">Semestrale (2/anno)</option>
+              <option value="annuale">Annuale (1/anno)</option>
+            </select>
+          </div>
+        </div>
+        <div class="mb-3">
+          <label for="gen-data-inizio">Data primo intervento</label>
+          <input type="date" id="gen-data-inizio">
+        </div>
+        <div class="mb-2">
+          <label>Anteprima date generate</label>
+          <div id="preview-date">
+            <span class="text-muted" style="font-size:.78rem;">Compila i campi per vedere le date</span>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer justify-content-between">
+        <span id="gen-info" class="text-muted" style="font-size:.78rem;"></span>
+        <div class="d-flex gap-2">
+          <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Annulla</button>
+          <button type="button" id="btn-genera-confirm" class="btn btn-sm btn-primary" disabled>
+            <i class="bi bi-check2-circle me-1"></i>Crea ODS
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+<script>
+(function () {
+'use strict';
+
+const CSRF = '{{ csrf_token }}';
+const URL_EVENTI   = '{% url "servizi:pianificazione_eventi_api" %}';
+const URL_FILIALI  = '{% url "servizi:pianificazione_filiali_api" %}';
+const URL_SERVIZI  = '{% url "servizi:pianificazione_servizi_api" %}';
+const URL_GENERA   = '{% url "servizi:pianificazione_genera" %}';
+const URL_SPOSTA   = (pk) => `/servizi/api/pianificazione/ods/${pk}/sposta/`;
+
+// ── stato globale ──────────────────────────────────────────
+let clienteId   = null;
+let filialiMap  = {};   // id → { nome, color, citta }
+let calendar    = null;
+
+// ── toast ──────────────────────────────────────────────────
+const toast = document.getElementById('piano-toast');
+let toastTimer;
+function showToast(msg, ok = true) {
+  clearTimeout(toastTimer);
+  toast.textContent = msg;
+  toast.className = ok ? 'ok' : 'err';
+  toast.style.display = 'block';
+  toastTimer = setTimeout(() => { toast.style.display = 'none'; }, 3500);
+}
+
+// ── fetch helper ───────────────────────────────────────────
+async function api(url, opts = {}) {
+  const res = await fetch(url, {
+    headers: { 'X-CSRFToken': CSRF, 'Content-Type': 'application/json', ...opts.headers },
+    ...opts,
+  });
+  return res.json();
+}
+
+// ── FullCalendar ───────────────────────────────────────────
+function initCalendar() {
+  const el = document.getElementById('calendario');
+  calendar = new FullCalendar.Calendar(el, {
+    locale: 'it',
+    initialView: 'dayGridMonth',
+    firstDay: 1,
+    height: 'auto',
+    editable: true,
+    headerToolbar: {
+      left: 'prev,next today',
+      center: 'title',
+      right: 'dayGridMonth,listMonth',
+    },
+    buttonText: { today: 'Oggi', month: 'Mese', list: 'Lista' },
+    eventOrder: 'start,title',
+
+    // colora evento con opacità se dimmed
+    eventDidMount(info) {
+      if (info.event.extendedProps.dimmed) {
+        info.el.style.opacity = '.42';
+      }
+    },
+
+    // tooltip al hover
+    eventMouseEnter(info) {
+      const p = info.event.extendedProps;
+      const statoClass = `stato-${p.stato}`;
+      const filiale = filialiMap[p.filiale_id] || {};
+      document.getElementById('piani-tooltip').innerHTML = `
+        <strong style="color:var(--slate-900);">${p.filiale_nome || info.event.title}</strong><br>
+        <span style="color:var(--slate-500);font-size:.75rem;">${p.servizio || ''}</span>
+        <br><span class="stato-badge ${statoClass}">${p.stato_display}</span>
+        <br><small style="color:var(--slate-400);">${p.numero}</small>
+      `;
+      document.getElementById('piani-tooltip').style.display = 'block';
+    },
+    eventMouseLeave() {
+      document.getElementById('piani-tooltip').style.display = 'none';
+    },
+
+    // click → vai all'ODS
+    eventClick(info) {
+      if (info.event.url) {
+        info.jsEvent.preventDefault();
+        window.location.href = info.event.url;
+      }
+    },
+
+    // drag & drop → aggiorna data
+    eventDrop(info) {
+      const pk   = info.event.extendedProps.ods_id;
+      const data = info.event.startStr.slice(0, 10);
+      api(URL_SPOSTA(pk), {
+        method: 'POST',
+        body: JSON.stringify({ data }),
+      }).then(r => {
+        if (r.ok) {
+          showToast(`ODS ${r.numero} spostato al ${formatDate(r.data)}`);
+        } else {
+          showToast(r.errore || 'Errore', false);
+          info.revert();
+        }
+      }).catch(() => { showToast('Errore di rete', false); info.revert(); });
+    },
+
+    eventSources: [{
+      url: URL_EVENTI,
+      extraParams: () => clienteId ? { cliente_id: clienteId } : { __empty: 1 },
+      failure: () => showToast('Errore nel caricamento eventi', false),
+    }],
+  });
+  calendar.render();
+}
+
+// ── tooltip segui mouse ───────────────────────────────────
+document.addEventListener('mousemove', e => {
+  const t = document.getElementById('piani-tooltip');
+  t.style.left = (e.clientX + 14) + 'px';
+  t.style.top  = (e.clientY +  8) + 'px';
+});
+
+// ── selezione cliente ─────────────────────────────────────
+document.getElementById('select-cliente').addEventListener('change', async function () {
+  clienteId = this.value || null;
+  filialiMap = {};
+
+  const cardFiliali  = document.getElementById('card-filiali');
+  const legenda      = document.getElementById('legenda-filiali');
+  const btnGenera    = document.getElementById('btn-genera');
+  const emptyHint    = document.getElementById('empty-hint');
+  const calEl        = document.getElementById('calendario');
+
+  if (!clienteId) {
+    cardFiliali.style.setProperty('display', 'none', 'important');
+    btnGenera.disabled = true;
+    emptyHint.style.display = '';
+    calEl.style.display = 'none';
+    if (calendar) calendar.removeAllEventSources();
+    return;
+  }
+
+  // mostra calendario
+  emptyHint.style.display = 'none';
+  calEl.style.display = '';
+  if (!calendar) initCalendar();
+
+  // carica filiali
+  const filiali = await api(URL_FILIALI + '?cliente_id=' + clienteId);
+  legenda.innerHTML = '';
+  filiali.forEach(f => {
+    filialiMap[f.id] = f;
+    const li = document.createElement('li');
+    li.innerHTML = `
+      <span class="dot-filiale" style="background:${f.color};"></span>
+      <span>
+        ${f.nome}
+        ${f.citta ? `<span class="filiale-citta">· ${f.citta}</span>` : ''}
+      </span>
+    `;
+    legenda.appendChild(li);
+  });
+
+  cardFiliali.style.removeProperty('display');
+  btnGenera.disabled = false;
+
+  // ricarica eventi per questo cliente
+  calendar.removeAllEventSources();
+  calendar.addEventSource({
+    url: URL_EVENTI,
+    extraParams: { cliente_id: clienteId },
+    failure: () => showToast('Errore caricamento eventi', false),
+  });
+});
+
+// ── apertura modal genera ─────────────────────────────────
+document.getElementById('btn-genera').addEventListener('click', async () => {
+  if (!clienteId) return;
+
+  const selFiliale = document.getElementById('gen-filiale');
+  selFiliale.innerHTML = '<option value="">— Seleziona sede —</option>';
+  const filiali = await api(URL_FILIALI + '?cliente_id=' + clienteId);
+  filiali.forEach(f => {
+    const opt = document.createElement('option');
+    opt.value = f.id;
+    opt.textContent = f.nome + (f.citta ? ` (${f.citta})` : '');
+    selFiliale.appendChild(opt);
+  });
+
+  // anno di default
+  const oggi = new Date();
+  document.getElementById('gen-anno').value       = oggi.getFullYear();
+  document.getElementById('gen-data-inizio').value = oggi.toISOString().slice(0, 10);
+  document.getElementById('gen-servizio').innerHTML = '<option value="">— Seleziona prima la sede —</option>';
+  document.getElementById('gen-servizio').disabled  = true;
+  document.getElementById('badge-da-contratto').style.display = 'none';
+  document.getElementById('preview-date').innerHTML = '<span class="text-muted" style="font-size:.78rem;">Compila i campi per vedere le date</span>';
+  document.getElementById('btn-genera-confirm').disabled = true;
+  document.getElementById('gen-info').textContent = '';
+
+  new bootstrap.Modal(document.getElementById('modal-genera')).show();
+});
+
+// ── cambio filiale → carica servizi ─────────────────────
+document.getElementById('gen-filiale').addEventListener('change', async function () {
+  const filialeId = this.value;
+  const selServ  = document.getElementById('gen-servizio');
+  const badge    = document.getElementById('badge-da-contratto');
+
+  if (!filialeId) {
+    selServ.innerHTML = '<option value="">— Seleziona prima la sede —</option>';
+    selServ.disabled  = true;
+    badge.style.display = 'none';
+    aggiornaPreview();
+    return;
+  }
+
+  selServ.innerHTML = '<option value="">Caricamento…</option>';
+  selServ.disabled  = true;
+
+  const servizi = await api(URL_SERVIZI + '?filiale_id=' + filialeId);
+  selServ.innerHTML = '<option value="">— Seleziona servizio —</option>';
+  let daCont = false;
+  servizi.forEach(s => {
+    const opt       = document.createElement('option');
+    opt.value       = s.id;
+    opt.textContent = s.nome + (s.prezzo ? ` · € ${s.prezzo.toFixed(2)}` : '');
+    opt.dataset.prezzo = s.prezzo;
+    if (s.da_contratto) daCont = true;
+    selServ.appendChild(opt);
+  });
+  selServ.disabled  = false;
+  badge.style.display = daCont ? '' : 'none';
+  aggiornaPreview();
+});
+
+// ── aggiorna preview date ─────────────────────────────────
+function aggiornaPreview() {
+  const filialeId  = document.getElementById('gen-filiale').value;
+  const servizioId = document.getElementById('gen-servizio').value;
+  const anno       = parseInt(document.getElementById('gen-anno').value);
+  const frequenza  = document.getElementById('gen-frequenza').value;
+  const dataInizio = document.getElementById('gen-data-inizio').value;
+  const container  = document.getElementById('preview-date');
+  const info       = document.getElementById('gen-info');
+  const btnConf    = document.getElementById('btn-genera-confirm');
+
+  if (!filialeId || !servizioId || !anno || !dataInizio) {
+    container.innerHTML = '<span class="text-muted" style="font-size:.78rem;">Compila i campi per vedere le date</span>';
+    btnConf.disabled = true;
+    info.textContent = '';
+    return;
+  }
+
+  const dates = calcolaDate(dataInizio, frequenza, anno);
+  container.innerHTML = dates.map(d => `<span class="preview-chip">${formatDate(d)}</span>`).join('');
+  info.textContent = `${dates.length} intervento${dates.length !== 1 ? 'i' : ''} generato${dates.length !== 1 ? 'i' : ''}`;
+  btnConf.disabled = dates.length === 0;
+}
+
+['gen-filiale','gen-servizio','gen-anno','gen-frequenza','gen-data-inizio'].forEach(id => {
+  document.getElementById(id)?.addEventListener('change', aggiornaPreview);
+  document.getElementById(id)?.addEventListener('input', aggiornaPreview);
+});
+
+// ── calcola date (JS) ─────────────────────────────────────
+function calcolaDate(dataInizioStr, frequenza, anno) {
+  const step = { mensile:1, bimestrale:2, trimestrale:3, semestrale:6, annuale:12 }[frequenza] || 1;
+  const [ay, am, ad] = dataInizioStr.split('-').map(Number);
+  const dates = [];
+  let y = ay, m = am;
+  const giorno = ad;
+
+  while (y === anno) {
+    const maxDay = new Date(y, m, 0).getDate();  // day 0 of next month = last day of this month
+    const d = new Date(y, m - 1, Math.min(giorno, maxDay));
+    dates.push(d.toISOString().slice(0, 10));
+    m += step;
+    while (m > 12) { m -= 12; y++; }
+  }
+  return dates;
+}
+
+// ── format data it ────────────────────────────────────────
+function formatDate(isoStr) {
+  const [y, m, d] = isoStr.split('-');
+  return `${d}/${m}/${y}`;
+}
+
+// ── conferma genera ───────────────────────────────────────
+document.getElementById('btn-genera-confirm').addEventListener('click', async () => {
+  const filialeId  = document.getElementById('gen-filiale').value;
+  const servizioId = document.getElementById('gen-servizio').value;
+  const anno       = parseInt(document.getElementById('gen-anno').value);
+  const frequenza  = document.getElementById('gen-frequenza').value;
+  const dataInizio = document.getElementById('gen-data-inizio').value;
+
+  if (!filialeId || !servizioId || !anno || !dataInizio) return;
+
+  const btn = document.getElementById('btn-genera-confirm');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Creazione…';
+
+  try {
+    const r = await api(URL_GENERA, {
+      method: 'POST',
+      body: JSON.stringify({
+        filiale_id: filialeId,
+        servizio_id: servizioId,
+        anno,
+        frequenza,
+        data_inizio: dataInizio,
+      }),
+    });
+
+    if (r.ok) {
+      bootstrap.Modal.getInstance(document.getElementById('modal-genera')).hide();
+      showToast(`Piano creato: ${r.n_ods} ODS generati`);
+      calendar.refetchEvents();
+      // aggiorna legenda se nuova filiale
+      const legenda = document.getElementById('legenda-filiali');
+      if (legenda) {
+        // ricarica filiali
+        const filiali = await api(URL_FILIALI + '?cliente_id=' + clienteId);
+        legenda.innerHTML = '';
+        filialiMap = {};
+        filiali.forEach(f => {
+          filialiMap[f.id] = f;
+          const li = document.createElement('li');
+          li.innerHTML = `<span class="dot-filiale" style="background:${f.color};"></span><span>${f.nome}${f.citta ? ` <span class="filiale-citta">· ${f.citta}</span>` : ''}</span>`;
+          legenda.appendChild(li);
+        });
+      }
+    } else {
+      showToast(r.errore || 'Errore nella generazione', false);
+    }
+  } catch (e) {
+    showToast('Errore di rete', false);
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '<i class="bi bi-check2-circle me-1"></i>Crea ODS';
+});
+
+})();
+</script>
+{% endblock %}

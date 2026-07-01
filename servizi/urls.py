@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from . import views_pianificazione
 
 app_name = "servizi"
 
@@ -68,4 +69,22 @@ urlpatterns = [
 
     # API
     path("api/prezzo-contratto/", views.api_prezzo_contratto, name="api_prezzo_contratto"),
+
+    # Pianificazione servizi
+    path("pianificazione/",
+         views_pianificazione.PianificazioneView.as_view(), name="pianificazione"),
+    path("pianificazione/piani/<int:pk>/",
+         views_pianificazione.PianoDetailView.as_view(), name="piano_detail"),
+
+    # API pianificazione
+    path("api/pianificazione/eventi/",
+         views_pianificazione.pianificazione_eventi_api, name="pianificazione_eventi_api"),
+    path("api/pianificazione/filiali/",
+         views_pianificazione.pianificazione_filiali_api, name="pianificazione_filiali_api"),
+    path("api/pianificazione/servizi/",
+         views_pianificazione.pianificazione_servizi_api, name="pianificazione_servizi_api"),
+    path("api/pianificazione/genera/",
+         views_pianificazione.pianificazione_genera, name="pianificazione_genera"),
+    path("api/pianificazione/ods/<int:ods_pk>/sposta/",
+         views_pianificazione.pianificazione_sposta_ods, name="pianificazione_sposta_ods"),
 ]
