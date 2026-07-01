@@ -13,14 +13,16 @@
   .fc-button-primary:hover { background: var(--color-1-dark) !important; border-color: var(--color-1-dark) !important; }
   .fc-button-primary:not(.fc-button-active):hover { background: var(--color-1-dark) !important; }
   .fc-button-active { background: #312e81 !important; border-color: #312e81 !important; }
-  /* ── eventi ── */
+  /* ── eventi dayGrid / timeGrid: testo bianco su sfondo colorato ── */
   .fc-event { cursor: pointer; border: none !important; border-radius: 4px; font-size: .78rem; font-weight: 500; }
   .fc-event:hover { opacity: .85; }
-  /* dayGrid: altezza minima leggibile */
   .fc-daygrid-event { padding: 3px 6px !important; line-height: 1.4; white-space: nowrap; overflow: hidden; }
+  .fc-daygrid-block-event .fc-event-main,
+  .fc-daygrid-block-event .fc-event-title,
+  .fc-timegrid-event .fc-event-main,
+  .fc-timegrid-event .fc-event-title { color: #fff !important; }
   .fc-daygrid-event .fc-event-title { overflow: hidden; text-overflow: ellipsis; }
   .fc-daygrid-block-event .fc-event-main { padding: 3px 4px; }
-  /* timeGrid allDay bar */
   .fc-timegrid-event .fc-event-main { padding: 3px 6px; }
   .fc-day-today { background: #eff6ff !important; }
   .fc-col-header-cell { font-size: .75rem; font-weight: 700; color: var(--slate-500); text-transform: uppercase; letter-spacing: .05em; }
@@ -38,20 +40,23 @@
   .provider-btn.inactive { opacity: .45; background: var(--slate-50); color: var(--slate-500); }
   .provider-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
 
-  /* ── List view ── */
-  .fc-list-table { color: var(--slate-900); border-collapse: collapse; width: 100%; }
+  /* ── List view: sfondo bianco, testo scuro ── */
+  .fc-list-table { border-collapse: collapse; width: 100%; }
   .fc-list-event { background: transparent !important; }
-  .fc-list-event td { color: var(--slate-900) !important; background: #fff !important; padding: 10px 14px !important; line-height: 1.5; border-bottom: 1px solid var(--slate-100) !important; }
-  .fc-list-event:hover td { background: var(--slate-50) !important; }
+  .fc-list-event td { background: #fff !important; padding: 10px 14px !important; line-height: 1.5; border-bottom: 1px solid #e2e8f0 !important; }
+  .fc-list-event:hover td { background: #f8fafc !important; }
   .fc-list-event-graphic { width: 36px !important; padding: 10px 8px 10px 14px !important; }
   .fc-list-event-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; border-width: 5px !important; }
-  .fc-list-event-time { color: var(--slate-400) !important; font-size: .78rem; white-space: nowrap; }
+  /* colore testo esplicito — sovrascrive --fc-event-text-color che FC inietta sull'elemento */
+  .fc-list-event-time { color: #64748b !important; font-size: .78rem; white-space: nowrap; }
   .fc-list-event-title { font-size: .85rem; }
-  .fc-list-event-title a { color: var(--slate-900) !important; text-decoration: none; font-weight: 500; }
-  .fc-list-event-title a:hover { text-decoration: underline; color: var(--indigo-600) !important; }
+  .fc-list-event-title a,
+  .fc-list-event-title a:link,
+  .fc-list-event-title a:visited { color: #0f172a !important; text-decoration: none !important; font-weight: 500; }
+  .fc-list-event-title a:hover { color: #3b82f6 !important; text-decoration: underline !important; }
   .fc-list-day-cushion,
-  .fc-list-day-cushion a { background: var(--slate-50) !important; color: var(--slate-600) !important; font-weight: 600; font-size: .8rem; padding: 8px 14px !important; }
-  .fc-list-empty-cushion { color: var(--slate-400); padding: 2.5rem; text-align: center; }
+  .fc-list-day-cushion a { background: #f1f5f9 !important; color: #475569 !important; font-weight: 600; font-size: .8rem; padding: 8px 14px !important; }
+  .fc-list-empty-cushion { color: #94a3b8; padding: 2.5rem; text-align: center; }
 
   /* ── Popover "+N altri" ── */
   .fc-more-popover { background: #fff !important; border: 1px solid var(--slate-200) !important; border-radius: 10px !important; box-shadow: 0 6px 20px rgba(0,0,0,.12) !important; }
