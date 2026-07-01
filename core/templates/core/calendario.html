@@ -13,9 +13,15 @@
   .fc-button-primary:hover { background: var(--color-1-dark) !important; border-color: var(--color-1-dark) !important; }
   .fc-button-primary:not(.fc-button-active):hover { background: var(--color-1-dark) !important; }
   .fc-button-active { background: #312e81 !important; border-color: #312e81 !important; }
-  .fc-event { cursor: pointer; border: none !important; border-radius: 4px; font-size: .75rem; }
+  /* ── eventi ── */
+  .fc-event { cursor: pointer; border: none !important; border-radius: 4px; font-size: .78rem; font-weight: 500; }
   .fc-event:hover { opacity: .85; }
-  .fc-daygrid-event { padding: 1px 4px; }
+  /* dayGrid: altezza minima leggibile */
+  .fc-daygrid-event { padding: 3px 6px !important; line-height: 1.4; white-space: nowrap; overflow: hidden; }
+  .fc-daygrid-event .fc-event-title { overflow: hidden; text-overflow: ellipsis; }
+  .fc-daygrid-block-event .fc-event-main { padding: 3px 4px; }
+  /* timeGrid allDay bar */
+  .fc-timegrid-event .fc-event-main { padding: 3px 6px; }
   .fc-day-today { background: #eff6ff !important; }
   .fc-col-header-cell { font-size: .75rem; font-weight: 700; color: var(--slate-500); text-transform: uppercase; letter-spacing: .05em; }
 
@@ -33,14 +39,18 @@
   .provider-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
 
   /* ── List view ── */
-  .fc-list-table { color: var(--slate-900); }
-  .fc-list-event td { color: var(--slate-900) !important; background: #fff; }
+  .fc-list-table { color: var(--slate-900); border-collapse: collapse; width: 100%; }
+  .fc-list-event td { color: var(--slate-900) !important; background: #fff; padding: 10px 14px !important; line-height: 1.5; border-bottom: 1px solid var(--slate-100) !important; }
   .fc-list-event:hover td { background: var(--slate-50) !important; }
+  .fc-list-event-graphic { width: 36px !important; padding: 10px 8px 10px 14px !important; }
+  .fc-list-event-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; border-width: 5px !important; }
+  .fc-list-event-time { color: var(--slate-400) !important; font-size: .78rem; white-space: nowrap; }
+  .fc-list-event-title { font-size: .85rem; }
+  .fc-list-event-title a { color: var(--slate-900) !important; text-decoration: none; font-weight: 500; }
+  .fc-list-event-title a:hover { text-decoration: underline; color: var(--indigo-600) !important; }
   .fc-list-day-cushion,
-  .fc-list-day-cushion a { background: var(--slate-100) !important; color: var(--slate-600) !important; font-weight: 600; }
-  .fc-list-empty { color: var(--slate-500); padding: 2rem; text-align: center; }
-  .fc-list-event-title a { color: var(--slate-900) !important; text-decoration: none; }
-  .fc-list-event-title a:hover { text-decoration: underline; }
+  .fc-list-day-cushion a { background: var(--slate-50) !important; color: var(--slate-600) !important; font-weight: 600; font-size: .8rem; padding: 8px 14px !important; }
+  .fc-list-empty-cushion { color: var(--slate-400); padding: 2.5rem; text-align: center; }
 
   /* ── Popover "+N altri" ── */
   .fc-more-popover { background: #fff !important; border: 1px solid var(--slate-200) !important; border-radius: 10px !important; box-shadow: 0 6px 20px rgba(0,0,0,.12) !important; }
