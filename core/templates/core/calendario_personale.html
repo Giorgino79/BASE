@@ -178,13 +178,31 @@ document.addEventListener('DOMContentLoaded', function () {
     eventMouseLeave: function () { tooltip.style.display = 'none'; },
     eventContent: function(info) {
       const isListView = calendar.view.type.startsWith('list');
+      if (isListView) {
+        const wrap = document.createElement('span');
+        wrap.style.cssText = 'display:flex;align-items:center;gap:8px;min-width:0;';
+        const start = info.event.start;
+        if (start) {
+          const badge = document.createElement('span');
+          badge.style.cssText = 'flex-shrink:0;font-size:.7rem;font-weight:700;padding:1px 7px;border-radius:4px;background:#f1f5f9;color:#475569;letter-spacing:.01em;';
+          if (info.event.allDay) {
+            badge.textContent = start.toLocaleDateString('it-IT', {day:'2-digit', month:'2-digit'});
+          } else {
+            badge.textContent = start.toLocaleTimeString('it-IT', {hour:'2-digit', minute:'2-digit'});
+          }
+          wrap.appendChild(badge);
+        }
+        let rawTitle = info.event.title || '';
+        if (!info.event.allDay) rawTitle = rawTitle.replace(/^\d{2}:\d{2}\s*[—-]\s*/, '');
+        const titleEl = document.createElement('span');
+        titleEl.textContent = rawTitle;
+        titleEl.style.cssText = 'color:#0f172a;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+        wrap.appendChild(titleEl);
+        return { domNodes: [wrap] };
+      }
       const titleEl = document.createElement('span');
       titleEl.textContent = info.event.title || '';
-      if (isListView) {
-        titleEl.style.cssText = 'color:#0f172a;font-weight:500;';
-      } else {
-        titleEl.style.cssText = 'display:block;color:#fff;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
-      }
+      titleEl.style.cssText = 'display:block;color:#fff;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
       return { domNodes: [titleEl] };
     },
     datesSet: function (info) {
