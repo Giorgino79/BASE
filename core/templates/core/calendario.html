@@ -209,6 +209,17 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         return { html: '<span></span>' };
       }
+      /* Rendering esplicito per tutti gli altri eventi:
+         bypassa i problemi di ereditarietà CSS di FullCalendar */
+      const isListView = calendar.view.type.startsWith('list');
+      const titleEl = document.createElement('span');
+      titleEl.textContent = info.event.title || '';
+      if (isListView) {
+        titleEl.style.cssText = 'color:#0f172a;font-weight:500;';
+      } else {
+        titleEl.style.cssText = 'display:block;color:#fff;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+      }
+      return { domNodes: [titleEl] };
     },
     eventDidMount: function(info) {
       if (info.event.extendedProps.tipo === 'separatore') {

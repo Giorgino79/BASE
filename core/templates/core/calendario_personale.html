@@ -176,6 +176,17 @@ document.addEventListener('DOMContentLoaded', function () {
       tooltip.style.display = 'block';
     },
     eventMouseLeave: function () { tooltip.style.display = 'none'; },
+    eventContent: function(info) {
+      const isListView = calendar.view.type.startsWith('list');
+      const titleEl = document.createElement('span');
+      titleEl.textContent = info.event.title || '';
+      if (isListView) {
+        titleEl.style.cssText = 'color:#0f172a;font-weight:500;';
+      } else {
+        titleEl.style.cssText = 'display:block;color:#fff;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+      }
+      return { domNodes: [titleEl] };
+    },
     datesSet: function (info) {
       loadProssimiEventi(info.start, info.end);
     }
