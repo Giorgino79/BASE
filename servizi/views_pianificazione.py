@@ -150,41 +150,99 @@ def pianificazione_filiali_api(request):
 
 @login_required
 def pianificazione_servizi_api(request):
-    from .models import Servizio, ContrattoFiliale
+    """Servizi disponibili per un cliente (da contratti attivi, fallback tutti)."""
+    from .models import Servizio, Contratto, ContrattoRiga, ContrattoFilialeRiga
 
-    filiale_id = request.GET.get("filiale_id")
-    servizi = []
-
-    if filiale_id:
-        cf = (
-            ContrattoFiliale.objects
-            .filter(filiale_id=filiale_id, contratto__stato="attivo")
-            .prefetch_related("righe_sede__servizio")
-            .first()
+    cliente_id = request.GET.get("cliente_id")
+    if cliente_id:
+        contratti_ids = list(
+            Contratto.objects.filter(cliente_id=cliente_id, stato="attivo")
+            .values_list("id", flat=True)
         )
-        if cf:
-            servizi = [
-                {
-                    "id": r.servizio_id,
-                    "nome": r.servizio.nome,
-                    "prezzo": float(r.prezzo),
-                    "da_contratto": True,
-                }
-                for r in cf.righe_sede.select_related("servizio").all()
-            ]
-            if servizi:
-                return JsonResponse(servizi, safe=False)
+        if contratti_ids:
+            ids = set(
+                ContrattoRiga.objects.filter(contratto_id__in=contratti_ids)
+                .values_list("servizio_id", flat=True)
+            )
+            ids |= set(
+                ContrattoFilialeRiga.objects.filter(
+                    contratto_filiale__contratto_id__in=contratti_ids
+                ).values_list("servizio_id", flat=True)
+            )
+            if ids:
+                return JsonResponse([
+                    {"id": s.pk, "nome": s.nome}
+                    for s in Servizio.objects.filter(pk__in=ids, attivo=True).order_by("nome")
+                ], safe=False)
 
-    servizi = [
-        {
-            "id": s.pk,
-            "nome": s.nome,
-            "prezzo": float(s.tariffa_cartello),
-            "da_contratto": False,
-        }
+    return JsonResponse([
+        {"id": s.pk, "nome": s.nome}
         for s in Servizio.objects.filter(attivo=True).order_by("nome")
-    ]
-    return JsonResponse(servizi, safe=False)
+    ], safe=False)
+
+
+@login_required
+@require_POST
+def pianificazione_salva_piano(request):
+    """Crea in bulk tutti gli ODS dalla bozza confermata dall'utente."""
+    try:
+        payload     = json.loads(request.body)
+        servizio_id = int(payload["servizio_id"])
+        programma   = payload["programma"]   # [{filiale_id, data}, ...]
+
+        from anagrafica_r2.models import Filiale
+        from .models import ODS, ODSRiga, Servizio, ContrattoFiliale
+        from django.urls import reverse
+
+        servizio = get_object_or_404(Servizio, pk=servizio_id)
+
+        # prezzo per filiale (cache per evitare N query)
+        prezzi = {}
+        def _prezzo(filiale):
+            if filiale.pk not in prezzi:
+                p = servizio.tariffa_cartello
+                cf = ContrattoFiliale.objects.filter(
+                    filiale=filiale, contratto__stato="attivo"
+                ).first()
+                if cf:
+                    riga = cf.righe_sede.filter(servizio=servizio).first()
+                    if riga:
+                        p = riga.prezzo
+                prezzi[filiale.pk] = p
+            return prezzi[filiale.pk]
+
+        creati = []
+        filiali_cache = {}
+        for item in programma:
+            fid = int(item["filiale_id"])
+            if fid not in filiali_cache:
+                filiali_cache[fid] = get_object_or_404(Filiale, pk=fid)
+            filiale   = filiali_cache[fid]
+            data_serv = date.fromisoformat(item["data"])
+
+            ods = ODS.objects.create(
+                filiale=filiale,
+                data_servizio=data_serv,
+                stato=ODS.Stato.PROGRAMMATO,
+                created_by=request.user,
+            )
+            ODSRiga.objects.create(ods=ods, servizio=servizio, prezzo=_prezzo(filiale))
+            creati.append({
+                "ods_id":        ods.pk,
+                "numero":        ods.numero,
+                "url":           reverse("servizi:ods_detail", kwargs={"pk": ods.pk}),
+                "filiale_id":    fid,
+                "filiale_nome":  filiale.nome,
+                "data":          data_serv.isoformat(),
+                "color":         _colore_filiale(fid),
+                "stato":         ods.stato,
+                "stato_display": ods.get_stato_display(),
+            })
+
+        return JsonResponse({"ok": True, "n": len(creati), "ods": creati})
+
+    except Exception as e:
+        return JsonResponse({"ok": False, "errore": str(e)}, status=400)
 
 
 @login_required

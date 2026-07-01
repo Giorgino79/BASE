@@ -85,6 +85,8 @@ urlpatterns = [
          views_pianificazione.pianificazione_servizi_api, name="pianificazione_servizi_api"),
     path("api/pianificazione/genera/",
          views_pianificazione.pianificazione_genera, name="pianificazione_genera"),
+    path("api/pianificazione/salva/",
+         views_pianificazione.pianificazione_salva_piano, name="pianificazione_salva_piano"),
     path("api/pianificazione/ods/<int:ods_pk>/sposta/",
          views_pianificazione.pianificazione_sposta_ods, name="pianificazione_sposta_ods"),
 ]
