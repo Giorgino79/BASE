@@ -17,6 +17,7 @@ class PortaleMiddleware:
     def __call__(self, request):
         if (
             request.user.is_authenticated
+            and not request.user.is_staff
             and not request.path.startswith(PORTAL_PREFIX)
             and not request.path.startswith('/admin/')
             and not request.path.startswith('/static/')

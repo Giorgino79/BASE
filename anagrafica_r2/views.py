@@ -162,6 +162,8 @@ class AziendaCreateView(AccessMixin, CreateView):
             'first_name': azienda.ragione_sociale[:30],
             'is_staff': False, 'is_active': True,
         })
+        if user.is_staff:
+            return
         user.set_password(password)
         user.save()
         azienda.portal_user = user
@@ -197,6 +199,8 @@ class AziendaUpdateView(AccessMixin, UpdateView):
             'first_name': azienda.ragione_sociale[:30],
             'is_staff': False, 'is_active': True,
         })
+        if user.is_staff:
+            return
         if password:
             user.set_password(password)
             user.save()
