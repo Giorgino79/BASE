@@ -1,3 +1,6 @@
+import re
+from calendar import monthrange
+from datetime import timedelta
 from decimal import Decimal, ROUND_HALF_UP
 
 from django.contrib import messages
@@ -308,6 +311,33 @@ class FatturaDetailView(LoginRequiredMixin, DetailView):
     context_object_name = "fattura"
 
 
+def calcola_data_scadenza(data_emissione, note_pagamento):
+    """
+    Ricava la data di scadenza dalla data di emissione e le condizioni di pagamento.
+
+    Pattern riconosciuti (case-insensitive):
+      "immediato" / "a vista"       → stessa data fattura
+      "N gg d.f.f.m." / "fine mese" → ultimo giorno del mese fattura + N giorni
+      "N gg"  (default)             → data fattura + N giorni
+    Restituisce None se il pattern non è interpretabile.
+    """
+    if not note_pagamento:
+        return None
+    testo = note_pagamento.lower()
+    if any(k in testo for k in ("immediat", "a vista", "pronto cassa")):
+        return data_emissione
+    m = re.search(r'(\d+)\s*(?:gg|giorni?)\b', testo)
+    if not m:
+        return None
+    giorni = int(m.group(1))
+    if re.search(r'f\.f\.m\.|fine\s*mese', testo):
+        ultimo = monthrange(data_emissione.year, data_emissione.month)[1]
+        base = data_emissione.replace(day=ultimo)
+    else:
+        base = data_emissione
+    return base + timedelta(days=giorni)
+
+
 @login_required
 def fattura_pdf(request, pk):
     """Rigenera il PDF di una fattura già emessa dai dati salvati nel DB."""
@@ -355,6 +385,7 @@ def fattura_pdf(request, pk):
         "is_libera":        fattura.is_libera,
         "numero_documento": fattura.numero,
         "data_documento":   fattura.data_emissione,
+        "data_scadenza":    calcola_data_scadenza(fattura.data_emissione, fattura.note_pagamento),
         "aliquota_iva":     fattura.aliquota_iva,
         "imponibile":       fattura.imponibile,
         "importo_iva":      fattura.importo_iva,
@@ -679,6 +710,10 @@ def _build_pdf_ctx_da_righe(rows, is_fattura):
         "is_fattura":        is_fattura,
         "numero_documento":  "BOZZA",
         "data_documento":    timezone.localdate(),
+        "data_scadenza":     calcola_data_scadenza(
+                                 timezone.localdate(),
+                                 fat_cfg.get("NOTE_PAGAMENTO", ""),
+                             ),
         "aliquota_iva":      aliquota,
         "imponibile":        imponibile,
         "importo_iva":       importo_iva,

@@ -37,30 +37,38 @@
     color: #555;
     line-height: 1.5;
   }
-  .doc-box {
-    border: 2px solid #2c5f8a;
-    border-radius: 4px;
-    padding: 8px 12px;
-    text-align: right;
-    min-width: 200px;
-  }
   .doc-type {
-    font-size: 14pt;
+    font-size: 13pt;
     font-weight: bold;
     color: #2c5f8a;
     text-transform: uppercase;
     letter-spacing: 1px;
+    text-align: right;
+    margin-bottom: 6px;
   }
-  .doc-numero {
-    font-size: 11pt;
+  .doc-box {
+    border: 1.5px solid #2c5f8a;
+    border-radius: 4px;
+    overflow: hidden;
+    min-width: 210px;
+  }
+  .doc-box table { width: 100%; border-collapse: collapse; }
+  .doc-box tr:not(:last-child) td { border-bottom: 1px solid #e8eef4; }
+  .doc-lbl {
+    font-size: 7.5pt;
+    color: #888;
+    padding: 5px 10px;
+    text-align: left;
+    white-space: nowrap;
+    vertical-align: middle;
+  }
+  .doc-val {
+    font-size: 8.5pt;
     font-weight: bold;
     color: #1a1a2e;
-    margin-top: 2px;
-  }
-  .doc-data {
-    font-size: 8pt;
-    color: #555;
-    margin-top: 4px;
+    padding: 5px 10px;
+    text-align: right;
+    vertical-align: middle;
   }
 
   /* ── DESTINATARIO ──────────────────────────────── */
@@ -201,10 +209,26 @@
       </div>
     </td>
     <td style="width:40%; text-align:right; vertical-align:top">
+      <div class="doc-type">{% if is_fattura %}Fattura{% else %}Nota di consegna{% endif %}</div>
       <div class="doc-box">
-        <div class="doc-type">{% if is_fattura %}Fattura{% else %}Nota di consegna{% endif %}</div>
-        <div class="doc-numero">N. {{ numero_documento }}</div>
-        <div class="doc-data">Del {{ data_documento|date:"d/m/Y" }}</div>
+        <table>
+          <tr>
+            <td class="doc-lbl">Numero fattura</td>
+            <td class="doc-val">{{ numero_documento }}</td>
+          </tr>
+          <tr>
+            <td class="doc-lbl">Data</td>
+            <td class="doc-val">{{ data_documento|date:"d/m/Y" }}</td>
+          </tr>
+          <tr>
+            <td class="doc-lbl">Condizioni di pagamento</td>
+            <td class="doc-val">{{ azienda.NOTE_PAGAMENTO|default:"—" }}</td>
+          </tr>
+          <tr>
+            <td class="doc-lbl">Data scadenza</td>
+            <td class="doc-val">{% if data_scadenza %}{{ data_scadenza|date:"d/m/Y" }}{% else %}—{% endif %}</td>
+          </tr>
+        </table>
       </div>
     </td>
   </tr>
