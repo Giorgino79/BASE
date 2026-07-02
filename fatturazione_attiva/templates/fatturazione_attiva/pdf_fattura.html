@@ -46,30 +46,6 @@
     text-align: right;
     margin-bottom: 6px;
   }
-  .doc-box {
-    border: 1.5px solid #2c5f8a;
-    border-radius: 4px;
-    overflow: hidden;
-    min-width: 210px;
-  }
-  .doc-box table { width: 100%; border-collapse: collapse; }
-  .doc-box td { border-bottom: 1px solid #e8eef4; }
-  .doc-lbl {
-    font-size: 7.5pt;
-    color: #888;
-    padding: 5px 10px;
-    text-align: left;
-    white-space: nowrap;
-    vertical-align: middle;
-  }
-  .doc-val {
-    font-size: 8.5pt;
-    font-weight: bold;
-    color: #1a1a2e;
-    padding: 5px 10px;
-    text-align: right;
-    vertical-align: middle;
-  }
 
   /* ── DESTINATARIO ──────────────────────────────── */
   .dest-block {
@@ -210,26 +186,24 @@
     </td>
     <td style="width:40%; text-align:right; vertical-align:top">
       <div class="doc-type">{% if is_fattura %}Fattura{% else %}Nota di consegna{% endif %}</div>
-      <div class="doc-box">
-        <table>
-          <tr>
-            <td class="doc-lbl">Numero fattura</td>
-            <td class="doc-val">{{ numero_documento }}</td>
-          </tr>
-          <tr>
-            <td class="doc-lbl">Data</td>
-            <td class="doc-val">{{ data_documento|date:"d/m/Y" }}</td>
-          </tr>
-          <tr>
-            <td class="doc-lbl">Condizioni di pagamento</td>
-            <td class="doc-val">{{ azienda.NOTE_PAGAMENTO|default:"—" }}</td>
-          </tr>
-          <tr>
-            <td class="doc-lbl">Data scadenza</td>
-            <td class="doc-val">{% if data_scadenza %}{{ data_scadenza|date:"d/m/Y" }}{% else %}—{% endif %}</td>
-          </tr>
-        </table>
-      </div>
+      <table style="border:1.5px solid #2c5f8a;border-collapse:collapse;width:100%;">
+        <tr>
+          <td style="font-size:7.5pt;color:#888;padding:5px 10px;text-align:left;border-bottom:1px solid #e8eef4;">Numero fattura</td>
+          <td style="font-size:8.5pt;font-weight:bold;color:#1a1a2e;padding:5px 10px;text-align:right;border-bottom:1px solid #e8eef4;">{{ numero_documento }}</td>
+        </tr>
+        <tr>
+          <td style="font-size:7.5pt;color:#888;padding:5px 10px;text-align:left;border-bottom:1px solid #e8eef4;">Data</td>
+          <td style="font-size:8.5pt;font-weight:bold;color:#1a1a2e;padding:5px 10px;text-align:right;border-bottom:1px solid #e8eef4;">{{ data_documento|date:"d/m/Y" }}</td>
+        </tr>
+        <tr>
+          <td style="font-size:7.5pt;color:#888;padding:5px 10px;text-align:left;border-bottom:1px solid #e8eef4;">Condizioni di pagamento</td>
+          <td style="font-size:8.5pt;font-weight:bold;color:#1a1a2e;padding:5px 10px;text-align:right;border-bottom:1px solid #e8eef4;">{{ azienda.NOTE_PAGAMENTO|default:"—" }}</td>
+        </tr>
+        <tr>
+          <td style="font-size:7.5pt;color:#888;padding:5px 10px;text-align:left;">Data scadenza</td>
+          <td style="font-size:8.5pt;font-weight:bold;color:#1a1a2e;padding:5px 10px;text-align:right;">{% if data_scadenza %}{{ data_scadenza|date:"d/m/Y" }}{% else %}—{% endif %}</td>
+        </tr>
+      </table>
     </td>
   </tr>
 </table>
