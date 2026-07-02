@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load static %}
+{% load static l10n %}
 {% block extra_css %}<link rel="stylesheet" href="{% static 'css/detail.css' %}">{% endblock %}
 {% block title %}Fattura {{ fattura.numero }}{% endblock %}
 
@@ -422,8 +422,8 @@
 
 {% block extra_js %}
 <script>
-const ALIQUOTA = {{ fattura.aliquota_iva }};
-const IMPONIBILE_MAX = {{ fattura.imponibile }};
+const ALIQUOTA = {{ fattura.aliquota_iva|unlocalize }};
+const IMPONIBILE_MAX = {{ fattura.imponibile|unlocalize }};
 
 {% if fattura.stato == 'emessa' %}
 const sollecitoUrl     = "{% url 'fatturazione_attiva:fattura_sollecito' fattura.pk %}";
