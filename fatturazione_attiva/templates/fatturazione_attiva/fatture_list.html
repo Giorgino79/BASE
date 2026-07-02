@@ -117,56 +117,71 @@
       <table class="table table-hover table-sm mb-0 align-middle">
         <thead class="bg-brand text-white">
           <tr>
-            <th>N° ODS</th>
-            <th>Data servizio</th>
-            <th>Cliente / Sede</th>
+            <th>N° Fattura</th>
+            <th>Data emissione</th>
+            <th>Cliente</th>
             <th>Servizi</th>
+            <th>ODS</th>
             <th class="text-end">Imponibile</th>
-            <th class="text-center">Incasso</th>
-            <th class="text-end">Incassato</th>
-            <th class="text-center">Data incasso</th>
+            <th class="text-end">Totale IVA incl.</th>
+            <th class="text-center">Stato</th>
+            <th class="text-center">Data pagamento</th>
             <th></th>
           </tr>
         </thead>
         <tbody>
-          {% for ods in fatture %}
+          {% for fattura in fatture %}
           <tr>
             <td>
-              <a href="{{ ods.get_absolute_url }}" class="badge bg-primary text-decoration-none" target="_blank">
-                {{ ods.numero }}
+              <a href="{% url 'fatturazione_attiva:fattura_detail' fattura.pk %}"
+                 class="badge bg-primary text-decoration-none">
+                {{ fattura.numero }}
               </a>
             </td>
-            <td class="text-nowrap">{{ ods.data_servizio|date:"d/m/Y" }}</td>
+            <td class="text-nowrap">{{ fattura.data_emissione|date:"d/m/Y" }}</td>
             <td>
-              <div class="fw-semibold small">{{ ods.cliente_display }}</div>
-              {% if ods.filiale %}<div class="text-muted small">{{ ods.filiale.indirizzo }}</div>{% endif %}
+              <div class="fw-semibold small">{{ fattura.dest_nome }}</div>
+              {% if fattura.dest_citta %}<div class="text-muted small">{{ fattura.dest_citta }}</div>{% endif %}
             </td>
             <td>
-              {% for riga in ods.righe.all %}
-                <span class="badge bg-light text-dark border me-1">{{ riga.servizio.nome }}</span>
+              {% for riga in fattura.righe.all %}
+                <span class="badge bg-light text-dark border me-1">{{ riga.descrizione }}</span>
               {% empty %}
                 <span class="text-muted fst-italic small">—</span>
               {% endfor %}
             </td>
-            <td class="text-end fw-semibold">
-              {% if ods.prezzo_totale %}€ {{ ods.prezzo_totale }}{% else %}<span class="text-muted">—</span>{% endif %}
+            <td>
+              {% for ods in fattura.ods.all %}
+                <a href="{{ ods.get_absolute_url }}" target="_blank"
+                   class="badge bg-secondary text-decoration-none me-1">
+                  {{ ods.numero }}
+                </a>
+              {% empty %}
+                <span class="text-muted small">libera</span>
+              {% endfor %}
             </td>
+            <td class="text-end fw-semibold">€ {{ fattura.imponibile }}</td>
+            <td class="text-end fw-semibold">€ {{ fattura.totale }}</td>
             <td class="text-center">
-              {% if ods.incassato %}
-                <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Incassato</span>
+              {% if fattura.stato == 'pagata' %}
+                <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Pagata</span>
+              {% elif fattura.stato == 'annullata' %}
+                <span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>Annullata</span>
               {% else %}
                 <span class="badge bg-warning text-dark"><i class="bi bi-hourglass-split me-1"></i>Da incassare</span>
               {% endif %}
             </td>
-            <td class="text-end">
-              {% if ods.importo_incassato %}€ {{ ods.importo_incassato }}{% else %}<span class="text-muted">—</span>{% endif %}
-            </td>
             <td class="text-center text-nowrap text-muted small">
-              {% if ods.data_incasso %}{{ ods.data_incasso|date:"d/m/Y" }}{% else %}—{% endif %}
+              {% if fattura.data_pagamento %}{{ fattura.data_pagamento|date:"d/m/Y" }}{% else %}—{% endif %}
             </td>
-            <td class="text-end">
-              <a href="{{ ods.get_absolute_url }}" class="btn btn-outline-secondary btn-sm" target="_blank" title="Dettaglio ODS">
+            <td class="text-end text-nowrap">
+              <a href="{% url 'fatturazione_attiva:fattura_detail' fattura.pk %}"
+                 class="btn btn-outline-secondary btn-sm" title="Dettaglio fattura">
                 <i class="bi bi-eye"></i>
+              </a>
+              <a href="{% url 'fatturazione_attiva:fattura_pdf' fattura.pk %}"
+                 class="btn btn-outline-primary btn-sm" title="PDF" target="_blank">
+                <i class="bi bi-file-pdf"></i>
               </a>
             </td>
           </tr>
@@ -174,11 +189,10 @@
         </tbody>
         <tfoot class="table-light fw-semibold">
           <tr>
-            <td colspan="4" class="text-end">Totale</td>
+            <td colspan="5" class="text-end">Totale</td>
             <td class="text-end text-brand">€ {{ totale_imponibile }}</td>
-            <td></td>
             <td class="text-end text-success">€ {{ totale_incassato }}</td>
-            <td colspan="2"></td>
+            <td colspan="3"></td>
           </tr>
         </tfoot>
       </table>

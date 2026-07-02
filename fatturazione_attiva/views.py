@@ -259,13 +259,11 @@ class FattureListView(LoginRequiredMixin, TemplateView):
         return self.render_to_response(ctx)
 
     def _cerca(self, cd):
-        qs = Fattura.objects.prefetch_related("righe")
+        qs = Fattura.objects.prefetch_related("righe", "ods")
 
         tipo = cd.get("tipo_cliente")
         if tipo == "azienda" and cd.get("azienda"):
-            qs = qs.filter(
-                ods__filiale__cliente=cd["azienda"]
-            ).distinct()
+            qs = qs.filter(ods__filiale__cliente=cd["azienda"]).distinct()
         elif tipo == "privato" and cd.get("privato"):
             qs = qs.filter(ods__privato=cd["privato"]).distinct()
 
@@ -283,16 +281,16 @@ class FattureListView(LoginRequiredMixin, TemplateView):
         qs = qs.order_by("-anno", "-progressivo")
         fatture = list(qs)
 
-        totale_emesso  = sum((f.totale for f in fatture if f.stato != Fattura.Stato.ANNULLATA), Decimal("0.00"))
-        totale_pagato  = sum((f.totale for f in fatture if f.stato == Fattura.Stato.PAGATA), Decimal("0.00"))
-        n_da_incassare = sum(1 for f in fatture if f.stato == Fattura.Stato.EMESSA)
+        totale_imponibile = sum((f.imponibile for f in fatture if f.stato != Fattura.Stato.ANNULLATA), Decimal("0.00"))
+        totale_incassato  = sum((f.totale     for f in fatture if f.stato == Fattura.Stato.PAGATA),    Decimal("0.00"))
+        n_da_incassare    = sum(1 for f in fatture if f.stato == Fattura.Stato.EMESSA)
 
         return {
-            "fatture":          fatture,
-            "totale_emesso":    totale_emesso,
-            "totale_pagato":    totale_pagato,
-            "n_da_incassare":   n_da_incassare,
-            "ricerca_eseguita": True,
+            "fatture":           fatture,
+            "totale_imponibile": totale_imponibile,
+            "totale_incassato":  totale_incassato,
+            "n_da_incassare":    n_da_incassare,
+            "ricerca_eseguita":  True,
         }
 
     def get_context_data(self, **kwargs):
