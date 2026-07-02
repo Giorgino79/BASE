@@ -30,11 +30,10 @@ def get_ods_eventi(user, start_date, end_date):
         tecnico = ods.tecnico.get_full_name() if ods.tecnico else ""
         servizio = ods.servizio_principale
 
-        data_str = ods.data_servizio.strftime('%d/%m')
         if ods.ora_inizio:
-            title = f"{data_str} {ods.ora_inizio.strftime('%H:%M')} — {servizio or 'N/D'} — {cliente}"
+            title = f"{ods.ora_inizio.strftime('%H:%M')} — {servizio or 'N/D'} — {cliente}"
         else:
-            title = f"{data_str} — {servizio or 'N/D'} — {cliente}"
+            title = f"--:-- — {servizio or 'N/D'} — {cliente}"
         if tecnico:
             title += f" [{tecnico}]"
         if ods.incasso_al_servizio:

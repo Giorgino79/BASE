@@ -209,7 +209,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         return { html: '<span></span>' };
       }
-      /* Il titolo include già data e ora (dal backend).
+      /* Titolo dal backend: "HH:MM — Servizio — Cliente" oppure "--:-- — ...".
          Colore: bianco su sfondo colorato (dayGrid/timeGrid), scuro in lista. */
       const isListView = calendar.view.type.startsWith('list');
       const el = document.createElement('span');
@@ -222,9 +222,18 @@ document.addEventListener('DOMContentLoaded', function () {
     eventDidMount: function(info) {
       if (info.event.extendedProps.tipo === 'separatore') {
         if (!calendar.view.type.startsWith('list')) {
-          info.el.style.display = 'none';
-          const harness = info.el.closest('.fc-daygrid-event-harness, .fc-timegrid-event-harness');
-          if (harness) harness.style.display = 'none';
+          /* Nascondi il separatore in dayGrid/timeGrid — scala risalendo il DOM
+             finché non trova il contenitore harness (selector diverso per view) */
+          info.el.style.cssText = 'display:none!important;visibility:hidden;opacity:0;pointer-events:none;';
+          let el = info.el.parentElement;
+          for (let i = 0; i < 5 && el; i++) {
+            if (el.classList.contains('fc-daygrid-event-harness') ||
+                el.classList.contains('fc-timegrid-event-harness')) {
+              el.style.display = 'none';
+              break;
+            }
+            el = el.parentElement;
+          }
         } else {
           const tr = info.el.closest('tr');
           if (tr) {
