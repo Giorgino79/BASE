@@ -12,8 +12,17 @@ from django.shortcuts import redirect, get_object_or_404
 from django.template.loader import render_to_string
 from django.utils import timezone
 from django.views.decorators.http import require_POST
+from django.contrib.contenttypes.models import ContentType
 from django.views.generic import TemplateView, DetailView
 from django.contrib.auth.mixins import LoginRequiredMixin
+
+
+class SidebarQrAllegatiMixin:
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["content_type_id"] = ContentType.objects.get_for_model(self.model).pk
+        ctx["object_id"] = self.object.pk
+        return ctx
 
 from core.excel_generator import generate_excel_response
 from core.pdf_generator import generate_pdf_from_html, PDFConfig
@@ -305,7 +314,7 @@ class FattureListView(LoginRequiredMixin, TemplateView):
 
 # ── Dettaglio fattura (con download PDF) ─────────────────────────────────────
 
-class FatturaDetailView(LoginRequiredMixin, DetailView):
+class FatturaDetailView(LoginRequiredMixin, SidebarQrAllegatiMixin, DetailView):
     model = Fattura
     template_name = "fatturazione_attiva/fattura_detail.html"
     context_object_name = "fattura"
@@ -583,7 +592,7 @@ def emetti_nota_credito(request, pk):
     return redirect("fatturazione_attiva:nc_detail", pk=nc.pk)
 
 
-class NotaCreditoDetailView(LoginRequiredMixin, DetailView):
+class NotaCreditoDetailView(LoginRequiredMixin, SidebarQrAllegatiMixin, DetailView):
     model = NotaCredito
     template_name = "fatturazione_attiva/nc_detail.html"
     context_object_name = "nc"
