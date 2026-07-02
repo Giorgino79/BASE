@@ -221,27 +221,14 @@ document.addEventListener('DOMContentLoaded', function () {
     },
     eventDidMount: function(info) {
       if (info.event.extendedProps.tipo === 'separatore') {
-        if (!calendar.view.type.startsWith('list')) {
-          /* Nascondi il separatore in dayGrid/timeGrid — scala risalendo il DOM
-             finché non trova il contenitore harness (selector diverso per view) */
-          info.el.style.cssText = 'display:none!important;visibility:hidden;opacity:0;pointer-events:none;';
-          let el = info.el.parentElement;
-          for (let i = 0; i < 5 && el; i++) {
-            if (el.classList.contains('fc-daygrid-event-harness') ||
-                el.classList.contains('fc-timegrid-event-harness')) {
-              el.style.display = 'none';
-              break;
-            }
-            el = el.parentElement;
-          }
-        } else {
-          const tr = info.el.closest('tr');
-          if (tr) {
-            const dot = tr.querySelector('.fc-list-event-dot');
-            if (dot) dot.style.display = 'none';
-            const timeEl = tr.querySelector('.fc-list-event-time');
-            if (timeEl) timeEl.textContent = '';
-          }
+        /* In list view: nascondi il pallino colorato e l'orario (il separatore
+           è già transparent, ma il dot e la colonna time andrebbero vuoti) */
+        const tr = info.el.closest('tr');
+        if (tr) {
+          const dot = tr.querySelector('.fc-list-event-dot');
+          if (dot) dot.style.display = 'none';
+          const timeEl = tr.querySelector('.fc-list-event-time');
+          if (timeEl) timeEl.textContent = '';
         }
       }
     },
