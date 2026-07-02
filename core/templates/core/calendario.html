@@ -64,7 +64,9 @@
   .fc-popover-body { background: #fff !important; border-radius: 0 0 10px 10px !important; padding: 6px 8px !important; }
   .fc-popover-body .fc-daygrid-event { color: #fff !important; }
 
-  /* Separatore pomeriggio in list view */
+  /* Separatore pomeriggio: nascosto in dayGrid/timeGrid, visibile solo in list */
+  .fc-timegrid-event.sep-pomeriggio,
+  .fc-daygrid-event.sep-pomeriggio { display: none !important; }
   .fc-list-event.sep-pomeriggio td { padding: 2px 0 !important; border: none !important; }
   .fc-list-event.sep-pomeriggio { background: transparent !important; }
 
@@ -221,14 +223,23 @@ document.addEventListener('DOMContentLoaded', function () {
     },
     eventDidMount: function(info) {
       if (info.event.extendedProps.tipo === 'separatore') {
-        /* In list view: nascondi il pallino colorato e l'orario (il separatore
-           è già transparent, ma il dot e la colonna time andrebbero vuoti) */
         const tr = info.el.closest('tr');
         if (tr) {
           const dot = tr.querySelector('.fc-list-event-dot');
           if (dot) dot.style.display = 'none';
           const timeEl = tr.querySelector('.fc-list-event-time');
           if (timeEl) timeEl.textContent = '';
+        }
+        return;
+      }
+      /* Forza il colore di sfondo sull'elemento evento — difesa contro
+         casi in cui FullCalendar non applica lo stile inline (es. allDay
+         in timeGridDay) */
+      if (!calendar.view.type.startsWith('list')) {
+        const bg = info.event.backgroundColor;
+        if (bg && bg !== 'transparent') {
+          info.el.style.backgroundColor = bg;
+          info.el.style.borderColor = bg;
         }
       }
     },

@@ -78,9 +78,7 @@ def get_ods_eventi(user, start_date, end_date):
             "title": "Pomeriggio",
             "start": f"{date}T13:00:00",
             "allDay": False,
-            "backgroundColor": "transparent",
-            "borderColor": "transparent",
-            "textColor": "#6c757d",
+            "color": "transparent",
             "classNames": ["sep-pomeriggio"],
             "extendedProps": {"tipo": "separatore"},
         })
