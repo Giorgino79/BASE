@@ -22,6 +22,7 @@ urlpatterns = [
     path("analysis/", include("analysis.urls")),
     path("cliente/", include("portale.urls")),
     path("fatturazione/attiva/", include("fatturazione_attiva.urls")),
+    path("contabilita/", include("contabilita.urls")),
 ]
 
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     "analysis",
     "portale",
     "fatturazione_attiva",
+    "contabilita",
 ]
 
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
