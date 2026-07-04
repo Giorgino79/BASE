@@ -1,8 +1,29 @@
 from django import forms
 from .models import ContoContabile, MovimentoPrimaNota
 
+_BS_CLASS = {
+    forms.TextInput:          "form-control",
+    forms.NumberInput:        "form-control",
+    forms.Textarea:           "form-control",
+    forms.DateInput:          "form-control",
+    forms.Select:             "form-select",
+    forms.CheckboxInput:      "form-check-input",
+}
 
-class ContoContabileForm(forms.ModelForm):
+
+class BootstrapMixin:
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field in self.fields.values():
+            w = field.widget
+            cls = _BS_CLASS.get(type(w))
+            if cls:
+                existing = w.attrs.get("class", "")
+                if cls not in existing:
+                    w.attrs["class"] = (existing + " " + cls).strip()
+
+
+class ContoContabileForm(BootstrapMixin, forms.ModelForm):
     class Meta:
         model  = ContoContabile
         fields = ['nome', 'tipo', 'descrizione', 'attivo']
@@ -11,7 +32,7 @@ class ContoContabileForm(forms.ModelForm):
         }
 
 
-class MovimentoPrimaNotaForm(forms.ModelForm):
+class MovimentoPrimaNotaForm(BootstrapMixin, forms.ModelForm):
     class Meta:
         model  = MovimentoPrimaNota
         fields = [

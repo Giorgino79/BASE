@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+
+{% block title %}Contabilità{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-start mb-4">
+  <div>
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb"><li class="breadcrumb-item active">Contabilità</li></ol>
+    </nav>
+    <h1><i class="bi bi-journal-text me-2 text-brand"></i>Contabilità</h1>
+    <p class="text-muted mb-0">Prima nota, conti e mastrini</p>
+  </div>
+  <div class="d-flex gap-2 flex-wrap">
+    <a href="{% url 'contabilita:movimento_create' %}" class="btn btn-primary btn-sm">
+      <i class="bi bi-plus-lg me-1"></i>Nuovo movimento
+    </a>
+  </div>
+</div>
+
+{# ── KPI ──────────────────────────────────────────────────────────────────── #}
+<div class="row g-3 mb-4">
+  <div class="col-sm-6 col-lg-3">
+    <div class="card text-center h-100">
+      <div class="card-body py-4">
+        <div class="text-muted small mb-1">Crediti clienti</div>
+        <div class="fw-bold fs-2 text-brand">€ {{ crediti_clienti }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-lg-3">
+    <div class="card text-center h-100">
+      <div class="card-body py-4">
+        <div class="text-muted small mb-1">Debiti fornitori</div>
+        <div class="fw-bold fs-2 text-brand">€ {{ debiti_fornitori }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-lg-3">
+    <div class="card text-center h-100">
+      <div class="card-body py-4">
+        <div class="text-muted small mb-1">Casse attive</div>
+        <div class="fw-bold fs-2 text-brand">{{ casse|length }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-lg-3">
+    <div class="card text-center h-100">
+      <div class="card-body py-4">
+        <div class="text-muted small mb-1">Conti bancari</div>
+        <div class="fw-bold fs-2 text-brand">{{ banche|length }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ── Quick links ──────────────────────────────────────────────────────────── #}
+<div class="row g-3 mb-4">
+  <div class="col-md-4">
+    <a href="{% url 'contabilita:prima_nota_list' %}" class="text-decoration-none">
+      <div class="card h-100 text-center py-4">
+        <div class="mb-2"><i class="bi bi-journal-richtext fs-1 text-brand"></i></div>
+        <div class="fw-semibold">Prima nota</div>
+        <div class="text-muted small">Tutti i movimenti registrati</div>
+      </div>
+    </a>
+  </div>
+  <div class="col-md-4">
+    <a href="{% url 'contabilita:movimento_create' %}" class="text-decoration-none">
+      <div class="card h-100 text-center py-4">
+        <div class="mb-2"><i class="bi bi-plus-circle fs-1 text-brand"></i></div>
+        <div class="fw-semibold">Nuovo movimento</div>
+        <div class="text-muted small">Registra un movimento in prima nota</div>
+      </div>
+    </a>
+  </div>
+  <div class="col-md-4">
+    <a href="{% url 'contabilita:conti_list' %}" class="text-decoration-none">
+      <div class="card h-100 text-center py-4">
+        <div class="mb-2"><i class="bi bi-diagram-3 fs-1 text-brand"></i></div>
+        <div class="fw-semibold">Conti contabili</div>
+        <div class="text-muted small">Clienti, fornitori, casse e banche</div>
+      </div>
+    </a>
+  </div>
+</div>
+
+{# ── Casse e Banche ───────────────────────────────────────────────────────── #}
+<div class="row g-3 mb-4">
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-header card-header-primary"><i class="bi bi-cash-stack me-2"></i>Casse</div>
+      <div class="table-responsive">
+        <table class="table table-sm mb-0 align-middle">
+          <tbody>
+            {% for c in casse %}
+            <tr>
+              <td><a href="{% url 'contabilita:mastrino' c.pk %}">{{ c.nome }}</a></td>
+              <td class="text-end">€ {{ c.saldo }}</td>
+            </tr>
+            {% empty %}
+            <tr><td class="text-center text-muted py-3"><i class="bi bi-inbox me-2"></i>Nessuna cassa</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-header card-header-primary"><i class="bi bi-bank me-2"></i>Banche</div>
+      <div class="table-responsive">
+        <table class="table table-sm mb-0 align-middle">
+          <tbody>
+            {% for b in banche %}
+            <tr>
+              <td><a href="{% url 'contabilita:mastrino' b.pk %}">{{ b.nome }}</a></td>
+              <td class="text-end">€ {{ b.saldo }}</td>
+            </tr>
+            {% empty %}
+            <tr><td class="text-center text-muted py-3"><i class="bi bi-inbox me-2"></i>Nessun conto bancario</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ── Ultimi movimenti ─────────────────────────────────────────────────────── #}
+<div class="card">
+  <div class="card-header card-header-primary">
+    <i class="bi bi-clock-history me-2"></i>Ultimi movimenti
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover table-sm mb-0 align-middle">
+      <thead class="table-light">
+        <tr>
+          <th>Data</th>
+          <th>Causale</th>
+          <th>Dare</th>
+          <th>Avere</th>
+          <th class="text-end">Importo</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in ultimi %}
+        <tr>
+          <td class="text-nowrap small">{{ m.data|date:"d/m/Y" }}</td>
+          <td>{{ m.causale }}</td>
+          <td class="small">{{ m.conto_dare.nome }}</td>
+          <td class="small">{{ m.conto_avere.nome }}</td>
+          <td class="text-end">€ {{ m.importo }}</td>
+          <td class="text-end">
+            <a href="{% url 'contabilita:movimento_detail' m.pk %}" class="btn btn-outline-secondary btn-sm">
+              <i class="bi bi-eye"></i>
+            </a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" class="text-center text-muted py-3"><i class="bi bi-inbox me-2"></i>Nessun movimento registrato</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

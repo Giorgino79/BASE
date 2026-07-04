@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-start mb-4">
+  <div>
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'contabilita:dashboard' %}">Contabilità</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'contabilita:conti_list' %}">Conti</a></li>
+        <li class="breadcrumb-item active">{{ conto.nome }}</li>
+      </ol>
+    </nav>
+    <h1><i class="bi bi-diagram-3 me-2 text-brand"></i>{{ conto.nome }}</h1>
+    <p class="text-muted mb-0">{{ conto.get_tipo_display }}</p>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-sm-4">
+    <div class="card text-center h-100">
+      <div class="card-body py-3">
+        <div class="text-muted small mb-1">Totale Dare</div>
+        <div class="fw-bold fs-4">€ {{ tot_dare }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-4">
+    <div class="card text-center h-100">
+      <div class="card-body py-3">
+        <div class="text-muted small mb-1">Totale Avere</div>
+        <div class="fw-bold fs-4">€ {{ tot_avere }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-4">
+    <div class="card text-center h-100 border-primary">
+      <div class="card-body py-3">
+        <div class="text-muted small mb-1">Saldo</div>
+        <div class="fw-bold fs-4 text-brand">€ {{ saldo }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card mb-3">
+  <div class="card-body">
+    <form method="get" class="row g-2 align-items-end">
+      <div class="col-sm-3">
+        <label class="form-label small mb-1">Da</label>
+        <input type="date" name="data_da" value="{{ data_da }}" class="form-control form-control-sm">
+      </div>
+      <div class="col-sm-3">
+        <label class="form-label small mb-1">A</label>
+        <input type="date" name="data_a" value="{{ data_a }}" class="form-control form-control-sm">
+      </div>
+      <div class="col-sm-3 d-flex gap-2">
+        <button type="submit" class="btn btn-outline-secondary btn-sm flex-fill"><i class="bi bi-funnel me-1"></i>Filtra</button>
+        <a href="{% url 'contabilita:mastrino' conto.pk %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-x-lg"></i></a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover table-sm mb-0 align-middle">
+      <thead class="table-light">
+        <tr>
+          <th>Data</th>
+          <th>Causale</th>
+          <th class="text-end">Dare</th>
+          <th class="text-end">Avere</th>
+          <th class="text-end">Saldo progressivo</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in movimenti %}
+        <tr>
+          <td class="text-nowrap small">{{ m.data|date:"d/m/Y" }}</td>
+          <td>{{ m.causale }}</td>
+          <td class="text-end">{% if m.lato == 'dare' %}€ {{ m.valore }}{% else %}—{% endif %}</td>
+          <td class="text-end">{% if m.lato == 'avere' %}€ {{ m.valore }}{% else %}—{% endif %}</td>
+          <td class="text-end fw-semibold">€ {{ m.saldo_progressivo }}</td>
+          <td class="text-end">
+            <a href="{% url 'contabilita:movimento_detail' m.pk %}" class="btn btn-outline-secondary btn-sm">
+              <i class="bi bi-eye"></i>
+            </a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" class="text-center text-muted py-3"><i class="bi bi-inbox me-2"></i>Nessun movimento su questo conto</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

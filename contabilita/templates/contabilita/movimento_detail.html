@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-start mb-4">
+  <div>
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'contabilita:dashboard' %}">Contabilità</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'contabilita:prima_nota_list' %}">Prima Nota</a></li>
+        <li class="breadcrumb-item active">Movimento del {{ mov.data|date:"d/m/Y" }}</li>
+      </ol>
+    </nav>
+    <h1><i class="bi bi-journal-text me-2 text-brand"></i>{{ mov.causale }}</h1>
+    {% if mov.is_automatico %}
+    <span class="badge badge-wait"><i class="bi bi-gear-fill me-1"></i>Generato automaticamente</span>
+    {% endif %}
+  </div>
+  <div class="d-flex gap-2 flex-wrap">
+    {% if not mov.is_automatico %}
+    <a href="{% url 'contabilita:movimento_delete' mov.pk %}" class="btn btn-outline-danger btn-sm">
+      <i class="bi bi-trash me-1"></i>Elimina
+    </a>
+    {% endif %}
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-header card-header-primary"><i class="bi bi-info-circle me-2"></i>Dettaglio</div>
+      <div class="card-body">
+        <dl class="row mb-0">
+          <dt class="col-sm-4">Data</dt><dd class="col-sm-8">{{ mov.data|date:"d/m/Y" }}</dd>
+          <dt class="col-sm-4">Tipo</dt><dd class="col-sm-8">{{ mov.get_tipo_display }}</dd>
+          <dt class="col-sm-4">Causale</dt><dd class="col-sm-8">{{ mov.causale }}</dd>
+          <dt class="col-sm-4">Importo</dt><dd class="col-sm-8">€ {{ mov.importo }}</dd>
+          <dt class="col-sm-4">Conto Dare</dt>
+          <dd class="col-sm-8"><a href="{% url 'contabilita:mastrino' mov.conto_dare_id %}">{{ mov.conto_dare.nome }}</a></dd>
+          <dt class="col-sm-4">Conto Avere</dt>
+          <dd class="col-sm-8"><a href="{% url 'contabilita:mastrino' mov.conto_avere_id %}">{{ mov.conto_avere.nome }}</a></dd>
+          {% if mov.numero_documento %}
+          <dt class="col-sm-4">N° documento</dt><dd class="col-sm-8">{{ mov.numero_documento }}</dd>
+          {% endif %}
+          {% if mov.fattura_attiva %}
+          <dt class="col-sm-4">Fattura cliente</dt><dd class="col-sm-8">{{ mov.fattura_attiva }}</dd>
+          {% endif %}
+          {% if mov.fattura_passiva %}
+          <dt class="col-sm-4">Fattura fornitore</dt><dd class="col-sm-8">{{ mov.fattura_passiva }}</dd>
+          {% endif %}
+          {% if mov.note %}
+          <dt class="col-sm-4">Note</dt><dd class="col-sm-8">{{ mov.note|linebreaksbr }}</dd>
+          {% endif %}
+          <dt class="col-sm-4">Creato da</dt><dd class="col-sm-8">{{ mov.creato_da|default:"—" }}</dd>
+          <dt class="col-sm-4">Registrato il</dt><dd class="col-sm-8">{{ mov.created_at|date:"d/m/Y H:i" }}</dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
