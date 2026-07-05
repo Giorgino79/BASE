@@ -332,44 +332,62 @@ class ContrattoDeleteView(LoginRequiredMixin, DeleteView):
 def api_prezzo_contratto(request):
     """
     GET ?filiale=<pk>&servizio=<pk>
-    Restituisce il prezzo dalla riga di contratto attiva per filiale+servizio, o null.
+    Restituisce il prezzo dalla riga di contratto attiva per filiale+servizio.
+    Se non esiste un contratto (o non è indicata una filiale, es. cliente privato),
+    ripiega sulla tariffa di cartello del servizio. "fonte" indica la provenienza:
+    "sede" | "contratto" | "cartello" | null (servizio non trovato/non specificato).
     """
     filiale_id = request.GET.get("filiale")
     servizio_id = request.GET.get("servizio")
-    if not filiale_id or not servizio_id:
-        return JsonResponse({"prezzo": None, "contratto_filiale_id": None})
-    # Prima cerca override specifico per la sede
-    sede_riga = (
-        ContrattoFilialeRiga.objects.filter(
-            servizio_id=servizio_id,
-            contratto_filiale__filiale_id=filiale_id,
-            contratto_filiale__contratto__stato="attivo",
-        )
-        .select_related("contratto_filiale__contratto")
-        .order_by("-contratto_filiale__contratto__created_at")
-        .first()
-    )
-    if sede_riga:
-        cf = sede_riga.contratto_filiale
-        return JsonResponse({"prezzo": str(sede_riga.prezzo), "contratto_filiale_id": cf.pk})
+    if not servizio_id:
+        return JsonResponse({"prezzo": None, "contratto_filiale_id": None, "fonte": None})
 
-    # Fallback: prezzo base dal contratto
-    riga = (
-        ContrattoRiga.objects.filter(
-            servizio_id=servizio_id,
-            contratto__stato="attivo",
-            contratto__filiali_contratto__filiale_id=filiale_id,
+    if filiale_id:
+        # Prima cerca override specifico per la sede
+        sede_riga = (
+            ContrattoFilialeRiga.objects.filter(
+                servizio_id=servizio_id,
+                contratto_filiale__filiale_id=filiale_id,
+                contratto_filiale__contratto__stato="attivo",
+            )
+            .select_related("contratto_filiale__contratto")
+            .order_by("-contratto_filiale__contratto__created_at")
+            .first()
         )
-        .select_related("contratto")
-        .order_by("-contratto__created_at")
-        .first()
-    )
-    if riga:
-        cf = ContrattoFiliale.objects.filter(
-            contratto=riga.contratto, filiale_id=filiale_id
-        ).first()
-        return JsonResponse({"prezzo": str(riga.prezzo), "contratto_filiale_id": cf.pk if cf else None})
-    return JsonResponse({"prezzo": None, "contratto_filiale_id": None})
+        if sede_riga:
+            cf = sede_riga.contratto_filiale
+            return JsonResponse({"prezzo": str(sede_riga.prezzo), "contratto_filiale_id": cf.pk, "fonte": "sede"})
+
+        # Fallback: prezzo base dal contratto
+        riga = (
+            ContrattoRiga.objects.filter(
+                servizio_id=servizio_id,
+                contratto__stato="attivo",
+                contratto__filiali_contratto__filiale_id=filiale_id,
+            )
+            .select_related("contratto")
+            .order_by("-contratto__created_at")
+            .first()
+        )
+        if riga:
+            cf = ContrattoFiliale.objects.filter(
+                contratto=riga.contratto, filiale_id=filiale_id
+            ).first()
+            return JsonResponse({
+                "prezzo": str(riga.prezzo),
+                "contratto_filiale_id": cf.pk if cf else None,
+                "fonte": "contratto",
+            })
+
+    # Nessun contratto applicabile: tariffa di cartello del servizio
+    servizio = Servizio.objects.filter(pk=servizio_id).first()
+    if servizio:
+        return JsonResponse({
+            "prezzo": str(servizio.tariffa_cartello),
+            "contratto_filiale_id": None,
+            "fonte": "cartello",
+        })
+    return JsonResponse({"prezzo": None, "contratto_filiale_id": None, "fonte": None})
 
 
 @login_required

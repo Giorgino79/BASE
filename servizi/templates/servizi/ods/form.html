@@ -68,6 +68,7 @@
                       <i class="bi bi-arrow-repeat"></i>
                     </button>
                   </div>
+                  <div class="form-text riga-fonte-prezzo"></div>
                 </div>
                 <div class="col-sm-4">
                   <label class="form-label small mb-1">Note riga</label>
@@ -188,6 +189,7 @@
             <i class="bi bi-arrow-repeat"></i>
           </button>
         </div>
+        <div class="form-text riga-fonte-prezzo"></div>
       </div>
       <div class="col-sm-4">
         <label class="form-label small mb-1">Note riga</label>
@@ -247,20 +249,30 @@
     });
   }
 
-  // ── Auto-prezzo da contratto ─────────────────────────────────────────────────
+  // ── Auto-prezzo da contratto (con fallback su tariffa di cartello) ───────────
+  const FONTE_LABEL = {
+    sede:      "Prezzo da contratto (sede)",
+    contratto: "Prezzo da contratto",
+    cartello:  "Tariffa di cartello — modificabile",
+  };
+
   function loadPrezzo(rigaEl) {
     const filialeId  = filialeSelect ? filialeSelect.value : "";
     const servizioEl = rigaEl.querySelector(".riga-servizio");
     const prezzoEl   = rigaEl.querySelector(".riga-prezzo");
     const cfEl       = rigaEl.querySelector(".riga-contratto-filiale");
-    if (!filialeId || !servizioEl || !servizioEl.value) return;
-    fetch(`${apiUrl}?filiale=${filialeId}&servizio=${servizioEl.value}`)
+    const fonteEl    = rigaEl.querySelector(".riga-fonte-prezzo");
+    if (!servizioEl || !servizioEl.value) return;
+    const params = new URLSearchParams({ servizio: servizioEl.value });
+    if (filialeId) params.set("filiale", filialeId);
+    fetch(`${apiUrl}?${params.toString()}`)
       .then(r => r.json())
       .then(data => {
         if (data.prezzo !== null) {
           if (prezzoEl) prezzoEl.value = data.prezzo;
           if (cfEl) cfEl.value = data.contratto_filiale_id || "";
         }
+        if (fonteEl) fonteEl.textContent = FONTE_LABEL[data.fonte] || "";
       })
       .catch(() => {});
   }
