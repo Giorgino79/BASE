@@ -97,6 +97,10 @@ Item globali (sempre visibili):
   flex-direction: column;
   align-items: flex-end;
   gap: 10px;
+  /* Il contenitore riserva spazio in layout anche per gli item nascosti
+     (opacity:0, non display:none): senza questo, la sua hitbox invisibile
+     intercetta i click destinati al contenuto sottostante in quell'angolo. */
+  pointer-events: none;
 }
 
 /* ── Bottone principale ───────────────────────────────── */
@@ -115,6 +119,7 @@ Item globali (sempre visibili):
   justify-content: center;
   transition: transform .2s, box-shadow .2s;
   flex-shrink: 0;
+  pointer-events: auto;
 }
 .fab-tools-main:hover {
   transform: scale(1.08);
