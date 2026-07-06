@@ -221,10 +221,10 @@
             <a href="{{ o.get_absolute_url }}" class="btn btn-sm btn-outline-secondary">
               <i class="bi bi-eye"></i>
             </a>
-            <form method="post" action="{% url 'servizi:ods_rimuovi_tecnico' o.pk %}" class="d-inline">
+            <form method="post" action="{% url 'servizi:ods_rimuovi_tecnico' o.pk %}" class="d-inline form-rimuovi-giro"
+                  data-msg="Togliere {{ o.numero }} dal giro di {{ giro.tecnico.get_full_name|default:giro.tecnico.username }}? Tornerà tra i servizi da espletare.">
               {% csrf_token %}
-              <button type="submit" class="btn btn-sm btn-outline-danger" title="Togli dal giro"
-                      onclick="return confirm('Togliere {{ o.numero }} dal giro di {{ giro.tecnico.get_full_name|default:giro.tecnico.username }}? Tornerà tra i servizi da espletare.');">
+              <button type="submit" class="btn btn-sm btn-outline-danger" title="Togli dal giro">
                 <i class="bi bi-x-lg"></i>
               </button>
             </form>
@@ -253,10 +253,10 @@
             <a href="{{ c.get_absolute_url }}" class="btn btn-sm btn-outline-secondary">
               <i class="bi bi-eye"></i>
             </a>
-            <form method="post" action="{% url 'servizi:condominio_rimuovi_tecnico' c.pk %}" class="d-inline">
+            <form method="post" action="{% url 'servizi:condominio_rimuovi_tecnico' c.pk %}" class="d-inline form-rimuovi-giro"
+                  data-msg="Togliere {{ c.numero }} dal giro di {{ giro.tecnico.get_full_name|default:giro.tecnico.username }}? Tornerà tra i condomini da organizzare.">
               {% csrf_token %}
-              <button type="submit" class="btn btn-sm btn-outline-danger" title="Togli dal giro"
-                      onclick="return confirm('Togliere {{ c.numero }} dal giro di {{ giro.tecnico.get_full_name|default:giro.tecnico.username }}? Tornerà tra i condomini da organizzare.');">
+              <button type="submit" class="btn btn-sm btn-outline-danger" title="Togli dal giro">
                 <i class="bi bi-x-lg"></i>
               </button>
             </form>
@@ -351,6 +351,13 @@ document.querySelectorAll('[data-giro-form]').forEach(function (form) {
   // Applica subito al caricamento se ci sono valori preselezionati
   sincronizza(tecnicoSel, assistenteSel);
   sincronizza(assistenteSel, tecnicoSel);
+});
+
+// ── Conferma rimozione dal giro (data-msg, non onclick: evita rotture con apostrofi nei nomi) ──
+document.querySelectorAll('.form-rimuovi-giro').forEach(function (form) {
+  form.addEventListener('submit', function (e) {
+    if (!confirm(form.dataset.msg)) e.preventDefault();
+  });
 });
 </script>
 {% endblock %}
