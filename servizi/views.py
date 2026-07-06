@@ -974,6 +974,19 @@ def condominio_assegna_tecnico(request, pk):
 
 
 @login_required
+def condominio_rimuovi_tecnico(request, pk):
+    """Toglie tecnico/assistente da un CondominioODS: torna tra i condomini da organizzare."""
+    condominio = get_object_or_404(CondominioODS, pk=pk)
+    if request.method == "POST":
+        condominio.tecnico = None
+        condominio.assistente = None
+        condominio.distinta = None
+        condominio.save(update_fields=["tecnico", "assistente", "distinta"])
+        messages.success(request, f"{condominio.numero} rimosso dal giro — torna tra i condomini da organizzare.")
+    return redirect("servizi:organizzazione_giri")
+
+
+@login_required
 def ods_assegna_tecnico(request, pk):
     """Assegna tecnico+assistente a un ODS e lo porta in stato 'programmato'."""
     ods = get_object_or_404(ODS, pk=pk)
@@ -993,6 +1006,20 @@ def ods_assegna_tecnico(request, pk):
                 messages.error(request, "Utente non trovato.")
         else:
             messages.error(request, "Il tecnico è obbligatorio.")
+    return redirect("servizi:organizzazione_giri")
+
+
+@login_required
+def ods_rimuovi_tecnico(request, pk):
+    """Toglie tecnico/assistente da un ODS e lo riporta 'da espletare'."""
+    ods = get_object_or_404(ODS, pk=pk)
+    if request.method == "POST":
+        ods.tecnico = None
+        ods.assistente = None
+        ods.distinta = None
+        ods.stato = ODS.Stato.DA_ESPLETARE
+        ods.save(update_fields=["tecnico", "assistente", "distinta", "stato"])
+        messages.success(request, f"{ods.numero} rimosso dal giro — torna tra i servizi da espletare.")
     return redirect("servizi:organizzazione_giri")
 
 

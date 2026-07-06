@@ -217,10 +217,17 @@
           </td>
           <td class="small">{% if o.tecnico %}{{ o.tecnico.get_full_name|default:o.tecnico.username }}{% else %}—{% endif %}</td>
           <td class="small text-muted">{% if o.assistente %}{{ o.assistente.get_full_name|default:o.assistente.username }}{% else %}—{% endif %}</td>
-          <td class="text-end">
+          <td class="text-end text-nowrap">
             <a href="{{ o.get_absolute_url }}" class="btn btn-sm btn-outline-secondary">
               <i class="bi bi-eye"></i>
             </a>
+            <form method="post" action="{% url 'servizi:ods_rimuovi_tecnico' o.pk %}" class="d-inline">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-sm btn-outline-danger" title="Togli dal giro"
+                      onclick="return confirm('Togliere {{ o.numero }} dal giro di {{ giro.tecnico.get_full_name|default:giro.tecnico.username }}? Tornerà tra i servizi da espletare.');">
+                <i class="bi bi-x-lg"></i>
+              </button>
+            </form>
           </td>
         </tr>
         {% endfor %}
@@ -242,10 +249,17 @@
           <td class="text-end small text-nowrap">€ {{ c.totale_da_incassare }}</td>
           <td class="small">{{ c.tecnico.get_full_name|default:"—" }}</td>
           <td class="small text-muted">{{ c.assistente.get_full_name|default:"—" }}</td>
-          <td class="text-end">
+          <td class="text-end text-nowrap">
             <a href="{{ c.get_absolute_url }}" class="btn btn-sm btn-outline-secondary">
               <i class="bi bi-eye"></i>
             </a>
+            <form method="post" action="{% url 'servizi:condominio_rimuovi_tecnico' c.pk %}" class="d-inline">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-sm btn-outline-danger" title="Togli dal giro"
+                      onclick="return confirm('Togliere {{ c.numero }} dal giro di {{ giro.tecnico.get_full_name|default:giro.tecnico.username }}? Tornerà tra i condomini da organizzare.');">
+                <i class="bi bi-x-lg"></i>
+              </button>
+            </form>
           </td>
         </tr>
         {% endfor %}
