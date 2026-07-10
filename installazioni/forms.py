@@ -1,8 +1,22 @@
 from django import forms
 from django.forms import inlineformset_factory
 
-from .models import Installazione, Postazione, InterventoInstallazione, RiscontroPostazione
+from .models import Installazione, Postazione, InterventoInstallazione, RiscontroPostazione, Planimetria
 from servizi.models import Servizio
+
+
+class PlanimetriaForm(forms.ModelForm):
+
+    class Meta:
+        model = Planimetria
+        fields = ["titolo", "immagine", "note"]
+        widgets = {
+            "titolo": forms.TextInput(attrs={
+                "placeholder": "Es. Piano terra, Magazzino…", "class": "form-control form-control-sm",
+            }),
+            "immagine": forms.ClearableFileInput(attrs={"class": "form-control form-control-sm"}),
+            "note": forms.Textarea(attrs={"rows": 2, "class": "form-control form-control-sm"}),
+        }
 
 
 class InstallazioneForm(forms.ModelForm):

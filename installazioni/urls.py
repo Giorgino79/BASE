@@ -18,6 +18,13 @@ urlpatterns = [
     path("postazione/<int:pk>/modifica/", views.postazione_update, name="postazione_update"),
     path("postazione/<int:pk>/elimina/", views.postazione_delete, name="postazione_delete"),
     path("postazione/<int:pk>/qrcode/", views.postazione_qrcode, name="postazione_qrcode"),
+    path("postazione/<int:pk>/pin/", views.postazione_pin, name="postazione_pin"),
+    path("postazione/<int:pk>/unpin/", views.postazione_unpin, name="postazione_unpin"),
+
+    # Planimetrie
+    path("<int:inst_pk>/planimetria/nuova/", views.planimetria_create, name="planimetria_create"),
+    path("planimetria/<int:pk>/", views.planimetria_detail, name="planimetria_detail"),
+    path("planimetria/<int:pk>/elimina/", views.planimetria_delete, name="planimetria_delete"),
 
     # Interventi
     path("<int:inst_pk>/intervento/nuovo/", views.intervento_create, name="intervento_create"),

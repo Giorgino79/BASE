@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header mb-4">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'installazioni:installazione_list' %}">Installazioni</a></li>
+      <li class="breadcrumb-item"><a href="{{ inst.get_absolute_url }}">{{ inst.numero }}</a></li>
+      <li class="breadcrumb-item active">Elimina planimetria</li>
+    </ol>
+  </nav>
+  <h1><i class="bi bi-trash me-2 text-danger"></i>Elimina planimetria</h1>
+</div>
+
+<div class="row justify-content-center">
+  <div class="col-lg-6">
+    <div class="card border-danger">
+      <div class="card-body">
+        <p>Sei sicuro di voler eliminare la planimetria <strong>{{ planimetria }}</strong> dell'installazione <strong>{{ inst.numero }}</strong>?</p>
+        <p class="text-muted small">Le postazioni posizionate su questa planimetria non verranno eliminate, ma perderanno il loro posizionamento.</p>
+        <form method="post">
+          {% csrf_token %}
+          <div class="d-grid gap-2 d-md-flex justify-content-md-between">
+            <button type="submit" class="btn btn-danger order-md-2"><i class="bi bi-trash me-1"></i>Elimina</button>
+            <a href="{{ inst.get_absolute_url }}" class="btn btn-outline-secondary order-md-1">Annulla</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

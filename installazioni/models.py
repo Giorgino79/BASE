@@ -97,6 +97,43 @@ class Installazione(AllegatiMixin, models.Model):
         return self.postazioni.count()
 
 
+class Planimetria(models.Model):
+
+    installazione = models.ForeignKey(
+        Installazione, on_delete=models.CASCADE,
+        related_name="planimetrie", verbose_name="Installazione",
+    )
+    titolo = models.CharField(
+        max_length=100, blank=True, verbose_name="Titolo",
+        help_text="Es. 'Piano terra', 'Magazzino', 'Cucina'",
+    )
+    immagine = models.ImageField(
+        upload_to="planimetrie/%Y/%m/", verbose_name="Immagine planimetria",
+    )
+    note = models.TextField(blank=True, verbose_name="Note")
+
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+        null=True, blank=True, related_name="planimetrie_create",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Planimetria"
+        verbose_name_plural = "Planimetrie"
+        ordering = ["titolo", "created_at"]
+
+    def __str__(self):
+        return self.titolo or f"Planimetria #{self.pk}"
+
+    def get_absolute_url(self):
+        return reverse("installazioni:planimetria_detail", kwargs={"pk": self.pk})
+
+    @property
+    def n_postazioni_posizionate(self):
+        return self.postazioni.filter(pos_x__isnull=False, pos_y__isnull=False).count()
+
+
 class Postazione(AllegatiMixin, QRCodeMixin, models.Model):
 
     installazione = models.ForeignKey(
@@ -106,6 +143,20 @@ class Postazione(AllegatiMixin, QRCodeMixin, models.Model):
     numero = models.PositiveSmallIntegerField(
         verbose_name="N° postazione",
         help_text="Lascia vuoto: verrà assegnato automaticamente in sequenza",
+    )
+    planimetria = models.ForeignKey(
+        Planimetria, on_delete=models.SET_NULL,
+        null=True, blank=True, related_name="postazioni", verbose_name="Planimetria",
+    )
+    pos_x = models.DecimalField(
+        max_digits=5, decimal_places=2, null=True, blank=True,
+        verbose_name="Posizione X (%)",
+        help_text="Percentuale orizzontale sulla planimetria (0-100)",
+    )
+    pos_y = models.DecimalField(
+        max_digits=5, decimal_places=2, null=True, blank=True,
+        verbose_name="Posizione Y (%)",
+        help_text="Percentuale verticale sulla planimetria (0-100)",
     )
     descrizione_luogo = models.TextField(
         blank=True, verbose_name="Descrizione luogo",
@@ -156,6 +207,10 @@ class Postazione(AllegatiMixin, QRCodeMixin, models.Model):
     @property
     def label(self):
         return f"Postazione {self.numero:02d}"
+
+    @property
+    def is_pinned(self):
+        return self.planimetria_id is not None and self.pos_x is not None and self.pos_y is not None
 
 
 class InterventoInstallazione(models.Model):

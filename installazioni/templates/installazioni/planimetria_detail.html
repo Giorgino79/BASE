@@ -1,0 +1,255 @@
+{% extends "base.html" %}
+{% load static %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/detail.css' %}">{% endblock %}
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-start mb-4">
+  <div>
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'installazioni:installazione_list' %}">Installazioni</a></li>
+        <li class="breadcrumb-item"><a href="{{ inst.get_absolute_url }}">{{ inst.numero }}</a></li>
+        <li class="breadcrumb-item active">{{ planimetria }}</li>
+      </ol>
+    </nav>
+    <h1><i class="bi bi-map me-2 text-brand"></i>{{ planimetria }}</h1>
+    <p class="text-muted mb-0">{{ inst.cliente_display }}</p>
+  </div>
+  {% if request.user.is_staff %}
+  <a href="{% url 'installazioni:planimetria_delete' planimetria.pk %}" class="btn btn-outline-danger btn-sm">
+    <i class="bi bi-trash me-1"></i>Elimina planimetria
+  </a>
+  {% endif %}
+</div>
+
+<div class="row g-3">
+  <!-- Colonna planimetria -->
+  <div class="col-lg-8">
+    <div class="card mb-3">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-pin-map me-2"></i>Posiziona le postazioni</span>
+        <span class="badge badge-info" id="armedBadge" style="display:none;"></span>
+      </div>
+      <div class="card-body">
+        <p class="text-muted small mb-2" id="istruzioni">
+          Seleziona una postazione dall'elenco a destra, poi clicca sul punto della planimetria dove si trova.
+        </p>
+        <div id="planimetriaWrap" style="position:relative; display:inline-block; max-width:100%; cursor:crosshair;">
+          <img src="{{ planimetria.immagine.url }}" alt="{{ planimetria }}"
+               id="planimetriaImg" style="max-width:100%; height:auto; display:block; border-radius:6px; border:1px solid rgba(0,0,0,.1);">
+          {% for p in posizionate %}
+          <div class="pin" data-pk="{{ p.pk }}"
+               style="position:absolute; left:{{ p.pos_x }}%; top:{{ p.pos_y }}%; transform:translate(-50%,-100%); cursor:grab; user-select:none;"
+               title="{{ p.label }}{% if p.prodotto %} — {{ p.prodotto }}{% endif %}">
+            <div class="pin-marker d-flex flex-column align-items-center">
+              <span class="badge bg-primary rounded-pill" style="font-size:.75rem; box-shadow:0 2px 6px rgba(0,0,0,.35);">
+                {{ p.numero|stringformat:"02d" }}
+              </span>
+              <i class="bi bi-geo-alt-fill text-primary" style="font-size:1.4rem; margin-top:-4px; filter:drop-shadow(0 2px 2px rgba(0,0,0,.3));"></i>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sidebar -->
+  <div class="col-lg-4">
+    <div class="card mb-3">
+      <div class="card-header"><i class="bi bi-list-check me-2"></i>Da posizionare
+        <span class="badge badge-warning ms-1">{{ da_posizionare|length }}</span>
+      </div>
+      <div class="list-group list-group-flush" id="listaDaPosizionare">
+        {% for p in da_posizionare %}
+        <button type="button" class="list-group-item list-group-item-action postazione-item" data-pk="{{ p.pk }}">
+          <span class="badge bg-secondary me-2">{{ p.numero|stringformat:"02d" }}</span>
+          {{ p.descrizione_luogo|default:p.label|truncatechars:40 }}
+          {% if p.prodotto %}<div class="text-muted small">{{ p.prodotto }}</div>{% endif %}
+          {% if p.planimetria_id and p.planimetria_id != planimetria.pk %}
+          <div class="text-warning small"><i class="bi bi-exclamation-triangle me-1"></i>già su un'altra planimetria</div>
+          {% endif %}
+        </button>
+        {% empty %}
+        <div class="list-group-item text-muted small text-center py-3">
+          <i class="bi bi-check-circle me-1"></i>Tutte le postazioni sono posizionate.
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="card mb-3">
+      <div class="card-header"><i class="bi bi-check2-square me-2"></i>Posizionate
+        <span class="badge badge-ok ms-1">{{ posizionate|length }}</span>
+      </div>
+      <div class="list-group list-group-flush" id="listaPosizionate">
+        {% for p in posizionate %}
+        <div class="list-group-item d-flex justify-content-between align-items-center" data-pk-row="{{ p.pk }}">
+          <div>
+            <span class="badge bg-primary me-1">{{ p.numero|stringformat:"02d" }}</span>
+            {{ p.descrizione_luogo|default:p.label|truncatechars:30 }}
+          </div>
+          <button type="button" class="btn btn-sm btn-outline-danger btn-unpin" data-pk="{{ p.pk }}" title="Rimuovi dalla planimetria">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </div>
+        {% empty %}
+        <div class="list-group-item text-muted small text-center py-3">Nessuna postazione ancora posizionata.</div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <a href="{{ inst.get_absolute_url }}" class="btn btn-outline-secondary btn-sm w-100">
+      <i class="bi bi-arrow-left me-1"></i>Torna all'installazione
+    </a>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  const wrap        = document.getElementById('planimetriaWrap');
+  const img         = document.getElementById('planimetriaImg');
+  const badge       = document.getElementById('armedBadge');
+  const listaDa     = document.getElementById('listaDaPosizionare');
+  const listaFatte  = document.getElementById('listaPosizionate');
+  const CSRF        = '{{ csrf_token }}';
+  const PIN_URL_TPL     = "{% url 'installazioni:postazione_pin' 0 %}";
+  const UNPIN_URL_TPL   = "{% url 'installazioni:postazione_unpin' 0 %}";
+  const PLANIMETRIA_ID  = "{{ planimetria.pk }}";
+
+  let armedPk = null;
+  let draggingPin = null;
+
+  function setArmed(pk, label) {
+    armedPk = pk;
+    document.querySelectorAll('.postazione-item').forEach(function (el) {
+      el.classList.toggle('active', el.dataset.pk === pk);
+    });
+    if (pk) {
+      badge.style.display = '';
+      badge.textContent = 'Clicca sulla planimetria per posizionare: ' + label;
+      wrap.style.outline = '2px dashed #2563eb';
+    } else {
+      badge.style.display = 'none';
+      wrap.style.outline = 'none';
+    }
+  }
+
+  listaDa.querySelectorAll('.postazione-item').forEach(function (el) {
+    el.addEventListener('click', function () {
+      if (armedPk === el.dataset.pk) { setArmed(null); return; }
+      setArmed(el.dataset.pk, el.textContent.trim().slice(0, 30));
+    });
+  });
+
+  function addPinToDom(pk, numero, x, y, label) {
+    const pin = document.createElement('div');
+    pin.className = 'pin';
+    pin.dataset.pk = pk;
+    pin.style.cssText = 'position:absolute; left:' + x + '%; top:' + y + '%; transform:translate(-50%,-100%); cursor:grab; user-select:none;';
+    pin.title = label;
+    pin.innerHTML =
+      '<div class="pin-marker d-flex flex-column align-items-center">' +
+        '<span class="badge bg-primary rounded-pill" style="font-size:.75rem; box-shadow:0 2px 6px rgba(0,0,0,.35);">' + numero + '</span>' +
+        '<i class="bi bi-geo-alt-fill text-primary" style="font-size:1.4rem; margin-top:-4px; filter:drop-shadow(0 2px 2px rgba(0,0,0,.3));"></i>' +
+      '</div>';
+    attachDrag(pin);
+    wrap.appendChild(pin);
+  }
+
+  function savePin(pk, x, y) {
+    const url = PIN_URL_TPL.replace('/0/', '/' + pk + '/');
+    const fd = new FormData();
+    fd.append('planimetria_id', PLANIMETRIA_ID);
+    fd.append('pos_x', x.toFixed(2));
+    fd.append('pos_y', y.toFixed(2));
+    return fetch(url, { method: 'POST', headers: { 'X-CSRFToken': CSRF }, body: fd })
+      .then(r => r.json());
+  }
+
+  wrap.addEventListener('click', function (e) {
+    if (!armedPk || e.target.closest('.pin')) return;
+    const rect = img.getBoundingClientRect();
+    const x = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100));
+    const y = Math.max(0, Math.min(100, ((e.clientY - rect.top) / rect.height) * 100));
+
+    const itemEl = listaDa.querySelector('.postazione-item[data-pk="' + armedPk + '"]');
+    const numeroBadge = itemEl.querySelector('.badge').textContent.trim();
+    const label = itemEl.textContent.trim().slice(0, 40);
+
+    savePin(armedPk, x, y).then(function (data) {
+      if (!data.ok) { alert(data.error || 'Errore nel posizionamento.'); return; }
+      addPinToDom(armedPk, numeroBadge, x.toFixed(2), y.toFixed(2), label);
+      itemEl.remove();
+      const emptyDa = listaDa.querySelector('.list-group-item.text-muted');
+      if (!listaDa.querySelector('.postazione-item') && !emptyDa) {
+        listaDa.innerHTML = '<div class="list-group-item text-muted small text-center py-3"><i class="bi bi-check-circle me-1"></i>Tutte le postazioni sono posizionate.</div>';
+      }
+      const row = document.createElement('div');
+      row.className = 'list-group-item d-flex justify-content-between align-items-center';
+      row.dataset.pkRow = armedPk;
+      row.innerHTML =
+        '<div><span class="badge bg-primary me-1">' + numeroBadge + '</span>' + label + '</div>' +
+        '<button type="button" class="btn btn-sm btn-outline-danger btn-unpin" data-pk="' + armedPk + '" title="Rimuovi dalla planimetria"><i class="bi bi-x-lg"></i></button>';
+      const emptyFatte = listaFatte.querySelector('.list-group-item.text-muted');
+      if (emptyFatte) emptyFatte.remove();
+      listaFatte.appendChild(row);
+      attachUnpin(row.querySelector('.btn-unpin'));
+      setArmed(null);
+    });
+  });
+
+  function attachUnpin(btn) {
+    btn.addEventListener('click', function () {
+      const pk = btn.dataset.pk;
+      if (!confirm('Rimuovere questa postazione dalla planimetria?')) return;
+      const url = UNPIN_URL_TPL.replace('/0/', '/' + pk + '/');
+      fetch(url, { method: 'POST', headers: { 'X-CSRFToken': CSRF } })
+        .then(r => r.json())
+        .then(function (data) {
+          if (!data.ok) { alert('Errore.'); return; }
+          const pin = wrap.querySelector('.pin[data-pk="' + pk + '"]');
+          if (pin) pin.remove();
+          const row = listaFatte.querySelector('[data-pk-row="' + pk + '"]');
+          if (row) row.remove();
+          location.reload();
+        });
+    });
+  }
+  listaFatte.querySelectorAll('.btn-unpin').forEach(attachUnpin);
+
+  // ── Trascina un pin esistente per riposizionarlo ────────────────────────────
+  function attachDrag(pin) {
+    pin.addEventListener('pointerdown', function (e) {
+      e.preventDefault();
+      draggingPin = pin;
+      pin.style.cursor = 'grabbing';
+    });
+  }
+  wrap.querySelectorAll('.pin').forEach(attachDrag);
+
+  document.addEventListener('pointermove', function (e) {
+    if (!draggingPin) return;
+    const rect = img.getBoundingClientRect();
+    const x = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100));
+    const y = Math.max(0, Math.min(100, ((e.clientY - rect.top) / rect.height) * 100));
+    draggingPin.style.left = x + '%';
+    draggingPin.style.top = y + '%';
+  });
+
+  document.addEventListener('pointerup', function (e) {
+    if (!draggingPin) return;
+    const pin = draggingPin;
+    draggingPin = null;
+    pin.style.cursor = 'grab';
+    const rect = img.getBoundingClientRect();
+    const x = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100));
+    const y = Math.max(0, Math.min(100, ((e.clientY - rect.top) / rect.height) * 100));
+    savePin(pin.dataset.pk, x, y).then(function (data) {
+      if (!data.ok) alert(data.error || 'Errore nel salvataggio della posizione.');
+    });
+  });
+})();
+</script>
+{% endblock %}

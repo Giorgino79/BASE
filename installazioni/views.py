@@ -1,3 +1,5 @@
+from decimal import Decimal, InvalidOperation
+
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -5,11 +7,14 @@ from django.urls import reverse
 from django.db import transaction, models as django_models
 from django.forms import modelformset_factory
 from django.contrib.contenttypes.models import ContentType
+from django.http import JsonResponse
+from django.views.decorators.http import require_POST
 
-from .models import Installazione, Postazione, InterventoInstallazione, RiscontroPostazione
+from .models import Installazione, Postazione, InterventoInstallazione, RiscontroPostazione, Planimetria
 from .forms import (
     InstallazioneForm, PostazioneForm,
     InterventoInstallazioneForm, RiscontroPostazioneForm,
+    PlanimetriaForm,
 )
 from magazzino.models import Prodotto
 from servizi.models import ODS, ODSRiga
@@ -45,13 +50,15 @@ def installazione_detail(request, pk):
     inst = get_object_or_404(
         Installazione.objects.select_related(
             "filiale__cliente", "privato", "servizio", "prodotto_principale", "created_by",
-        ).prefetch_related("postazioni", "interventi__tecnico", "interventi__prodotto"),
+        ).prefetch_related("postazioni", "interventi__tecnico", "interventi__prodotto", "planimetrie"),
         pk=pk,
     )
     return render(request, "installazioni/installazione_detail.html", {
         "inst": inst,
         "postazioni": inst.postazioni.all(),
         "interventi": inst.interventi.select_related("tecnico", "prodotto").all(),
+        "planimetrie": inst.planimetrie.all(),
+        "planimetria_form": PlanimetriaForm(),
         "content_type_id": ContentType.objects.get_for_model(Installazione).pk,
         "object_id": inst.pk,
         "postazione_form": PostazioneForm(),
@@ -312,3 +319,97 @@ def intervento_delete(request, pk):
     return render(request, "installazioni/intervento_confirm_delete.html", {
         "intervento": intervento, "inst": inst,
     })
+
+
+# ── Planimetrie ───────────────────────────────────────────────────────────────
+
+@login_required
+def planimetria_create(request, inst_pk):
+    inst = get_object_or_404(Installazione, pk=inst_pk)
+    if request.method == "POST":
+        form = PlanimetriaForm(request.POST, request.FILES)
+        if form.is_valid():
+            planimetria = form.save(commit=False)
+            planimetria.installazione = inst
+            planimetria.created_by = request.user
+            planimetria.save()
+            messages.success(request, "Planimetria caricata.")
+            return redirect(planimetria.get_absolute_url())
+        messages.error(request, "Errore nel caricamento della planimetria: verifica i dati inseriti.")
+    return redirect(inst.get_absolute_url())
+
+
+@login_required
+def planimetria_detail(request, pk):
+    planimetria = get_object_or_404(
+        Planimetria.objects.select_related("installazione"), pk=pk,
+    )
+    inst = planimetria.installazione
+    posizionate = list(
+        planimetria.postazioni
+        .filter(pos_x__isnull=False, pos_y__isnull=False)
+        .select_related("prodotto")
+    )
+    da_posizionare = list(
+        inst.postazioni
+        .exclude(pk__in=[p.pk for p in posizionate])
+        .select_related("prodotto", "planimetria")
+    )
+    return render(request, "installazioni/planimetria_detail.html", {
+        "planimetria": planimetria,
+        "inst": inst,
+        "posizionate": posizionate,
+        "da_posizionare": da_posizionare,
+    })
+
+
+@login_required
+def planimetria_delete(request, pk):
+    planimetria = get_object_or_404(Planimetria, pk=pk)
+    inst = planimetria.installazione
+    if request.method == "POST":
+        planimetria.delete()
+        messages.success(request, "Planimetria eliminata.")
+        return redirect(inst.get_absolute_url())
+    return render(request, "installazioni/planimetria_confirm_delete.html", {
+        "planimetria": planimetria, "inst": inst,
+    })
+
+
+@login_required
+@require_POST
+def postazione_pin(request, pk):
+    """AJAX: posiziona (o sposta) una postazione su una planimetria."""
+    postazione = get_object_or_404(Postazione, pk=pk)
+    planimetria_id = request.POST.get("planimetria_id")
+    pos_x = request.POST.get("pos_x")
+    pos_y = request.POST.get("pos_y")
+
+    planimetria = get_object_or_404(
+        Planimetria, pk=planimetria_id, installazione_id=postazione.installazione_id,
+    )
+    try:
+        x = Decimal(pos_x).quantize(Decimal("0.01"))
+        y = Decimal(pos_y).quantize(Decimal("0.01"))
+    except (InvalidOperation, TypeError):
+        return JsonResponse({"ok": False, "error": "Coordinate non valide."})
+    if not (0 <= x <= 100 and 0 <= y <= 100):
+        return JsonResponse({"ok": False, "error": "Coordinate fuori intervallo."})
+
+    postazione.planimetria = planimetria
+    postazione.pos_x = x
+    postazione.pos_y = y
+    postazione.save(update_fields=["planimetria", "pos_x", "pos_y"])
+    return JsonResponse({"ok": True})
+
+
+@login_required
+@require_POST
+def postazione_unpin(request, pk):
+    """AJAX: rimuove una postazione dalla planimetria su cui era posizionata."""
+    postazione = get_object_or_404(Postazione, pk=pk)
+    postazione.planimetria = None
+    postazione.pos_x = None
+    postazione.pos_y = None
+    postazione.save(update_fields=["planimetria", "pos_x", "pos_y"])
+    return JsonResponse({"ok": True})
