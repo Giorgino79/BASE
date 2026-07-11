@@ -14,7 +14,9 @@ class PlanimetriaForm(forms.ModelForm):
             "titolo": forms.TextInput(attrs={
                 "placeholder": "Es. Piano terra, Magazzino…", "class": "form-control form-control-sm",
             }),
-            "immagine": forms.ClearableFileInput(attrs={"class": "form-control form-control-sm"}),
+            "immagine": forms.ClearableFileInput(attrs={
+                "class": "form-control form-control-sm", "accept": "image/*,.heic,.heif",
+            }),
             "note": forms.Textarea(attrs={"rows": 2, "class": "form-control form-control-sm"}),
         }
 

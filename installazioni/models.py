@@ -107,8 +107,9 @@ class Planimetria(models.Model):
         max_length=100, blank=True, verbose_name="Titolo",
         help_text="Es. 'Piano terra', 'Magazzino', 'Cucina'",
     )
-    immagine = models.ImageField(
+    immagine = models.FileField(
         upload_to="planimetrie/%Y/%m/", verbose_name="Immagine planimetria",
+        help_text="JPG, PNG o HEIC (foto da smartphone)",
     )
     note = models.TextField(blank=True, verbose_name="Note")
 

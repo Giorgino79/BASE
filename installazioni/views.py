@@ -335,7 +335,11 @@ def planimetria_create(request, inst_pk):
             planimetria.save()
             messages.success(request, "Planimetria caricata.")
             return redirect(planimetria.get_absolute_url())
-        messages.error(request, "Errore nel caricamento della planimetria: verifica i dati inseriti.")
+        dettagli = "; ".join(
+            f"{form.fields[campo].label}: {', '.join(errori)}"
+            for campo, errori in form.errors.items()
+        )
+        messages.error(request, f"Errore nel caricamento della planimetria — {dettagli}")
     return redirect(inst.get_absolute_url())
 
 
