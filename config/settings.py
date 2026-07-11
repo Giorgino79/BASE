@@ -27,6 +27,8 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "cloudinary_storage",
+    "cloudinary",
     "django.contrib.humanize",
     "crispy_forms",
     "crispy_bootstrap5",
@@ -167,3 +169,9 @@ if os.environ.get("DATABASE_URL"):
             "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"
         },
     }
+
+# Cloudinary — storage persistente per i file caricati (allegati, planimetrie, ecc.)
+# Il filesystem di Heroku è effimero: senza questo, i file spariscono a ogni
+# riavvio del dyno o deploy. Attivo solo se CLOUDINARY_URL è impostata.
+if os.environ.get("CLOUDINARY_URL"):
+    STORAGES["default"] = {"BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage"}
