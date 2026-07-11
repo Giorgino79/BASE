@@ -193,15 +193,25 @@
         <div class="row g-3 mb-3">
           {% for pl in planimetrie %}
           <div class="col-6 col-md-4 col-lg-3">
-            <a href="{{ pl.get_absolute_url }}" class="text-decoration-none">
-              <div class="card h-100">
+            <div class="card h-100" style="position:relative;">
+              {% if request.user.is_staff %}
+              <form method="post" action="{% url 'installazioni:planimetria_delete' pl.pk %}"
+                    style="position:absolute; top:4px; right:4px; z-index:2;"
+                    onsubmit="return confirm('Eliminare la planimetria «{{ pl|default:'senza titolo' }}»?');">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-sm btn-danger py-0 px-1" title="Elimina planimetria">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </form>
+              {% endif %}
+              <a href="{{ pl.get_absolute_url }}" class="text-decoration-none">
                 <img src="{{ pl.immagine.url }}" alt="{{ pl }}" class="card-img-top" style="height:110px; object-fit:cover;">
                 <div class="card-body p-2">
                   <div class="small fw-semibold text-truncate">{{ pl|default:"Senza titolo" }}</div>
                   <div class="text-muted small">{{ pl.n_postazioni_posizionate }} postazion{{ pl.n_postazioni_posizionate|pluralize:"e,i" }} posizionat{{ pl.n_postazioni_posizionate|pluralize:"a,e" }}</div>
                 </div>
-              </div>
-            </a>
+              </a>
+            </div>
           </div>
           {% endfor %}
         </div>
