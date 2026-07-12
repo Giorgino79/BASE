@@ -185,19 +185,17 @@ def installazione_pdf(request, pk):
             "errore_immagine": errore_immagine,
         })
 
-    postazioni_qr = []
     for p in postazioni:
         try:
             qr_bytes = p.generate_qr_code(format="png")
-            postazioni_qr.append({"postazione": p, "qr_b64": base64.b64encode(qr_bytes).decode("ascii")})
+            p.qr_b64 = base64.b64encode(qr_bytes).decode("ascii")
         except Exception:
-            postazioni_qr.append({"postazione": p, "qr_b64": None})
+            p.qr_b64 = None
 
     html = render_to_string("installazioni/pdf/installazione_pdf.html", {
         "inst": inst,
         "postazioni": postazioni,
         "planimetrie_ctx": planimetrie_ctx,
-        "postazioni_qr": postazioni_qr,
     })
     filename = f"{inst.numero}_report_installazione.pdf"
     return generate_pdf_from_html(html, PDFConfig(filename=filename), output_type="response")

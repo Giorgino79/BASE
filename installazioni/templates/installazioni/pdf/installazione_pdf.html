@@ -19,10 +19,6 @@
   table.righe td { padding: 7px 9px; border-bottom: 1px solid #eee; font-size: 11px; }
   .planimetria-block { margin-bottom: 24px; page-break-inside: avoid; }
   .planimetria-block img { width: 16.5cm; border: 1px solid #dde3ea; }
-  .qr-grid { width: 100%; }
-  .qr-cell { display: inline-block; width: 23%; text-align: center; vertical-align: top; margin: 0 1% 14px; }
-  .qr-cell img { width: 70px; height: 70px; }
-  .qr-cell .num { font-weight: 700; font-size: 11px; margin-top: 2px; }
   .footer { margin-top: 30px; font-size: 9px; color: #aaa; text-align: center; }
   .badge-stato { display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 10px; font-weight: 700; }
   .badge-completata { background: #dcfce7; color: #166534; }
@@ -67,11 +63,12 @@
 <table class="righe">
   <thead>
     <tr>
-      <th style="width:8%">N°</th>
-      <th style="width:42%">Descrizione luogo</th>
-      <th style="width:25%">Prodotto</th>
-      <th style="width:15%">N° cartello</th>
-      <th style="width:10%">Cartello</th>
+      <th style="width:7%">N°</th>
+      <th style="width:31%">Descrizione luogo</th>
+      <th style="width:20%">Prodotto</th>
+      <th style="width:12%">N° cartello</th>
+      <th style="width:8%">Cartello</th>
+      <th style="width:22%; text-align:right;">QR</th>
     </tr>
   </thead>
   <tbody>
@@ -82,9 +79,12 @@
       <td>{{ p.prodotto|default:"—" }}</td>
       <td>{{ p.numero_cartello|default:"—" }}</td>
       <td>{% if p.ha_cartello %}Sì{% else %}No{% endif %}</td>
+      <td style="text-align:right;">
+        {% if p.qr_b64 %}<img src="data:image/png;base64,{{ p.qr_b64 }}" alt="QR P{{ p.numero }}" style="width:45px; height:45px;">{% endif %}
+      </td>
     </tr>
     {% empty %}
-    <tr><td colspan="5">Nessuna postazione registrata.</td></tr>
+    <tr><td colspan="6">Nessuna postazione registrata.</td></tr>
     {% endfor %}
   </tbody>
 </table>
@@ -123,20 +123,6 @@
   {% endif %}
 </div>
 {% endfor %}
-{% endif %}
-
-{% if postazioni_qr %}
-<h2 class="sezione">QR code postazioni</h2>
-<div class="qr-grid">
-  {% for item in postazioni_qr %}
-  <div class="qr-cell">
-    {% if item.qr_b64 %}
-    <img src="data:image/png;base64,{{ item.qr_b64 }}" alt="QR postazione {{ item.postazione.numero }}">
-    {% endif %}
-    <div class="num">P{{ item.postazione.numero|stringformat:"02d" }}</div>
-  </div>
-  {% endfor %}
-</div>
 {% endif %}
 
 <div class="footer">Documento generato automaticamente da RATTUS26 — {{ inst.numero }}</div>
