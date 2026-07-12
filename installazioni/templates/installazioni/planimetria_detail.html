@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load static %}
+{% load static l10n %}
 {% block extra_css %}<link rel="stylesheet" href="{% static 'css/detail.css' %}">{% endblock %}
 {% block content %}
 <div class="page-header d-flex justify-content-between align-items-start mb-4">
@@ -47,7 +47,7 @@
                id="planimetriaImg" style="max-width:100%; height:auto; display:block; border-radius:6px; border:1px solid rgba(0,0,0,.1);">
           {% for p in posizionate %}
           <div class="pin" data-pk="{{ p.pk }}"
-               style="position:absolute; left:{{ p.pos_x }}%; top:{{ p.pos_y }}%; transform:translate(-50%,-100%); cursor:grab; user-select:none;"
+               style="position:absolute; left:{{ p.pos_x|unlocalize }}%; top:{{ p.pos_y|unlocalize }}%; transform:translate(-50%,-100%); cursor:grab; user-select:none;"
                title="{{ p.label }}{% if p.prodotto %} — {{ p.prodotto }}{% endif %}">
             <div class="pin-marker d-flex flex-column align-items-center">
               <span class="badge bg-primary rounded-pill" style="font-size:.75rem; box-shadow:0 2px 6px rgba(0,0,0,.35);">
