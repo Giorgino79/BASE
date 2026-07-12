@@ -32,7 +32,16 @@
       <div class="card-body">
         <p class="text-muted small mb-2" id="istruzioni">
           Seleziona una postazione dall'elenco a destra, poi clicca sul punto della planimetria dove si trova.
+          Per spostare una postazione già posizionata, clicca sul suo pin e poi sul nuovo punto (oppure trascinalo).
         </p>
+        <style>
+          @keyframes pinArmedPulse {
+            0%, 100% { transform: translate(-50%, -100%) scale(1); }
+            50% { transform: translate(-50%, -100%) scale(1.18); }
+          }
+          .pin.pin-armed .pin-marker { animation: pinArmedPulse 0.9s ease-in-out infinite; }
+          .pin.pin-armed .bi-geo-alt-fill { color: #dc2626 !important; }
+        </style>
         <div id="planimetriaWrap" style="position:relative; display:inline-block; max-width:100%; cursor:crosshair;">
           <img src="{{ planimetria.immagine.url }}" alt="{{ planimetria }}"
                id="planimetriaImg" style="max-width:100%; height:auto; display:block; border-radius:6px; border:1px solid rgba(0,0,0,.1);">
@@ -119,16 +128,23 @@
   const PLANIMETRIA_ID  = "{{ planimetria.pk }}";
 
   let armedPk = null;
+  let armedMode = null; // 'place' (da lista) oppure 'move' (pin già posizionato)
   let draggingPin = null;
+  let dragMoved = false;
+  let dragStart = { x: 0, y: 0 };
 
-  function setArmed(pk, label) {
+  function setArmed(pk, label, mode) {
     armedPk = pk;
+    armedMode = pk ? mode : null;
     document.querySelectorAll('.postazione-item').forEach(function (el) {
-      el.classList.toggle('active', el.dataset.pk === pk);
+      el.classList.toggle('active', el.dataset.pk === pk && mode === 'place');
+    });
+    document.querySelectorAll('.pin').forEach(function (el) {
+      el.classList.toggle('pin-armed', el.dataset.pk === pk && mode === 'move');
     });
     if (pk) {
       badge.style.display = '';
-      badge.textContent = 'Clicca sulla planimetria per posizionare: ' + label;
+      badge.textContent = (mode === 'move' ? 'Clicca il nuovo punto per spostare: ' : 'Clicca sulla planimetria per posizionare: ') + label;
       wrap.style.outline = '2px dashed #2563eb';
     } else {
       badge.style.display = 'none';
@@ -138,8 +154,8 @@
 
   listaDa.querySelectorAll('.postazione-item').forEach(function (el) {
     el.addEventListener('click', function () {
-      if (armedPk === el.dataset.pk) { setArmed(null); return; }
-      setArmed(el.dataset.pk, el.textContent.trim().slice(0, 30));
+      if (armedPk === el.dataset.pk && armedMode === 'place') { setArmed(null); return; }
+      setArmed(el.dataset.pk, el.textContent.trim().slice(0, 30), 'place');
     });
   });
 
@@ -173,6 +189,17 @@
     const rect = img.getBoundingClientRect();
     const x = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100));
     const y = Math.max(0, Math.min(100, ((e.clientY - rect.top) / rect.height) * 100));
+
+    if (armedMode === 'move') {
+      const pk = armedPk;
+      savePin(pk, x, y).then(function (data) {
+        if (!data.ok) { alert(data.error || 'Errore nello spostamento.'); return; }
+        const pin = wrap.querySelector('.pin[data-pk="' + pk + '"]');
+        if (pin) { pin.style.left = x.toFixed(2) + '%'; pin.style.top = y.toFixed(2) + '%'; }
+        setArmed(null);
+      });
+      return;
+    }
 
     const itemEl = listaDa.querySelector('.postazione-item[data-pk="' + armedPk + '"]');
     const numeroBadge = itemEl.querySelector('.badge').textContent.trim();
@@ -219,11 +246,17 @@
   }
   listaFatte.querySelectorAll('.btn-unpin').forEach(attachUnpin);
 
-  // ── Trascina un pin esistente per riposizionarlo ────────────────────────────
+  // ── Pin esistente: click per armare lo spostamento, oppure trascina ─────────
+  const DRAG_THRESHOLD = 6; // px — sotto questa soglia il gesto è un click, non un drag
+
   function attachDrag(pin) {
+    pin.style.touchAction = 'none'; // evita che il touch scrolli la pagina invece di trascinare
     pin.addEventListener('pointerdown', function (e) {
       e.preventDefault();
+      e.stopPropagation();
       draggingPin = pin;
+      dragMoved = false;
+      dragStart = { x: e.clientX, y: e.clientY };
       pin.style.cursor = 'grabbing';
     });
   }
@@ -231,6 +264,11 @@
 
   document.addEventListener('pointermove', function (e) {
     if (!draggingPin) return;
+    if (!dragMoved) {
+      const dist = Math.hypot(e.clientX - dragStart.x, e.clientY - dragStart.y);
+      if (dist > DRAG_THRESHOLD) dragMoved = true;
+    }
+    if (!dragMoved) return;
     const rect = img.getBoundingClientRect();
     const x = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100));
     const y = Math.max(0, Math.min(100, ((e.clientY - rect.top) / rect.height) * 100));
@@ -241,14 +279,25 @@
   document.addEventListener('pointerup', function (e) {
     if (!draggingPin) return;
     const pin = draggingPin;
+    const pk = pin.dataset.pk;
+    const wasMoved = dragMoved;
     draggingPin = null;
+    dragMoved = false;
     pin.style.cursor = 'grab';
-    const rect = img.getBoundingClientRect();
-    const x = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100));
-    const y = Math.max(0, Math.min(100, ((e.clientY - rect.top) / rect.height) * 100));
-    savePin(pin.dataset.pk, x, y).then(function (data) {
-      if (!data.ok) alert(data.error || 'Errore nel salvataggio della posizione.');
-    });
+
+    if (wasMoved) {
+      // drag completato: salva subito la nuova posizione
+      const rect = img.getBoundingClientRect();
+      const x = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100));
+      const y = Math.max(0, Math.min(100, ((e.clientY - rect.top) / rect.height) * 100));
+      savePin(pk, x, y).then(function (data) {
+        if (!data.ok) alert(data.error || 'Errore nel salvataggio della posizione.');
+      });
+    } else {
+      // nessun movimento: è un tap/click → arma lo spostamento, prossimo click sulla mappa muove il pin
+      if (armedPk === pk && armedMode === 'move') { setArmed(null); return; }
+      setArmed(pk, pin.title, 'move');
+    }
   });
 })();
 </script>
