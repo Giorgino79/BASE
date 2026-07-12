@@ -18,8 +18,8 @@ class InterventoInline(admin.TabularInline):
 
 @admin.register(Installazione)
 class InstallazioneAdmin(admin.ModelAdmin):
-    list_display = ["numero", "cliente_display", "servizio", "data_installazione", "attiva", "n_postazioni"]
-    list_filter = ["attiva", "servizio"]
+    list_display = ["numero", "cliente_display", "servizio", "data_installazione", "stato", "attiva", "n_postazioni"]
+    list_filter = ["stato", "attiva", "servizio"]
     search_fields = ["numero"]
     inlines = [PostazioneInline, InterventoInline]
     readonly_fields = ["numero"]

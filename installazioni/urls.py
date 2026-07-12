@@ -9,6 +9,9 @@ urlpatterns = [
     path("nuova/", views.installazione_create, name="installazione_create"),
     path("<int:pk>/", views.installazione_detail, name="installazione_detail"),
     path("<int:pk>/modifica/", views.installazione_update, name="installazione_update"),
+    path("<int:pk>/chiudi/", views.installazione_chiudi, name="installazione_chiudi"),
+    path("<int:pk>/riapri/", views.installazione_riapri, name="installazione_riapri"),
+    path("<int:pk>/pdf/", views.installazione_pdf, name="installazione_pdf"),
 
     path("<int:pk>/galleria/", views.installazione_galleria, name="installazione_galleria"),
 

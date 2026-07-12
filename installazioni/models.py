@@ -24,7 +24,24 @@ def _next_numero_installazione():
 
 class Installazione(AllegatiMixin, models.Model):
 
+    class Stato(models.TextChoices):
+        IN_CORSO   = "in_corso",   "In corso"
+        COMPLETATA = "completata", "Completata"
+
     numero = models.CharField(max_length=20, unique=True, blank=True, verbose_name="Numero")
+
+    stato = models.CharField(
+        max_length=20, choices=Stato.choices, default=Stato.IN_CORSO,
+        verbose_name="Stato",
+    )
+    data_completamento = models.DateField(
+        null=True, blank=True, verbose_name="Data completamento",
+    )
+    chiusa_da = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+        null=True, blank=True, related_name="installazioni_chiuse",
+        verbose_name="Chiusa da",
+    )
 
     filiale = models.ForeignKey(
         "anagrafica.Filiale", on_delete=models.PROTECT,
@@ -96,6 +113,22 @@ class Installazione(AllegatiMixin, models.Model):
     def n_postazioni(self):
         return self.postazioni.count()
 
+    @property
+    def is_completata(self):
+        return self.stato == self.Stato.COMPLETATA
+
+    def chiudi(self, user):
+        self.stato = self.Stato.COMPLETATA
+        self.data_completamento = timezone.localdate()
+        self.chiusa_da = user
+        self.save(update_fields=["stato", "data_completamento", "chiusa_da", "updated_at"])
+
+    def riapri(self):
+        self.stato = self.Stato.IN_CORSO
+        self.data_completamento = None
+        self.chiusa_da = None
+        self.save(update_fields=["stato", "data_completamento", "chiusa_da", "updated_at"])
+
 
 class Planimetria(models.Model):
 
@@ -133,6 +166,49 @@ class Planimetria(models.Model):
     @property
     def n_postazioni_posizionate(self):
         return self.postazioni.filter(pos_x__isnull=False, pos_y__isnull=False).count()
+
+    def generate_annotated_image_bytes(self):
+        """
+        Restituisce i bytes PNG della planimetria con i pin delle postazioni
+        posizionate disegnati sopra (cerchio numerato). Usato per il report PDF.
+        Solleva eccezione se il file non è un'immagine decodificabile (es. HEIC
+        senza supporto) — il chiamante deve gestire il fallback.
+        """
+        from PIL import Image, ImageDraw, ImageFont
+        import io
+
+        self.immagine.open()
+        try:
+            img = Image.open(self.immagine)
+            img.load()
+            img = img.convert("RGB")
+        finally:
+            self.immagine.close()
+
+        draw = ImageDraw.Draw(img)
+        w, h = img.size
+        radius = max(16, min(w, h) // 35)
+
+        try:
+            font = ImageFont.truetype("DejaVuSans-Bold.ttf", int(radius * 1.1))
+        except Exception:
+            font = ImageFont.load_default(size=int(radius * 1.1))
+
+        for p in self.postazioni.filter(pos_x__isnull=False, pos_y__isnull=False):
+            cx = float(p.pos_x) / 100 * w
+            cy = float(p.pos_y) / 100 * h
+            draw.ellipse(
+                [cx - radius, cy - radius, cx + radius, cy + radius],
+                fill=(37, 99, 235), outline=(255, 255, 255), width=max(2, radius // 6),
+            )
+            label = str(p.numero)
+            bbox = draw.textbbox((0, 0), label, font=font)
+            tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
+            draw.text((cx - tw / 2 - bbox[0], cy - th / 2 - bbox[1]), label, fill=(255, 255, 255), font=font)
+
+        buf = io.BytesIO()
+        img.save(buf, format="PNG")
+        return buf.getvalue()
 
 
 class Postazione(AllegatiMixin, QRCodeMixin, models.Model):

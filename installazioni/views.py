@@ -53,6 +53,18 @@ def installazione_detail(request, pk):
         ).prefetch_related("postazioni", "interventi__tecnico", "interventi__prodotto", "planimetrie"),
         pk=pk,
     )
+
+    if inst.filiale:
+        invia_phone = inst.filiale.cliente.telefono or ""
+        invia_email = inst.filiale.cliente.email_operativo or ""
+        invia_nome  = inst.filiale.cliente.ragione_sociale
+    elif inst.privato:
+        invia_phone = getattr(inst.privato, "telefono", "")
+        invia_email = getattr(inst.privato, "email", "")
+        invia_nome  = str(inst.privato)
+    else:
+        invia_phone = invia_email = invia_nome = ""
+
     return render(request, "installazioni/installazione_detail.html", {
         "inst": inst,
         "postazioni": inst.postazioni.all(),
@@ -63,6 +75,10 @@ def installazione_detail(request, pk):
         "object_id": inst.pk,
         "postazione_form": PostazioneForm(),
         "prodotti_disponibili": Prodotto.objects.filter(attivo=True).order_by("nome_prodotto"),
+        "invia_phone": invia_phone,
+        "invia_email": invia_email,
+        "invia_nome": invia_nome,
+        "pdf_url": reverse("installazioni:installazione_pdf", kwargs={"pk": inst.pk}),
     })
 
 
@@ -117,6 +133,74 @@ def installazione_update(request, pk):
     return render(request, "installazioni/installazione_form.html", {
         "form": form, "inst": inst, "title": f"Modifica {inst.numero}",
     })
+
+
+@login_required
+@require_POST
+def installazione_chiudi(request, pk):
+    inst = get_object_or_404(Installazione, pk=pk)
+    inst.chiudi(request.user)
+    messages.success(request, f"{inst.numero} segnata come completata il {inst.data_completamento:%d/%m/%Y}.")
+    return redirect(inst.get_absolute_url())
+
+
+@login_required
+@require_POST
+def installazione_riapri(request, pk):
+    inst = get_object_or_404(Installazione, pk=pk)
+    inst.riapri()
+    messages.success(request, f"{inst.numero} riportata in corso.")
+    return redirect(inst.get_absolute_url())
+
+
+@login_required
+def installazione_pdf(request, pk):
+    """Report PDF di installazione completata: dati, postazioni, planimetrie con pin, QR."""
+    from django.template.loader import render_to_string
+    from core.pdf_generator import generate_pdf_from_html, PDFConfig
+    import base64
+
+    inst = get_object_or_404(
+        Installazione.objects.select_related(
+            "filiale__cliente", "privato", "servizio", "created_by", "chiusa_da",
+        ),
+        pk=pk,
+    )
+    postazioni = list(inst.postazioni.select_related("prodotto", "planimetria").order_by("numero"))
+
+    planimetrie_ctx = []
+    for pl in inst.planimetrie.all():
+        pinned = [p for p in postazioni if p.planimetria_id == pl.pk and p.is_pinned]
+        immagine_b64 = None
+        errore_immagine = None
+        try:
+            img_bytes = pl.generate_annotated_image_bytes()
+            immagine_b64 = base64.b64encode(img_bytes).decode("ascii")
+        except Exception as exc:
+            errore_immagine = str(exc)
+        planimetrie_ctx.append({
+            "planimetria": pl,
+            "postazioni": pinned,
+            "immagine_b64": immagine_b64,
+            "errore_immagine": errore_immagine,
+        })
+
+    postazioni_qr = []
+    for p in postazioni:
+        try:
+            qr_bytes = p.generate_qr_code(format="png")
+            postazioni_qr.append({"postazione": p, "qr_b64": base64.b64encode(qr_bytes).decode("ascii")})
+        except Exception:
+            postazioni_qr.append({"postazione": p, "qr_b64": None})
+
+    html = render_to_string("installazioni/pdf/installazione_pdf.html", {
+        "inst": inst,
+        "postazioni": postazioni,
+        "planimetrie_ctx": planimetrie_ctx,
+        "postazioni_qr": postazioni_qr,
+    })
+    filename = f"{inst.numero}_report_installazione.pdf"
+    return generate_pdf_from_html(html, PDFConfig(filename=filename), output_type="response")
 
 
 # ── Postazioni ────────────────────────────────────────────────────────────────

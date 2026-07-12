@@ -1,18 +1,56 @@
 {% extends "base.html" %}
-{% load static %}
+{% load static invia_tags %}
 {% block extra_css %}<link rel="stylesheet" href="{% static 'css/detail.css' %}">{% endblock %}
 {% block content %}
-<div class="page-header mb-4">
-  <nav aria-label="breadcrumb">
-    <ol class="breadcrumb">
-      <li class="breadcrumb-item"><a href="{% url 'installazioni:installazione_list' %}">Installazioni</a></li>
-      <li class="breadcrumb-item active">{{ inst.numero }}</li>
-    </ol>
-  </nav>
-  <h1>
-    <i class="bi bi-pin-map me-2 text-brand"></i>{{ inst.numero }}
-    {% if inst.attiva %}<span class="badge badge-ok ms-2">Attiva</span>{% else %}<span class="badge badge-ko ms-2">Inattiva</span>{% endif %}
-  </h1>
+<div class="page-header d-flex justify-content-between align-items-start flex-wrap gap-2 mb-4">
+  <div>
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'installazioni:installazione_list' %}">Installazioni</a></li>
+        <li class="breadcrumb-item active">{{ inst.numero }}</li>
+      </ol>
+    </nav>
+    <h1>
+      <i class="bi bi-pin-map me-2 text-brand"></i>{{ inst.numero }}
+      {% if inst.attiva %}<span class="badge badge-ok ms-2">Attiva</span>{% else %}<span class="badge badge-ko ms-2">Inattiva</span>{% endif %}
+      {% if inst.is_completata %}<span class="badge bg-success ms-1"><i class="bi bi-check-circle me-1"></i>Completata</span>
+      {% else %}<span class="badge bg-warning text-dark ms-1">In corso</span>{% endif %}
+    </h1>
+    {% if inst.is_completata %}
+    <p class="text-muted small mb-0">
+      Completata il {{ inst.data_completamento|date:"d/m/Y" }}{% if inst.chiusa_da %} da {{ inst.chiusa_da.get_full_name|default:inst.chiusa_da.username }}{% endif %}
+    </p>
+    {% endif %}
+  </div>
+  <div class="d-flex gap-2 flex-wrap">
+    <a href="{% url 'installazioni:installazione_pdf' inst.pk %}" class="btn btn-outline-secondary btn-sm" target="_blank">
+      <i class="bi bi-file-earmark-pdf me-1"></i>Report PDF
+    </a>
+    {% bottone_invia phone=invia_phone email=invia_email
+       oggetto="Installazione completata — "|add:inst.numero
+       messaggio="Gentile cliente, in allegato trova il report dell'installazione effettuata presso la Sua sede."
+       pdf_url=pdf_url destinatario_nome=invia_nome
+       label="Invia al cliente" btn_class="btn-success" btn_size="btn-sm" %}
+    {% if request.user.is_staff %}
+      {% if inst.is_completata %}
+      <form method="post" action="{% url 'installazioni:installazione_riapri' inst.pk %}" class="d-inline"
+            onsubmit="return confirm('Riportare {{ inst.numero }} in stato \'In corso\'?');">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-outline-warning btn-sm">
+          <i class="bi bi-arrow-counterclockwise me-1"></i>Riapri
+        </button>
+      </form>
+      {% else %}
+      <form method="post" action="{% url 'installazioni:installazione_chiudi' inst.pk %}" class="d-inline"
+            onsubmit="return confirm('Segnare {{ inst.numero }} come completata? Potrai comunque riaprirla in seguito.');">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-brand btn-sm">
+          <i class="bi bi-check-lg me-1"></i>Salva e chiudi installazione
+        </button>
+      </form>
+      {% endif %}
+    {% endif %}
+  </div>
 </div>
 
 <div class="row g-3">
