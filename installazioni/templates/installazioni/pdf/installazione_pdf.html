@@ -51,42 +51,24 @@
       {% if inst.is_completata %}{{ inst.data_completamento|date:"d/m/Y" }}{% else %}{{ inst.created_by.get_full_name|default:"—" }}{% endif %}
     </td>
   </tr>
+  <tr>
+    <td class="lbl">Tecnico</td>
+    <td class="val">{% if tecnici %}{{ tecnici|join:", " }}{% else %}—{% endif %}</td>
+    <td class="lbl">Totale postazioni</td>
+    <td class="val">{{ postazioni|length }}</td>
+  </tr>
+  <tr>
+    <td class="lbl">Totale foto postazioni</td>
+    <td class="val">{{ n_foto }}</td>
+    <td class="lbl"></td>
+    <td class="val"></td>
+  </tr>
   {% if inst.note %}
   <tr>
     <td class="lbl">Note</td>
     <td class="val" colspan="3">{{ inst.note }}</td>
   </tr>
   {% endif %}
-</table>
-
-<h2 class="sezione">Postazioni installate ({{ postazioni|length }})</h2>
-<table class="righe">
-  <thead>
-    <tr>
-      <th style="width:7%">N°</th>
-      <th style="width:31%">Descrizione luogo</th>
-      <th style="width:20%">Prodotto</th>
-      <th style="width:12%">N° cartello</th>
-      <th style="width:8%">Cartello</th>
-      <th style="width:22%; text-align:right;">QR</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for p in postazioni %}
-    <tr>
-      <td>{{ p.numero|stringformat:"02d" }}</td>
-      <td>{{ p.descrizione_luogo|default:"—" }}</td>
-      <td>{{ p.prodotto|default:"—" }}</td>
-      <td>{{ p.numero_cartello|default:"—" }}</td>
-      <td>{% if p.ha_cartello %}Sì{% else %}No{% endif %}</td>
-      <td style="text-align:right;">
-        {% if p.qr_b64 %}<img src="data:image/png;base64,{{ p.qr_b64 }}" alt="QR P{{ p.numero }}" style="width:45px; height:45px;">{% endif %}
-      </td>
-    </tr>
-    {% empty %}
-    <tr><td colspan="6">Nessuna postazione registrata.</td></tr>
-    {% endfor %}
-  </tbody>
 </table>
 
 {% if planimetrie_ctx %}
@@ -103,10 +85,12 @@
   <table class="righe" style="margin-top:8px;">
     <thead>
       <tr>
-        <th style="width:8%">N°</th>
-        <th style="width:42%">Descrizione</th>
-        <th style="width:25%">Prodotto</th>
-        <th style="width:25%">N° cartello</th>
+        <th style="width:7%">N°</th>
+        <th style="width:31%">Descrizione</th>
+        <th style="width:20%">Prodotto</th>
+        <th style="width:12%">N° cartello</th>
+        <th style="width:8%">Cartello</th>
+        <th style="width:22%; text-align:right;">QR</th>
       </tr>
     </thead>
     <tbody>
@@ -116,13 +100,53 @@
         <td>{{ p.descrizione_luogo|default:"—" }}</td>
         <td>{{ p.prodotto|default:"—" }}</td>
         <td>{{ p.numero_cartello|default:"—" }}</td>
+        <td>{% if p.ha_cartello %}Sì{% else %}No{% endif %}</td>
+        <td style="text-align:right;">
+          {% if p.qr_b64 %}<img src="data:image/png;base64,{{ p.qr_b64 }}" alt="QR P{{ p.numero }}" style="width:45px; height:45px;">{% endif %}
+        </td>
       </tr>
       {% endfor %}
     </tbody>
   </table>
+  {% else %}
+  <p style="color:#888; font-size:10px;">Nessuna postazione posizionata su questa planimetria.</p>
   {% endif %}
 </div>
 {% endfor %}
+{% endif %}
+
+{% if non_posizionate %}
+<h2 class="sezione">Postazioni non associate a una planimetria ({{ non_posizionate|length }})</h2>
+<table class="righe">
+  <thead>
+    <tr>
+      <th style="width:7%">N°</th>
+      <th style="width:31%">Descrizione luogo</th>
+      <th style="width:20%">Prodotto</th>
+      <th style="width:12%">N° cartello</th>
+      <th style="width:8%">Cartello</th>
+      <th style="width:22%; text-align:right;">QR</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for p in non_posizionate %}
+    <tr>
+      <td>{{ p.numero|stringformat:"02d" }}</td>
+      <td>{{ p.descrizione_luogo|default:"—" }}</td>
+      <td>{{ p.prodotto|default:"—" }}</td>
+      <td>{{ p.numero_cartello|default:"—" }}</td>
+      <td>{% if p.ha_cartello %}Sì{% else %}No{% endif %}</td>
+      <td style="text-align:right;">
+        {% if p.qr_b64 %}<img src="data:image/png;base64,{{ p.qr_b64 }}" alt="QR P{{ p.numero }}" style="width:45px; height:45px;">{% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+{% if not postazioni %}
+<p style="color:#888; font-size:10px;">Nessuna postazione registrata.</p>
 {% endif %}
 
 <div class="footer">Documento generato automaticamente da RATTUS26 — {{ inst.numero }}</div>

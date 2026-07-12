@@ -155,18 +155,26 @@ def installazione_riapri(request, pk):
 
 @login_required
 def installazione_pdf(request, pk):
-    """Report PDF di installazione completata: dati, postazioni, planimetrie con pin, QR."""
+    """Report PDF di installazione: frontespizio, planimetrie con pin+legenda+QR, postazioni non posizionate."""
     from django.template.loader import render_to_string
     from core.pdf_generator import generate_pdf_from_html, PDFConfig
+    from core.models_legacy import Allegato
     import base64
 
     inst = get_object_or_404(
         Installazione.objects.select_related(
             "filiale__cliente", "privato", "servizio", "created_by", "chiusa_da",
-        ),
+        ).prefetch_related("interventi__tecnico"),
         pk=pk,
     )
     postazioni = list(inst.postazioni.select_related("prodotto", "planimetria").order_by("numero"))
+
+    for p in postazioni:
+        try:
+            qr_bytes = p.generate_qr_code(format="png")
+            p.qr_b64 = base64.b64encode(qr_bytes).decode("ascii")
+        except Exception:
+            p.qr_b64 = None
 
     planimetrie_ctx = []
     for pl in inst.planimetrie.all():
@@ -185,17 +193,29 @@ def installazione_pdf(request, pk):
             "errore_immagine": errore_immagine,
         })
 
-    for p in postazioni:
-        try:
-            qr_bytes = p.generate_qr_code(format="png")
-            p.qr_b64 = base64.b64encode(qr_bytes).decode("ascii")
-        except Exception:
-            p.qr_b64 = None
+    non_posizionate = [p for p in postazioni if not p.is_pinned]
+
+    tecnici = sorted({
+        interv.tecnico.get_full_name() or interv.tecnico.username
+        for interv in inst.interventi.all() if interv.tecnico_id
+    })
+
+    post_ct = ContentType.objects.get_for_model(Postazione)
+    n_foto = Allegato.objects.filter(
+        content_type=post_ct,
+        object_id__in=[str(p.pk) for p in postazioni],
+    ).filter(
+        django_models.Q(tipo_file__startswith="image/") |
+        django_models.Q(nome_originale__iregex=r"\.(jpg|jpeg|png|gif|bmp|webp)$")
+    ).count()
 
     html = render_to_string("installazioni/pdf/installazione_pdf.html", {
         "inst": inst,
         "postazioni": postazioni,
         "planimetrie_ctx": planimetrie_ctx,
+        "non_posizionate": non_posizionate,
+        "tecnici": tecnici,
+        "n_foto": n_foto,
     })
     filename = f"{inst.numero}_report_installazione.pdf"
     return generate_pdf_from_html(html, PDFConfig(filename=filename), output_type="response")
