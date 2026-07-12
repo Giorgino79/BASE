@@ -17,7 +17,7 @@
   table.righe th { background: #f0f4f8; text-align: left; padding: 7px 9px; font-size: 10px;
                    text-transform: uppercase; color: #666; border-bottom: 2px solid #dde3ea; }
   table.righe td { padding: 7px 9px; border-bottom: 1px solid #eee; font-size: 11px; }
-  .planimetria-block { margin-bottom: 24px; page-break-inside: avoid; }
+  .planimetria-block { margin-bottom: 24px; page-break-inside: avoid; page-break-before: always; }
   .planimetria-block img { width: 16.5cm; border: 1px solid #dde3ea; }
   .footer { margin-top: 30px; font-size: 9px; color: #aaa; text-align: center; }
   .badge-stato { display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 10px; font-weight: 700; }
@@ -71,11 +71,9 @@
   {% endif %}
 </table>
 
-{% if planimetrie_ctx %}
-<h2 class="sezione">Planimetrie</h2>
 {% for pctx in planimetrie_ctx %}
 <div class="planimetria-block">
-  <p style="font-weight:700; margin-bottom:6px;">{{ pctx.planimetria }}</p>
+  <h2 class="sezione">{{ pctx.planimetria }}</h2>
   {% if pctx.immagine_b64 %}
   <img src="data:image/png;base64,{{ pctx.immagine_b64 }}" alt="{{ pctx.planimetria }}">
   {% else %}
@@ -113,9 +111,9 @@
   {% endif %}
 </div>
 {% endfor %}
-{% endif %}
 
 {% if non_posizionate %}
+<div style="page-break-before: always;">
 <h2 class="sezione">Postazioni non associate a una planimetria ({{ non_posizionate|length }})</h2>
 <table class="righe">
   <thead>
@@ -143,6 +141,7 @@
     {% endfor %}
   </tbody>
 </table>
+</div>
 {% endif %}
 
 {% if not postazioni %}
