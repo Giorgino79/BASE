@@ -104,7 +104,8 @@ def get_condomini_eventi(user, start_date, end_date):
     eventi = []
     for c in qs.order_by("data", "ora")[:200]:
         tecnico = c.tecnico.get_full_name() if c.tecnico else "—"
-        title = f"🏢 {c.titolo}"
+        orario = c.ora.strftime("%H:%M") if c.ora else "--:--"
+        title = f"{orario} — 🏢 {c.titolo}"
         if c.tecnico:
             title += f" [{tecnico}]"
 
