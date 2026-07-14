@@ -110,7 +110,7 @@
       {% if scorte %}
       <div class="table-responsive">
         <table class="table table-sm table-hover mb-0 align-middle">
-          <thead>
+          <thead class="bg-brand text-white">
             <tr>
               <th>Prodotto</th>
               <th class="text-end">Disponibile</th>
@@ -241,7 +241,7 @@
       </div>
       <div class="table-responsive">
         <table class="table mb-0">
-          <thead><tr><th>Data</th><th>Descrizione</th><th>Stato</th><th>Costo</th></tr></thead>
+          <thead class="bg-brand text-white"><tr><th>Data</th><th>Descrizione</th><th>Stato</th><th>Costo</th></tr></thead>
           <tbody>
             {% for m in automezzo.manutenzioni.all|slice:":5" %}
             <tr>
@@ -270,7 +270,7 @@
       </div>
       <div class="table-responsive">
         <table class="table mb-0">
-          <thead><tr><th>Data</th><th>Litri</th><th>Costo</th><th>Km</th></tr></thead>
+          <thead class="bg-brand text-white"><tr><th>Data</th><th>Litri</th><th>Costo</th><th>Km</th></tr></thead>
           <tbody>
             {% for r in automezzo.rifornimenti.all|slice:":5" %}
             <tr>
