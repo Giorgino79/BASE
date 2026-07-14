@@ -1756,6 +1756,8 @@ def condominio_esegui(request, pk):
             fs_unita.save()
         if fs_prodotti.is_valid():
             fs_prodotti.save()
+        condominio.note = request.POST.get("note", "").strip()
+        condominio.save(update_fields=["note"])
         if action == "chiudi":
             # Scala ScortaMezzo per tutti i prodotti non ancora confermati
             for riga in condominio.prodotti.all():
