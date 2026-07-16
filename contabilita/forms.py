@@ -26,8 +26,9 @@ class BootstrapMixin:
 class ContoContabileForm(BootstrapMixin, forms.ModelForm):
     class Meta:
         model  = ContoContabile
-        fields = ['nome', 'tipo', 'descrizione', 'attivo']
+        fields = ['nome', 'tipo', 'iban', 'descrizione', 'attivo']
         widgets = {
+            'iban': forms.TextInput(attrs={'placeholder': 'IT60 X054 2811 1010 0000 0123 456'}),
             'descrizione': forms.Textarea(attrs={'rows': 3}),
         }
 

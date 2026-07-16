@@ -21,6 +21,10 @@ class ContoContabile(models.Model):
 
     nome        = models.CharField(max_length=200, verbose_name='Nome conto')
     tipo        = models.CharField(max_length=20, choices=Tipo.choices, verbose_name='Tipo')
+    iban        = models.CharField(
+        max_length=34, blank=True, verbose_name='IBAN',
+        help_text='Solo per conti di tipo Banca',
+    )
     descrizione = models.TextField(blank=True, verbose_name='Descrizione / note')
     attivo      = models.BooleanField(default=True, verbose_name='Attivo')
     created_at  = models.DateTimeField(auto_now_add=True)

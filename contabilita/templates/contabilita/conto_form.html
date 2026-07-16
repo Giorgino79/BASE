@@ -34,6 +34,12 @@
               {{ form.tipo }}
               {% if form.tipo.errors %}<div class="invalid-feedback d-block">{{ form.tipo.errors.0 }}</div>{% endif %}
             </div>
+            <div class="col-12" id="campo-iban" style="display:none;">
+              <label class="form-label">{{ form.iban.label }}</label>
+              {{ form.iban }}
+              <div class="form-text">{{ form.iban.help_text }}</div>
+              {% if form.iban.errors %}<div class="invalid-feedback d-block">{{ form.iban.errors.0 }}</div>{% endif %}
+            </div>
             <div class="col-12">
               <label class="form-label">{{ form.descrizione.label }}</label>
               {{ form.descrizione }}
@@ -55,4 +61,16 @@
     </form>
   </div>
 </div>
+
+<script>
+(function () {
+  var tipoSel = document.getElementById('{{ form.tipo.id_for_label }}');
+  var campoIban = document.getElementById('campo-iban');
+  function aggiorna() {
+    campoIban.style.display = tipoSel.value === 'banca' ? '' : 'none';
+  }
+  tipoSel.addEventListener('change', aggiorna);
+  aggiorna();
+})();
+</script>
 {% endblock %}

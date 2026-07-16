@@ -36,7 +36,10 @@
       <tbody>
         {% for c in conti %}
         <tr>
-          <td><a href="{% url 'contabilita:mastrino' c.pk %}">{{ c.nome }}</a></td>
+          <td>
+            <a href="{% url 'contabilita:mastrino' c.pk %}">{{ c.nome }}</a>
+            {% if c.iban %}<div class="text-muted small">{{ c.iban }}</div>{% endif %}
+          </td>
           <td class="small">{{ c.get_tipo_display }}</td>
           <td class="text-end">€ {{ c.saldo }}</td>
           <td class="text-center">

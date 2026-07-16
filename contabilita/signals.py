@@ -35,3 +35,39 @@ def on_fattura_creata(sender, instance, created, **kwargs):
         is_automatico=True,
         creato_da=instance.emessa_da,
     )
+
+
+@receiver(post_save, sender='acquisti.FatturaPassiva')
+def on_fattura_passiva_creata(sender, instance, created, **kwargs):
+    """
+    Quando viene registrata una nuova FatturaPassiva (fattura ricevuta da un
+    fornitore), registra automaticamente la riga in prima nota:
+    Dare = conto costi, Avere = conto fornitore.
+    """
+    if not created:
+        return
+
+    from contabilita.models import ContoContabile, MovimentoPrimaNota
+
+    conto_fornitore, _ = ContoContabile.objects.get_or_create(
+        tipo=ContoContabile.Tipo.FORNITORE,
+        nome=str(instance.fornitore),
+    )
+
+    conto_costi, _ = ContoContabile.objects.get_or_create(
+        tipo=ContoContabile.Tipo.GENERICO,
+        nome='Costi da fatturazione fornitori',
+    )
+
+    MovimentoPrimaNota.objects.create(
+        data=instance.data_fattura,
+        causale=f'Fattura fornitore {instance.numero_fattura} — {instance.fornitore}',
+        importo=instance.totale,
+        tipo=MovimentoPrimaNota.Tipo.FATTURA_FORNITORE,
+        conto_dare=conto_costi,
+        conto_avere=conto_fornitore,
+        numero_documento=instance.numero_fattura,
+        fattura_passiva=instance,
+        is_automatico=True,
+        creato_da=instance.created_by,
+    )
