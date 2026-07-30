@@ -793,49 +793,67 @@ def ods_cambia_personale(request, pk):
 @login_required
 def organizzazione_giri(request):
     """
-    Tabella organizzazione giri: ODS + CondominioODS da_espletare.
-    Sezione inferiore: giri già confermati raggruppati per tecnico.
+    Vista giornaliera: mappa + card degli ODS/CondominioODS programmati per il
+    giorno selezionato (?data=YYYY-MM-DD, default oggi), assegnati o no.
+    Sezione inferiore: giri già confermati raggruppati per tecnico (tutte le date).
     """
     from django.contrib.auth import get_user_model
-    from itertools import groupby
 
     User = get_user_model()
     utenti = User.objects.filter(is_active=True, cliente_portale__isnull=True).order_by("last_name", "first_name")
 
-    # ── ODS da organizzare ────────────────────────────────────────────────────
-    da_organizzare_qs = (
+    try:
+        selected_date = timezone.datetime.strptime(request.GET.get("data", ""), "%Y-%m-%d").date()
+    except ValueError:
+        selected_date = timezone.localdate()
+    data_prec = selected_date - timedelta(days=1)
+    data_succ = selected_date + timedelta(days=1)
+
+    # ── Servizi del giorno selezionato (ODS + CondominioODS, assegnati o no) ──
+    ods_giorno = (
         ODS.objects
-        .filter(stato="da_espletare")
+        .filter(data_servizio=selected_date, stato__in=["da_espletare", "programmato"])
         .select_related("filiale__cliente", "filiale", "privato", "tecnico")
         .prefetch_related("righe__servizio")
-        .order_by("data_servizio", "ora_inizio")
     )
-    da_organizzare_sorted = sorted(
-        da_organizzare_qs,
-        key=lambda o: (o.data_servizio.isoformat(), o.ora_inizio.isoformat() if o.ora_inizio else ""),
-    )
-    gruppi_da_organizzare = []
-    for data, items in groupby(
-        da_organizzare_sorted,
-        key=lambda o: o.data_servizio,
-    ):
-        ods_list = list(items)
-        processed = []
-        sep_done = False
-        for o in ods_list:
-            is_pom = bool(o.ora_inizio and o.ora_inizio.hour >= 13)
-            if is_pom and not sep_done:
-                processed.append({"sep": True})
-                sep_done = True
-            processed.append({"sep": False, "ods": o})
-        gruppi_da_organizzare.append({"data": data, "items": processed})
-
-    # ── Condomini da organizzare (senza tecnico) ──────────────────────────────
-    condomini_da_organizzare = list(
+    condomini_giorno = (
         CondominioODS.objects
-        .filter(stato=CondominioODS.Stato.DA_ESPLETARE, tecnico__isnull=True)
-        .order_by("data", "ora")
+        .filter(data=selected_date, stato=CondominioODS.Stato.DA_ESPLETARE)
+        .select_related("tecnico")
     )
+
+    giorno_items = []
+    markers = []
+    for o in ods_giorno:
+        assegnato = o.tecnico_id is not None
+        lat = o.filiale.latitudine if o.filiale_id else (o.privato.latitudine if o.privato_id else None)
+        lng = o.filiale.longitudine if o.filiale_id else (o.privato.longitudine if o.privato_id else None)
+        giorno_items.append({
+            "tipo": "ods", "obj": o, "numero": o.numero,
+            "cliente": o.cliente_display, "indirizzo": o.indirizzo_servizio,
+            "citta": o.citta_servizio, "ora": o.ora_inizio,
+            "assegnato": assegnato, "url": o.get_absolute_url(),
+        })
+        if lat is not None and lng is not None:
+            markers.append({
+                "id": f"ods-{o.pk}", "lat": float(lat), "lng": float(lng),
+                "assegnato": assegnato, "numero": o.numero, "cliente": o.cliente_display,
+            })
+
+    for c in condomini_giorno:
+        assegnato = c.tecnico_id is not None
+        giorno_items.append({
+            "tipo": "condominio", "obj": c, "numero": c.numero,
+            "cliente": c.titolo, "indirizzo": c.indirizzo, "citta": "",
+            "ora": c.ora, "assegnato": assegnato, "url": c.get_absolute_url(),
+        })
+        if c.latitudine is not None and c.longitudine is not None:
+            markers.append({
+                "id": f"cond-{c.pk}", "lat": float(c.latitudine), "lng": float(c.longitudine),
+                "assegnato": assegnato, "numero": c.numero, "cliente": c.titolo,
+            })
+
+    giorno_items.sort(key=lambda i: (i["ora"] is None, i["ora"]))
 
     # ── Giri confermati (ODS programmati + CondominioODS con tecnico) ─────────
     confermati_qs = list(
@@ -940,8 +958,11 @@ def organizzazione_giri(request):
             })
 
     return render(request, "servizi/ods/organizzazione_giri.html", {
-        "gruppi_da_organizzare": gruppi_da_organizzare,
-        "condomini_da_organizzare": condomini_da_organizzare,
+        "selected_date": selected_date,
+        "data_prec": data_prec,
+        "data_succ": data_succ,
+        "giorno_items": giorno_items,
+        "markers": markers,
         "giri_confermati": giri_confermati,
         "utenti": utenti,
         "automezzi": automezzi,
@@ -949,6 +970,16 @@ def organizzazione_giri(request):
         "avvisi_mancanti": avvisi_mancanti,
         "tecnici_con_mancanze": {a["tecnico"].pk for a in avvisi_mancanti},
     })
+
+
+def _redirect_organizzazione_giri(request):
+    """Torna alla pagina organizzazione giri preservando il giorno selezionato
+    (campo hidden 'data' nelle form di assegnazione/rimozione tecnico)."""
+    data = request.POST.get("data")
+    url = reverse("servizi:organizzazione_giri")
+    if data:
+        url = f"{url}?data={data}"
+    return redirect(url)
 
 
 @login_required
@@ -970,7 +1001,7 @@ def condominio_assegna_tecnico(request, pk):
                 messages.error(request, "Utente non trovato.")
         else:
             messages.error(request, "Il tecnico è obbligatorio.")
-    return redirect("servizi:organizzazione_giri")
+    return _redirect_organizzazione_giri(request)
 
 
 @login_required
@@ -983,7 +1014,7 @@ def condominio_rimuovi_tecnico(request, pk):
         condominio.distinta = None
         condominio.save(update_fields=["tecnico", "assistente", "distinta"])
         messages.success(request, f"{condominio.numero} rimosso dal giro — torna tra i condomini da organizzare.")
-    return redirect("servizi:organizzazione_giri")
+    return _redirect_organizzazione_giri(request)
 
 
 @login_required
@@ -1006,7 +1037,7 @@ def ods_assegna_tecnico(request, pk):
                 messages.error(request, "Utente non trovato.")
         else:
             messages.error(request, "Il tecnico è obbligatorio.")
-    return redirect("servizi:organizzazione_giri")
+    return _redirect_organizzazione_giri(request)
 
 
 @login_required
@@ -1020,7 +1051,7 @@ def ods_rimuovi_tecnico(request, pk):
         ods.stato = ODS.Stato.DA_ESPLETARE
         ods.save(update_fields=["tecnico", "assistente", "distinta", "stato"])
         messages.success(request, f"{ods.numero} rimosso dal giro — torna tra i servizi da espletare.")
-    return redirect("servizi:organizzazione_giri")
+    return _redirect_organizzazione_giri(request)
 
 
 @login_required

@@ -1,4 +1,13 @@
+from django.conf import settings
 from django.urls import reverse, NoReverseMatch
+
+
+def google_maps(request):
+    return {
+        "google_maps_js_key": settings.GOOGLE_MAPS_JS_API_KEY,
+        "map_default_lat": settings.MAP_DEFAULT_LAT,
+        "map_default_lng": settings.MAP_DEFAULT_LNG,
+    }
 
 
 def sidebar_nav(request):

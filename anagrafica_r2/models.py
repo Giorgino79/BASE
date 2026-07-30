@@ -135,6 +135,8 @@ class Filiale(AllegatiMixin, models.Model):
     zona       = models.CharField(max_length=100, verbose_name='Zona')
     cap        = models.CharField(max_length=5,   verbose_name='CAP')
     provincia  = models.CharField(max_length=5,   verbose_name='Provincia', blank=True)
+    latitudine  = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    longitudine = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
 
     # Contatti sede
     telefono         = models.CharField(max_length=20, blank=True, verbose_name='Telefono')
@@ -174,6 +176,14 @@ class Filiale(AllegatiMixin, models.Model):
         parts = [self.indirizzo, f'{self.cap} {self.citta}'.strip()]
         return ', '.join(p for p in parts if p.strip())
 
+    def save(self, *args, **kwargs):
+        if self.indirizzo and (self.latitudine is None or self.longitudine is None):
+            from core.geocoding import geocode
+            coords = geocode(self.get_indirizzo_completo())
+            if coords:
+                self.latitudine, self.longitudine = coords
+        super().save(*args, **kwargs)
+
 
 class Privato(AllegatiMixin, models.Model):
 
@@ -188,6 +198,8 @@ class Privato(AllegatiMixin, models.Model):
     email            = models.EmailField(blank=True, verbose_name='Email')
     cap              = models.CharField(max_length=5, blank=True, verbose_name='CAP')
     provincia        = models.CharField(max_length=5, blank=True, verbose_name='Provincia')
+    latitudine       = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    longitudine      = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
 
     attivo           = models.BooleanField(default=True, verbose_name='Attivo')
     note             = models.TextField(blank=True, verbose_name='Note')
@@ -212,6 +224,14 @@ class Privato(AllegatiMixin, models.Model):
 
     def get_indirizzo_completo(self):
         return f'{self.indirizzo}, {self.citta}'
+
+    def save(self, *args, **kwargs):
+        if self.indirizzo and (self.latitudine is None or self.longitudine is None):
+            from core.geocoding import geocode
+            coords = geocode(self.get_indirizzo_completo())
+            if coords:
+                self.latitudine, self.longitudine = coords
+        super().save(*args, **kwargs)
 
 
 class Fornitore(AllegatiMixin, models.Model):

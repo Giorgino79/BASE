@@ -1,3 +1,5 @@
+import json
+
 from django import forms
 from .models import Azienda, Filiale, Fornitore, Privato
 
@@ -6,6 +8,22 @@ W_EMAIL = {'class': 'form-control'}
 W_AREA = {'class': 'form-control', 'rows': 3}
 W_SEL = {'class': 'form-select'}
 W_CHK = {'class': 'form-check-input'}
+
+
+def address_autocomplete_attrs(extra=None):
+    """Attributo data-rattus-address per agganciare l'autocomplete Google Places
+    riutilizzabile (static/js/core/address-autocomplete.js) al campo indirizzo."""
+    attrs = {
+        **W_TEXT,
+        'autocomplete': 'off',
+        'data-rattus-address': json.dumps({
+            'citta': 'id_citta', 'cap': 'id_cap', 'provincia': 'id_provincia',
+            'lat': 'id_latitudine', 'lng': 'id_longitudine',
+        }),
+    }
+    if extra:
+        attrs.update(extra)
+    return attrs
 
 
 class AziendaForm(forms.ModelForm):
@@ -64,7 +82,7 @@ class FilialeForm(forms.ModelForm):
         model = Filiale
         fields = [
             'nome', 'tipo_sede',
-            'indirizzo', 'citta', 'zona', 'cap', 'provincia',
+            'indirizzo', 'citta', 'zona', 'cap', 'provincia', 'latitudine', 'longitudine',
             'telefono', 'email',
             'referente_nome', 'referente_tel', 'referente_email',
             'orario_apertura', 'giorno_chiusura', 'note_accesso',
@@ -73,8 +91,10 @@ class FilialeForm(forms.ModelForm):
         widgets = {
             'nome':             forms.TextInput(attrs=W_TEXT),
             'tipo_sede':        forms.Select(attrs=W_SEL),
-            'indirizzo':        forms.TextInput(attrs=W_TEXT),
+            'indirizzo':        forms.TextInput(attrs=address_autocomplete_attrs()),
             'citta':            forms.TextInput(attrs=W_TEXT),
+            'latitudine':       forms.HiddenInput(),
+            'longitudine':      forms.HiddenInput(),
             'cap':              forms.TextInput(attrs={**W_TEXT, 'maxlength': '5', 'pattern': '[0-9]{5}'}),
             'zona':             forms.TextInput(attrs=W_TEXT),
             'provincia':        forms.TextInput(attrs={**W_TEXT, 'maxlength': '5', 'placeholder': 'es: MI'}),
@@ -149,7 +169,7 @@ class PrivatoForm(forms.ModelForm):
         model = Privato
         fields = [
             'nome', 'cognome', 'telefono',
-            'indirizzo', 'citta', 'zona', 'cap', 'provincia',
+            'indirizzo', 'citta', 'zona', 'cap', 'provincia', 'latitudine', 'longitudine',
             'codice_fiscale', 'email',
             'attivo', 'note',
         ]
@@ -157,9 +177,11 @@ class PrivatoForm(forms.ModelForm):
             'nome':            forms.TextInput(attrs=W_TEXT),
             'cognome':         forms.TextInput(attrs=W_TEXT),
             'telefono':        forms.TextInput(attrs=W_TEXT),
-            'indirizzo':       forms.TextInput(attrs=W_TEXT),
+            'indirizzo':       forms.TextInput(attrs=address_autocomplete_attrs()),
             'citta':           forms.TextInput(attrs=W_TEXT),
             'zona':            forms.TextInput(attrs=W_TEXT),
+            'latitudine':      forms.HiddenInput(),
+            'longitudine':     forms.HiddenInput(),
             'cap':             forms.TextInput(attrs={**W_TEXT, 'maxlength': '5', 'pattern': '[0-9]{5}'}),
             'provincia':       forms.TextInput(attrs={**W_TEXT, 'maxlength': '5', 'placeholder': 'es: MI'}),
             'codice_fiscale':  forms.TextInput(attrs={**W_TEXT, 'placeholder': 'RSSMRA80A01H501U'}),

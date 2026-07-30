@@ -86,6 +86,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "core.context_processors.sidebar_nav",
+                "core.context_processors.google_maps",
             ],
         },
     },
@@ -154,6 +155,13 @@ FATTURAZIONE = {
 # WhatsApp — Green API (green-api.com)
 GREENAPI_INSTANCE_ID = os.environ.get("GREENAPI_INSTANCE_ID", "")
 GREENAPI_TOKEN       = os.environ.get("GREENAPI_TOKEN", "")
+
+# Google Maps — chiave "browser" (Maps JavaScript API + Places, ristretta per referrer)
+# e chiave "server" (Geocoding API, ristretta per API, mai esposta nei template).
+GOOGLE_MAPS_JS_API_KEY        = os.environ.get("GOOGLE_MAPS_JS_API_KEY", "")
+GOOGLE_MAPS_GEOCODING_API_KEY = os.environ.get("GOOGLE_MAPS_GEOCODING_API_KEY", "")
+MAP_DEFAULT_LAT = float(os.environ.get("MAP_DEFAULT_LAT", "41.9028"))
+MAP_DEFAULT_LNG = float(os.environ.get("MAP_DEFAULT_LNG", "12.4964"))
 
 from django.contrib.messages import constants as message_constants
 MESSAGE_TAGS = {message_constants.ERROR: "danger"}

@@ -352,6 +352,10 @@
   }
 })();
 </script>
+{% if google_maps_js_key %}
+<script src="{% static 'js/core/address-autocomplete.js' %}"></script>
+<script async src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_js_key }}&libraries=places&callback=initRattusAddressAutocomplete"></script>
+{% endif %}
 {% block extra_js %}{% endblock %}
 <script>
 // Prevent double-submit: disable submit buttons after first click

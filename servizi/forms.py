@@ -223,11 +223,18 @@ class ChiudiServizioForm(forms.Form):
 class CondominioODSForm(forms.ModelForm):
     class Meta:
         model = CondominioODS
-        fields = ["stabile", "titolo", "indirizzo", "data", "ora", "prezzo_base", "distinta", "tecnico", "assistente", "note"]
+        fields = ["stabile", "titolo", "indirizzo", "latitudine", "longitudine", "data", "ora", "prezzo_base", "distinta", "tecnico", "assistente", "note"]
         widgets = {
             "stabile":     forms.Select(attrs={**_SEL, "id": "id_stabile"}),
             "titolo":      forms.TextInput(attrs=_BS),
-            "indirizzo":   forms.TextInput(attrs=_BS),
+            "indirizzo":   forms.TextInput(attrs={
+                **_BS,
+                "placeholder": "Via Roma 1, Milano",
+                "autocomplete": "off",
+                "data-rattus-address": '{"lat": "id_latitudine", "lng": "id_longitudine"}',
+            }),
+            "latitudine":  forms.HiddenInput(),
+            "longitudine": forms.HiddenInput(),
             "data":        forms.DateInput(attrs=_DATE),
             "ora":         forms.TimeInput(attrs=_TIME),
             "prezzo_base": forms.NumberInput(attrs={**_BS, "step": "0.01"}),

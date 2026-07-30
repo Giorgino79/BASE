@@ -16,6 +16,8 @@
 
 <form method="post" id="main-form">
   {% csrf_token %}
+  {{ form.latitudine }}
+  {{ form.longitudine }}
   {% if stabile_source %}<input type="hidden" name="stabile_source" value="{{ stabile_source }}">{% endif %}
 
   <div class="row g-3">

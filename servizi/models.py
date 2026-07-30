@@ -579,6 +579,8 @@ class CondominioODS(models.Model):
     numero     = models.CharField(max_length=30, unique=True, blank=True)
     titolo     = models.CharField(max_length=200, verbose_name="Titolo servizio")
     indirizzo  = models.CharField(max_length=300, verbose_name="Indirizzo")
+    latitudine  = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    longitudine = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     data       = models.DateField(verbose_name="Data servizio")
     ora        = models.TimeField(null=True, blank=True, verbose_name="Ora")
     prezzo_base = models.DecimalField(
@@ -618,6 +620,11 @@ class CondominioODS(models.Model):
     def save(self, *args, **kwargs):
         if not self.numero:
             self.numero = _next_numero_condominio()
+        if self.indirizzo and (self.latitudine is None or self.longitudine is None):
+            from core.geocoding import geocode
+            coords = geocode(self.indirizzo)
+            if coords:
+                self.latitudine, self.longitudine = coords
         super().save(*args, **kwargs)
 
     def get_absolute_url(self):

@@ -1,6 +1,16 @@
 {% extends "base.html" %}
-{% load static %}
-{% block extra_css %}<link rel="stylesheet" href="{% static 'css/detail.css' %}">{% endblock %}
+{% load static l10n %}
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/detail.css' %}">
+<style>
+.giro-card { border-left: 4px solid transparent; transition: box-shadow .2s; cursor: pointer; }
+.giro-card.giro-card--assegnato { border-left-color: #22c55e; }
+.giro-card.giro-card--non-assegnato { border-left-color: #ef4444; }
+.giro-card-highlight { box-shadow: 0 0 0 3px var(--color-1) !important; }
+#giri-map { height: calc(100vh - 260px); min-height: 420px; border-radius: .5rem; }
+#giri-cards { height: calc(100vh - 260px); min-height: 420px; overflow-y: auto; }
+</style>
+{% endblock %}
 {% block content %}
 <div class="page-header d-flex justify-content-between align-items-start mb-4">
   <div>
@@ -18,139 +28,148 @@
   </a>
 </div>
 
-
-{# ── DA ORGANIZZARE ─────────────────────────────────────────────────────────── #}
-{% if gruppi_da_organizzare %}
-<h5 class="text-brand mb-3"><i class="bi bi-clock me-2"></i>Da organizzare</h5>
-
-{% for gruppo in gruppi_da_organizzare %}
-
-<div class="fw-semibold text-brand mb-2 {% if not forloop.first %}mt-4{% endif %}">
-  <i class="bi bi-calendar3 me-1"></i>{{ gruppo.data|date:"l d/m/Y" }}
+{# ── SELETTORE GIORNO ──────────────────────────────────────────────────────── #}
+<div class="d-flex align-items-center justify-content-center gap-2 mb-3 flex-wrap">
+  <a href="?data={{ data_prec|date:'Y-m-d' }}" class="btn btn-outline-secondary" title="Giorno precedente">
+    <i class="bi bi-chevron-left"></i>
+  </a>
+  <form method="get" class="d-inline">
+    <input type="date" name="data" value="{{ selected_date|date:'Y-m-d' }}"
+           class="form-control form-control-lg text-center fw-semibold border-brand text-brand text-capitalize"
+           style="max-width:230px; font-size:1.05rem;"
+           onchange="this.form.submit()">
+  </form>
+  <a href="?data={{ data_succ|date:'Y-m-d' }}" class="btn btn-outline-secondary" title="Giorno successivo">
+    <i class="bi bi-chevron-right"></i>
+  </a>
+  {% if selected_date|date:'Y-m-d' != today %}
+  <a href="?data={{ today }}" class="btn btn-link btn-sm text-decoration-none">Oggi</a>
+  {% endif %}
 </div>
 
-<div class="row g-2">
-{% for item in gruppo.items %}
-{% if item.sep %}
-<div class="col-12">
-  <div class="d-flex align-items-center gap-3 my-2">
-    <hr class="flex-fill m-0">
-    <span class="text-muted small text-nowrap px-1"><i class="bi bi-sun me-1"></i>Pomeriggio</span>
-    <hr class="flex-fill m-0">
+{# ── MAPPA + CARD DEL GIORNO ───────────────────────────────────────────────── #}
+<div class="row g-3 mb-4">
+  <div class="col-lg-7">
+    <div id="giri-map" class="border"></div>
+    {% if not google_maps_js_key %}
+    <div class="text-muted small mt-1"><i class="bi bi-info-circle me-1"></i>Mappa non disponibile: chiave Google Maps non configurata.</div>
+    {% endif %}
   </div>
-</div>
-{% else %}
-{% with o=item.ods %}
-<div class="col-12 col-md-3">
-  <div class="card h-100 border-0 shadow-sm">
-    <div class="card-body py-2 px-3">
-      <div class="d-flex justify-content-between align-items-center mb-1">
-        <a href="{{ o.get_absolute_url }}" class="fw-bold text-brand text-decoration-none">{{ o.numero }}</a>
-        {% if o.ora_inizio %}
-        <span class="text-muted small"><i class="bi bi-clock me-1"></i>{{ o.ora_inizio|time:"H:i" }}</span>
-        {% endif %}
-      </div>
-      <div class="fw-semibold small mb-1">{{ o.cliente_display }}</div>
-      <div class="text-muted small mb-2">
-        {% if o.zona %}<i class="bi bi-geo-alt me-1"></i>{{ o.zona }}{% endif %}
-        {% if o.servizio_principale %}{% if o.zona %} &bull; {% endif %}<i class="bi bi-wrench me-1"></i>{{ o.servizio_principale }}{% endif %}
-      </div>
-      <form method="post" action="{% url 'servizi:ods_assegna_tecnico' o.pk %}"
-            class="d-flex gap-2 align-items-center">
-        {% csrf_token %}
-        <select name="tecnico" class="form-select form-select-sm flex-fill" required>
-          <option value="">— Tecnico —</option>
-          {% for u in utenti %}
-          <option value="{{ u.pk }}" {% if o.tecnico_id == u.pk %}selected{% endif %}>
-            {{ u.get_full_name|default:u.username }}
-          </option>
-          {% endfor %}
-        </select>
-        <button type="submit" class="btn btn-sm btn-brand px-3">
-          <i class="bi bi-check-lg"></i>
-        </button>
-      </form>
-    </div>
-  </div>
-</div>
-{% endwith %}
-{% endif %}
-{% endfor %}
-</div>
-
-{% endfor %}
-
-{% else %}
-<div class="alert alert-success">
-  <i class="bi bi-check-circle me-2"></i>Nessun ODS da organizzare.
-</div>
-{% endif %}
-
-{# ── CONDOMINI DA ORGANIZZARE ───────────────────────────────────────────────── #}
-{% if condomini_da_organizzare %}
-<h5 class="text-brand mb-3 mt-4"><i class="bi bi-buildings me-2"></i>Condomini da organizzare</h5>
-<div class="card mb-3">
-  <div class="table-responsive">
-    <table class="table mb-0 align-middle">
-      <thead class="bg-brand text-white">
-        <tr>
-          <th>Numero</th>
-          <th>Titolo</th>
-          <th>Data / Ora</th>
-          <th>Indirizzo</th>
-          <th class="text-end">Importo est.</th>
-          <th style="width:190px">Tecnico <span class="text-danger">*</span></th>
-          <th style="width:190px">Assistente</th>
-          <th style="width:100px"></th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for c in condomini_da_organizzare %}
-        <tr>
-          <td class="fw-semibold">
-            <a href="{{ c.get_absolute_url }}" class="text-brand text-decoration-none">{{ c.numero }}</a>
-          </td>
-          <td class="small">{{ c.titolo }}</td>
-          <td class="small text-nowrap text-muted">
-            {{ c.data|date:"d/m/Y" }}
-            {% if c.ora %}<br><span class="text-brand">{{ c.ora|time:"H:i" }}</span>{% endif %}
-          </td>
-          <td class="small text-muted">{{ c.indirizzo }}</td>
-          <td class="text-end small text-nowrap">€ {{ c.totale_da_incassare }}</td>
-          <td colspan="3">
+  <div class="col-lg-5">
+    <div id="giri-cards" class="pe-1">
+      {% if giorno_items %}
+        {% for item in giorno_items %}
+        {% if item.tipo == "ods" %}
+        {% with o=item.obj %}
+        <div class="card mb-2 border-0 shadow-sm giro-card {% if item.assegnato %}giro-card--assegnato{% else %}giro-card--non-assegnato{% endif %}"
+             id="card-ods-{{ o.pk }}" data-marker-id="ods-{{ o.pk }}">
+          <div class="card-body py-2 px-3">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+              <a href="{{ o.get_absolute_url }}" class="fw-bold text-brand text-decoration-none">{{ o.numero }}</a>
+              {% if item.ora %}<span class="text-muted small"><i class="bi bi-clock me-1"></i>{{ item.ora|time:"H:i" }}</span>{% endif %}
+            </div>
+            <div class="fw-semibold small mb-1">{{ item.cliente }}</div>
+            <div class="text-muted small mb-2">
+              {% if item.indirizzo %}<i class="bi bi-geo-alt me-1"></i>{{ item.indirizzo }}{% if item.citta %}, {{ item.citta }}{% endif %}<br>{% endif %}
+              {% if o.servizio_principale %}<i class="bi bi-wrench me-1"></i>{{ o.servizio_principale }}{% endif %}
+            </div>
+            {% if item.assegnato %}
+            <div class="d-flex justify-content-between align-items-center">
+              <span class="badge bg-success-subtle text-success">
+                <i class="bi bi-person-check me-1"></i>{{ o.tecnico.get_full_name|default:o.tecnico.username }}
+              </span>
+              <form method="post" action="{% url 'servizi:ods_rimuovi_tecnico' o.pk %}" class="d-inline form-rimuovi-giro"
+                    data-msg="Togliere {{ o.numero }} dal giro di {{ o.tecnico.get_full_name|default:o.tecnico.username }}? Tornerà tra i servizi da espletare.">
+                {% csrf_token %}
+                <input type="hidden" name="data" value="{{ selected_date|date:'Y-m-d' }}">
+                <button type="submit" class="btn btn-sm btn-outline-danger" title="Togli dal giro">
+                  <i class="bi bi-x-lg"></i>
+                </button>
+              </form>
+            </div>
+            {% else %}
+            <form method="post" action="{% url 'servizi:ods_assegna_tecnico' o.pk %}" class="d-flex gap-2 align-items-center">
+              {% csrf_token %}
+              <input type="hidden" name="data" value="{{ selected_date|date:'Y-m-d' }}">
+              <select name="tecnico" class="form-select form-select-sm flex-fill" required>
+                <option value="">— Tecnico —</option>
+                {% for u in utenti %}
+                <option value="{{ u.pk }}">{{ u.get_full_name|default:u.username }}</option>
+                {% endfor %}
+              </select>
+              <button type="submit" class="btn btn-sm btn-brand px-3">
+                <i class="bi bi-check-lg"></i>
+              </button>
+            </form>
+            {% endif %}
+          </div>
+        </div>
+        {% endwith %}
+        {% else %}
+        {% with c=item.obj %}
+        <div class="card mb-2 border-0 shadow-sm giro-card {% if item.assegnato %}giro-card--assegnato{% else %}giro-card--non-assegnato{% endif %}"
+             id="card-cond-{{ c.pk }}" data-marker-id="cond-{{ c.pk }}">
+          <div class="card-body py-2 px-3">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+              <a href="{{ c.get_absolute_url }}" class="fw-bold text-brand text-decoration-none">
+                <i class="bi bi-buildings me-1"></i>{{ c.numero }}
+              </a>
+              {% if item.ora %}<span class="text-muted small"><i class="bi bi-clock me-1"></i>{{ item.ora|time:"H:i" }}</span>{% endif %}
+            </div>
+            <div class="fw-semibold small mb-1">{{ c.titolo }}</div>
+            <div class="text-muted small mb-2"><i class="bi bi-geo-alt me-1"></i>{{ c.indirizzo }}</div>
+            {% if item.assegnato %}
+            <div class="d-flex justify-content-between align-items-center">
+              <span class="badge bg-success-subtle text-success">
+                <i class="bi bi-person-check me-1"></i>{{ c.tecnico.get_full_name|default:c.tecnico.username }}
+              </span>
+              <form method="post" action="{% url 'servizi:condominio_rimuovi_tecnico' c.pk %}" class="d-inline form-rimuovi-giro"
+                    data-msg="Togliere {{ c.numero }} dal giro di {{ c.tecnico.get_full_name|default:c.tecnico.username }}? Tornerà tra i condomini da organizzare.">
+                {% csrf_token %}
+                <input type="hidden" name="data" value="{{ selected_date|date:'Y-m-d' }}">
+                <button type="submit" class="btn btn-sm btn-outline-danger" title="Togli dal giro">
+                  <i class="bi bi-x-lg"></i>
+                </button>
+              </form>
+            </div>
+            {% else %}
             <form method="post" action="{% url 'servizi:condominio_assegna_tecnico' c.pk %}"
                   class="d-flex gap-2 align-items-center" data-giro-form>
               {% csrf_token %}
-              <select name="tecnico" class="form-select form-select-sm tecnico-sel" required
-                      style="width:190px; flex-shrink:0;">
+              <input type="hidden" name="data" value="{{ selected_date|date:'Y-m-d' }}">
+              <select name="tecnico" class="form-select form-select-sm tecnico-sel" required>
                 <option value="">— Tecnico —</option>
                 {% for u in utenti %}
-                <option value="{{ u.pk }}" {% if c.tecnico_id == u.pk %}selected{% endif %}>
-                  {{ u.get_full_name|default:u.username }}
-                </option>
+                <option value="{{ u.pk }}">{{ u.get_full_name|default:u.username }}</option>
                 {% endfor %}
               </select>
-              <select name="assistente" class="form-select form-select-sm assistente-sel"
-                      style="width:190px; flex-shrink:0;">
+              <select name="assistente" class="form-select form-select-sm assistente-sel">
                 <option value="">— nessuno —</option>
                 {% for u in utenti %}
-                <option value="{{ u.pk }}" {% if c.assistente_id == u.pk %}selected{% endif %}>
-                  {{ u.get_full_name|default:u.username }}
-                </option>
+                <option value="{{ u.pk }}">{{ u.get_full_name|default:u.username }}</option>
                 {% endfor %}
               </select>
-              <button type="submit" class="btn btn-sm btn-brand text-nowrap">
-                <i class="bi bi-check-lg me-1"></i>Conferma
+              <button type="submit" class="btn btn-sm btn-brand px-3">
+                <i class="bi bi-check-lg"></i>
               </button>
             </form>
-          </td>
-        </tr>
+            {% endif %}
+          </div>
+        </div>
+        {% endwith %}
+        {% endif %}
         {% endfor %}
-      </tbody>
-    </table>
+      {% else %}
+      <div class="text-center text-muted py-5">
+        <i class="bi bi-calendar2-check d-block mb-2" style="font-size:2.5rem;"></i>
+        Nessun servizio per questo giorno.
+      </div>
+      {% endif %}
+    </div>
   </div>
 </div>
-{% endif %}
+
+{{ markers|json_script:"markers-data" }}
 
 {# ── GIRI CONFERMATI ────────────────────────────────────────────────────────── #}
 {% if giri_confermati %}
@@ -269,7 +288,7 @@
 </div>
 {% endfor %}
 
-{% elif not gruppi_da_organizzare %}
+{% elif not giorno_items %}
 <div class="text-center text-muted py-5">
   <i class="bi bi-inbox d-block mb-2" style="font-size:2.5rem;"></i>
   Nessun ordine di servizio presente.
@@ -359,5 +378,79 @@ document.querySelectorAll('.form-rimuovi-giro').forEach(function (form) {
     if (!confirm(form.dataset.msg)) e.preventDefault();
   });
 });
+
+// ── Mappa del giorno: puntini verdi (assegnato) / rossi (non assegnato) ──
+(function () {
+  var mapEl = document.getElementById('giri-map');
+  if (!mapEl) return;
+  var markersData = JSON.parse(document.getElementById('markers-data').textContent);
+  var rattusMap = null;
+  var markerObjs = {};
+
+  function initGiriMap() {
+    if (!window.google || !google.maps) return;
+
+    rattusMap = new google.maps.Map(mapEl, {
+      center: { lat: {{ map_default_lat|unlocalize }}, lng: {{ map_default_lng|unlocalize }} },
+      zoom: 12,
+    });
+
+    var bounds = new google.maps.LatLngBounds();
+
+    markersData.forEach(function (m) {
+      var marker = new google.maps.Marker({
+        position: { lat: m.lat, lng: m.lng },
+        map: rattusMap,
+        title: m.numero + ' — ' + m.cliente,
+        icon: {
+          path: google.maps.SymbolPath.CIRCLE,
+          fillColor: m.assegnato ? '#22c55e' : '#ef4444',
+          fillOpacity: 1,
+          strokeColor: '#fff',
+          strokeWeight: 2,
+          scale: 9,
+        },
+      });
+      markerObjs[m.id] = marker;
+      bounds.extend(marker.getPosition());
+
+      marker.addListener('click', function () {
+        highlightCard(m.id);
+      });
+    });
+
+    if (markersData.length) {
+      rattusMap.fitBounds(bounds);
+      google.maps.event.addListenerOnce(rattusMap, 'bounds_changed', function () {
+        if (markersData.length === 1 && rattusMap.getZoom() > 15) rattusMap.setZoom(15);
+      });
+    }
+  }
+
+  function highlightCard(markerId) {
+    var card = document.getElementById('card-' + markerId);
+    if (!card) return;
+    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    card.classList.add('giro-card-highlight');
+    setTimeout(function () { card.classList.remove('giro-card-highlight'); }, 1500);
+  }
+
+  document.querySelectorAll('.giro-card').forEach(function (card) {
+    card.addEventListener('click', function (e) {
+      if (e.target.closest('form') || e.target.closest('a')) return;
+      var marker = markerObjs[card.dataset.markerId];
+      if (!marker || !rattusMap) return;
+      rattusMap.panTo(marker.getPosition());
+      if (rattusMap.getZoom() < 15) rattusMap.setZoom(15);
+      google.maps.event.trigger(marker, 'click');
+    });
+  });
+
+  if (window.google && google.maps) {
+    initGiriMap();
+  } else {
+    window.addEventListener('rattus:maps-ready', initGiriMap);
+  }
+})();
 </script>
 {% endblock %}
