@@ -838,6 +838,7 @@ def organizzazione_giri(request):
             markers.append({
                 "id": f"ods-{o.pk}", "lat": float(lat), "lng": float(lng),
                 "assegnato": assegnato, "numero": o.numero, "cliente": o.cliente_display,
+                "tecnico": o.tecnico.get_full_name() or o.tecnico.username if assegnato else None,
             })
 
     for c in condomini_giorno:
@@ -851,9 +852,15 @@ def organizzazione_giri(request):
             markers.append({
                 "id": f"cond-{c.pk}", "lat": float(c.latitudine), "lng": float(c.longitudine),
                 "assegnato": assegnato, "numero": c.numero, "cliente": c.titolo,
+                "tecnico": c.tecnico.get_full_name() or c.tecnico.username if assegnato else None,
             })
 
     giorno_items.sort(key=lambda i: (i["ora"] is None, i["ora"]))
+    # Le card mostrano solo ciò che va ancora assegnato: una volta confermato il
+    # tecnico il servizio compare già nella sezione "Giri confermati" più sotto,
+    # non serve più occupare spazio nella lista — resta comunque visibile in
+    # mappa (marker verde) per avere un quadro completo della giornata.
+    giorno_cards = [i for i in giorno_items if not i["assegnato"]]
 
     # ── Giri confermati (ODS programmati + CondominioODS con tecnico) ─────────
     confermati_qs = list(
@@ -962,6 +969,7 @@ def organizzazione_giri(request):
         "data_prec": data_prec,
         "data_succ": data_succ,
         "giorno_items": giorno_items,
+        "giorno_cards": giorno_cards,
         "markers": markers,
         "giri_confermati": giri_confermati,
         "utenti": utenti,

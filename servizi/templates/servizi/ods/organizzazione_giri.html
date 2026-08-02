@@ -57,11 +57,11 @@
   </div>
   <div class="col-lg-5">
     <div id="giri-cards" class="pe-1">
-      {% if giorno_items %}
-        {% for item in giorno_items %}
+      {% if giorno_cards %}
+        {% for item in giorno_cards %}
         {% if item.tipo == "ods" %}
         {% with o=item.obj %}
-        <div class="card mb-2 border-0 shadow-sm giro-card {% if item.assegnato %}giro-card--assegnato{% else %}giro-card--non-assegnato{% endif %}"
+        <div class="card mb-2 border-0 shadow-sm giro-card giro-card--non-assegnato"
              id="card-ods-{{ o.pk }}" data-marker-id="ods-{{ o.pk }}">
           <div class="card-body py-2 px-3">
             <div class="d-flex justify-content-between align-items-center mb-1">
@@ -73,21 +73,6 @@
               {% if item.indirizzo %}<i class="bi bi-geo-alt me-1"></i>{{ item.indirizzo }}{% if item.citta %}, {{ item.citta }}{% endif %}<br>{% endif %}
               {% if o.servizio_principale %}<i class="bi bi-wrench me-1"></i>{{ o.servizio_principale }}{% endif %}
             </div>
-            {% if item.assegnato %}
-            <div class="d-flex justify-content-between align-items-center">
-              <span class="badge bg-success-subtle text-success">
-                <i class="bi bi-person-check me-1"></i>{{ o.tecnico.get_full_name|default:o.tecnico.username }}
-              </span>
-              <form method="post" action="{% url 'servizi:ods_rimuovi_tecnico' o.pk %}" class="d-inline form-rimuovi-giro"
-                    data-msg="Togliere {{ o.numero }} dal giro di {{ o.tecnico.get_full_name|default:o.tecnico.username }}? Tornerà tra i servizi da espletare.">
-                {% csrf_token %}
-                <input type="hidden" name="data" value="{{ selected_date|date:'Y-m-d' }}">
-                <button type="submit" class="btn btn-sm btn-outline-danger" title="Togli dal giro">
-                  <i class="bi bi-x-lg"></i>
-                </button>
-              </form>
-            </div>
-            {% else %}
             <form method="post" action="{% url 'servizi:ods_assegna_tecnico' o.pk %}" class="d-flex gap-2 align-items-center">
               {% csrf_token %}
               <input type="hidden" name="data" value="{{ selected_date|date:'Y-m-d' }}">
@@ -101,13 +86,12 @@
                 <i class="bi bi-check-lg"></i>
               </button>
             </form>
-            {% endif %}
           </div>
         </div>
         {% endwith %}
         {% else %}
         {% with c=item.obj %}
-        <div class="card mb-2 border-0 shadow-sm giro-card {% if item.assegnato %}giro-card--assegnato{% else %}giro-card--non-assegnato{% endif %}"
+        <div class="card mb-2 border-0 shadow-sm giro-card giro-card--non-assegnato"
              id="card-cond-{{ c.pk }}" data-marker-id="cond-{{ c.pk }}">
           <div class="card-body py-2 px-3">
             <div class="d-flex justify-content-between align-items-center mb-1">
@@ -118,21 +102,6 @@
             </div>
             <div class="fw-semibold small mb-1">{{ c.titolo }}</div>
             <div class="text-muted small mb-2"><i class="bi bi-geo-alt me-1"></i>{{ c.indirizzo }}</div>
-            {% if item.assegnato %}
-            <div class="d-flex justify-content-between align-items-center">
-              <span class="badge bg-success-subtle text-success">
-                <i class="bi bi-person-check me-1"></i>{{ c.tecnico.get_full_name|default:c.tecnico.username }}
-              </span>
-              <form method="post" action="{% url 'servizi:condominio_rimuovi_tecnico' c.pk %}" class="d-inline form-rimuovi-giro"
-                    data-msg="Togliere {{ c.numero }} dal giro di {{ c.tecnico.get_full_name|default:c.tecnico.username }}? Tornerà tra i condomini da organizzare.">
-                {% csrf_token %}
-                <input type="hidden" name="data" value="{{ selected_date|date:'Y-m-d' }}">
-                <button type="submit" class="btn btn-sm btn-outline-danger" title="Togli dal giro">
-                  <i class="bi bi-x-lg"></i>
-                </button>
-              </form>
-            </div>
-            {% else %}
             <form method="post" action="{% url 'servizi:condominio_assegna_tecnico' c.pk %}"
                   class="d-flex gap-2 align-items-center" data-giro-form>
               {% csrf_token %}
@@ -153,12 +122,17 @@
                 <i class="bi bi-check-lg"></i>
               </button>
             </form>
-            {% endif %}
           </div>
         </div>
         {% endwith %}
         {% endif %}
         {% endfor %}
+      {% elif giorno_items %}
+      <div class="text-center text-muted py-5">
+        <i class="bi bi-check-circle d-block mb-2" style="font-size:2.5rem;color:#22c55e;"></i>
+        Tutti i servizi di oggi sono già assegnati.<br>
+        <span class="small">Sono visibili in verde sulla mappa e nei "Giri confermati" qui sotto.</span>
+      </div>
       {% else %}
       <div class="text-center text-muted py-5">
         <i class="bi bi-calendar2-check d-block mb-2" style="font-size:2.5rem;"></i>
@@ -386,6 +360,7 @@ document.querySelectorAll('.form-rimuovi-giro').forEach(function (form) {
   var markersData = JSON.parse(document.getElementById('markers-data').textContent);
   var rattusMap = null;
   var markerObjs = {};
+  var infoWindow = null;
 
   function initGiriMap() {
     if (!window.google || !google.maps) return;
@@ -394,6 +369,7 @@ document.querySelectorAll('.form-rimuovi-giro').forEach(function (form) {
       center: { lat: {{ map_default_lat|unlocalize }}, lng: {{ map_default_lng|unlocalize }} },
       zoom: 12,
     });
+    infoWindow = new google.maps.InfoWindow();
 
     var bounds = new google.maps.LatLngBounds();
 
@@ -415,7 +391,19 @@ document.querySelectorAll('.form-rimuovi-giro').forEach(function (form) {
       bounds.extend(marker.getPosition());
 
       marker.addListener('click', function () {
-        highlightCard(m.id);
+        // I servizi già assegnati non hanno più una card in elenco (rimossa per
+        // non ripetere ciò che si vede già nei "Giri confermati"): la mappa resta
+        // comunque cliccabile per un riepilogo rapido via InfoWindow.
+        if (m.assegnato) {
+          infoWindow.setContent(
+            '<div style="font-size:13px;"><strong>' + m.numero + '</strong><br>' +
+            m.cliente + '<br>' +
+            '<span style="color:#16a34a;"><i class="bi bi-person-check"></i> ' + (m.tecnico || '—') + '</span></div>'
+          );
+          infoWindow.open(rattusMap, marker);
+        } else {
+          highlightCard(m.id);
+        }
       });
     });
 
