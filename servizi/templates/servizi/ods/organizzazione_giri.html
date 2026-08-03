@@ -23,9 +23,14 @@
     </nav>
     <h1><i class="bi bi-map me-2 text-brand"></i>Organizzazione Giri</h1>
   </div>
-  <a href="{% url 'servizi:ods_create' %}" class="btn btn-brand btn-sm mt-1">
-    <i class="bi bi-plus-lg me-1"></i>Nuovo ODS
-  </a>
+  <div class="mt-1 d-flex gap-2">
+    <a href="{% url 'core:calendario_aziendale' %}" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-calendar2-week me-1"></i>Calendario Aziendale
+    </a>
+    <a href="{% url 'servizi:ods_create' %}" class="btn btn-brand btn-sm">
+      <i class="bi bi-plus-lg me-1"></i>Nuovo ODS
+    </a>
+  </div>
 </div>
 
 {# ── SELETTORE GIORNO ──────────────────────────────────────────────────────── #}
