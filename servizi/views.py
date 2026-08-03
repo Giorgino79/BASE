@@ -1137,7 +1137,63 @@ class DistintaListView(LoginRequiredMixin, ListView):
         from django.db.models import Count
         return Distinta.objects.select_related("tecnico", "creata_da", "mezzo").annotate(
             n_ods=Count("ods_set"),
-        ).order_by("-data", "-creata_il")
+        ).filter(stato=Distinta.Stato.APERTA).order_by("-data", "-creata_il")
+
+    def get_context_data(self, **kwargs):
+        from django.db.models import Count
+        from django.contrib.auth import get_user_model
+        from cespiti.models import Automezzo
+
+        ctx = super().get_context_data(**kwargs)
+        User = get_user_model()
+
+        ctx["utenti"] = User.objects.filter(
+            is_active=True, cliente_portale__isnull=True
+        ).order_by("last_name", "first_name")
+        ctx["automezzi"] = Automezzo.objects.order_by("targa")
+
+        numero = self.request.GET.get("numero", "").strip()
+        data_da = self.request.GET.get("data_da", "").strip()
+        data_a = self.request.GET.get("data_a", "").strip()
+        tecnico = self.request.GET.get("tecnico", "").strip()
+        assistente = self.request.GET.get("assistente", "").strip()
+        mezzo = self.request.GET.get("mezzo", "").strip()
+        stato = self.request.GET.get("stato", "").strip()
+
+        ctx["search_numero"] = numero
+        ctx["search_data_da"] = data_da
+        ctx["search_data_a"] = data_a
+        ctx["search_tecnico"] = tecnico
+        ctx["search_assistente"] = assistente
+        ctx["search_mezzo"] = mezzo
+        ctx["search_stato"] = stato
+
+        ha_ricerca = any([numero, data_da, data_a, tecnico, assistente, mezzo, stato])
+        ctx["ha_ricerca"] = ha_ricerca
+
+        risultati = None
+        if ha_ricerca:
+            qs = Distinta.objects.select_related("tecnico", "assistente", "creata_da", "mezzo").annotate(
+                n_ods=Count("ods_set"),
+            )
+            if numero:
+                qs = qs.filter(numero__icontains=numero)
+            if data_da:
+                qs = qs.filter(data__gte=data_da)
+            if data_a:
+                qs = qs.filter(data__lte=data_a)
+            if tecnico:
+                qs = qs.filter(tecnico_id=tecnico)
+            if assistente:
+                qs = qs.filter(assistente_id=assistente)
+            if mezzo:
+                qs = qs.filter(mezzo_id=mezzo)
+            if stato:
+                qs = qs.filter(stato=stato)
+            risultati = qs.order_by("-data", "-creata_il")
+
+        ctx["risultati_ricerca"] = risultati
+        return ctx
 
 
 class DistintaDetailView(LoginRequiredMixin, DetailView):

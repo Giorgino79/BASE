@@ -16,7 +16,8 @@
   </a>
 </div>
 
-<div class="card">
+<h6 class="text-brand mb-2"><i class="bi bi-unlock me-1"></i>Distinte aperte</h6>
+<div class="card mb-4">
   <div class="table-responsive">
     <table class="table mb-0 align-middle">
       <thead class="bg-brand text-white">
@@ -62,10 +63,137 @@
           </td>
         </tr>
         {% empty %}
-        <tr><td colspan="6" class="text-center text-muted py-4"><i class="bi bi-inbox me-2"></i>Nessuna distinta</td></tr>
+        <tr><td colspan="8" class="text-center text-muted py-4"><i class="bi bi-inbox me-2"></i>Nessuna distinta aperta</td></tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
 </div>
+
+{# ── RICERCA DISTINTE ─────────────────────────────────────────────────────── #}
+<h6 class="text-brand mb-2"><i class="bi bi-search me-1"></i>Ricerca distinte</h6>
+<div class="card mb-4">
+  <div class="card-body">
+    <form method="get" class="row g-2 align-items-end">
+      <div class="col-md-2">
+        <label class="form-label small mb-1">Numero</label>
+        <input type="text" name="numero" value="{{ search_numero }}" class="form-control form-control-sm">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small mb-1">Data da</label>
+        <input type="date" name="data_da" value="{{ search_data_da }}" class="form-control form-control-sm">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small mb-1">Data a</label>
+        <input type="date" name="data_a" value="{{ search_data_a }}" class="form-control form-control-sm">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small mb-1">Tecnico</label>
+        <select name="tecnico" class="form-select form-select-sm">
+          <option value="">— tutti —</option>
+          {% for u in utenti %}
+          <option value="{{ u.pk }}" {% if search_tecnico == u.pk|stringformat:"s" %}selected{% endif %}>
+            {{ u.get_full_name|default:u.username }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small mb-1">Assistente</label>
+        <select name="assistente" class="form-select form-select-sm">
+          <option value="">— tutti —</option>
+          {% for u in utenti %}
+          <option value="{{ u.pk }}" {% if search_assistente == u.pk|stringformat:"s" %}selected{% endif %}>
+            {{ u.get_full_name|default:u.username }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small mb-1">Mezzo</label>
+        <select name="mezzo" class="form-select form-select-sm">
+          <option value="">— tutti —</option>
+          {% for m in automezzi %}
+          <option value="{{ m.pk }}" {% if search_mezzo == m.pk|stringformat:"s" %}selected{% endif %}>{{ m }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small mb-1">Stato</label>
+        <select name="stato" class="form-select form-select-sm">
+          <option value="">— tutti —</option>
+          <option value="aperta" {% if search_stato == "aperta" %}selected{% endif %}>Aperta</option>
+          <option value="chiusa" {% if search_stato == "chiusa" %}selected{% endif %}>Chiusa</option>
+        </select>
+      </div>
+      <div class="col-md-auto">
+        <button type="submit" class="btn btn-brand btn-sm">
+          <i class="bi bi-search me-1"></i>Cerca
+        </button>
+        {% if ha_ricerca %}
+        <a href="{% url 'servizi:distinta_list' %}" class="btn btn-outline-secondary btn-sm">
+          <i class="bi bi-x-lg me-1"></i>Azzera
+        </a>
+        {% endif %}
+      </div>
+    </form>
+  </div>
+</div>
+
+{% if ha_ricerca %}
+<div class="card">
+  <div class="table-responsive">
+    <table class="table mb-0 align-middle">
+      <thead class="bg-brand text-white">
+        <tr>
+          <th>Numero</th>
+          <th>Data</th>
+          <th>Tecnico</th>
+          <th>Assistente</th>
+          <th>Mezzo</th>
+          <th class="text-center">ODS</th>
+          <th>Stato</th>
+          <th class="text-end">Incasso</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for d in risultati_ricerca %}
+        <tr>
+          <td class="fw-semibold text-nowrap">
+            <a href="{{ d.get_absolute_url }}" class="text-brand text-decoration-none">{{ d.numero }}</a>
+          </td>
+          <td class="fw-semibold text-nowrap">{{ d.data|date:"d/m/Y" }}</td>
+          <td>{{ d.tecnico.get_full_name|default:d.tecnico.username }}</td>
+          <td class="small text-muted">{{ d.assistente.get_full_name|default:"—" }}</td>
+          <td class="small text-muted">{{ d.mezzo|default:"—" }}</td>
+          <td class="text-center">
+            <span class="badge bg-secondary">{{ d.n_ods }}</span>
+          </td>
+          <td>
+            {% if d.stato == "aperta" %}<span class="badge badge-wait">Aperta</span>
+            {% else %}<span class="badge badge-ok">Chiusa</span>{% endif %}
+          </td>
+          <td class="text-end fw-semibold">
+            {% if d.importo_ricevuto is not None %}€ {{ d.importo_ricevuto }}
+            {% elif d.stato == "chiusa" %}<span class="text-muted small">—</span>
+            {% else %}<span class="text-muted small">In corso</span>{% endif %}
+          </td>
+          <td class="text-end">
+            <a href="{{ d.get_absolute_url }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-eye"></i></a>
+            {% if d.stato == "aperta" %}
+            <a href="{% url 'servizi:chiudi_distinta_ufficio' d.pk %}" class="btn btn-sm btn-brand ms-1" title="Chiudi distinta">
+              <i class="bi bi-lock"></i>
+            </a>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="9" class="text-center text-muted py-4"><i class="bi bi-search me-2"></i>Nessuna distinta trovata</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
 {% endblock %}
