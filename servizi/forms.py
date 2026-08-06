@@ -99,17 +99,18 @@ class ODSForm(forms.ModelForm):
         fields = [
             "filiale", "privato",
             "data_servizio", "ora_inizio", "ora_fine",
-            "stato", "incasso_al_servizio", "note_intervento",
+            "stato", "incasso_al_servizio", "fatturazione_diversa", "note_intervento",
         ]
         widgets = {
-            "filiale":             forms.Select(attrs=_SEL),
-            "privato":             forms.Select(attrs=_SEL),
-            "data_servizio":       forms.DateInput(attrs=_DATE, format="%Y-%m-%d"),
-            "ora_inizio":          forms.TimeInput(attrs=_TIME),
-            "ora_fine":            forms.TimeInput(attrs=_TIME),
-            "stato":               forms.Select(attrs=_SEL),
-            "incasso_al_servizio": forms.CheckboxInput(attrs=_CHK),
-            "note_intervento":     forms.Textarea(attrs=_AREA),
+            "filiale":              forms.Select(attrs=_SEL),
+            "privato":              forms.Select(attrs=_SEL),
+            "data_servizio":        forms.DateInput(attrs=_DATE, format="%Y-%m-%d"),
+            "ora_inizio":           forms.TimeInput(attrs=_TIME),
+            "ora_fine":             forms.TimeInput(attrs=_TIME),
+            "stato":                forms.Select(attrs=_SEL),
+            "incasso_al_servizio":  forms.CheckboxInput(attrs=_CHK),
+            "fatturazione_diversa": forms.CheckboxInput(attrs=_CHK),
+            "note_intervento":      forms.Textarea(attrs=_AREA),
         }
 
     def __init__(self, *args, **kwargs):

@@ -71,6 +71,7 @@
           <div class="card-body py-2 px-3">
             <div class="d-flex justify-content-between align-items-center mb-1">
               <a href="{{ o.get_absolute_url }}" class="fw-bold text-brand text-decoration-none">{{ o.numero }}</a>
+              {% if o.fatturazione_diversa %}<span class="badge bg-warning text-dark ms-1" style="font-size:.65rem;">OS2</span>{% endif %}
               {% if item.ora %}<span class="text-muted small"><i class="bi bi-clock me-1"></i>{{ item.ora|time:"H:i" }}</span>{% endif %}
             </div>
             <div class="fw-semibold small mb-1">{{ item.cliente }}</div>
@@ -198,6 +199,7 @@
         <tr>
           <td class="fw-semibold">
             <a href="{{ o.get_absolute_url }}" class="text-brand text-decoration-none">{{ o.numero }}</a>
+            {% if o.fatturazione_diversa %}<span class="badge bg-warning text-dark ms-1" style="font-size:.65rem;">OS2</span>{% endif %}
           </td>
           <td class="small text-nowrap text-muted">
             {{ o.data_servizio|date:"d/m/Y" }}

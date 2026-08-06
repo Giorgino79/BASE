@@ -72,6 +72,7 @@
             <tr class="{% if o.stato == 'completato' %}table-success bg-opacity-25{% elif o.stato == 'annullato' %}table-secondary{% else %}table-warning bg-opacity-25{% endif %}">
               <td class="fw-semibold">
                 <a href="{{ o.get_absolute_url }}" class="text-brand text-decoration-none">{{ o.numero }}</a>
+                {% if o.fatturazione_diversa %}<span class="badge bg-warning text-dark ms-1" style="font-size:.65rem;">OS2</span>{% endif %}
               </td>
               <td class="small">{{ o.cliente_display }}</td>
               <td class="small">{{ o.servizio_principale|default:"—" }}</td>

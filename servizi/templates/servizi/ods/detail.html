@@ -17,6 +17,7 @@
       {% elif ods.stato == "programmato" %}<span class="badge badge-wait ms-2">Programmato</span>
       {% elif ods.stato == "completato" %}<span class="badge badge-ok ms-2">Completato</span>
       {% else %}<span class="badge badge-ko ms-2">Annullato</span>{% endif %}
+      {% if ods.fatturazione_diversa %}<span class="badge bg-warning text-dark ms-2">OS2 — Fatturazione diversa</span>{% endif %}
     </h1>
     <div class="d-grid gap-2 d-md-flex">
       {% url 'servizi:ods_bollettino_pdf' ods.pk as bollettino_url %}

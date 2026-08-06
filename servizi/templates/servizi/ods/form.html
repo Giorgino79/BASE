@@ -157,6 +157,13 @@
               </div>
             </div>
             <div class="col-12">
+              <div class="form-check">
+                {{ form.fatturazione_diversa }}
+                <label class="form-check-label">{{ form.fatturazione_diversa.label }}</label>
+                <div class="form-text">Servizio da fatturare con altra ragione sociale, a cura del cliente (numerazione OS2).</div>
+              </div>
+            </div>
+            <div class="col-12">
               <label class="form-label" for="{{ form.note_intervento.id_for_label }}">{{ form.note_intervento.label }}</label>
               {{ form.note_intervento }}
             </div>

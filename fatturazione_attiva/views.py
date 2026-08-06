@@ -167,7 +167,8 @@ class RicercaFatturazioneView(LoginRequiredMixin, TemplateView):
         if tipo in ("azienda", "privato"):
             ods_qs = (ODS.objects
                       .select_related("filiale__cliente", "privato", "tecnico")
-                      .exclude(stato=ODS.Stato.FATTURATO))
+                      .exclude(stato=ODS.Stato.FATTURATO)
+                      .exclude(fatturazione_diversa=True))
 
             if tipo == "azienda":
                 ods_qs = ods_qs.filter(filiale__cliente=cd["azienda"])

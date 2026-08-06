@@ -21,9 +21,9 @@ def _next_numero_distinta():
     return f"{prefix}{n:04d}"
 
 
-def _next_numero_ods():
+def _next_numero_ods(prefix="ODS"):
     anno = timezone.now().year
-    prefix = f"ODS-{anno}-"
+    prefix = f"{prefix}-{anno}-"
     ultimo = ODS.objects.filter(numero__startswith=prefix).order_by("numero").last()
     if ultimo:
         try:
@@ -234,6 +234,10 @@ class ODS(AllegatiMixin, models.Model):
         default=False, verbose_name="Incasso al servizio",
         help_text="Il pagamento va riscosso al momento del servizio (non fatturato)",
     )
+    fatturazione_diversa = models.BooleanField(
+        default=False, verbose_name="Fatturazione diversa",
+        help_text="Da fatturare con altra ragione sociale, a cura del cliente (OS2)",
+    )
     incassato           = models.BooleanField(default=False, verbose_name="Incassato")
     data_incasso        = models.DateField(null=True, blank=True, verbose_name="Data incasso")
     importo_incassato   = models.DecimalField(
@@ -261,7 +265,7 @@ class ODS(AllegatiMixin, models.Model):
 
     def save(self, *args, **kwargs):
         if not self.numero:
-            self.numero = _next_numero_ods()
+            self.numero = _next_numero_ods(prefix="OS2" if self.fatturazione_diversa else "ODS")
         super().save(*args, **kwargs)
 
     def clean(self):

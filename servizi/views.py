@@ -1490,14 +1490,38 @@ def distinta_chiudi(request, pk):
     return redirect(distinta.get_absolute_url())
 
 
+def _elimina_os2(ods_os2):
+    """
+    Cancella definitivamente dal database i servizi OS2 (fatturazione diversa,
+    a cura del cliente) — incluso allegati e QR code collegati, che non
+    vengono rimossi automaticamente da ods.delete() (AllegatiMixin li collega
+    via ContentType/object_id, non una GenericRelation).
+    """
+    from core.models_legacy import Allegato, QRCode
+
+    ct = ContentType.objects.get_for_model(ODS)
+    for o in ods_os2:
+        for allegato in Allegato.objects.filter(content_type=ct, object_id=str(o.pk)):
+            allegato.file.delete(save=False)
+            allegato.delete()
+        for qr in QRCode.objects.filter(content_type=ct, object_id=str(o.pk)):
+            qr.qr_image.delete(save=False)
+            qr.delete()
+        o.delete()
+
+
 @login_required
 def chiudi_distinta_ufficio(request, pk):
     """
     Chiusura distinta da parte dell'ufficio: riconcilia incassi,
     permette di riaprire singoli ODS e invia promemoria al tecnico.
+
+    I servizi OS2 (fatturazione_diversa=True) contano nei totali/promemoria
+    esattamente come un ODS normale — l'unica differenza è che, se non
+    riaperti, vengono cancellati definitivamente dal database alla chiusura.
     """
     from decimal import Decimal, InvalidOperation
-    from django.db.models import Sum, Q
+    from django.db import transaction
 
     distinta = get_object_or_404(
         Distinta.objects.select_related("tecnico", "mezzo"), pk=pk
@@ -1508,7 +1532,7 @@ def chiudi_distinta_ufficio(request, pk):
 
     ods_qs = (
         distinta.ods_set
-        .select_related("filiale__cliente", "privato")
+        .select_related("filiale__cliente", "privato", "tecnico")
         .prefetch_related("righe__servizio")
         .order_by("data_servizio", "pk")
     )
@@ -1522,113 +1546,130 @@ def chiudi_distinta_ufficio(request, pk):
     condomini_list = list(condomini_qs)
 
     totale_previsto = (
-        sum((o.importo_incassato or Decimal("0")) for o in ods_list if o.incassato and o.stato != "annullato") +
+        sum(
+            (o.importo_incassato or Decimal("0")) for o in ods_list
+            if o.incassato and o.stato != "annullato"
+        ) +
         sum(c.totale_incassato for c in condomini_list)
     )
 
+    ctx_base = {
+        "distinta": distinta,
+        "ods_list": ods_list,
+        "condomini_list": condomini_list,
+        "totale_previsto": totale_previsto,
+    }
+
     if request.method == "POST":
-        # Riapertura ODS selezionati
-        riaperti = 0
-        for o in ods_list:
-            if request.POST.get(f"riapri_{o.pk}"):
-                fields = ["stato", "distinta"]
-                o.stato = "da_espletare"
-                o.distinta = None
-                if o.incassato:
-                    o.incassato = False
-                    o.importo_incassato = None
-                    o.data_incasso = None
-                    fields += ["incassato", "importo_incassato", "data_incasso"]
-                o.save(update_fields=fields)
-                riaperti += 1
+        os2_non_riaperti = [
+            o for o in ods_list
+            if o.fatturazione_diversa and not request.POST.get(f"riapri_{o.pk}")
+        ]
 
-        # Riapertura CondominioODS selezionati
-        for c in condomini_list:
-            if request.POST.get(f"riapri_c_{c.pk}"):
-                # Ripristina stock furgone per i prodotti già confermati
-                for riga in c.prodotti.all():
-                    if riga.confermato:
-                        riga.confermato = False
-                        riga.save(update_fields=["confermato"])
-                c.stato = "da_espletare"
-                c.distinta = None
-                c.save(update_fields=["stato", "distinta"])
-                riaperti += 1
+        with transaction.atomic():
+            # Riapertura ODS selezionati
+            riaperti = 0
+            for o in ods_list:
+                if request.POST.get(f"riapri_{o.pk}"):
+                    fields = ["stato", "distinta"]
+                    o.stato = "da_espletare"
+                    o.distinta = None
+                    if o.incassato:
+                        o.incassato = False
+                        o.importo_incassato = None
+                        o.data_incasso = None
+                        fields += ["incassato", "importo_incassato", "data_incasso"]
+                    o.save(update_fields=fields)
+                    riaperti += 1
 
-        # Ricalcola totale dopo eventuali riaperture
-        totale_effettivo = (
-            sum(
-                (o.importo_incassato or Decimal("0"))
-                for o in ods_list
-                if o.incassato and o.stato != "annullato" and not request.POST.get(f"riapri_{o.pk}")
-            ) +
-            sum(
-                c.totale_incassato
-                for c in condomini_list
-                if not request.POST.get(f"riapri_c_{c.pk}")
+            # Riapertura CondominioODS selezionati
+            for c in condomini_list:
+                if request.POST.get(f"riapri_c_{c.pk}"):
+                    # Ripristina stock furgone per i prodotti già confermati
+                    for riga in c.prodotti.all():
+                        if riga.confermato:
+                            riga.confermato = False
+                            riga.save(update_fields=["confermato"])
+                    c.stato = "da_espletare"
+                    c.distinta = None
+                    c.save(update_fields=["stato", "distinta"])
+                    riaperti += 1
+
+            # Ricalcola totale dopo eventuali riaperture
+            totale_effettivo = (
+                sum(
+                    (o.importo_incassato or Decimal("0"))
+                    for o in ods_list
+                    if o.incassato and o.stato != "annullato"
+                    and not request.POST.get(f"riapri_{o.pk}")
+                ) +
+                sum(
+                    c.totale_incassato
+                    for c in condomini_list
+                    if not request.POST.get(f"riapri_c_{c.pk}")
+                )
             )
-        )
 
-        importo_str = request.POST.get("importo_ricevuto", "").strip()
-        try:
-            importo_ricevuto = Decimal(importo_str) if importo_str else totale_effettivo
-        except InvalidOperation:
-            importo_ricevuto = totale_effettivo
+            importo_str = request.POST.get("importo_ricevuto", "").strip()
+            try:
+                importo_ricevuto = Decimal(importo_str) if importo_str else totale_effettivo
+            except InvalidOperation:
+                importo_ricevuto = totale_effettivo
 
-        distinta.stato = "chiusa"
-        distinta.importo_ricevuto = importo_ricevuto
-        distinta.chiusa_da = request.user
-        distinta.chiusa_il = timezone.now()
-        distinta.save(update_fields=["stato", "importo_ricevuto", "chiusa_da", "chiusa_il"])
+            distinta.stato = "chiusa"
+            distinta.importo_ricevuto = importo_ricevuto
+            distinta.chiusa_da = request.user
+            distinta.chiusa_il = timezone.now()
+            distinta.save(update_fields=["stato", "importo_ricevuto", "chiusa_da", "chiusa_il"])
 
-        # Promemoria al tecnico
-        differenza = importo_ricevuto - totale_effettivo
-        nome_ufficio = request.user.get_full_name() or request.user.username
-        righe_msg = (
-            f"Incasso previsto:  € {totale_effettivo}\n"
-            f"Importo ricevuto:  € {importo_ricevuto}\n"
-        )
-        if differenza < 0:
-            righe_msg += f"Differenza:        € {abs(differenza)} MANCANTI"
-            priorita = "alta"
-        elif differenza > 0:
-            righe_msg += f"Differenza:        € {differenza} in eccesso"
-            priorita = "normale"
-        else:
-            righe_msg += "Tutto corrisponde."
-            priorita = "normale"
-        if riaperti:
-            righe_msg += f"\n\n{riaperti} servizio/i riportato/i a 'da espletare'."
+            # Promemoria al tecnico
+            differenza = importo_ricevuto - totale_effettivo
+            nome_ufficio = request.user.get_full_name() or request.user.username
+            righe_msg = (
+                f"Incasso previsto:  € {totale_effettivo}\n"
+                f"Importo ricevuto:  € {importo_ricevuto}\n"
+            )
+            if differenza < 0:
+                righe_msg += f"Differenza:        € {abs(differenza)} MANCANTI"
+                priorita = "alta"
+            elif differenza > 0:
+                righe_msg += f"Differenza:        € {differenza} in eccesso"
+                priorita = "normale"
+            else:
+                righe_msg += "Tutto corrisponde."
+                priorita = "normale"
+            if riaperti:
+                righe_msg += f"\n\n{riaperti} servizio/i riportato/i a 'da espletare'."
 
-        from comunicazioni.models import Promemoria
-        Promemoria.objects.create(
-            user=request.user,
-            assegnato_a=distinta.tecnico,
-            titolo=(
-                f"Chiusura distinta {distinta.data.strftime('%d/%m/%Y')} "
-                f"— Incasso € {importo_ricevuto}"
-            ),
-            descrizione=(
-                f"Distinta del {distinta.data.strftime('%d/%m/%Y')} "
-                f"chiusa da {nome_ufficio}.\n\n{righe_msg}"
-            ),
-            priorita=priorita,
-        )
+            from comunicazioni.models import Promemoria
+            Promemoria.objects.create(
+                user=request.user,
+                assegnato_a=distinta.tecnico,
+                titolo=(
+                    f"Chiusura distinta {distinta.data.strftime('%d/%m/%Y')} "
+                    f"— Incasso € {importo_ricevuto}"
+                ),
+                descrizione=(
+                    f"Distinta del {distinta.data.strftime('%d/%m/%Y')} "
+                    f"chiusa da {nome_ufficio}.\n\n{righe_msg}"
+                ),
+                priorita=priorita,
+            )
+
+            # Cancellazione definitiva dei servizi OS2 non riaperti
+            if os2_non_riaperti:
+                _elimina_os2(os2_non_riaperti)
 
         nome_tec = distinta.tecnico.get_full_name() or distinta.tecnico.username
         messages.success(
             request,
             f"Distinta chiusa. Promemoria inviato a {nome_tec}."
-            + (f" ({riaperti} ODS riaperti)" if riaperti else ""),
+            + (f" ({riaperti} ODS riaperti)" if riaperti else "")
+            + (f" ({len(os2_non_riaperti)} OS2 eliminati)" if os2_non_riaperti else ""),
         )
         return redirect(distinta.get_absolute_url())
 
-    return render(request, "servizi/distinte/chiudi_ufficio.html", {
-        "distinta": distinta,
-        "ods_list": ods_list,
-        "condomini_list": condomini_list,
-        "totale_previsto": totale_previsto,
-    })
+    return render(request, "servizi/distinte/chiudi_ufficio.html", ctx_base)
 
 
 @login_required
