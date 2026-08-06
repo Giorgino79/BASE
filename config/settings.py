@@ -171,6 +171,21 @@ if os.environ.get("DATABASE_URL"):
     SECRET_KEY = os.environ.get("SECRET_KEY", SECRET_KEY)
     DEBUG = os.environ.get("DEBUG", "False") == "True"
     ALLOWED_HOSTS += [".herokuapp.com"]
+    # Heroku termina l'HTTPS al router e inoltra in HTTP interno: senza questo
+    # header Django crede che le richieste siano in HTTP, calcola l'origine
+    # come "http://..." e la confronta con l'Origin "https://..." del browser
+    # -> mismatch -> CSRF 403 su ogni POST.
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    CSRF_TRUSTED_ORIGINS = ["https://*.herokuapp.com"] + [
+        f"https://{h}" for h in os.environ.get("ALLOWED_HOSTS", "").split(",") if h
+    ]
+    if os.environ.get("DYNO"):
+        # Solo su un vero dyno Heroku (non in locale, anche se .env punta al
+        # DB di produzione): altrimenti i cookie "Secure" non verrebbero
+        # rimandati dal browser su runserver in http://, rompendo login/CSRF
+        # in locale.
+        SESSION_COOKIE_SECURE = True
+        CSRF_COOKIE_SECURE = True
     STORAGES = {
         "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
         "staticfiles": {
