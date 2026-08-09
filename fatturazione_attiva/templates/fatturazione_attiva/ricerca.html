@@ -103,10 +103,12 @@
       </div>
     </div>
     <div class="col-md-3">
-      <div class="card text-center">
+      <div class="card text-center {% if n_senza_importo %}border-warning{% endif %}">
         <div class="card-body py-3">
-          <div class="text-muted small mb-1">Condomini trovati</div>
-          <div class="fw-bold fs-4 text-brand">{{ condomini_list|length }}</div>
+          <div class="text-muted small mb-1">Servizi senza importo</div>
+          <div class="fw-bold fs-4 {% if n_senza_importo %}text-warning{% else %}text-brand{% endif %}">
+            {{ n_senza_importo }}
+          </div>
         </div>
       </div>
     </div>
@@ -127,6 +129,79 @@
       </div>
     </div>
   </div>
+
+  {# ── TABELLA SERVIZI SENZA IMPORTO (non fatturabili) ─────────── #}
+  {% if ods_righe_senza_importo %}
+  <div class="card mb-4 border-warning">
+    <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <span><i class="bi bi-exclamation-triangle me-2"></i>Servizi senza importo ({{ n_senza_importo }})</span>
+      <span class="small">Non fatturabili: inserisci il prezzo sull'ODS per poterli selezionare</span>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover table-sm mb-0 align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>N° ODS</th>
+            <th>Data</th>
+            <th>Cliente / Sede</th>
+            <th>Stato</th>
+            <th>Tipo servizio</th>
+            <th class="text-end">Importo</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in ods_righe_senza_importo %}
+          <tr>
+            <td>
+              <a href="{{ row.ods.get_absolute_url }}" class="badge bg-secondary text-decoration-none" target="_blank">
+                {{ row.ods.numero }}
+              </a>
+            </td>
+            <td class="text-nowrap">{{ row.ods.data_servizio|date:"d/m/Y" }}</td>
+            <td>
+              <div class="fw-semibold small">{{ row.ods.cliente_display }}</div>
+              {% if row.ods.filiale %}<div class="text-muted small">{{ row.ods.filiale.indirizzo }}</div>{% endif %}
+            </td>
+            <td>
+              {% with s=row.ods.stato %}
+              {% if s == "completato" %}
+                <span class="badge bg-success">{{ row.ods.get_stato_display }}</span>
+              {% elif s == "fatturato" %}
+                <span class="badge bg-primary">{{ row.ods.get_stato_display }}</span>
+              {% elif s == "annullato" %}
+                <span class="badge bg-danger">{{ row.ods.get_stato_display }}</span>
+              {% else %}
+                <span class="badge bg-warning text-dark">{{ row.ods.get_stato_display }}</span>
+              {% endif %}
+              {% endwith %}
+            </td>
+            <td>
+              {% if row.riga %}
+                {{ row.riga.servizio.nome }}
+                {% if row.riga.note %}<div class="text-muted small">{{ row.riga.note }}</div>{% endif %}
+              {% else %}
+                <span class="text-muted fst-italic">Nessun servizio registrato</span>
+              {% endif %}
+            </td>
+            <td class="text-end">
+              <span class="badge bg-warning text-dark">
+                {% if row.riga %}€ 0,00{% else %}assente{% endif %}
+              </span>
+            </td>
+            <td class="text-end">
+              <a href="{{ row.ods.get_absolute_url }}" class="btn btn-outline-secondary btn-sm"
+                 target="_blank" title="Apri l'ODS per inserire l'importo">
+                <i class="bi bi-pencil"></i>
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
 
   {# ── TABELLA ODS con selezione ──────────────────────────────── #}
   {% if ods_righe %}
@@ -205,22 +280,12 @@
               </td>
               {% endif %}
 
-              {# Celle riga servizio #}
+              {# Celle riga servizio — qui arrivano solo righe con importo #}
               <td>
-                {% if row.riga %}
-                  {{ row.riga.servizio.nome }}
-                  {% if row.riga.note %}<div class="text-muted small">{{ row.riga.note }}</div>{% endif %}
-                {% else %}
-                  <span class="text-muted fst-italic">Nessun servizio registrato</span>
-                {% endif %}
+                {{ row.riga.servizio.nome }}
+                {% if row.riga.note %}<div class="text-muted small">{{ row.riga.note }}</div>{% endif %}
               </td>
-              <td class="text-end fw-semibold">
-                {% if row.riga and row.riga.prezzo %}
-                  € {{ row.riga.prezzo }}
-                {% else %}
-                  <span class="text-muted">—</span>
-                {% endif %}
-              </td>
+              <td class="text-end fw-semibold">€ {{ row.riga.prezzo }}</td>
 
             </tr>
             {% endfor %}
@@ -298,7 +363,7 @@
   </div>
   {% endif %}
 
-  {% if not ods_righe and not condomini_list %}
+  {% if not ods_righe and not ods_righe_senza_importo and not condomini_list %}
   <div class="alert alert-info">
     <i class="bi bi-info-circle me-2"></i>
     Nessun risultato trovato per i parametri selezionati.

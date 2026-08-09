@@ -2,6 +2,46 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 
 
+# ── Conti da anagrafica ───────────────────────────────────────────────────────
+# I conti cliente e fornitore non si creano a mano: nascono qui, appena viene
+# registrata l'anagrafica. Il nome del conto coincide con quello che la
+# fatturazione usa come destinatario (`dest_nome` / `str(fornitore)`), così i
+# signal sulle fatture ritrovano questo conto invece di crearne un doppione.
+
+def _get_or_create_conto(tipo, nome):
+    from contabilita.models import ContoContabile
+
+    nome = (nome or '').strip()
+    if not nome:
+        return None
+    conto, _ = ContoContabile.objects.get_or_create(tipo=tipo, nome=nome)
+    return conto
+
+
+@receiver(post_save, sender='anagrafica.Azienda')
+def on_azienda_creata(sender, instance, created, **kwargs):
+    if created:
+        from contabilita.models import ContoContabile
+        _get_or_create_conto(ContoContabile.Tipo.CLIENTE, str(instance))
+
+
+@receiver(post_save, sender='anagrafica.Privato')
+def on_privato_creato(sender, instance, created, **kwargs):
+    if created:
+        from contabilita.models import ContoContabile
+        _get_or_create_conto(ContoContabile.Tipo.CLIENTE, str(instance))
+
+
+@receiver(post_save, sender='anagrafica.Fornitore')
+def on_fornitore_creato(sender, instance, created, **kwargs):
+    if created:
+        from contabilita.models import ContoContabile
+        _get_or_create_conto(ContoContabile.Tipo.FORNITORE, str(instance))
+
+
+# ── Movimenti da fatture ──────────────────────────────────────────────────────
+
+
 @receiver(post_save, sender='fatturazione_attiva.Fattura')
 def on_fattura_creata(sender, instance, created, **kwargs):
     """

@@ -24,6 +24,14 @@ class BootstrapMixin:
 
 
 class ContoContabileForm(BootstrapMixin, forms.ModelForm):
+    # I conti cliente e fornitore nascono automaticamente dall'anagrafica
+    # (vedi contabilita/signals.py): a mano si creano solo questi.
+    TIPI_MANUALI = [
+        ContoContabile.Tipo.CASSA,
+        ContoContabile.Tipo.BANCA,
+        ContoContabile.Tipo.GENERICO,
+    ]
+
     class Meta:
         model  = ContoContabile
         fields = ['nome', 'tipo', 'iban', 'descrizione', 'attivo']
@@ -31,6 +39,23 @@ class ContoContabileForm(BootstrapMixin, forms.ModelForm):
             'iban': forms.TextInput(attrs={'placeholder': 'IT60 X054 2811 1010 0000 0123 456'}),
             'descrizione': forms.Textarea(attrs={'rows': 3}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        campo = self.fields['tipo']
+        if self.instance.pk and self.instance.tipo not in self.TIPI_MANUALI:
+            # Conto automatico esistente: si modifica tutto tranne il tipo.
+            campo.disabled = True
+            campo.help_text = 'Conto generato dall\'anagrafica: il tipo non è modificabile.'
+        else:
+            campo.choices = [
+                (v, l) for v, l in ContoContabile.Tipo.choices
+                if v in self.TIPI_MANUALI
+            ]
+            campo.help_text = (
+                'I conti cliente e fornitore vengono creati automaticamente '
+                'dall\'anagrafica e non si inseriscono da qui.'
+            )
 
 
 class MovimentoPrimaNotaForm(BootstrapMixin, forms.ModelForm):

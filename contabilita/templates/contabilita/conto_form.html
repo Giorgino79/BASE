@@ -32,6 +32,7 @@
             <div class="col-sm-4">
               <label class="form-label">{{ form.tipo.label }} <span class="text-danger">*</span></label>
               {{ form.tipo }}
+              {% if form.tipo.help_text %}<div class="form-text">{{ form.tipo.help_text }}</div>{% endif %}
               {% if form.tipo.errors %}<div class="invalid-feedback d-block">{{ form.tipo.errors.0 }}</div>{% endif %}
             </div>
             <div class="col-12" id="campo-iban" style="display:none;">

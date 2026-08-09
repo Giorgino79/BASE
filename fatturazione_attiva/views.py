@@ -195,24 +195,28 @@ class RicercaFatturazioneView(LoginRequiredMixin, TemplateView):
                 condomini_qs = condomini_qs.filter(data__lte=data_a)
             condomini_qs = condomini_qs.order_by("data")
 
-        ods_righe, totale_ods = _build_ods_righe(ods_qs)
+        ods_righe, ods_righe_senza_importo, totale_ods = _build_ods_righe(ods_qs)
         totale_condomini = sum(
             (c.totale_da_incassare for c in condomini_qs), Decimal("0.00")
         )
 
         return {
-            "ods_righe":        ods_righe,
-            "condomini_list":   condomini_qs,
-            "n_ods":            len({r["ods"].pk for r in ods_righe}),
-            "totale_ods":       totale_ods,
-            "totale_condomini": totale_condomini,
-            "totale_generale":  totale_ods + totale_condomini,
-            "ricerca_eseguita": True,
+            "ods_righe":               ods_righe,
+            "ods_righe_senza_importo": ods_righe_senza_importo,
+            "n_senza_importo":         len(ods_righe_senza_importo),
+            "condomini_list":          condomini_qs,
+            "n_ods":                   len({r["ods"].pk for r in ods_righe}),
+            "totale_ods":              totale_ods,
+            "totale_condomini":        totale_condomini,
+            "totale_generale":         totale_ods + totale_condomini,
+            "ricerca_eseguita":        True,
         }
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx.setdefault("ods_righe", [])
+        ctx.setdefault("ods_righe_senza_importo", [])
+        ctx.setdefault("n_senza_importo", 0)
         ctx.setdefault("condomini_list", [])
         ctx.setdefault("n_ods", 0)
         ctx.setdefault("ricerca_eseguita", False)
@@ -234,7 +238,11 @@ def azione_fatturazione(request):
 
     righe_rows = _load_selezione(selezione)
     if not righe_rows:
-        messages.warning(request, "Nessun elemento valido nella selezione.")
+        messages.warning(
+            request,
+            "Nessun elemento fatturabile nella selezione: le righe senza importo "
+            "non possono essere incluse, nemmeno in bozza.",
+        )
         return redirect(request.META.get("HTTP_REFERER", "fatturazione_attiva:ricerca"))
 
     if action == "excel":
@@ -649,40 +657,52 @@ def fattura_annulla(request, pk):
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _build_ods_righe(ods_qs):
-    rows   = []
-    totale = Decimal("0.00")
+    """
+    Divide le righe degli ODS in due gruppi:
+      - `rows`:       righe con un importo, selezionabili e fatturabili;
+      - `rows_senza`: righe senza importo (prezzo nullo o zero) e ODS privi di
+                      righe registrate. Senza importo non sono fatturabili,
+                      nemmeno in bozza, quindi restano fuori dalla selezione.
+    """
+    rows       = []
+    rows_senza = []
+    totale     = Decimal("0.00")
+
     for ods in ods_qs:
         righe = list(ods.righe.select_related("servizio").order_by("ordine", "pk"))
-        if righe:
-            for i, riga in enumerate(righe):
-                rows.append({
-                    "ods":      ods,
-                    "riga":     riga,
-                    "sel_val":  f"r-{riga.pk}",
-                    "is_first": i == 0,
-                    "rowspan":  len(righe) if i == 0 else 0,
-                })
-                if riga.prezzo:
-                    totale += riga.prezzo
-        else:
+
+        con_importo   = [r for r in righe if r.prezzo]
+        senza_importo = [r for r in righe if not r.prezzo]
+
+        for i, riga in enumerate(con_importo):
             rows.append({
                 "ods":      ods,
-                "riga":     None,
-                "sel_val":  f"o-{ods.pk}",
-                "is_first": True,
-                "rowspan":  1,
+                "riga":     riga,
+                "sel_val":  f"r-{riga.pk}",
+                "is_first": i == 0,
+                "rowspan":  len(con_importo) if i == 0 else 0,
             })
-    return rows, totale
+            totale += riga.prezzo
+
+        for riga in senza_importo:
+            rows_senza.append({"ods": ods, "riga": riga})
+
+        if not righe:
+            rows_senza.append({"ods": ods, "riga": None})
+
+    return rows, rows_senza, totale
 
 
 def _load_selezione(selezione):
-    riga_ids, ods_ids = [], []
+    """
+    Ricostruisce le righe dalla selezione del form, scartando quelle senza
+    importo: una riga a zero non può finire in fattura né in bozza.
+    """
+    riga_ids = []
     for v in selezione:
         try:
             if v.startswith("r-"):
                 riga_ids.append(int(v[2:]))
-            elif v.startswith("o-"):
-                ods_ids.append(int(v[2:]))
         except ValueError:
             pass
 
@@ -690,15 +710,11 @@ def _load_selezione(selezione):
     if riga_ids:
         for riga in (ODSRiga.objects
                      .filter(pk__in=riga_ids)
+                     .exclude(prezzo__isnull=True)
+                     .exclude(prezzo=0)
                      .select_related("ods__filiale__cliente", "ods__privato", "servizio")
                      .order_by("ods__data_servizio", "ods__pk", "ordine")):
             rows.append({"ods": riga.ods, "riga": riga})
-    if ods_ids:
-        for ods in (ODS.objects
-                    .filter(pk__in=ods_ids)
-                    .select_related("filiale__cliente", "privato")
-                    .order_by("data_servizio")):
-            rows.append({"ods": ods, "riga": None})
     return rows
 
 
