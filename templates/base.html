@@ -118,6 +118,8 @@
           <div class="text-muted" style="font-size:.76rem;">{{ request.user.email }}</div>
         </li>
         <li><hr class="dropdown-divider"></li>
+        <li><a class="dropdown-item" href="{% url 'servizi:dashboard_tecnico' %}">
+          <i class="bi bi-person-workspace me-2"></i>La mia giornata</a></li>
         <li><a class="dropdown-item" href="{% url 'users:profilo' %}">
           <i class="bi bi-person me-2"></i>Profilo</a></li>
         <li><a class="dropdown-item" href="{% url 'users:user_detail' request.user.pk %}">

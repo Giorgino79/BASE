@@ -17,20 +17,9 @@ class ServiziConfig(AppConfig):
                     'icon': 'bi-clipboard-check',
                     'active_app': 'servizi',
                 },
-                {
-                    'label': 'La mia giornata',
-                    'url': 'servizi:dashboard_tecnico',
-                    'icon': 'bi-person-workspace',
-                    'active_app': 'servizi',
-                    'active_url_contains': 'tecnico',
-                },
-                {
-                    'label': 'Pianificazione',
-                    'url': 'servizi:pianificazione',
-                    'icon': 'bi-calendar2-range',
-                    'active_app': 'servizi',
-                    'active_url_contains': 'pianificazione',
-                },
+                # "La mia giornata" è nel dropdown utente della topbar
+                # (templates/base.html, prima di "Profilo").
+                # "Pianificazione" si raggiunge dalla dashboard Servizi.
             ],
             order=30,
         )
