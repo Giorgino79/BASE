@@ -2,7 +2,10 @@ from decimal import Decimal
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.db.models import Sum, Q, Case, When, DecimalField as DField
+from django.db.models import (
+    Case, DecimalField as DField, OuterRef, Q, Subquery, Sum, Value, When,
+)
+from django.db.models.functions import Coalesce
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 
@@ -218,10 +221,69 @@ def mastrino(request, pk):
 # CONTI CONTABILI — gestione
 # ─────────────────────────────────────────────────────────────────────────────
 
+CONTI_LIMITE = 100
+
+
 @login_required
 def conti_list(request):
-    conti = ContoContabile.objects.order_by('tipo', 'nome')
-    ctx   = {'page_title': 'Conti Contabili', 'conti': conti}
+    """
+    Ricerca sui conti: senza filtri non viene mostrato alcun dato, la tabella
+    dei risultati compare solo dopo una ricerca.
+    """
+    q       = request.GET.get('q', '').strip()
+    tipo_f  = request.GET.get('tipo', '').strip()
+    stato_f = request.GET.get('stato', '').strip()
+
+    ricerca_eseguita = bool(q or tipo_f or stato_f)
+    conti    = []
+    troncato = False
+
+    if ricerca_eseguita:
+        # Saldo calcolato in SQL: la property `saldo` costerebbe 2 query a riga.
+        zero = Value(Decimal('0.00'), output_field=DField(max_digits=14, decimal_places=2))
+        dare_sq = (MovimentoPrimaNota.objects
+                   .filter(conto_dare=OuterRef('pk'))
+                   .values('conto_dare')
+                   .annotate(tot=Sum('importo'))
+                   .values('tot'))
+        avere_sq = (MovimentoPrimaNota.objects
+                    .filter(conto_avere=OuterRef('pk'))
+                    .values('conto_avere')
+                    .annotate(tot=Sum('importo'))
+                    .values('tot'))
+
+        qs = ContoContabile.objects.annotate(
+            saldo_calcolato=Coalesce(Subquery(dare_sq), zero) - Coalesce(Subquery(avere_sq), zero)
+        )
+
+        if q:
+            qs = qs.filter(
+                Q(nome__icontains=q)
+                | Q(iban__icontains=q)
+                | Q(descrizione__icontains=q)
+            )
+        if tipo_f:
+            qs = qs.filter(tipo=tipo_f)
+        if stato_f == 'attivi':
+            qs = qs.filter(attivo=True)
+        elif stato_f == 'disattivi':
+            qs = qs.filter(attivo=False)
+
+        conti    = list(qs.order_by('tipo', 'nome')[:CONTI_LIMITE + 1])
+        troncato = len(conti) > CONTI_LIMITE
+        conti    = conti[:CONTI_LIMITE]
+
+    ctx = {
+        'page_title':       'Conti Contabili',
+        'conti':            conti,
+        'ricerca_eseguita': ricerca_eseguita,
+        'troncato':         troncato,
+        'limite':           CONTI_LIMITE,
+        'q':                q,
+        'tipo_f':           tipo_f,
+        'stato_f':          stato_f,
+        'tipi':             ContoContabile.Tipo.choices,
+    }
     return render(request, 'contabilita/conti_list.html', ctx)
 
 
