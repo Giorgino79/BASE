@@ -21,7 +21,8 @@ def __getattr__(name):
                 "MultiplePermissionsRequiredMixin", "OwnerRequiredMixin",
                 "FormValidMessageMixin", "FormInvalidMessageMixin",
                 "UserFormKwargsMixin", "SetCreatedByMixin", "CustomPaginationMixin",
-                "FilterMixin", "SearchMixin", "BreadcrumbMixin"):
+                "FilterMixin", "SearchMixin", "BreadcrumbMixin",
+                "SidebarQrAllegatiMixin"):
         from . import view_mixins
         return getattr(view_mixins, name)
     if name in ("PrintListMixin", "PrintDetailMixin"):
@@ -41,6 +42,7 @@ __all__ = [
     "PermissionRequiredMixin",
     "AjaxRequiredMixin",
     "JSONResponseMixin",
+    "SidebarQrAllegatiMixin",
     # Print Mixins (lazy loaded)
     "PrintListMixin",
     "PrintDetailMixin",

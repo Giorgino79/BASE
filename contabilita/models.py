@@ -5,6 +5,8 @@ from django.db import models
 from django.urls import reverse
 from django.utils import timezone
 
+from core.mixins import AllegatiMixin
+
 
 class ContoContabile(models.Model):
     """
@@ -48,7 +50,7 @@ class ContoContabile(models.Model):
         return d - a
 
 
-class MovimentoPrimaNota(models.Model):
+class MovimentoPrimaNota(AllegatiMixin, models.Model):
     """
     Singola riga della prima nota: un dare, un avere, un importo.
     """

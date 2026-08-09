@@ -2,6 +2,30 @@
 
 {% block title %}{{ page_title }}{% endblock %}
 
+{% block extra_css %}
+<style>
+  .kv { margin-bottom: 0; }
+  .kv dt { font-size: .72rem; font-weight: 700; text-transform: uppercase;
+           letter-spacing: .04em; color: var(--slate-500, #64748b); }
+  .kv dd { font-size: .9rem; }
+  .badge-kind { font-size: .68rem; font-weight: 700; text-transform: uppercase;
+                letter-spacing: .04em; padding: .2rem .5rem; border-radius: 10px; }
+  .kind-attiva  .badge-kind { background: #dbeafe; color: #1e40af; }
+  .kind-passiva .badge-kind { background: #dcfce7; color: #166534; }
+  .riga-tot { display: flex; justify-content: space-between; padding: .35rem 0;
+              font-size: .88rem; border-bottom: 1px dashed var(--slate-200, #e2e8f0); }
+  .riga-tot:last-child { border-bottom: 0; }
+  .riga-tot.somma { font-weight: 700; font-size: 1rem; padding-top: .6rem; }
+  .dare-avere { display: flex; align-items: stretch; gap: .5rem; }
+  .dare-avere .lato { flex: 1; padding: .7rem .8rem; border-radius: 8px;
+                      background: var(--slate-50, #f8fafc);
+                      border: 1px solid var(--slate-200, #e2e8f0); }
+  .dare-avere .lato .etichetta { font-size: .68rem; font-weight: 700;
+                                 text-transform: uppercase; letter-spacing: .05em;
+                                 color: var(--slate-500, #64748b); }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="page-header d-flex justify-content-between align-items-start mb-4">
   <div>
@@ -13,11 +37,24 @@
       </ol>
     </nav>
     <h1><i class="bi bi-journal-text me-2 text-brand"></i>{{ mov.causale }}</h1>
-    {% if mov.is_automatico %}
-    <span class="badge badge-wait"><i class="bi bi-gear-fill me-1"></i>Generato automaticamente</span>
-    {% endif %}
+    <div class="d-flex gap-2 flex-wrap mt-1">
+      <span class="badge bg-secondary">{{ mov.get_tipo_display }}</span>
+      {% if mov.is_automatico %}
+      <span class="badge badge-wait"><i class="bi bi-gear-fill me-1"></i>Generato automaticamente</span>
+      {% else %}
+      <span class="badge bg-light text-dark border"><i class="bi bi-pencil me-1"></i>Inserito a mano</span>
+      {% endif %}
+    </div>
   </div>
   <div class="d-flex gap-2 flex-wrap">
+    <a href="{{ print_url }}" target="_blank" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-printer me-1"></i>Stampa
+    </a>
+    {% if documento.url_pdf %}
+    <a href="{{ documento.url_pdf }}" target="_blank" class="btn btn-outline-primary btn-sm">
+      <i class="bi bi-file-earmark-pdf me-1"></i>PDF fattura
+    </a>
+    {% endif %}
     {% if not mov.is_automatico %}
     <a href="{% url 'contabilita:movimento_delete' mov.pk %}" class="btn btn-outline-danger btn-sm">
       <i class="bi bi-trash me-1"></i>Elimina
@@ -27,34 +64,214 @@
 </div>
 
 <div class="row g-3">
-  <div class="col-lg-8">
-    <div class="card">
-      <div class="card-header card-header-primary"><i class="bi bi-info-circle me-2"></i>Dettaglio</div>
+  {# ── MOVIMENTO ─────────────────────────────────────────────── #}
+  <div class="col-lg-7">
+    <div class="card mb-3">
+      <div class="card-header card-header-primary"><i class="bi bi-info-circle me-2"></i>Movimento</div>
       <div class="card-body">
-        <dl class="row mb-0">
-          <dt class="col-sm-4">Data</dt><dd class="col-sm-8">{{ mov.data|date:"d/m/Y" }}</dd>
-          <dt class="col-sm-4">Tipo</dt><dd class="col-sm-8">{{ mov.get_tipo_display }}</dd>
-          <dt class="col-sm-4">Causale</dt><dd class="col-sm-8">{{ mov.causale }}</dd>
-          <dt class="col-sm-4">Importo</dt><dd class="col-sm-8">€ {{ mov.importo }}</dd>
-          <dt class="col-sm-4">Conto Dare</dt>
-          <dd class="col-sm-8"><a href="{% url 'contabilita:mastrino' mov.conto_dare_id %}">{{ mov.conto_dare.nome }}</a></dd>
-          <dt class="col-sm-4">Conto Avere</dt>
-          <dd class="col-sm-8"><a href="{% url 'contabilita:mastrino' mov.conto_avere_id %}">{{ mov.conto_avere.nome }}</a></dd>
+        <div class="dare-avere mb-3">
+          <div class="lato">
+            <div class="etichetta">Dare</div>
+            <a href="{% url 'contabilita:mastrino' mov.conto_dare_id %}" class="fw-semibold">
+              {{ mov.conto_dare.nome }}
+            </a>
+            <div class="text-muted small">{{ mov.conto_dare.get_tipo_display }}</div>
+          </div>
+          <div class="d-flex align-items-center text-muted"><i class="bi bi-arrow-right"></i></div>
+          <div class="lato">
+            <div class="etichetta">Avere</div>
+            <a href="{% url 'contabilita:mastrino' mov.conto_avere_id %}" class="fw-semibold">
+              {{ mov.conto_avere.nome }}
+            </a>
+            <div class="text-muted small">{{ mov.conto_avere.get_tipo_display }}</div>
+          </div>
+        </div>
+
+        <dl class="row kv">
+          <dt class="col-sm-4">Data</dt>
+          <dd class="col-sm-8">{{ mov.data|date:"d/m/Y" }}</dd>
+
+          <dt class="col-sm-4">Tipo</dt>
+          <dd class="col-sm-8">{{ mov.get_tipo_display }}</dd>
+
+          <dt class="col-sm-4">Causale</dt>
+          <dd class="col-sm-8">{{ mov.causale }}</dd>
+
+          <dt class="col-sm-4">Importo movimento</dt>
+          <dd class="col-sm-8 fw-bold fs-5 text-brand">€ {{ mov.importo|floatformat:2 }}</dd>
+
           {% if mov.numero_documento %}
-          <dt class="col-sm-4">N° documento</dt><dd class="col-sm-8">{{ mov.numero_documento }}</dd>
+          <dt class="col-sm-4">N° documento</dt>
+          <dd class="col-sm-8">{{ mov.numero_documento }}</dd>
           {% endif %}
-          {% if mov.fattura_attiva %}
-          <dt class="col-sm-4">Fattura cliente</dt><dd class="col-sm-8">{{ mov.fattura_attiva }}</dd>
-          {% endif %}
-          {% if mov.fattura_passiva %}
-          <dt class="col-sm-4">Fattura fornitore</dt><dd class="col-sm-8">{{ mov.fattura_passiva }}</dd>
-          {% endif %}
+
           {% if mov.note %}
-          <dt class="col-sm-4">Note</dt><dd class="col-sm-8">{{ mov.note|linebreaksbr }}</dd>
+          <dt class="col-sm-4">Note</dt>
+          <dd class="col-sm-8">{{ mov.note|linebreaksbr }}</dd>
           {% endif %}
-          <dt class="col-sm-4">Creato da</dt><dd class="col-sm-8">{{ mov.creato_da|default:"—" }}</dd>
-          <dt class="col-sm-4">Registrato il</dt><dd class="col-sm-8">{{ mov.created_at|date:"d/m/Y H:i" }}</dd>
         </dl>
+      </div>
+    </div>
+
+    {# ── TRACCIABILITÀ ──────────────────────────────────────── #}
+    <div class="card mb-3">
+      <div class="card-header"><i class="bi bi-clock-history me-2"></i>Tracciabilità</div>
+      <div class="card-body">
+        <dl class="row kv">
+          <dt class="col-sm-4">Creato da</dt>
+          <dd class="col-sm-8">
+            {% if mov.creato_da %}
+              {% firstof mov.creato_da.get_full_name mov.creato_da.get_username mov.creato_da.email "Utente senza nome" %}
+              {% if mov.creato_da.codice_dipendente %}
+              <span class="text-muted small">· matr. {{ mov.creato_da.codice_dipendente }}</span>
+              {% endif %}
+              {% if mov.creato_da.email %}
+              <div class="text-muted small">{{ mov.creato_da.email }}</div>
+              {% endif %}
+            {% else %}
+              <span class="text-muted">{% if mov.is_automatico %}Sistema (automatico){% else %}—{% endif %}</span>
+            {% endif %}
+          </dd>
+
+          <dt class="col-sm-4">Registrato il</dt>
+          <dd class="col-sm-8">{{ mov.created_at|date:"d/m/Y H:i" }}</dd>
+
+          <dt class="col-sm-4">Ultima modifica</dt>
+          <dd class="col-sm-8">{{ mov.updated_at|date:"d/m/Y H:i" }}</dd>
+
+          <dt class="col-sm-4">Origine</dt>
+          <dd class="col-sm-8">
+            {% if mov.is_automatico %}
+              Registrato automaticamente alla creazione del documento
+            {% else %}
+              Inserimento manuale in prima nota
+            {% endif %}
+          </dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+
+  {# ── DOCUMENTO COLLEGATO ───────────────────────────────────── #}
+  <div class="col-lg-5">
+    {% if documento %}
+    <div class="card mb-3 kind-{{ documento.kind }}">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi {{ documento.kind_icona }} me-2"></i>Documento collegato</span>
+        <span class="badge-kind">{{ documento.kind_label }}</span>
+      </div>
+      <div class="card-body">
+        <div class="mb-3">
+          <a href="{{ documento.url_detail }}" class="fw-bold fs-6 text-decoration-none">
+            {{ documento.numero }}
+          </a>
+          <div>{{ documento.controparte }}</div>
+          <span class="badge bg-light text-dark border mt-1">{{ documento.stato }}</span>
+        </div>
+
+        <div class="mb-3">
+          <div class="riga-tot">
+            <span class="text-muted">Imponibile</span>
+            <span>€ {{ documento.imponibile|floatformat:2 }}</span>
+          </div>
+          <div class="riga-tot">
+            <span class="text-muted">IVA {{ documento.aliquota_iva|floatformat:"-2" }}%</span>
+            <span>€ {{ documento.importo_iva|floatformat:2 }}</span>
+          </div>
+          <div class="riga-tot somma">
+            <span>Totale documento</span>
+            <span class="text-brand">€ {{ documento.totale|floatformat:2 }}</span>
+          </div>
+        </div>
+
+        {% if documento.totale != mov.importo %}
+        <div class="alert alert-warning py-2 small">
+          <i class="bi bi-exclamation-triangle me-1"></i>
+          L'importo del movimento (€ {{ mov.importo|floatformat:2 }}) è diverso dal
+          totale del documento: registrazione parziale o acconto.
+        </div>
+        {% endif %}
+
+        <dl class="row kv">
+          <dt class="col-6">{{ documento.data_label }}</dt>
+          <dd class="col-6 text-end">{{ documento.data|date:"d/m/Y" }}</dd>
+
+          <dt class="col-6">Data scadenza</dt>
+          <dd class="col-6 text-end">
+            {% if documento.data_scadenza %}{{ documento.data_scadenza|date:"d/m/Y" }}
+            {% else %}<span class="text-muted">—</span>{% endif %}
+          </dd>
+
+          {% if documento.data_pagamento %}
+          <dt class="col-6">Data pagamento</dt>
+          <dd class="col-6 text-end">{{ documento.data_pagamento|date:"d/m/Y" }}</dd>
+          {% endif %}
+
+          <dt class="col-6">{{ documento.controparte_label }}</dt>
+          <dd class="col-6 text-end">{{ documento.controparte }}</dd>
+
+          {% if documento.partita_iva %}
+          <dt class="col-6">Partita IVA</dt>
+          <dd class="col-6 text-end">{{ documento.partita_iva }}</dd>
+          {% endif %}
+
+          {% if documento.codice_fiscale %}
+          <dt class="col-6">Codice fiscale</dt>
+          <dd class="col-6 text-end">{{ documento.codice_fiscale }}</dd>
+          {% endif %}
+
+          {% if documento.condizioni %}
+          <dt class="col-12">Condizioni di pagamento</dt>
+          <dd class="col-12">{{ documento.condizioni }}</dd>
+          {% endif %}
+        </dl>
+      </div>
+      <div class="card-footer d-flex gap-2 flex-wrap">
+        <a href="{{ documento.url_detail }}" class="btn btn-outline-secondary btn-sm">
+          <i class="bi bi-box-arrow-up-right me-1"></i>Apri fattura
+        </a>
+        {% if documento.url_pdf %}
+        <a href="{{ documento.url_pdf }}" target="_blank" class="btn btn-outline-primary btn-sm">
+          <i class="bi bi-file-earmark-pdf me-1"></i>PDF
+        </a>
+        {% else %}
+        <span class="text-muted small align-self-center">Nessun PDF caricato</span>
+        {% endif %}
+      </div>
+    </div>
+    {% else %}
+    <div class="card mb-3">
+      <div class="card-header"><i class="bi bi-file-earmark-text me-2"></i>Documento collegato</div>
+      <div class="card-body">
+        <p class="text-muted small mb-0">
+          <i class="bi bi-exclamation-circle me-1"></i>
+          Nessun documento collegato. Può accadere sui movimenti storici o se la
+          fattura di origine è stata eliminata.
+        </p>
+      </div>
+    </div>
+    {% endif %}
+
+    {# ── ALLEGATI ───────────────────────────────────────────── #}
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-paperclip me-2"></i>Allegati</span>
+        <span class="badge bg-secondary">{{ allegati|length }}</span>
+      </div>
+      <div class="card-body">
+        {% for a in allegati %}
+        <div class="d-flex justify-content-between align-items-center py-1">
+          <a href="{{ a.file.url }}" target="_blank" class="small text-truncate">
+            <i class="bi bi-file-earmark me-1"></i>{{ a.nome_originale|default:a.file.name }}
+          </a>
+          <span class="text-muted small">{{ a.created_at|date:"d/m/Y" }}</span>
+        </div>
+        {% empty %}
+        <p class="text-muted small mb-0">
+          Nessun allegato. Usa il pulsante <i class="bi bi-tools"></i> <strong>Strumenti</strong>
+          in basso a destra per caricarne uno, generare il QR code o inviare la scheda.
+        </p>
+        {% endfor %}
       </div>
     </div>
   </div>

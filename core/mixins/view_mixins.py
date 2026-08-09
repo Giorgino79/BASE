@@ -5,6 +5,7 @@ Mixins riutilizzabili per Class-Based Views.
 """
 
 from django.contrib.auth.mixins import PermissionRequiredMixin as DjangoPermissionMixin
+from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import PermissionDenied
 from django.http import JsonResponse, HttpResponseBadRequest
 from django.views.generic.base import ContextMixin
@@ -388,3 +389,31 @@ class BreadcrumbMixin:
             list: Lista di tuple (label, url)
         """
         return self.breadcrumbs
+
+
+# ============================================================================
+# FAB STRUMENTI (Allegati / QR Code / Invia)
+# ============================================================================
+
+
+class SidebarQrAllegatiMixin:
+    """
+    Abilita le funzioni d'oggetto del FAB "Strumenti" su una DetailView.
+
+    Il componente `commons_templates/components/fab_tools.html`, incluso in
+    base.html, mostra Allegati / QR Code / Invia solo se trova `object_id` e
+    `content_type_id` nel context: questo mixin li fornisce.
+
+    Usage:
+        class MioDetailView(LoginRequiredMixin, SidebarQrAllegatiMixin, DetailView):
+            model = MioModello
+
+    Perché il model abbia anche gli allegati serve `AllegatiMixin` sul modello
+    (astratto e senza campi: non richiede migrazione).
+    """
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["content_type_id"] = ContentType.objects.get_for_model(self.model).pk
+        ctx["object_id"] = self.object.pk
+        return ctx

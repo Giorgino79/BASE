@@ -2,6 +2,7 @@ from decimal import Decimal
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import (
     Case, DecimalField as DField, OuterRef, Q, Subquery, Sum, Value, When,
 )
@@ -9,6 +10,9 @@ from django.db.models.functions import Coalesce
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.views.generic import DetailView
+
+from core.mixins import PrintDetailMixin, SidebarQrAllegatiMixin
 
 from . import documenti
 from .forms import ContoContabileForm, MovimentoPrimaNotaForm
@@ -145,20 +149,33 @@ def movimento_create(request):
     return render(request, 'contabilita/movimento_form.html', ctx)
 
 
-@login_required
-def movimento_detail(request, pk):
-    mov = get_object_or_404(
-        MovimentoPrimaNota.objects.select_related(
-            'conto_dare', 'conto_avere', 'creato_da',
-            'fattura_attiva', 'fattura_passiva',
-        ),
-        pk=pk,
-    )
-    ctx = {
-        'page_title': f'Movimento — {mov.data:%d/%m/%Y}',
-        'mov': mov,
-    }
-    return render(request, 'contabilita/movimento_detail.html', ctx)
+class MovimentoDetailView(LoginRequiredMixin, SidebarQrAllegatiMixin,
+                          PrintDetailMixin, DetailView):
+    """
+    Dettaglio del movimento. I mixin abilitano le funzioni d'oggetto del FAB
+    "Strumenti" (allegati, QR code, invio) e la stampa della scheda.
+    """
+    model               = MovimentoPrimaNota
+    template_name       = 'contabilita/movimento_detail.html'
+    context_object_name = 'mov'
+    print_title         = 'Movimento di prima nota'
+    print_fields        = [
+        'data', 'tipo', 'causale', 'importo',
+        'numero_documento', 'note', 'created_at',
+    ]
+
+    def get_queryset(self):
+        return (super().get_queryset()
+                .select_related('conto_dare', 'conto_avere', 'creato_da',
+                                'fattura_attiva', 'fattura_passiva__fornitore'))
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        mov = self.object
+        ctx['page_title'] = f'Movimento — {mov.data:%d/%m/%Y}'
+        ctx['documento']  = documenti.dettaglio(mov)
+        ctx['allegati']   = mov.allegati
+        return ctx
 
 
 @login_required
