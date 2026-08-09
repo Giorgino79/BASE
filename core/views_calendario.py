@@ -28,7 +28,11 @@ class CalendarioView(LoginRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['page_title'] = 'Calendario Aziendale'
-        context['providers_info'] = CalendarioRegistry.get_providers_info(self.request.user)
+        # Ordinati per categoria: il template li raggruppa con {% regroup %}
+        context['providers_info'] = sorted(
+            CalendarioRegistry.get_providers_info(self.request.user),
+            key=lambda p: (p['category'] or '', p['description'] or p['name']),
+        )
         context['categories'] = CalendarioRegistry.get_categories()
         return context
 

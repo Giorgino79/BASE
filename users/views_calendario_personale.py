@@ -90,6 +90,17 @@ class EventoPersonaleCreateView(LoginRequiredMixin, CreateView):
     template_name = 'users/evento_personale_form.html'
     success_url = reverse_lazy('core:calendario_personale')
 
+    def get_initial(self):
+        """Pre-compila la data dal parametro ?date= (clic su una cella del calendario)."""
+        initial = super().get_initial()
+        date_param = self.request.GET.get('date')
+        if date_param:
+            try:
+                initial['data_inizio'] = datetime.fromisoformat(date_param)
+            except ValueError:
+                pass
+        return initial
+
     def form_valid(self, form):
         form.instance.utente = self.request.user
         messages.success(self.request, 'Evento personale creato con successo!')

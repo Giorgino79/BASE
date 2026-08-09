@@ -144,6 +144,10 @@ document.addEventListener('DOMContentLoaded', function () {
     firstDay: 1,
     height: 'auto',
     navLinks: true,
+    /* Senza questo gli eventi con orario (non "tutto il giorno") in vista mese
+       vengono resi come "dot event" su sfondo trasparente: con il testo bianco
+       forzato da eventContent risultavano invisibili nella cella. */
+    eventDisplay: 'block',
     dateClick: function (info) {
       window.location.href = '{% url "users:evento_personale_create" %}?date=' + info.dateStr + 'T09:00';
     },
@@ -184,6 +188,17 @@ document.addEventListener('DOMContentLoaded', function () {
         ? 'color:#0f172a;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;'
         : 'color:#fff;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;';
       return { domNodes: [el] };
+    },
+    eventDidMount: function (info) {
+      // Difesa: forza lo sfondo colorato sull'elemento evento, così il testo
+      // bianco è sempre leggibile anche dove FullCalendar non applica il colore.
+      if (!calendar.view.type.startsWith('list')) {
+        const bg = info.event.backgroundColor;
+        if (bg && bg !== 'transparent') {
+          info.el.style.backgroundColor = bg;
+          info.el.style.borderColor = bg;
+        }
+      }
     },
     datesSet: function (info) {
       loadProssimiEventi(info.start, info.end);

@@ -734,10 +734,14 @@ class EventoPersonaleForm(forms.ModelForm):
             Row(Column('colore', css_class='col-md-4'), Column('notifica_email', css_class='col-md-8 pt-4')),
         )
 
+    # format=... è indispensabile: <input type="datetime-local"> accetta solo
+    # "YYYY-MM-DDTHH:MM"; col formato localizzato di default il browser scarta
+    # il valore e il campo appare vuoto (in modifica e nel prefill da calendario).
     data_inizio = forms.DateTimeField(
         label='Data/Ora Inizio',
         widget=forms.DateTimeInput(
-            attrs={'class': 'form-control', 'type': 'datetime-local'}
+            attrs={'class': 'form-control', 'type': 'datetime-local'},
+            format='%Y-%m-%dT%H:%M',
         ),
         input_formats=['%Y-%m-%dT%H:%M', '%Y-%m-%d %H:%M:%S', '%Y-%m-%d %H:%M']
     )
@@ -746,7 +750,8 @@ class EventoPersonaleForm(forms.ModelForm):
         label='Data/Ora Fine',
         required=False,
         widget=forms.DateTimeInput(
-            attrs={'class': 'form-control', 'type': 'datetime-local'}
+            attrs={'class': 'form-control', 'type': 'datetime-local'},
+            format='%Y-%m-%dT%H:%M',
         ),
         input_formats=['%Y-%m-%dT%H:%M', '%Y-%m-%d %H:%M:%S', '%Y-%m-%d %H:%M']
     )
