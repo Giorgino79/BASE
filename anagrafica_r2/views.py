@@ -22,26 +22,106 @@ class AccessMixin(LoginRequiredMixin):
     pass
 
 
-# ── Dashboard ────────────────────────────────────────────────────────────────
+# ── Dashboard: ricerca unificata ─────────────────────────────────────────────
+
+RICERCA_LIMITE = 100
+
 
 @login_required
 def dashboard(request):
-    trenta_giorni_fa = timezone.now() - timedelta(days=30)
-    context = {
-        'clienti_totali':      Azienda.objects.filter(attivo=True).count(),
-        'clienti_nuovi':       Azienda.objects.filter(attivo=True, created_at__gte=trenta_giorni_fa).count(),
-        'sedi_totali':         Filiale.objects.filter(attivo=True).count(),
-        'sedi_installate':     Filiale.objects.filter(attivo=True, installato=True).count(),
-        'sedi_da_installare':  Filiale.objects.filter(attivo=True, installato=False).count(),
-        'fornitori_totali':    Fornitore.objects.filter(attivo=True).count(),
-        'fornitori_nuovi':     Fornitore.objects.filter(attivo=True, created_at__gte=trenta_giorni_fa).count(),
-        'privati_totali':      Privato.objects.filter(attivo=True).count(),
-        'privati_nuovi':       Privato.objects.filter(attivo=True, created_at__gte=trenta_giorni_fa).count(),
-        'ultimi_clienti':      Azienda.objects.filter(attivo=True).order_by('-created_at')[:5],
-        'ultimi_fornitori':    Fornitore.objects.filter(attivo=True).order_by('-created_at')[:5],
-        'ultimi_privati':      Privato.objects.filter(attivo=True).order_by('-created_at')[:5],
-    }
-    return render(request, 'anagrafica_r2/dashboard.html', context)
+    """
+    Anagrafica: unico campo di ricerca su clienti (aziende e privati) e
+    fornitori. Senza query non viene mostrato alcun dato: la tabella dei
+    risultati compare solo dopo una ricerca.
+    """
+    query = request.GET.get('q', '').strip()
+    risultati = []
+    troncato = False
+
+    if query:
+        aziende = Azienda.objects.filter(
+            Q(ragione_sociale__icontains=query)
+            | Q(marchio__icontains=query)
+            | Q(partita_iva__icontains=query)
+            | Q(codice_fiscale__icontains=query)
+            | Q(telefono__icontains=query)
+            | Q(citta__icontains=query)
+            | Q(referente__icontains=query)
+            | Q(email_operativo__icontains=query)
+            | Q(email_direzione__icontains=query)
+            | Q(email_amministrazione__icontains=query)
+            | Q(pec__icontains=query)
+        )
+        for a in aziende.order_by('ragione_sociale')[:RICERCA_LIMITE + 1]:
+            risultati.append({
+                'tipo': 'cliente',
+                'tipo_label': 'Cliente',
+                'nome': a.ragione_sociale,
+                'url': a.get_absolute_url(),
+                'identificativo': a.partita_iva or a.codice_fiscale,
+                'citta': a.citta,
+                'provincia': a.provincia,
+                'telefono': a.telefono,
+                'email': a.email_operativo or a.email_direzione or a.pec,
+                'attivo': a.attivo,
+            })
+
+        privati = Privato.objects.filter(
+            Q(nome__icontains=query)
+            | Q(cognome__icontains=query)
+            | Q(codice_fiscale__icontains=query)
+            | Q(telefono__icontains=query)
+            | Q(email__icontains=query)
+            | Q(citta__icontains=query)
+        )
+        for p in privati.order_by('cognome', 'nome')[:RICERCA_LIMITE + 1]:
+            risultati.append({
+                'tipo': 'privato',
+                'tipo_label': 'Privato',
+                'nome': p.nome_completo,
+                'url': p.get_absolute_url(),
+                'identificativo': p.codice_fiscale,
+                'citta': p.citta,
+                'provincia': p.provincia,
+                'telefono': p.telefono,
+                'email': p.email,
+                'attivo': p.attivo,
+            })
+
+        fornitori = Fornitore.objects.filter(
+            Q(ragione_sociale__icontains=query)
+            | Q(partita_iva__icontains=query)
+            | Q(codice_fiscale__icontains=query)
+            | Q(telefono__icontains=query)
+            | Q(email__icontains=query)
+            | Q(pec__icontains=query)
+            | Q(citta__icontains=query)
+            | Q(referente_nome__icontains=query)
+        )
+        for f in fornitori.order_by('ragione_sociale')[:RICERCA_LIMITE + 1]:
+            risultati.append({
+                'tipo': 'fornitore',
+                'tipo_label': 'Fornitore',
+                'nome': f.ragione_sociale,
+                'url': f.get_absolute_url(),
+                'identificativo': f.partita_iva or f.codice_fiscale,
+                'citta': f.citta,
+                'provincia': f.provincia,
+                'telefono': f.telefono,
+                'email': f.email,
+                'attivo': f.attivo,
+            })
+
+        risultati.sort(key=lambda r: r['nome'].lower())
+        troncato = len(risultati) > RICERCA_LIMITE
+        risultati = risultati[:RICERCA_LIMITE]
+
+    return render(request, 'anagrafica_r2/dashboard.html', {
+        'query': query,
+        'risultati': risultati,
+        'troncato': troncato,
+        'limite': RICERCA_LIMITE,
+    })
 
 
 # ── Clienti (Aziende) ────────────────────────────────────────────────────────

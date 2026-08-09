@@ -1,206 +1,138 @@
 {% extends "base.html" %}
 {% load static %}
 
+{% block title %}Anagrafica{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item active">Anagrafica</li>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+  #ricerca-anagrafica .input-group-text { background: #fff; border-right: 0; color: var(--slate-400); }
+  #ricerca-anagrafica .form-control { border-left: 0; font-size: 1rem; padding: .7rem 1rem .7rem 0; }
+  #ricerca-anagrafica .form-control:focus { box-shadow: none; border-color: var(--slate-300); }
+  #ricerca-anagrafica .input-group:focus-within { border-radius: 8px; box-shadow: 0 0 0 3px rgba(99,102,241,.15); }
+
+  .tbl-risultati th {
+    font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
+    color: var(--slate-500); border-bottom: 1px solid var(--slate-200); white-space: nowrap;
+  }
+  .tbl-risultati td { font-size: .85rem; vertical-align: middle; border-bottom: 1px solid var(--slate-100); }
+  .tbl-risultati tbody tr:hover { background: var(--slate-50); }
+  .tbl-risultati a.nome { color: var(--slate-900); font-weight: 600; text-decoration: none; }
+  .tbl-risultati a.nome:hover { color: var(--indigo-600); text-decoration: underline; }
+
+  .badge-tipo { font-size: .68rem; font-weight: 600; padding: .25rem .55rem; border-radius: 12px; white-space: nowrap; }
+  .badge-cliente   { background: #dbeafe; color: #1e40af; }
+  .badge-privato   { background: #ede9fe; color: #5b21b6; }
+  .badge-fornitore { background: #dcfce7; color: #166534; }
+  .stato-off { font-size: .68rem; background: var(--slate-100); color: var(--slate-500); padding: .2rem .5rem; border-radius: 10px; }
+</style>
+{% endblock %}
+
 {% block content %}
-
-<div class="page-header d-flex justify-content-between align-items-start mb-4">
+<div class="d-flex align-items-center justify-content-between gap-3 flex-wrap mb-4">
   <div>
-    <nav aria-label="breadcrumb">
-      <ol class="breadcrumb">
-        <li class="breadcrumb-item active">Anagrafica</li>
-      </ol>
-    </nav>
-    <h1><i class="bi bi-people-fill me-2 text-brand"></i>Anagrafica</h1>
-    <p>Clienti, sedi operative e fornitori</p>
+    <h1 class="h4 fw-bold mb-1" style="color:var(--slate-900);">Anagrafica</h1>
+    <p class="text-muted mb-0" style="font-size:.875rem;">Cerca tra clienti e fornitori</p>
   </div>
-  <div class="d-flex gap-2">
-    <a href="{% url 'anagrafica:fornitore_create' %}" class="btn btn-outline-secondary btn-sm">
-      <i class="bi bi-plus-lg me-1"></i>Nuovo Fornitore
+  <div class="d-flex gap-2 flex-wrap">
+    <a href="{% url 'anagrafica:azienda_create' %}" class="btn btn-outline-primary btn-sm d-flex align-items-center gap-1">
+      <i class="bi bi-building-add"></i> Nuovo cliente
     </a>
-    <a href="{% url 'anagrafica:privato_create' %}" class="btn btn-outline-secondary btn-sm">
-      <i class="bi bi-plus-lg me-1"></i>Nuovo Privato
+    <a href="{% url 'anagrafica:privato_create' %}" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1">
+      <i class="bi bi-person-plus"></i> Nuovo privato
     </a>
-    <a href="{% url 'anagrafica:azienda_create' %}" class="btn btn-primary btn-sm">
-      <i class="bi bi-plus-lg me-1"></i>Nuovo Cliente
+    <a href="{% url 'anagrafica:fornitore_create' %}" class="btn btn-outline-success btn-sm d-flex align-items-center gap-1">
+      <i class="bi bi-truck"></i> Nuovo fornitore
     </a>
   </div>
 </div>
 
-<!-- Stat cards -->
-<div class="row g-3 mb-4">
-  <div class="col-sm-6 col-xl-3">
-    <a href="{% url 'anagrafica:azienda_list' %}" class="text-decoration-none">
-      <div class="stat-card">
-        <div class="stat-card-icon icon-primary">
-          <i class="bi bi-building-fill"></i>
-        </div>
-        <div>
-          <div class="stat-card-label">Clienti attivi</div>
-          <div class="stat-card-value">{{ clienti_totali }}</div>
-          <div class="stat-card-sub">+{{ clienti_nuovi }} ultimi 30 giorni</div>
-        </div>
-      </div>
+<!-- Campo di ricerca -->
+<div class="card card-body mb-3" id="ricerca-anagrafica">
+  <form method="get" class="d-flex gap-2 flex-wrap">
+    <div class="input-group flex-grow-1" style="min-width:260px;">
+      <span class="input-group-text"><i class="bi bi-search"></i></span>
+      <input type="search" name="q" class="form-control" autofocus
+             placeholder="Ragione sociale, nome, email, telefono, P.IVA, codice fiscale, città…"
+             value="{{ query }}" aria-label="Cerca clienti e fornitori">
+    </div>
+    <button type="submit" class="btn btn-primary px-4">Cerca</button>
+    {% if query %}
+    <a href="{% url 'anagrafica:dashboard' %}" class="btn btn-outline-secondary" title="Azzera la ricerca">
+      <i class="bi bi-x-lg"></i>
     </a>
-  </div>
-  <div class="col-sm-6 col-xl-3">
-    <a href="{% url 'anagrafica:filiale_list' %}" class="text-decoration-none">
-      <div class="stat-card">
-        <div class="stat-card-icon icon-accent">
-          <i class="bi bi-geo-alt-fill"></i>
-        </div>
-        <div>
-          <div class="stat-card-label">Sedi attive</div>
-          <div class="stat-card-value">{{ sedi_totali }}</div>
-          <div class="stat-card-sub">{{ sedi_installate }} installate</div>
-        </div>
-      </div>
-    </a>
-  </div>
-  <div class="col-sm-6 col-xl-3">
-    <a href="{% url 'anagrafica:filiale_list' %}?installato=no" class="text-decoration-none">
-      <div class="stat-card">
-        <div class="stat-card-icon icon-amber">
-          <i class="bi bi-clock-history"></i>
-        </div>
-        <div>
-          <div class="stat-card-label">Sedi da installare</div>
-          <div class="stat-card-value">{{ sedi_da_installare }}</div>
-          <div class="stat-card-sub">ancora in attesa</div>
-        </div>
-      </div>
-    </a>
-  </div>
-  <div class="col-sm-6 col-xl-3">
-    <a href="{% url 'anagrafica:fornitore_list' %}" class="text-decoration-none">
-      <div class="stat-card">
-        <div class="stat-card-icon icon-indigo">
-          <i class="bi bi-truck"></i>
-        </div>
-        <div>
-          <div class="stat-card-label">Fornitori attivi</div>
-          <div class="stat-card-value">{{ fornitori_totali }}</div>
-          <div class="stat-card-sub">+{{ fornitori_nuovi }} ultimi 30 giorni</div>
-        </div>
-      </div>
-    </a>
-  </div>
-  <div class="col-sm-6 col-xl-3">
-    <a href="{% url 'anagrafica:privato_list' %}" class="text-decoration-none">
-      <div class="stat-card">
-        <div class="stat-card-icon icon-primary">
-          <i class="bi bi-person-fill"></i>
-        </div>
-        <div>
-          <div class="stat-card-label">Clienti Privati attivi</div>
-          <div class="stat-card-value">{{ privati_totali }}</div>
-          <div class="stat-card-sub">+{{ privati_nuovi }} ultimi 30 giorni</div>
-        </div>
-      </div>
-    </a>
-  </div>
+    {% endif %}
+  </form>
 </div>
 
-<!-- Tabelle affiancate -->
-<div class="row g-3">
-
-  <!-- Ultimi clienti -->
-  <div class="col-lg-7">
-    <div class="card h-100">
-      <div class="card-header d-flex justify-content-between align-items-center">
-        <span class="card-title"><i class="bi bi-building-fill me-2 text-brand"></i>Ultimi Clienti</span>
-        <a href="{% url 'anagrafica:azienda_list' %}" class="btn btn-sm btn-outline-secondary">Vedi tutti</a>
-      </div>
-      <div class="table-responsive">
-        <table class="table mb-0">
-          <thead>
-            <tr>
-              <th>Ragione Sociale</th>
-              <th>Città</th>
-              <th>Sedi</th>
-              <th>Stato</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for c in ultimi_clienti %}
-            <tr>
-              <td>
-                <a href="{{ c.get_absolute_url }}" class="text-brand fw-semibold text-decoration-none">
-                  {{ c.ragione_sociale }}
-                </a>
-              </td>
-              <td class="text-muted">{{ c.citta }}</td>
-              <td><span class="badge badge-info">{{ c.n_filiali }}</span></td>
-              <td>
-                {% if c.installato %}
-                  <span class="badge badge-ok"><i class="bi bi-check me-1"></i>Installato</span>
-                {% else %}
-                  <span class="badge badge-wait"><i class="bi bi-clock me-1"></i>In attesa</span>
-                {% endif %}
-              </td>
-              <td class="text-end">
-                <a href="{{ c.get_absolute_url }}" class="btn btn-sm btn-outline-secondary">
-                  <i class="bi bi-eye"></i>
-                </a>
-              </td>
-            </tr>
-            {% empty %}
-            <tr>
-              <td colspan="5" class="text-center text-muted py-3">
-                <i class="bi bi-inbox me-2"></i>Nessun cliente presente
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
+{% if query %}
+  {% if risultati %}
+  <div class="card">
+    <div class="d-flex justify-content-between align-items-center px-3 pt-3 pb-2 flex-wrap gap-2">
+      <span class="text-muted" style="font-size:.8rem;">
+        {{ risultati|length }} risultat{{ risultati|length|pluralize:"o,i" }} per “{{ query }}”
+      </span>
+      {% if troncato %}
+      <span class="text-muted" style="font-size:.78rem;">
+        <i class="bi bi-info-circle me-1"></i>Mostrati i primi {{ limite }}: affina la ricerca
+      </span>
+      {% endif %}
+    </div>
+    <div class="table-responsive">
+      <table class="table tbl-risultati mb-0">
+        <thead>
+          <tr>
+            <th>Tipo</th>
+            <th>Nome / Ragione sociale</th>
+            <th class="d-none d-md-table-cell">P.IVA / C.F.</th>
+            <th class="d-none d-lg-table-cell">Città</th>
+            <th class="d-none d-lg-table-cell">Telefono</th>
+            <th class="d-none d-xl-table-cell">Email</th>
+            <th class="text-end">&nbsp;</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in risultati %}
+          <tr>
+            <td><span class="badge-tipo badge-{{ r.tipo }}">{{ r.tipo_label }}</span></td>
+            <td>
+              <a href="{{ r.url }}" class="nome">{{ r.nome }}</a>
+              {% if not r.attivo %}<span class="stato-off ms-2">non attivo</span>{% endif %}
+            </td>
+            <td class="d-none d-md-table-cell text-muted">{{ r.identificativo|default:"—" }}</td>
+            <td class="d-none d-lg-table-cell text-muted">
+              {{ r.citta|default:"—" }}{% if r.provincia %} ({{ r.provincia }}){% endif %}
+            </td>
+            <td class="d-none d-lg-table-cell text-muted">{{ r.telefono|default:"—" }}</td>
+            <td class="d-none d-xl-table-cell text-muted">{{ r.email|default:"—" }}</td>
+            <td class="text-end">
+              <a href="{{ r.url }}" class="btn btn-sm btn-outline-secondary" title="Apri scheda">
+                <i class="bi bi-arrow-right"></i>
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
   </div>
-
-  <!-- Ultimi fornitori -->
-  <div class="col-lg-5">
-    <div class="card h-100">
-      <div class="card-header d-flex justify-content-between align-items-center">
-        <span class="card-title"><i class="bi bi-truck me-2 text-brand"></i>Ultimi Fornitori</span>
-        <a href="{% url 'anagrafica:fornitore_list' %}" class="btn btn-sm btn-outline-secondary">Vedi tutti</a>
-      </div>
-      <div class="table-responsive">
-        <table class="table mb-0">
-          <thead>
-            <tr>
-              <th>Ragione Sociale</th>
-              <th>Categoria</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for f in ultimi_fornitori %}
-            <tr>
-              <td>
-                <a href="{{ f.get_absolute_url }}" class="text-brand fw-semibold text-decoration-none">
-                  {{ f.ragione_sociale }}
-                </a>
-              </td>
-              <td><span class="badge badge-accent">{{ f.get_categoria_display }}</span></td>
-              <td class="text-end">
-                <a href="{{ f.get_absolute_url }}" class="btn btn-sm btn-outline-secondary">
-                  <i class="bi bi-eye"></i>
-                </a>
-              </td>
-            </tr>
-            {% empty %}
-            <tr>
-              <td colspan="3" class="text-center text-muted py-3">
-                <i class="bi bi-inbox me-2"></i>Nessun fornitore presente
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    </div>
+  {% else %}
+  <div class="card card-body text-center py-5">
+    <i class="bi bi-search text-muted" style="font-size:2rem;opacity:.5;"></i>
+    <p class="text-muted mb-0 mt-3" style="font-size:.9rem;">
+      Nessun cliente o fornitore trovato per “{{ query }}”.
+    </p>
   </div>
-
+  {% endif %}
+{% else %}
+<div class="text-center py-5">
+  <i class="bi bi-people text-muted" style="font-size:2.5rem;opacity:.4;"></i>
+  <p class="text-muted mb-0 mt-3" style="font-size:.9rem;">
+    Digita un termine nel campo qui sopra per cercare tra clienti e fornitori.
+  </p>
 </div>
-
+{% endif %}
 {% endblock %}
