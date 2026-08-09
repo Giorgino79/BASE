@@ -59,17 +59,26 @@ class ContoContabileForm(BootstrapMixin, forms.ModelForm):
 
 
 class MovimentoPrimaNotaForm(BootstrapMixin, forms.ModelForm):
+    """
+    Un movimento registrato a mano deve sempre riferirsi a un documento
+    specifico: una fattura attiva o una fattura passiva, esattamente una.
+    Le due FK sono pilotate da un unico campo di ricerca nel template, quindi
+    qui viaggiano come input nascosti.
+    """
+
     class Meta:
         model  = MovimentoPrimaNota
         fields = [
             'data', 'tipo', 'causale', 'importo',
             'conto_dare', 'conto_avere',
-            'numero_documento', 'fattura_passiva', 'note',
+            'numero_documento', 'fattura_attiva', 'fattura_passiva', 'note',
         ]
         widgets = {
             'data':  forms.DateInput(attrs={'type': 'date'}),
             'note':  forms.Textarea(attrs={'rows': 2}),
             'causale': forms.TextInput(attrs={'placeholder': 'Es: Ft 2026/42 — Rossi SRL'}),
+            'fattura_attiva':  forms.HiddenInput(),
+            'fattura_passiva': forms.HiddenInput(),
         }
 
     def __init__(self, *args, **kwargs):
@@ -77,13 +86,54 @@ class MovimentoPrimaNotaForm(BootstrapMixin, forms.ModelForm):
         # Solo conti attivi
         self.fields['conto_dare'].queryset  = ContoContabile.objects.filter(attivo=True).order_by('tipo', 'nome')
         self.fields['conto_avere'].queryset = ContoContabile.objects.filter(attivo=True).order_by('tipo', 'nome')
+        # La validazione "una delle due" sta in clean(): singolarmente opzionali.
+        self.fields['fattura_attiva'].required  = False
         self.fields['fattura_passiva'].required = False
-        self.fields['fattura_passiva'].help_text = 'Opzionale — collega questo movimento a una fattura fornitore esistente.'
+
+    def documento_selezionato(self):
+        """
+        Etichetta del documento già collegato, per ripopolare il campo di
+        ricerca dopo un errore di validazione o su un form legato a istanza.
+        """
+        from . import documenti
+
+        attiva = self.get_field_object('fattura_attiva')
+        if attiva:
+            return {'kind': documenti.ATTIVA, 'etichetta': documenti.descrivi_attiva(attiva)}
+        passiva = self.get_field_object('fattura_passiva')
+        if passiva:
+            return {'kind': documenti.PASSIVA, 'etichetta': documenti.descrivi_passiva(passiva)}
+        return None
+
+    def get_field_object(self, nome):
+        """Istanza collegata a una delle due FK, sia da POST che da instance."""
+        raw = self[nome].value()
+        if not raw:
+            return None
+        try:
+            return self.fields[nome].queryset.get(pk=raw)
+        except (self.fields[nome].queryset.model.DoesNotExist, TypeError, ValueError):
+            return None
 
     def clean(self):
         cleaned = super().clean()
+
         dare  = cleaned.get('conto_dare')
         avere = cleaned.get('conto_avere')
         if dare and avere and dare == avere:
             raise forms.ValidationError('Il conto Dare e il conto Avere non possono essere lo stesso conto.')
+
+        attiva  = cleaned.get('fattura_attiva')
+        passiva = cleaned.get('fattura_passiva')
+        if not attiva and not passiva:
+            raise forms.ValidationError(
+                'Collega il movimento a un documento: cerca una fattura attiva '
+                'o una fattura passiva nel campo "Documento di riferimento".'
+            )
+        if attiva and passiva:
+            raise forms.ValidationError(
+                'Un movimento può riferirsi a una sola fattura: scegli o quella '
+                'attiva o quella passiva.'
+            )
+
         return cleaned

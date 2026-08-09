@@ -7,6 +7,7 @@ urlpatterns = [
     path('',                              views.dashboard,        name='dashboard'),
     path('prima-nota/',                   views.prima_nota_list,  name='prima_nota_list'),
     path('prima-nota/nuovo/',             views.movimento_create, name='movimento_create'),
+    path('prima-nota/documenti/',         views.documenti_suggerimenti, name='documenti_suggerimenti'),
     path('prima-nota/<int:pk>/',          views.movimento_detail, name='movimento_detail'),
     path('prima-nota/<int:pk>/elimina/',  views.movimento_delete, name='movimento_delete'),
     path('mastrino/<int:pk>/',            views.mastrino,         name='mastrino'),

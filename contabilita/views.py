@@ -10,6 +10,7 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 
+from . import documenti
 from .forms import ContoContabileForm, MovimentoPrimaNotaForm
 from .models import ContoContabile, MovimentoPrimaNota
 
@@ -107,6 +108,18 @@ def prima_nota_list(request):
 # ─────────────────────────────────────────────────────────────────────────────
 
 @login_required
+def documenti_suggerimenti(request):
+    """
+    Autocomplete del campo "Documento di riferimento": cerca fra fatture
+    attive e passive dalle prime 2 lettere.
+    """
+    q = request.GET.get('q', '').strip()
+    if len(q) < 2:
+        return JsonResponse({'results': []})
+    return JsonResponse({'results': documenti.cerca(q)})
+
+
+@login_required
 def movimento_create(request):
     form = MovimentoPrimaNotaForm(request.POST or None)
     if request.method == 'POST' and form.is_valid():
@@ -119,6 +132,7 @@ def movimento_create(request):
     ctx = {
         'page_title': 'Nuovo Movimento',
         'form':       form,
+        'documento':  form.documento_selezionato(),
         'tipi_suggeriti': {
             'fattura_cliente':   ('cliente', 'generico'),
             'fattura_fornitore': ('fornitore', 'generico'),

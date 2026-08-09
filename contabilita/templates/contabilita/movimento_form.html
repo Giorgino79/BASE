@@ -2,6 +2,42 @@
 
 {% block title %}{{ page_title }}{% endblock %}
 
+{% block extra_css %}
+<style>
+  .doc-suggest-wrap { position: relative; }
+  .doc-suggest {
+    position: absolute; z-index: 1060; top: 100%; left: 0; right: 0;
+    margin-top: 2px; max-height: 320px; overflow-y: auto;
+    background: #fff; border: 1px solid var(--slate-200, #e2e8f0);
+    border-radius: 8px; box-shadow: 0 8px 24px rgba(15, 23, 42, .12);
+  }
+  .doc-suggest .voce {
+    display: flex; align-items: center; gap: .6rem;
+    padding: .5rem .75rem; cursor: pointer;
+    border-bottom: 1px solid var(--slate-100, #f1f5f9);
+  }
+  .doc-suggest .voce:last-child { border-bottom: 0; }
+  .doc-suggest .voce:hover, .doc-suggest .voce.attiva { background: var(--slate-50, #f8fafc); }
+  .doc-suggest .voce .num { font-size: .85rem; font-weight: 600; }
+  .doc-suggest .voce .num mark { background: #fef08a; padding: 0; color: inherit; }
+  .doc-suggest .voce .meta { font-size: .72rem; color: var(--slate-500, #64748b); }
+  .doc-suggest .vuoto { padding: .6rem .75rem; font-size: .8rem; color: var(--slate-500, #64748b); }
+
+  .badge-kind {
+    font-size: .68rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .04em; padding: .2rem .45rem; border-radius: 10px; white-space: nowrap;
+  }
+  .voce-attiva  .badge-kind, .doc-chip.kind-attiva  .badge-kind { background: #dbeafe; color: #1e40af; }
+  .voce-passiva .badge-kind, .doc-chip.kind-passiva .badge-kind { background: #dcfce7; color: #166534; }
+
+  .doc-chip {
+    display: flex; align-items: center; gap: .6rem;
+    padding: .5rem .75rem; border: 1px solid var(--slate-200, #e2e8f0);
+    border-radius: 8px; background: var(--slate-50, #f8fafc); font-size: .85rem;
+  }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="page-header mb-4">
   <nav aria-label="breadcrumb">
@@ -60,17 +96,47 @@
       </div>
 
       <div class="card mb-3">
-        <div class="card-header"><i class="bi bi-file-earmark-text me-2"></i>Riferimenti (opzionali)</div>
+        <div class="card-header"><i class="bi bi-file-earmark-text me-2"></i>Documento di riferimento</div>
         <div class="card-body">
           <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label" for="doc-q">
+                Fattura collegata <span class="text-danger">*</span>
+              </label>
+
+              {# Le due FK viaggiano nascoste: le pilota la ricerca qui sotto. #}
+              {{ form.fattura_attiva }}
+              {{ form.fattura_passiva }}
+
+              {# Chip del documento scelto #}
+              <div id="doc-scelto"
+                   class="doc-chip {% if documento %}kind-{{ documento.kind }}{% else %}d-none{% endif %}">
+                <span class="badge-kind" id="doc-kind">{% if documento %}{% if documento.kind == "attiva" %}Attiva{% else %}Passiva{% endif %}{% endif %}</span>
+                <span id="doc-label" class="flex-grow-1">{% if documento %}{{ documento.etichetta }}{% endif %}</span>
+                <button type="button" class="btn btn-sm btn-link text-danger p-0" id="doc-clear" title="Rimuovi il collegamento">
+                  <i class="bi bi-x-lg"></i>
+                </button>
+              </div>
+
+              <div class="doc-suggest-wrap {% if documento %}d-none{% endif %}" id="doc-ricerca">
+                <div class="input-group">
+                  <span class="input-group-text"><i class="bi bi-search"></i></span>
+                  <input type="text" class="form-control" id="doc-q" autocomplete="off"
+                         placeholder="Numero fattura o nome cliente/fornitore…"
+                         role="combobox" aria-expanded="false" aria-controls="doc-suggest"
+                         aria-autocomplete="list">
+                </div>
+                <div class="doc-suggest" id="doc-suggest" role="listbox" hidden></div>
+              </div>
+
+              <div class="form-text">
+                Ogni movimento inserito a mano deve essere collegato a una fattura,
+                attiva o passiva. Digita almeno 2 caratteri per cercarla.
+              </div>
+            </div>
             <div class="col-sm-6">
               <label class="form-label">{{ form.numero_documento.label }}</label>
               {{ form.numero_documento }}
-            </div>
-            <div class="col-sm-6">
-              <label class="form-label">{{ form.fattura_passiva.label }}</label>
-              {{ form.fattura_passiva }}
-              <div class="form-text">{{ form.fattura_passiva.help_text }}</div>
             </div>
             <div class="col-12">
               <label class="form-label">{{ form.note.label }}</label>
@@ -104,4 +170,159 @@
     </div>
   </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ── Ricerca del documento di riferimento (fatture attive e passive) ────────
+(function () {
+  const input   = document.getElementById('doc-q');
+  const box     = document.getElementById('doc-suggest');
+  const ricerca = document.getElementById('doc-ricerca');
+  const chip    = document.getElementById('doc-scelto');
+  const chipKind  = document.getElementById('doc-kind');
+  const chipLabel = document.getElementById('doc-label');
+  const clear   = document.getElementById('doc-clear');
+  const hAttiva  = document.getElementById('{{ form.fattura_attiva.auto_id }}');
+  const hPassiva = document.getElementById('{{ form.fattura_passiva.auto_id }}');
+  const URL_S   = "{% url 'contabilita:documenti_suggerimenti' %}";
+  const MIN     = 2;
+
+  let voci = [], attiva = -1, timer = null, controller = null;
+
+  function chiudi() {
+    box.hidden = true;
+    box.replaceChildren();
+    input.setAttribute('aria-expanded', 'false');
+    voci = []; attiva = -1;
+  }
+
+  function evidenziaMatch(testo, q) {
+    const el = document.createElement('span');
+    const i = testo.toLowerCase().indexOf(q.toLowerCase());
+    if (i < 0) { el.textContent = testo; return el; }
+    el.appendChild(document.createTextNode(testo.slice(0, i)));
+    const m = document.createElement('mark');
+    m.textContent = testo.slice(i, i + q.length);
+    el.appendChild(m);
+    el.appendChild(document.createTextNode(testo.slice(i + q.length)));
+    return el;
+  }
+
+  function disegna(results, q) {
+    box.replaceChildren();
+    if (!results.length) {
+      const v = document.createElement('div');
+      v.className = 'vuoto';
+      v.textContent = 'Nessuna fattura corrisponde a “' + q + '”';
+      box.appendChild(v);
+      box.hidden = false;
+      input.setAttribute('aria-expanded', 'true');
+      voci = []; attiva = -1;
+      return;
+    }
+
+    voci = results.map(function (r) {
+      const voce = document.createElement('div');
+      voce.className = 'voce voce-' + r.kind;
+      voce.setAttribute('role', 'option');
+
+      const tag = document.createElement('span');
+      tag.className = 'badge-kind';
+      tag.textContent = r.kind === 'attiva' ? 'Attiva' : 'Passiva';
+
+      const centro = document.createElement('div');
+      centro.className = 'flex-grow-1';
+      const num = document.createElement('div');
+      num.className = 'num';
+      num.appendChild(evidenziaMatch(r.numero, q));
+      num.appendChild(document.createTextNode(' — '));
+      num.appendChild(evidenziaMatch(r.controparte, q));
+      const meta = document.createElement('div');
+      meta.className = 'meta';
+      meta.textContent = r.data + ' · € ' + r.totale + ' · ' + r.stato;
+      centro.append(num, meta);
+
+      voce.append(tag, centro);
+      voce.addEventListener('mousedown', function (e) {
+        e.preventDefault();   // il blur non deve chiudere prima del click
+        scegli(r);
+      });
+      box.appendChild(voce);
+      return voce;
+    });
+
+    attiva = -1;
+    box.hidden = false;
+    input.setAttribute('aria-expanded', 'true');
+  }
+
+  function evidenzia(i) {
+    voci.forEach(function (v, k) { v.classList.toggle('attiva', k === i); });
+    if (voci[i] && voci[i].scrollIntoView) voci[i].scrollIntoView({ block: 'nearest' });
+    attiva = i;
+  }
+
+  function scegli(r) {
+    // Una sola delle due FK per volta: l'altra va sempre azzerata.
+    hAttiva.value  = r.kind === 'attiva'  ? r.id : '';
+    hPassiva.value = r.kind === 'passiva' ? r.id : '';
+
+    chipKind.textContent  = r.kind === 'attiva' ? 'Attiva' : 'Passiva';
+    chipLabel.textContent = r.etichetta + ' · € ' + r.totale;
+    chip.classList.remove('d-none', 'kind-attiva', 'kind-passiva');
+    chip.classList.add('kind-' + r.kind);
+    ricerca.classList.add('d-none');
+
+    chiudi();
+    input.value = '';
+  }
+
+  clear.addEventListener('click', function () {
+    hAttiva.value = '';
+    hPassiva.value = '';
+    chip.classList.add('d-none');
+    ricerca.classList.remove('d-none');
+    input.value = '';
+    input.focus();
+  });
+
+  function cerca() {
+    const q = input.value.trim();
+    if (q.length < MIN) { chiudi(); return; }
+
+    if (controller) controller.abort();
+    controller = new AbortController();
+
+    fetch(URL_S + '?q=' + encodeURIComponent(q), {
+      signal: controller.signal,
+      headers: { 'X-Requested-With': 'XMLHttpRequest' },
+    })
+      .then(function (r) { return r.ok ? r.json() : { results: [] }; })
+      .then(function (d) { disegna(d.results || [], q); })
+      .catch(function (e) { if (e.name !== 'AbortError') chiudi(); });
+  }
+
+  input.addEventListener('input', function () {
+    clearTimeout(timer);
+    timer = setTimeout(cerca, 200);
+  });
+
+  input.addEventListener('keydown', function (e) {
+    if (box.hidden || !voci.length) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault(); evidenzia((attiva + 1) % voci.length);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault(); evidenzia((attiva - 1 + voci.length) % voci.length);
+    } else if (e.key === 'Enter') {
+      e.preventDefault();   // mai inviare il form dal campo di ricerca
+      if (attiva >= 0) voci[attiva].dispatchEvent(new MouseEvent('mousedown'));
+    } else if (e.key === 'Escape') {
+      chiudi();
+    }
+  });
+
+  input.addEventListener('blur', function () { setTimeout(chiudi, 120); });
+})();
+</script>
 {% endblock %}
