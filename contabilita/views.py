@@ -6,6 +6,7 @@ from django.db.models import (
     Case, DecimalField as DField, OuterRef, Q, Subquery, Sum, Value, When,
 )
 from django.db.models.functions import Coalesce
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 
@@ -285,6 +286,42 @@ def conti_list(request):
         'tipi':             ContoContabile.Tipo.choices,
     }
     return render(request, 'contabilita/conti_list.html', ctx)
+
+
+@login_required
+def conti_suggerimenti(request):
+    """
+    Autocomplete del campo di ricerca conti: risponde dalle prime 2 lettere.
+    Rispetta i filtri tipo/stato già impostati nel form.
+    """
+    q = request.GET.get('q', '').strip()
+    if len(q) < 2:
+        return JsonResponse({'results': []})
+
+    qs = ContoContabile.objects.filter(
+        Q(nome__icontains=q) | Q(iban__icontains=q)
+    )
+
+    tipo_f = request.GET.get('tipo', '').strip()
+    if tipo_f:
+        qs = qs.filter(tipo=tipo_f)
+
+    stato_f = request.GET.get('stato', '').strip()
+    if stato_f == 'attivi':
+        qs = qs.filter(attivo=True)
+    elif stato_f == 'disattivi':
+        qs = qs.filter(attivo=False)
+
+    results = [
+        {
+            'nome':       c.nome,
+            'tipo':       c.get_tipo_display(),
+            'attivo':     c.attivo,
+            'iban':       c.iban,
+        }
+        for c in qs.order_by('tipo', 'nome')[:10]
+    ]
+    return JsonResponse({'results': results})
 
 
 @login_required

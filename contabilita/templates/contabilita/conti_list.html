@@ -2,6 +2,29 @@
 
 {% block title %}Conti Contabili{% endblock %}
 
+{% block extra_css %}
+<style>
+  .conti-suggest-wrap { position: relative; }
+  .conti-suggest {
+    position: absolute; z-index: 1060; top: 100%; left: 0; right: 0;
+    margin-top: 2px; max-height: 320px; overflow-y: auto;
+    background: #fff; border: 1px solid var(--slate-200, #e2e8f0);
+    border-radius: 8px; box-shadow: 0 8px 24px rgba(15, 23, 42, .12);
+  }
+  .conti-suggest .voce {
+    display: flex; align-items: center; justify-content: space-between; gap: .75rem;
+    padding: .5rem .75rem; cursor: pointer; border-bottom: 1px solid var(--slate-100, #f1f5f9);
+  }
+  .conti-suggest .voce:last-child { border-bottom: 0; }
+  .conti-suggest .voce:hover,
+  .conti-suggest .voce.attiva { background: var(--slate-50, #f8fafc); }
+  .conti-suggest .voce .nome { font-size: .85rem; font-weight: 600; color: var(--slate-900, #0f172a); }
+  .conti-suggest .voce .nome mark { background: #fef08a; padding: 0; color: inherit; }
+  .conti-suggest .voce .meta { font-size: .72rem; color: var(--slate-500, #64748b); }
+  .conti-suggest .vuoto { padding: .6rem .75rem; font-size: .8rem; color: var(--slate-500, #64748b); }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="page-header d-flex justify-content-between align-items-start mb-4">
   <div>
@@ -25,12 +48,17 @@
 <div class="card card-body mb-3">
   <form method="get" class="row g-2 align-items-end">
     <div class="col-md-5">
-      <label class="form-label small text-muted mb-1">Cerca</label>
-      <div class="input-group">
-        <span class="input-group-text"><i class="bi bi-search"></i></span>
-        <input type="search" name="q" class="form-control" autofocus
-               placeholder="Nome del conto, IBAN, descrizione…"
-               value="{{ q }}" aria-label="Cerca conti contabili">
+      <label class="form-label small text-muted mb-1" for="conti-q">Cerca</label>
+      <div class="conti-suggest-wrap">
+        <div class="input-group">
+          <span class="input-group-text"><i class="bi bi-search"></i></span>
+          <input type="search" name="q" class="form-control" id="conti-q" autofocus
+                 placeholder="Nome del conto, IBAN, descrizione…"
+                 value="{{ q }}" aria-label="Cerca conti contabili"
+                 autocomplete="off" role="combobox" aria-expanded="false"
+                 aria-controls="conti-suggest" aria-autocomplete="list">
+        </div>
+        <div class="conti-suggest" id="conti-suggest" role="listbox" hidden></div>
       </div>
     </div>
     <div class="col-md-3">
@@ -126,4 +154,148 @@
   </p>
 </div>
 {% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ── Autocomplete del campo di ricerca conti ───────────────────────────────
+(function () {
+  const input  = document.getElementById('conti-q');
+  const box    = document.getElementById('conti-suggest');
+  const form   = input.closest('form');
+  const URL_S  = "{% url 'contabilita:conti_suggerimenti' %}";
+  const MIN    = 2;
+
+  let voci = [], attiva = -1, timer = null, controller = null;
+
+  function chiudi() {
+    box.hidden = true;
+    box.replaceChildren();
+    input.setAttribute('aria-expanded', 'false');
+    voci = []; attiva = -1;
+  }
+
+  // Evidenzia il pezzo digitato senza mai passare da innerHTML:
+  // i nomi dei conti sono dati inseriti dagli utenti.
+  function nomeEvidenziato(nome, q) {
+    const el = document.createElement('div');
+    el.className = 'nome';
+    const i = nome.toLowerCase().indexOf(q.toLowerCase());
+    if (i < 0) {
+      el.textContent = nome;
+      return el;
+    }
+    el.appendChild(document.createTextNode(nome.slice(0, i)));
+    const m = document.createElement('mark');
+    m.textContent = nome.slice(i, i + q.length);
+    el.appendChild(m);
+    el.appendChild(document.createTextNode(nome.slice(i + q.length)));
+    return el;
+  }
+
+  function disegna(results, q) {
+    box.replaceChildren();
+    if (!results.length) {
+      const v = document.createElement('div');
+      v.className = 'vuoto';
+      v.textContent = 'Nessun conto corrisponde a “' + q + '”';
+      box.appendChild(v);
+      box.hidden = false;
+      input.setAttribute('aria-expanded', 'true');
+      voci = []; attiva = -1;
+      return;
+    }
+
+    voci = results.map(function (r) {
+      const voce = document.createElement('div');
+      voce.className = 'voce';
+      voce.setAttribute('role', 'option');
+
+      const sx = document.createElement('div');
+      sx.appendChild(nomeEvidenziato(r.nome, q));
+      if (r.iban) {
+        const iban = document.createElement('div');
+        iban.className = 'meta';
+        iban.textContent = r.iban;
+        sx.appendChild(iban);
+      }
+
+      const dx = document.createElement('div');
+      dx.className = 'meta text-end';
+      dx.textContent = r.attivo ? r.tipo : r.tipo + ' · disattivo';
+
+      voce.append(sx, dx);
+      voce.addEventListener('mousedown', function (e) {
+        e.preventDefault();   // il blur non deve chiudere prima del click
+        scegli(r);
+      });
+      box.appendChild(voce);
+      return voce;
+    });
+
+    attiva = -1;
+    box.hidden = false;
+    input.setAttribute('aria-expanded', 'true');
+  }
+
+  function evidenzia(i) {
+    voci.forEach(function (v, k) { v.classList.toggle('attiva', k === i); });
+    if (voci[i] && voci[i].scrollIntoView) voci[i].scrollIntoView({ block: 'nearest' });
+    attiva = i;
+  }
+
+  function scegli(r) {
+    input.value = r.nome;
+    chiudi();
+    form.submit();
+  }
+
+  function cerca() {
+    const q = input.value.trim();
+    if (q.length < MIN) { chiudi(); return; }
+
+    if (controller) controller.abort();
+    controller = new AbortController();
+
+    const p = new URLSearchParams({
+      q:     q,
+      tipo:  form.elements.tipo.value,
+      stato: form.elements.stato.value,
+    });
+    fetch(URL_S + '?' + p.toString(), {
+      signal: controller.signal,
+      headers: { 'X-Requested-With': 'XMLHttpRequest' },
+    })
+      .then(function (r) { return r.ok ? r.json() : { results: [] }; })
+      .then(function (d) { disegna(d.results || [], q); })
+      .catch(function (e) { if (e.name !== 'AbortError') chiudi(); });
+  }
+
+  input.addEventListener('input', function () {
+    clearTimeout(timer);
+    timer = setTimeout(cerca, 200);
+  });
+
+  input.addEventListener('keydown', function (e) {
+    if (box.hidden || !voci.length) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault(); evidenzia((attiva + 1) % voci.length);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault(); evidenzia((attiva - 1 + voci.length) % voci.length);
+    } else if (e.key === 'Enter' && attiva >= 0) {
+      e.preventDefault(); voci[attiva].dispatchEvent(new MouseEvent('mousedown'));
+    } else if (e.key === 'Escape') {
+      chiudi();
+    }
+  });
+
+  input.addEventListener('blur', function () { setTimeout(chiudi, 120); });
+  // Cambiando i filtri i suggerimenti vanno rifatti con i nuovi criteri.
+  ['tipo', 'stato'].forEach(function (n) {
+    form.elements[n].addEventListener('change', function () {
+      if (input.value.trim().length >= MIN) cerca();
+    });
+  });
+})();
+</script>
 {% endblock %}
