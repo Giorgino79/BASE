@@ -208,11 +208,8 @@ class CostiStabilimentoForm(BootstrapMixin, forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.user = user
         self.fields["stabilimento"].queryset = Stabilimento.objects.attivi().order_by("nome")
-        try:
-            from anagrafica.models import Fornitore
-            self.fields["fornitore"].queryset = Fornitore.objects.filter(attivo=True).order_by("ragione_sociale")
-        except Exception:
-            pass
+        from anagrafica_r2.models import Fornitore
+        self.fields["fornitore"].queryset = Fornitore.objects.filter(attivo=True).order_by("ragione_sociale")
         if stabilimento and not self.instance.pk:
             self.fields["stabilimento"].initial = stabilimento
         for f in ["data_inizio_lavori", "data_fine_lavori", "data_fattura",
