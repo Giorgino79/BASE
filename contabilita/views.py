@@ -72,37 +72,48 @@ def dashboard(request):
 
 @login_required
 def prima_nota_list(request):
-    qs = (MovimentoPrimaNota.objects
-          .select_related('conto_dare', 'conto_avere', 'creato_da',
-                          'fattura_attiva', 'fattura_passiva')
-          .order_by('-data', '-created_at'))
-
+    """
+    Ricerca sui movimenti: senza filtri non viene mostrato alcun dato, la
+    tabella compare solo dopo una ricerca.
+    """
     tipo_f    = request.GET.get('tipo', '').strip()
     data_da   = request.GET.get('data_da', '').strip()
     data_a    = request.GET.get('data_a', '').strip()
     conto_f   = request.GET.get('conto', '').strip()
 
-    if tipo_f:
-        qs = qs.filter(tipo=tipo_f)
-    if data_da:
-        qs = qs.filter(data__gte=data_da)
-    if data_a:
-        qs = qs.filter(data__lte=data_a)
-    if conto_f:
-        qs = qs.filter(Q(conto_dare_id=conto_f) | Q(conto_avere_id=conto_f))
+    ricerca_eseguita = bool(tipo_f or data_da or data_a or conto_f)
+    movimenti   = []
+    tot_importo = Decimal('0.00')
 
-    tot_importo = qs.aggregate(tot=Sum('importo'))['tot'] or Decimal('0.00')
+    if ricerca_eseguita:
+        qs = (MovimentoPrimaNota.objects
+              .select_related('conto_dare', 'conto_avere', 'creato_da',
+                              'fattura_attiva', 'fattura_passiva')
+              .order_by('-data', '-created_at'))
+
+        if tipo_f:
+            qs = qs.filter(tipo=tipo_f)
+        if data_da:
+            qs = qs.filter(data__gte=data_da)
+        if data_a:
+            qs = qs.filter(data__lte=data_a)
+        if conto_f:
+            qs = qs.filter(Q(conto_dare_id=conto_f) | Q(conto_avere_id=conto_f))
+
+        tot_importo = qs.aggregate(tot=Sum('importo'))['tot'] or Decimal('0.00')
+        movimenti   = qs
 
     ctx = {
-        'page_title':  'Prima Nota',
-        'movimenti':   qs,
-        'tot_importo': tot_importo,
-        'tipi':        MovimentoPrimaNota.Tipo.choices,
-        'conti':       ContoContabile.objects.filter(attivo=True).order_by('tipo', 'nome'),
-        'tipo_f':      tipo_f,
-        'data_da':     data_da,
-        'data_a':      data_a,
-        'conto_f':     conto_f,
+        'page_title':       'Prima Nota',
+        'movimenti':        movimenti,
+        'tot_importo':      tot_importo,
+        'ricerca_eseguita': ricerca_eseguita,
+        'tipi':             MovimentoPrimaNota.Tipo.choices,
+        'conti':            ContoContabile.objects.filter(attivo=True).order_by('tipo', 'nome'),
+        'tipo_f':           tipo_f,
+        'data_da':          data_da,
+        'data_a':           data_a,
+        'conto_f':          conto_f,
     }
     return render(request, 'contabilita/prima_nota_list.html', ctx)
 
