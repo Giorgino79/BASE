@@ -13,7 +13,12 @@
       </ol>
     </nav>
     <h1><i class="bi bi-diagram-3 me-2 text-brand"></i>{{ conto.nome }}</h1>
-    <p class="text-muted mb-0">{{ conto.get_tipo_display }}</p>
+    <p class="text-muted mb-0">
+      {{ conto.get_tipo_display }} — {{ n_movimenti }} movimento{{ n_movimenti|pluralize:",i" }}
+      {% if page_obj.paginator.num_pages > 1 %}
+      · pagina {{ page_obj.number }} di {{ page_obj.paginator.num_pages }}
+      {% endif %}
+    </p>
   </div>
 </div>
 
@@ -22,7 +27,7 @@
     <div class="card text-center h-100">
       <div class="card-body py-3">
         <div class="text-muted small mb-1">Totale Dare</div>
-        <div class="fw-bold fs-4">€ {{ tot_dare }}</div>
+        <div class="fw-bold fs-4">€ {{ tot_dare|floatformat:2 }}</div>
       </div>
     </div>
   </div>
@@ -30,7 +35,7 @@
     <div class="card text-center h-100">
       <div class="card-body py-3">
         <div class="text-muted small mb-1">Totale Avere</div>
-        <div class="fw-bold fs-4">€ {{ tot_avere }}</div>
+        <div class="fw-bold fs-4">€ {{ tot_avere|floatformat:2 }}</div>
       </div>
     </div>
   </div>
@@ -38,7 +43,7 @@
     <div class="card text-center h-100 border-primary">
       <div class="card-body py-3">
         <div class="text-muted small mb-1">Saldo</div>
-        <div class="fw-bold fs-4 text-brand">€ {{ saldo }}</div>
+        <div class="fw-bold fs-4 text-brand">€ {{ saldo|floatformat:2 }}</div>
       </div>
     </div>
   </div>
@@ -77,13 +82,25 @@
         </tr>
       </thead>
       <tbody>
+        {% if page_obj.number > 1 %}
+        {# Il progressivo riparte da qui, non da zero: senza il riporto le
+           pagine dalla seconda in poi mostrerebbero saldi sbagliati. #}
+        <tr class="table-light">
+          <td colspan="4" class="text-end fst-italic small">
+            Saldo riportato dalle pagine precedenti
+          </td>
+          <td class="text-end fw-semibold">€ {{ saldo_apertura|floatformat:2 }}</td>
+          <td></td>
+        </tr>
+        {% endif %}
+
         {% for m in movimenti %}
         <tr>
           <td class="text-nowrap small">{{ m.data|date:"d/m/Y" }}</td>
           <td>{{ m.causale }}</td>
-          <td class="text-end">{% if m.lato == 'dare' %}€ {{ m.valore }}{% else %}—{% endif %}</td>
-          <td class="text-end">{% if m.lato == 'avere' %}€ {{ m.valore }}{% else %}—{% endif %}</td>
-          <td class="text-end fw-semibold">€ {{ m.saldo_progressivo }}</td>
+          <td class="text-end">{% if m.lato == 'dare' %}€ {{ m.valore|floatformat:2 }}{% else %}—{% endif %}</td>
+          <td class="text-end">{% if m.lato == 'avere' %}€ {{ m.valore|floatformat:2 }}{% else %}—{% endif %}</td>
+          <td class="text-end fw-semibold">€ {{ m.saldo_progressivo|floatformat:2 }}</td>
           <td class="text-end">
             <a href="{% url 'contabilita:movimento_detail' m.pk %}" class="btn btn-outline-secondary btn-sm">
               <i class="bi bi-eye"></i>
@@ -94,7 +111,30 @@
         <tr><td colspan="6" class="text-center text-muted py-3"><i class="bi bi-inbox me-2"></i>Nessun movimento su questo conto</td></tr>
         {% endfor %}
       </tbody>
+
+      {% if movimenti %}
+      <tfoot class="table-light">
+        {% if page_obj.paginator.num_pages > 1 %}
+        <tr>
+          <td colspan="4" class="text-end small">Saldo a fine pagina</td>
+          <td class="text-end fw-semibold">€ {{ saldo_chiusura|floatformat:2 }}</td>
+          <td></td>
+        </tr>
+        {% endif %}
+        <tr>
+          <td colspan="2" class="text-end fw-semibold">
+            Totali del periodo{% if page_obj.paginator.num_pages > 1 %} (tutte le pagine){% endif %}
+          </td>
+          <td class="text-end fw-bold">€ {{ tot_dare|floatformat:2 }}</td>
+          <td class="text-end fw-bold">€ {{ tot_avere|floatformat:2 }}</td>
+          <td class="text-end fw-bold text-brand">€ {{ saldo|floatformat:2 }}</td>
+          <td></td>
+        </tr>
+      </tfoot>
+      {% endif %}
     </table>
   </div>
 </div>
+
+{% include 'commons_templates/components/paginazione.html' %}
 {% endblock %}

@@ -223,6 +223,21 @@ def movimento_delete(request, pk):
 # MASTRINO — per singolo conto
 # ─────────────────────────────────────────────────────────────────────────────
 
+MOVIMENTI_MASTRINO_PER_PAGINA = 50
+
+
+def _dare_avere(qs, conto):
+    """Totale dare e totale avere di un conto su un insieme di movimenti."""
+    agg = qs.aggregate(
+        tot_dare=Sum(Case(When(conto_dare=conto, then='importo'),
+                          default=0, output_field=DField())),
+        tot_avere=Sum(Case(When(conto_avere=conto, then='importo'),
+                           default=0, output_field=DField())),
+    )
+    return (agg['tot_dare'] or Decimal('0.00'),
+            agg['tot_avere'] or Decimal('0.00'))
+
+
 @login_required
 def mastrino(request, pk):
     conto = get_object_or_404(ContoContabile, pk=pk)
@@ -230,19 +245,36 @@ def mastrino(request, pk):
     data_da = request.GET.get('data_da', '').strip()
     data_a  = request.GET.get('data_a', '').strip()
 
+    # `pk` in coda all'ordinamento: data e created_at possono coincidere (es.
+    # movimenti creati nella stessa transazione) e senza un criterio univoco
+    # la paginazione può ripetere o saltare righe.
     qs = (MovimentoPrimaNota.objects
           .filter(Q(conto_dare=conto) | Q(conto_avere=conto))
           .select_related('conto_dare', 'conto_avere', 'creato_da')
-          .order_by('data', 'created_at'))
+          .order_by('data', 'created_at', 'pk'))
 
     if data_da:
         qs = qs.filter(data__gte=data_da)
     if data_a:
         qs = qs.filter(data__lte=data_a)
 
-    # Saldo progressivo
-    movimenti = list(qs)
-    saldo = Decimal('0.00')
+    paginator = Paginator(qs, MOVIMENTI_MASTRINO_PER_PAGINA)
+    page_obj  = paginator.get_page(request.GET.get('page'))
+
+    # Saldo di apertura: dare - avere dei movimenti che precedono questa pagina
+    # nello stesso ordinamento, così il progressivo resta corretto anche
+    # dalla seconda pagina in poi. L'aggregate sul queryset affettato diventa
+    # una subquery con LIMIT: non materializza le righe precedenti.
+    precedenti = page_obj.start_index() - 1 if paginator.count else 0
+    if precedenti > 0:
+        ap_dare, ap_avere = _dare_avere(qs[:precedenti], conto)
+        saldo_apertura = ap_dare - ap_avere
+    else:
+        saldo_apertura = Decimal('0.00')
+
+    # Saldo progressivo sulle righe della pagina
+    saldo     = saldo_apertura
+    movimenti = list(page_obj.object_list)
     for m in movimenti:
         if m.conto_dare_id == conto.pk:
             m.lato   = 'dare'
@@ -254,24 +286,22 @@ def mastrino(request, pk):
             saldo   -= m.importo
         m.saldo_progressivo = saldo
 
-    agg = qs.aggregate(
-        tot_dare=Sum(Case(When(conto_dare=conto, then='importo'),
-                          default=0, output_field=DField())),
-        tot_avere=Sum(Case(When(conto_avere=conto, then='importo'),
-                           default=0, output_field=DField())),
-    )
-    tot_dare  = agg['tot_dare']  or Decimal('0.00')
-    tot_avere = agg['tot_avere'] or Decimal('0.00')
+    # Totali su tutto il periodo filtrato, non sulla singola pagina
+    tot_dare, tot_avere = _dare_avere(qs, conto)
 
     ctx = {
-        'page_title': f'Mastrino — {conto.nome}',
-        'conto':      conto,
-        'movimenti':  movimenti,
-        'tot_dare':   tot_dare,
-        'tot_avere':  tot_avere,
-        'saldo':      tot_dare - tot_avere,
-        'data_da':    data_da,
-        'data_a':     data_a,
+        'page_title':     f'Mastrino — {conto.nome}',
+        'conto':          conto,
+        'movimenti':      movimenti,
+        'page_obj':       page_obj,
+        'n_movimenti':    paginator.count,
+        'saldo_apertura': saldo_apertura,
+        'saldo_chiusura': saldo,
+        'tot_dare':       tot_dare,
+        'tot_avere':      tot_avere,
+        'saldo':          tot_dare - tot_avere,
+        'data_da':        data_da,
+        'data_a':         data_a,
     }
     return render(request, 'contabilita/mastrino.html', ctx)
 
