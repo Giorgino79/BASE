@@ -1,0 +1,72 @@
+{% comment %}
+Paginazione riutilizzabile.
+
+Richiede nel contesto:
+  page_obj — la Page di un django.core.paginator.Paginator
+
+I filtri correnti vengono conservati dal tag {% querystring %} (Django 5.1+),
+che riscrive la query string sostituendo solo `page`: non serve elencare a mano
+i parametri come fanno le liste più vecchie.
+
+Usage:
+  {% include 'commons_templates/components/paginazione.html' %}
+{% endcomment %}
+
+{% if page_obj.paginator.num_pages > 1 %}
+<nav class="d-flex justify-content-between align-items-center flex-wrap gap-2 mt-3"
+     aria-label="Paginazione risultati">
+
+  <span class="text-muted small">
+    {{ page_obj.start_index }}–{{ page_obj.end_index }} di {{ page_obj.paginator.count }}
+  </span>
+
+  <ul class="pagination pagination-sm mb-0">
+    {# Prima pagina / precedente #}
+    {% if page_obj.has_previous %}
+    <li class="page-item">
+      <a class="page-link" href="?{% querystring page=1 %}" title="Prima pagina">
+        <i class="bi bi-chevron-double-left"></i>
+      </a>
+    </li>
+    <li class="page-item">
+      <a class="page-link" href="?{% querystring page=page_obj.previous_page_number %}" title="Precedente">
+        <i class="bi bi-chevron-left"></i>
+      </a>
+    </li>
+    {% else %}
+    <li class="page-item disabled"><span class="page-link"><i class="bi bi-chevron-double-left"></i></span></li>
+    <li class="page-item disabled"><span class="page-link"><i class="bi bi-chevron-left"></i></span></li>
+    {% endif %}
+
+    {# Finestra di pagine attorno a quella corrente #}
+    {% for num in page_obj.paginator.page_range %}
+      {% if num == page_obj.number %}
+      <li class="page-item active" aria-current="page"><span class="page-link">{{ num }}</span></li>
+      {% elif num > page_obj.number|add:"-3" and num < page_obj.number|add:"3" %}
+      <li class="page-item"><a class="page-link" href="?{% querystring page=num %}">{{ num }}</a></li>
+      {% elif num == 1 or num == page_obj.paginator.num_pages %}
+      <li class="page-item"><a class="page-link" href="?{% querystring page=num %}">{{ num }}</a></li>
+      {% elif num == page_obj.number|add:"-3" or num == page_obj.number|add:"3" %}
+      <li class="page-item disabled"><span class="page-link">…</span></li>
+      {% endif %}
+    {% endfor %}
+
+    {# Successiva / ultima pagina #}
+    {% if page_obj.has_next %}
+    <li class="page-item">
+      <a class="page-link" href="?{% querystring page=page_obj.next_page_number %}" title="Successiva">
+        <i class="bi bi-chevron-right"></i>
+      </a>
+    </li>
+    <li class="page-item">
+      <a class="page-link" href="?{% querystring page=page_obj.paginator.num_pages %}" title="Ultima pagina">
+        <i class="bi bi-chevron-double-right"></i>
+      </a>
+    </li>
+    {% else %}
+    <li class="page-item disabled"><span class="page-link"><i class="bi bi-chevron-right"></i></span></li>
+    <li class="page-item disabled"><span class="page-link"><i class="bi bi-chevron-double-right"></i></span></li>
+    {% endif %}
+  </ul>
+</nav>
+{% endif %}

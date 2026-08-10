@@ -14,8 +14,11 @@
     <h1><i class="bi bi-journal-richtext me-2 text-brand"></i>Prima Nota</h1>
     {% if ricerca_eseguita %}
     <p class="text-muted mb-0">
-      {{ movimenti|length }} movimento{{ movimenti|length|pluralize:",i" }} —
+      {{ n_movimenti }} movimento{{ n_movimenti|pluralize:",i" }} —
       totale € {{ tot_importo|floatformat:2 }}
+      {% if page_obj.paginator.num_pages > 1 %}
+      <span class="ms-1">· pagina {{ page_obj.number }} di {{ page_obj.paginator.num_pages }}</span>
+      {% endif %}
     </p>
     {% else %}
     <p class="text-muted mb-0">Imposta un filtro per consultare i movimenti</p>
@@ -102,15 +105,30 @@
           {% endfor %}
         </tbody>
         <tfoot class="table-light">
+          {% if page_obj.paginator.num_pages > 1 %}
+          <tr>
+            <td colspan="5" class="text-end small">Totale di questa pagina</td>
+            <td class="text-end fw-semibold">€ {{ tot_pagina|floatformat:2 }}</td>
+            <td></td>
+          </tr>
+          <tr>
+            <td colspan="5" class="text-end fw-semibold">Totale filtrato ({{ n_movimenti }} movimenti)</td>
+            <td class="text-end fw-bold text-brand">€ {{ tot_importo|floatformat:2 }}</td>
+            <td></td>
+          </tr>
+          {% else %}
           <tr>
             <td colspan="5" class="text-end fw-semibold">Totale</td>
             <td class="text-end fw-bold text-brand">€ {{ tot_importo|floatformat:2 }}</td>
             <td></td>
           </tr>
+          {% endif %}
         </tfoot>
       </table>
     </div>
   </div>
+
+  {% include 'commons_templates/components/paginazione.html' %}
   {% else %}
   <div class="alert alert-info">
     <i class="bi bi-info-circle me-2"></i>Nessun movimento trovato per i filtri indicati.

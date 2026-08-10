@@ -3,6 +3,7 @@ from decimal import Decimal
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.core.paginator import Paginator
 from django.db.models import (
     Case, DecimalField as DField, OuterRef, Q, Subquery, Sum, Value, When,
 )
@@ -70,6 +71,9 @@ def dashboard(request):
 # PRIMA NOTA — lista
 # ─────────────────────────────────────────────────────────────────────────────
 
+MOVIMENTI_PER_PAGINA = 50
+
+
 @login_required
 def prima_nota_list(request):
     """
@@ -82,8 +86,11 @@ def prima_nota_list(request):
     conto_f   = request.GET.get('conto', '').strip()
 
     ricerca_eseguita = bool(tipo_f or data_da or data_a or conto_f)
-    movimenti   = []
-    tot_importo = Decimal('0.00')
+    movimenti    = []
+    page_obj     = None
+    n_movimenti  = 0
+    tot_importo  = Decimal('0.00')
+    tot_pagina   = Decimal('0.00')
 
     if ricerca_eseguita:
         qs = (MovimentoPrimaNota.objects
@@ -100,13 +107,22 @@ def prima_nota_list(request):
         if conto_f:
             qs = qs.filter(Q(conto_dare_id=conto_f) | Q(conto_avere_id=conto_f))
 
+        # Il totale è su tutti i movimenti filtrati, non solo sulla pagina.
         tot_importo = qs.aggregate(tot=Sum('importo'))['tot'] or Decimal('0.00')
-        movimenti   = qs
+
+        paginator   = Paginator(qs, MOVIMENTI_PER_PAGINA)
+        page_obj    = paginator.get_page(request.GET.get('page'))
+        movimenti   = page_obj.object_list
+        n_movimenti = paginator.count
+        tot_pagina  = sum((m.importo for m in movimenti), Decimal('0.00'))
 
     ctx = {
         'page_title':       'Prima Nota',
         'movimenti':        movimenti,
+        'page_obj':         page_obj,
+        'n_movimenti':      n_movimenti,
         'tot_importo':      tot_importo,
+        'tot_pagina':       tot_pagina,
         'ricerca_eseguita': ricerca_eseguita,
         'tipi':             MovimentoPrimaNota.Tipo.choices,
         'conti':            ContoContabile.objects.filter(attivo=True).order_by('tipo', 'nome'),
