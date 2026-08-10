@@ -65,10 +65,7 @@ I valori vengono iniettati da JS tramite dataset sul modal stesso.
         </template>
       </div>
       <div class="modal-footer justify-content-between">
-        <button type="button" class="btn btn-primary btn-sm"
-                data-bs-dismiss="modal"
-                data-bs-toggle="modal"
-                data-bs-target="#allegatoUploadModal">
+        <button type="button" class="btn btn-primary btn-sm" id="allegati-gestione-upload-btn">
           <i class="bi bi-upload me-1"></i>Carica nuovo
         </button>
         <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Chiudi</button>
@@ -204,9 +201,40 @@ I valori vengono iniettati da JS tramite dataset sul modal stesso.
 
   gestioneModal.addEventListener('show.bs.modal', loadAllegati);
 
+  // "Carica nuovo": la modale di upload legge content_type e object_id dal
+  // proprio dataset, e Bootstrap da solo non li propaga da una modale
+  // all'altra — senza questa copia l'upload fallisce con "Parametri mancanti".
+  const uploadModal = document.getElementById('allegatoUploadModal');
+  const apriUpload  = document.getElementById('allegati-gestione-upload-btn');
+  let riapriDopoUpload = false;
+
+  if (apriUpload && uploadModal) {
+    apriUpload.addEventListener('click', function () {
+      uploadModal.dataset.contentTypeId = gestioneModal.dataset.contentTypeId || '';
+      uploadModal.dataset.objectId      = gestioneModal.dataset.objectId || '';
+      riapriDopoUpload = true;
+
+      // Una modale per volta: si apre l'upload solo a gestione chiusa.
+      gestioneModal.addEventListener('hidden.bs.modal', function apri() {
+        gestioneModal.removeEventListener('hidden.bs.modal', apri);
+        bootstrap.Modal.getOrCreateInstance(uploadModal).show();
+      });
+      bootstrap.Modal.getOrCreateInstance(gestioneModal).hide();
+    });
+  }
+
   // Ricarica dopo un upload
   document.addEventListener('allegatoUploaded', function () {
-    if (gestioneModal.classList.contains('show')) loadAllegati();
+    if (gestioneModal.classList.contains('show')) {
+      loadAllegati();
+    } else if (riapriDopoUpload && uploadModal) {
+      // Torna all'elenco quando la modale di upload si richiude da sola.
+      riapriDopoUpload = false;
+      uploadModal.addEventListener('hidden.bs.modal', function riapri() {
+        uploadModal.removeEventListener('hidden.bs.modal', riapri);
+        bootstrap.Modal.getOrCreateInstance(gestioneModal).show();
+      });
+    }
   });
 })();
 </script>
