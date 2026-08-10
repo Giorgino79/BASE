@@ -20,6 +20,20 @@ def descrivi_passiva(f):
     return f'FP {f.numero_fattura} — {f.fornitore}'
 
 
+def fatture_da_incassare():
+    """
+    Fatture attive ancora aperte: emesse e non ancora coperte da incassi.
+    Sono le sole selezionabili quando si registra un incasso.
+    """
+    from django.db.models import F
+
+    from fatturazione_attiva.models import Fattura
+
+    return (Fattura.objects
+            .filter(stato=Fattura.Stato.EMESSA, importo_incassato__lt=F('totale'))
+            .order_by('data_emissione', 'numero'))
+
+
 def dettaglio(mov):
     """
     Dati completi del documento collegato a un movimento, normalizzati fra

@@ -4,6 +4,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.paginator import Paginator
+from django.db import transaction
 from django.db.models import (
     Case, DecimalField as DField, OuterRef, Q, Subquery, Sum, Value, When,
 )
@@ -11,13 +12,17 @@ from django.db.models.functions import Coalesce
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils import timezone
 from django.views.generic import DetailView
 
 from core.mixins import PrintDetailMixin, SidebarQrAllegatiMixin
 
 from . import documenti
-from .forms import ContoContabileForm, MovimentoPrimaNotaForm
+from .forms import (
+    ContoContabileForm, MovimentoPrimaNotaForm, RegistrazioneIncassoForm,
+)
 from .models import ContoContabile, MovimentoPrimaNota
+from .signals import _get_or_create_conto
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -174,6 +179,72 @@ def movimento_create(request):
         },
     }
     return render(request, 'contabilita/movimento_form.html', ctx)
+
+
+@login_required
+def incasso_create(request):
+    """
+    Registra un movimento bancario che incassa una o più fatture attive.
+
+    È l'unico punto da cui una fattura passa a 'pagata': per ogni fattura
+    selezionata nasce un movimento di prima nota (Dare conto banca/cassa,
+    Avere conto cliente) e la fattura accumula l'incasso. Chi paga tre fatture
+    con un bonifico solo genera tre movimenti, uno per documento, coerente con
+    la regola "un movimento, un documento".
+    """
+    form = RegistrazioneIncassoForm(request.POST or None, initial={
+        'data': timezone.localdate(),
+    })
+
+    if request.method == 'POST' and form.is_valid():
+        conto   = form.cleaned_data['conto']
+        data    = form.cleaned_data['data']
+        note    = form.cleaned_data['note']
+        creati  = []
+        saldate = []
+
+        with transaction.atomic():
+            for fattura, quota in form.ripartizione.items():
+                conto_cliente = _get_or_create_conto(
+                    ContoContabile.Tipo.CLIENTE, fattura.dest_nome,
+                )
+                parziale = quota < fattura.residuo
+                MovimentoPrimaNota.objects.create(
+                    data=data,
+                    causale=(
+                        f'Incasso {"parziale " if parziale else ""}fattura '
+                        f'{fattura.numero} — {fattura.dest_nome}'
+                    ),
+                    importo=quota,
+                    tipo=MovimentoPrimaNota.Tipo.INCASSO,
+                    conto_dare=conto,
+                    conto_avere=conto_cliente,
+                    numero_documento=fattura.numero,
+                    fattura_attiva=fattura,
+                    note=note,
+                    creato_da=request.user,
+                )
+                fattura.registra_incasso(quota, data)
+                creati.append(fattura.numero)
+                if fattura.is_saldata:
+                    saldate.append(fattura.numero)
+
+        messaggio = (
+            f'Incasso registrato su {conto.nome}: '
+            f'{len(creati)} moviment{"o" if len(creati) == 1 else "i"} in prima nota.'
+        )
+        if saldate:
+            messaggio += f' Fatture saldate: {", ".join(saldate)}.'
+        aperte = [n for n in creati if n not in saldate]
+        if aperte:
+            messaggio += f' Ancora aperte (incasso parziale): {", ".join(aperte)}.'
+        messages.success(request, messaggio)
+        return redirect(reverse('contabilita:prima_nota_list') + '?tipo=incasso')
+
+    return render(request, 'contabilita/incasso_form.html', {
+        'page_title': 'Registra incasso',
+        'form':       form,
+    })
 
 
 class MovimentoDetailView(LoginRequiredMixin, SidebarQrAllegatiMixin,

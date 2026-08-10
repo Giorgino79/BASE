@@ -98,8 +98,21 @@
             </tr>
             <tr>
               <td colspan="3" class="text-end fw-bold fs-5">Totale</td>
-              <td class="text-end fw-bold fs-5" style="color:var(--color-1)">€ {{ fattura.totale }}</td>
+              <td class="text-end fw-bold fs-5" style="color:var(--color-1)">€ {{ fattura.totale|floatformat:2 }}</td>
             </tr>
+            {% if fattura.importo_incassato %}
+            {# Stato dell'incasso: cresce con i movimenti registrati in prima nota #}
+            <tr>
+              <td colspan="3" class="text-end small text-muted">Incassato</td>
+              <td class="text-end small">€ {{ fattura.importo_incassato|floatformat:2 }}</td>
+            </tr>
+            <tr>
+              <td colspan="3" class="text-end small fw-semibold">Residuo da incassare</td>
+              <td class="text-end fw-semibold {% if fattura.residuo %}text-warning{% else %}text-success{% endif %}">
+                € {{ fattura.residuo|floatformat:2 }}
+              </td>
+            </tr>
+            {% endif %}
           </tfoot>
         </table>
       </div>
@@ -175,16 +188,12 @@
           <i class="bi bi-envelope me-2" style="color:var(--color-1);"></i>Genera sollecito
         </button>
 
-        {# Segna pagata #}
-        <form method="post" action="{% url 'fatturazione_attiva:fattura_pagata' fattura.pk %}">
-          {% csrf_token %}
-          <button type="submit"
-                  class="list-group-item list-group-item-action py-2 w-100 text-start border-0"
-                  style="color:var(--slate-700);"
-                  onclick="return confirm('Segnare {{ fattura.numero }} come pagata?')">
-            <i class="bi bi-check-circle me-2" style="color:#198754;"></i>Segna pagata
-          </button>
-        </form>
+        {# Lo stato passa a 'pagata' solo registrando l'incasso in prima nota #}
+        <a href="{% url 'contabilita:incasso_create' %}"
+           class="list-group-item list-group-item-action py-2 text-start border-0"
+           style="color:var(--slate-700);">
+          <i class="bi bi-bank me-2" style="color:#198754;"></i>Registra incasso
+        </a>
         {% endif %}
 
         {# Emetti Nota Credito #}

@@ -30,7 +30,12 @@
     <div class="card text-center border-warning">
       <div class="card-body py-3">
         <div class="text-muted small mb-1">Totale da incassare</div>
-        <div class="fw-bold fs-2 text-warning">€ {{ totale }}</div>
+        <div class="fw-bold fs-2 text-warning">€ {{ totale|floatformat:2 }}</div>
+        {% if n_parziali %}
+        <div class="text-muted small mt-1">
+          {{ n_parziali }} già incassata{{ n_parziali|pluralize:",e" }} in parte
+        </div>
+        {% endif %}
       </div>
     </div>
   </div>
@@ -49,6 +54,7 @@
           <th>Data emissione</th>
           <th>Destinatario</th>
           <th class="text-end">Totale</th>
+          <th class="text-end">Residuo</th>
           <th class="text-center">Giorni attesa</th>
           <th class="text-center">Ultimo sollecito</th>
           <th class="text-end">Azioni</th>
@@ -63,7 +69,15 @@
             <div class="fw-semibold small">{{ f.dest_nome }}</div>
             {% if f.dest_pec %}<div class="text-muted small">{{ f.dest_pec }}</div>{% endif %}
           </td>
-          <td class="text-end fw-semibold">€ {{ f.totale }}</td>
+          <td class="text-end text-muted">€ {{ f.totale|floatformat:2 }}</td>
+          <td class="text-end fw-semibold">
+            € {{ f.residuo|floatformat:2 }}
+            {% if f.is_parzialmente_incassata %}
+            <div class="badge bg-warning text-dark" style="font-size:.65rem;">
+              incassata in parte
+            </div>
+            {% endif %}
+          </td>
           <td class="text-center">
             <span class="badge {% if f.giorni_attesa > 60 %}bg-danger{% elif f.giorni_attesa > 30 %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
               {{ f.giorni_attesa }} gg
@@ -85,13 +99,10 @@
                       data-numero="{{ f.numero }}">
                 <i class="bi bi-envelope"></i>
               </button>
-              <form method="post" action="{% url 'fatturazione_attiva:fattura_pagata' f.pk %}">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-success btn-sm" title="Segna pagata"
-                        onclick="return confirm('Segnare {{ f.numero }} come pagata?')">
-                  <i class="bi bi-check-circle"></i>
-                </button>
-              </form>
+              <a href="{% url 'contabilita:incasso_create' %}" class="btn btn-success btn-sm"
+                 title="Registra l'incasso in prima nota">
+                <i class="bi bi-bank"></i>
+              </a>
             </div>
           </td>
         </tr>
@@ -100,7 +111,8 @@
       <tfoot class="table-light fw-semibold">
         <tr>
           <td colspan="3" class="text-end">Totale</td>
-          <td class="text-end text-warning">€ {{ totale }}</td>
+          <td class="text-end text-muted">€ {{ totale_fatturato|floatformat:2 }}</td>
+          <td class="text-end text-warning">€ {{ totale|floatformat:2 }}</td>
           <td colspan="3"></td>
         </tr>
       </tfoot>

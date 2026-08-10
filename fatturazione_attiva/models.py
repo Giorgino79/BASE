@@ -62,6 +62,13 @@ class Fattura(models.Model):
     importo_iva    = models.DecimalField(max_digits=12, decimal_places=2, verbose_name='IVA')
     totale         = models.DecimalField(max_digits=12, decimal_places=2, verbose_name='Totale')
 
+    # Quanto è stato incassato finora. Cresce a ogni incasso registrato in
+    # prima nota; la fattura passa a 'pagata' solo quando copre il totale.
+    importo_incassato = models.DecimalField(
+        max_digits=12, decimal_places=2, default=Decimal('0.00'),
+        verbose_name='Importo incassato',
+    )
+
     # Note e condizioni
     note_pagamento = models.TextField(blank=True, verbose_name='Condizioni di pagamento')
     note           = models.TextField(blank=True, verbose_name='Note')
@@ -100,6 +107,34 @@ class Fattura(models.Model):
     def giorni_attesa(self):
         from django.utils import timezone
         return (timezone.localdate() - self.data_emissione).days
+
+    @property
+    def residuo(self):
+        """Quanto resta da incassare. Mai negativo."""
+        return max(self.totale - self.importo_incassato, Decimal('0.00'))
+
+    @property
+    def is_saldata(self):
+        return self.importo_incassato >= self.totale
+
+    @property
+    def is_parzialmente_incassata(self):
+        return Decimal('0.00') < self.importo_incassato < self.totale
+
+    def registra_incasso(self, importo, data):
+        """
+        Somma un incasso all'importo già incassato e, se la fattura risulta
+        coperta, la porta a 'pagata'. Non crea il movimento di prima nota:
+        lo fa il chiamante, che è l'unico punto da cui lo stato può cambiare
+        (vedi contabilita.views.incasso_create).
+        """
+        self.importo_incassato = (self.importo_incassato or Decimal('0.00')) + importo
+        campi = ['importo_incassato', 'updated_at']
+        if self.is_saldata and self.stato == self.Stato.EMESSA:
+            self.stato = self.Stato.PAGATA
+            self.data_pagamento = data
+            campi += ['stato', 'data_pagamento']
+        self.save(update_fields=campi)
 
     def get_sollecito(self):
         """Restituisce soggetto e corpo standardizzati per il sollecito di pagamento."""

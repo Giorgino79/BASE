@@ -20,6 +20,12 @@ class ContabilitaConfig(AppConfig):
                     "icon":  "bi-journal-text",
                     "active_app": "contabilita",
                 },
+                {
+                    "label": "Registra incasso",
+                    "url":   "contabilita:incasso_create",
+                    "icon":  "bi-bank",
+                    "active_app": "contabilita",
+                },
             ],
             order=40,
         )

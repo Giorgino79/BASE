@@ -6,7 +6,7 @@ from decimal import Decimal, ROUND_HALF_UP
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.conf import settings as django_settings
-from django.db.models import Sum
+from django.db.models import F, Sum
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect, get_object_or_404
 from django.template.loader import render_to_string
@@ -47,7 +47,11 @@ class FatturazioneDashboardView(LoginRequiredMixin, TemplateView):
         ctx["n_fatture_anno"]        = fatture_anno.count()
         ctx["totale_fatturato_anno"] = fatture_anno.aggregate(t=Sum("totale"))["t"] or Decimal("0.00")
         ctx["n_da_incassare"]        = da_incassare.count()
-        ctx["totale_da_incassare"]   = da_incassare.aggregate(t=Sum("totale"))["t"] or Decimal("0.00")
+        # Da incassare = residuo, non il totale: una fattura può essere già
+        # incassata in parte (vedi contabilita.views.incasso_create).
+        ctx["totale_da_incassare"]   = da_incassare.aggregate(
+            t=Sum(F("totale") - F("importo_incassato"))
+        )["t"] or Decimal("0.00")
         ctx["ultime_fatture"]        = Fattura.objects.order_by("-anno", "-progressivo")[:6]
         return ctx
 
@@ -67,10 +71,14 @@ class FattureDaIncassareView(LoginRequiredMixin, TemplateView):
             .prefetch_related("righe")
             .order_by("data_emissione")
         )
-        totale = sum((f.totale for f in fatture), Decimal("0.00"))
-        ctx["fatture"] = fatture
-        ctx["totale"]  = totale
-        ctx["n"]       = len(fatture)
+        # Il totale da incassare è la somma dei residui: le fatture incassate
+        # in parte restano in elenco, ma solo per quanto manca.
+        totale = sum((f.residuo for f in fatture), Decimal("0.00"))
+        ctx["fatture"]         = fatture
+        ctx["totale"]          = totale
+        ctx["totale_fatturato"] = sum((f.totale for f in fatture), Decimal("0.00"))
+        ctx["n"]               = len(fatture)
+        ctx["n_parziali"]      = sum(1 for f in fatture if f.is_parzialmente_incassata)
         return ctx
 
 
@@ -415,18 +423,6 @@ def fattura_pdf(request, pk):
         PDFConfig(filename=f"{fattura.numero}.pdf"),
         output_type="response",
     )
-
-
-@login_required
-@require_POST
-def fattura_segna_pagata(request, pk):
-    fattura = get_object_or_404(Fattura, pk=pk)
-    if fattura.stato == Fattura.Stato.EMESSA:
-        fattura.stato = Fattura.Stato.PAGATA
-        fattura.data_pagamento = timezone.localdate()
-        fattura.save(update_fields=["stato", "data_pagamento", "updated_at"])
-        messages.success(request, f"Fattura {fattura.numero} segnata come pagata.")
-    return redirect("fatturazione_attiva:fattura_detail", pk=pk)
 
 
 # ── Fattura libera (senza ODS) ────────────────────────────────────────────────

@@ -1,4 +1,11 @@
+import json
+from decimal import Decimal, InvalidOperation
+
 from django import forms
+
+from fatturazione_attiva.models import Fattura
+
+from .documenti import fatture_da_incassare
 from .models import ContoContabile, MovimentoPrimaNota
 
 _BS_CLASS = {
@@ -136,4 +143,113 @@ class MovimentoPrimaNotaForm(BootstrapMixin, forms.ModelForm):
                 'attiva o quella passiva.'
             )
 
+        return cleaned
+
+
+class RegistrazioneIncassoForm(BootstrapMixin, forms.Form):
+    """
+    Registra un movimento bancario che incassa una o più fatture attive.
+
+    L'importo ricevuto va ripartito fra le fatture selezionate: la quota di
+    ciascuna arriva come campo dinamico `incasso_<pk>`, generato dal template
+    quando si scelgono le fatture nel select2. Ogni quota non può superare il
+    residuo della fattura, e la somma delle quote deve fare esattamente
+    l'importo del movimento.
+    """
+
+    data = forms.DateField(
+        label='Data movimento',
+        widget=forms.DateInput(attrs={'type': 'date'}),
+    )
+    conto = forms.ModelChoiceField(
+        label='Conto banca / cassa',
+        queryset=ContoContabile.objects.none(),
+        empty_label='Scegli il conto su cui è arrivato il denaro…',
+    )
+    importo = forms.DecimalField(
+        label='Importo ricevuto (€)', max_digits=12, decimal_places=2,
+        min_value=Decimal('0.01'),
+        widget=forms.NumberInput(attrs={'step': '0.01', 'placeholder': '0,00'}),
+    )
+    fatture = forms.ModelMultipleChoiceField(
+        label='Fatture incassate',
+        queryset=Fattura.objects.none(),
+        widget=forms.SelectMultiple(attrs={'class': 'form-select', 'data-select2': '1'}),
+    )
+    note = forms.CharField(
+        label='Note', required=False,
+        widget=forms.Textarea(attrs={'rows': 2}),
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['conto'].queryset = (
+            ContoContabile.objects
+            .filter(attivo=True, tipo__in=[ContoContabile.Tipo.BANCA, ContoContabile.Tipo.CASSA])
+            .order_by('tipo', 'nome')
+        )
+        self.fields['fatture'].queryset = fatture_da_incassare()
+        # Le quote arrivano come campi dinamici: qui si tiene la ripartizione
+        # risolta, così la view non deve rileggere il POST.
+        self.ripartizione = {}
+
+    def quote_inviate(self):
+        """
+        Quote per fattura arrivate col POST, in JSON per il template: dopo un
+        errore di validazione la ripartizione digitata va ripopolata.
+        """
+        quote = {
+            chiave.removeprefix('incasso_'): valore
+            for chiave, valore in (self.data or {}).items()
+            if chiave.startswith('incasso_') and valore
+        }
+        return json.dumps(quote)
+
+    def clean(self):
+        cleaned = super().clean()
+        fatture = cleaned.get('fatture')
+        importo = cleaned.get('importo')
+
+        if not fatture or importo is None:
+            return cleaned
+
+        totale_quote = Decimal('0.00')
+        ripartizione = {}
+
+        for fattura in fatture:
+            grezzo = (self.data.get(f'incasso_{fattura.pk}') or '').strip()
+            if not grezzo:
+                # Nessuna quota indicata: si assume il saldo del residuo.
+                quota = fattura.residuo
+            else:
+                try:
+                    quota = Decimal(grezzo.replace(',', '.'))
+                except (InvalidOperation, AttributeError):
+                    self.add_error(None, f'Importo non valido per la fattura {fattura.numero}.')
+                    continue
+
+            if quota <= 0:
+                self.add_error(None, f'L\'incasso della fattura {fattura.numero} deve essere maggiore di zero.')
+                continue
+            if quota > fattura.residuo:
+                self.add_error(None, (
+                    f'La fattura {fattura.numero} ha un residuo di € {fattura.residuo}: '
+                    f'non puoi incassarne € {quota}.'
+                ))
+                continue
+
+            ripartizione[fattura] = quota
+            totale_quote += quota
+
+        if self.errors:
+            return cleaned
+
+        if totale_quote != importo:
+            self.add_error(None, (
+                f'La ripartizione fra le fatture (€ {totale_quote}) non corrisponde '
+                f'all\'importo ricevuto (€ {importo}). Correggi le quote o l\'importo.'
+            ))
+            return cleaned
+
+        self.ripartizione = ripartizione
         return cleaned
