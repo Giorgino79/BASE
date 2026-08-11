@@ -6,10 +6,15 @@ app_name = 'contabilita'
 urlpatterns = [
     path('',                              views.dashboard,        name='dashboard'),
     path('prima-nota/',                   views.prima_nota_list,  name='prima_nota_list'),
-    path('prima-nota/nuovo/',             views.movimento_create, name='movimento_create'),
+    # "Nuovo movimento" porta al selettore dell'operazione, non più
+    # direttamente al form libero: quello vive un livello più sotto.
+    path('prima-nota/nuovo/',             views.nuova_registrazione, name='nuova_registrazione'),
+    path('prima-nota/nuovo/manuale/',     views.movimento_create, name='movimento_create'),
     path('prima-nota/documenti/',         views.documenti_suggerimenti, name='documenti_suggerimenti'),
     path('incassi/nuovo/',                views.incasso_create,         name='incasso_create'),
+    path('pagamenti/nuovo/',              views.pagamento_create,       name='pagamento_create'),
     path('prima-nota/<int:pk>/',          views.MovimentoDetailView.as_view(), name='movimento_detail'),
+    path('prima-nota/<int:pk>/storna/',   views.movimento_storna, name='movimento_storna'),
     path('prima-nota/<int:pk>/elimina/',  views.movimento_delete, name='movimento_delete'),
     path('mastrino/<int:pk>/',            views.mastrino,         name='mastrino'),
     path('conti/',                        views.conti_list,          name='conti_list'),

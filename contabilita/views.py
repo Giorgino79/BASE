@@ -18,8 +18,10 @@ from django.views.generic import DetailView
 from core.mixins import PrintDetailMixin, SidebarQrAllegatiMixin
 
 from . import documenti
+from . import controlli
 from .forms import (
     ContoContabileForm, MovimentoPrimaNotaForm, RegistrazioneIncassoForm,
+    RegistrazionePagamentoForm,
 )
 from .models import ContoContabile, MovimentoPrimaNota
 from .signals import _get_or_create_conto
@@ -61,6 +63,10 @@ def dashboard(request):
               .select_related('conto_dare', 'conto_avere', 'creato_da')
               .order_by('-data', '-created_at')[:15])
 
+    # Rete di sicurezza: i vincoli impediscono di registrare una scrittura
+    # sbagliata, questi controlli fanno emergere quelle già a registro.
+    anomalie, n_anomalie = controlli.anomalie()
+
     ctx = {
         'page_title':      'Contabilità — Prima Nota',
         'crediti_clienti': crediti_clienti,
@@ -68,6 +74,8 @@ def dashboard(request):
         'casse':           casse,
         'banche':          banche,
         'ultimi':          ultimi,
+        'anomalie':        anomalie,
+        'n_anomalie':      n_anomalie,
     }
     return render(request, 'contabilita/dashboard.html', ctx)
 
@@ -165,84 +173,153 @@ def movimento_create(request):
         messages.success(request, 'Movimento registrato in prima nota.')
         return redirect(reverse('contabilita:prima_nota_list'))
 
+    # I tipi ammessi e le combinazioni dare/avere non stanno più qui: il form
+    # espone la matrice del model (`regole_json`), unica fonte della regola.
     ctx = {
         'page_title': 'Nuovo Movimento',
         'form':       form,
         'documento':  form.documento_selezionato(),
-        'tipi_suggeriti': {
-            'fattura_cliente':   ('cliente', 'generico'),
-            'fattura_fornitore': ('fornitore', 'generico'),
-            'incasso':           ('cassa', 'cliente'),
-            'pagamento':         ('fornitore', 'cassa'),
-            'giroconto':         ('banca', 'cassa'),
-            'stipendi':          ('generico', 'cassa'),
-        },
     }
     return render(request, 'contabilita/movimento_form.html', ctx)
+
+
+def _registra_quote(request, form, *, tipo, verso):
+    """
+    Corpo condiviso di incasso e pagamento: per ogni fattura della ripartizione
+    nasce un movimento di prima nota e la fattura accumula la quota.
+
+    Chi salda tre fatture con un bonifico solo genera tre movimenti, uno per
+    documento, coerente con la regola "un movimento, un documento".
+
+    Il verso della scrittura è deciso qui, non dall'utente: `verso` dice quale
+    lato prende il conto monetario e quale la controparte. È il motivo per cui
+    da questi due flussi un'inversione dare/avere non è esprimibile.
+    """
+    conto   = form.cleaned_data['conto']
+    data    = form.cleaned_data['data']
+    note    = form.cleaned_data['note']
+    creati  = []
+    saldate = []
+
+    with transaction.atomic():
+        for fattura, quota in form.ripartizione.items():
+            numero      = verso['numero'](fattura)
+            controparte = verso['controparte'](fattura)
+            conto_contro = _get_or_create_conto(verso['tipo_conto'], controparte)
+            parziale = quota < fattura.residuo
+
+            dare, avere = ((conto, conto_contro) if verso['monetario_in_dare']
+                           else (conto_contro, conto))
+
+            MovimentoPrimaNota.objects.create(
+                data=data,
+                causale=(
+                    f'{verso["etichetta"]} {"parziale " if parziale else ""}fattura '
+                    f'{numero} — {controparte}'
+                ),
+                importo=quota,
+                tipo=tipo,
+                conto_dare=dare,
+                conto_avere=avere,
+                numero_documento=numero,
+                note=note,
+                creato_da=request.user,
+                **{verso['campo_fattura']: fattura},
+            )
+            verso['registra'](fattura, quota, data)
+            creati.append(numero)
+            if fattura.is_saldata:
+                saldate.append(numero)
+
+    messaggio = (
+        f'{verso["etichetta"]} registrato su {conto.nome}: '
+        f'{len(creati)} moviment{"o" if len(creati) == 1 else "i"} in prima nota.'
+    )
+    if saldate:
+        messaggio += f' Fatture saldate: {", ".join(saldate)}.'
+    aperte = [n for n in creati if n not in saldate]
+    if aperte:
+        messaggio += f' Ancora aperte (parziale): {", ".join(aperte)}.'
+    messages.success(request, messaggio)
+
+
+#: Come si scrive un incasso: il denaro entra, quindi il conto monetario va in
+#: Dare e il cliente in Avere.
+VERSO_INCASSO = {
+    'etichetta':         'Incasso',
+    'monetario_in_dare': True,
+    'tipo_conto':        ContoContabile.Tipo.CLIENTE,
+    'campo_fattura':     'fattura_attiva',
+    'numero':            lambda f: f.numero,
+    'controparte':       lambda f: f.dest_nome,
+    'registra':          lambda f, q, d: f.registra_incasso(q, d),
+}
+
+#: Come si scrive un pagamento: il denaro esce, quindi il fornitore va in Dare
+#: e il conto monetario in Avere. Esattamente lo specchio dell'incasso.
+VERSO_PAGAMENTO = {
+    'etichetta':         'Pagamento',
+    'monetario_in_dare': False,
+    'tipo_conto':        ContoContabile.Tipo.FORNITORE,
+    'campo_fattura':     'fattura_passiva',
+    'numero':            lambda f: f.numero_fattura,
+    'controparte':       lambda f: str(f.fornitore),
+    'registra':          lambda f, q, d: f.registra_pagamento(q, d),
+}
+
+
+@login_required
+def nuova_registrazione(request):
+    """
+    Selettore dell'operazione da registrare.
+
+    Non si arriva più al form libero per inerzia: si dichiara prima *cosa* si
+    sta registrando, e per le operazioni frequenti si finisce in un flusso che
+    la scrittura la compone da sé.
+    """
+    return render(request, 'contabilita/nuova_registrazione.html', {
+        'page_title': 'Nuova registrazione',
+        'n_da_incassare': documenti.fatture_da_incassare().count(),
+        'n_da_pagare':    documenti.fatture_da_pagare().count(),
+    })
 
 
 @login_required
 def incasso_create(request):
     """
     Registra un movimento bancario che incassa una o più fatture attive.
-
-    È l'unico punto da cui una fattura passa a 'pagata': per ogni fattura
-    selezionata nasce un movimento di prima nota (Dare conto banca/cassa,
-    Avere conto cliente) e la fattura accumula l'incasso. Chi paga tre fatture
-    con un bonifico solo genera tre movimenti, uno per documento, coerente con
-    la regola "un movimento, un documento".
+    È l'unico punto da cui una fattura attiva passa a 'pagata'.
     """
     form = RegistrazioneIncassoForm(request.POST or None, initial={
         'data': timezone.localdate(),
     })
-
     if request.method == 'POST' and form.is_valid():
-        conto   = form.cleaned_data['conto']
-        data    = form.cleaned_data['data']
-        note    = form.cleaned_data['note']
-        creati  = []
-        saldate = []
-
-        with transaction.atomic():
-            for fattura, quota in form.ripartizione.items():
-                conto_cliente = _get_or_create_conto(
-                    ContoContabile.Tipo.CLIENTE, fattura.dest_nome,
-                )
-                parziale = quota < fattura.residuo
-                MovimentoPrimaNota.objects.create(
-                    data=data,
-                    causale=(
-                        f'Incasso {"parziale " if parziale else ""}fattura '
-                        f'{fattura.numero} — {fattura.dest_nome}'
-                    ),
-                    importo=quota,
-                    tipo=MovimentoPrimaNota.Tipo.INCASSO,
-                    conto_dare=conto,
-                    conto_avere=conto_cliente,
-                    numero_documento=fattura.numero,
-                    fattura_attiva=fattura,
-                    note=note,
-                    creato_da=request.user,
-                )
-                fattura.registra_incasso(quota, data)
-                creati.append(fattura.numero)
-                if fattura.is_saldata:
-                    saldate.append(fattura.numero)
-
-        messaggio = (
-            f'Incasso registrato su {conto.nome}: '
-            f'{len(creati)} moviment{"o" if len(creati) == 1 else "i"} in prima nota.'
-        )
-        if saldate:
-            messaggio += f' Fatture saldate: {", ".join(saldate)}.'
-        aperte = [n for n in creati if n not in saldate]
-        if aperte:
-            messaggio += f' Ancora aperte (incasso parziale): {", ".join(aperte)}.'
-        messages.success(request, messaggio)
+        _registra_quote(request, form,
+                        tipo=MovimentoPrimaNota.Tipo.INCASSO, verso=VERSO_INCASSO)
         return redirect(reverse('contabilita:prima_nota_list') + '?tipo=incasso')
 
     return render(request, 'contabilita/incasso_form.html', {
         'page_title': 'Registra incasso',
+        'form':       form,
+    })
+
+
+@login_required
+def pagamento_create(request):
+    """
+    Registra il pagamento di una o più fatture passive.
+    È l'unico punto da cui una fattura passiva passa a 'pagata'.
+    """
+    form = RegistrazionePagamentoForm(request.POST or None, initial={
+        'data': timezone.localdate(),
+    })
+    if request.method == 'POST' and form.is_valid():
+        _registra_quote(request, form,
+                        tipo=MovimentoPrimaNota.Tipo.PAGAMENTO, verso=VERSO_PAGAMENTO)
+        return redirect(reverse('contabilita:prima_nota_list') + '?tipo=pagamento')
+
+    return render(request, 'contabilita/pagamento_form.html', {
+        'page_title': 'Registra pagamento',
         'form':       form,
     })
 
@@ -277,10 +354,79 @@ class MovimentoDetailView(LoginRequiredMixin, SidebarQrAllegatiMixin,
 
 
 @login_required
+def movimento_storna(request, pk):
+    """
+    Registra il movimento uguale e contrario che annulla `pk`.
+
+    Un movimento sbagliato non si corregge e non si cancella: in un registro
+    contabile la traccia dell'errore fa parte del registro. Lo storno copia i
+    conti dall'originale e li scambia — nessuno li riscrive a mano — e se
+    l'originale aveva mosso lo stato di una fattura, lo riporta indietro.
+    """
+    mov = get_object_or_404(
+        MovimentoPrimaNota.objects.select_related(
+            'conto_dare', 'conto_avere', 'fattura_attiva', 'fattura_passiva'),
+        pk=pk,
+    )
+
+    if mov.is_storno:
+        messages.error(request, 'Questo movimento è già uno storno: non si storna a sua volta.')
+        return redirect(mov.get_absolute_url())
+    if mov.is_stornato:
+        messages.warning(request, 'Movimento già stornato.')
+        return redirect(mov.storno.get_absolute_url())
+
+    if request.method == 'POST':
+        with transaction.atomic():
+            storno = MovimentoPrimaNota.objects.create(
+                data=timezone.localdate(),
+                causale=f'STORNO — {mov.causale}',
+                importo=mov.importo,
+                tipo=mov.tipo,
+                # I due lati scambiati: è tutta la sostanza dello storno.
+                conto_dare=mov.conto_avere,
+                conto_avere=mov.conto_dare,
+                numero_documento=mov.numero_documento,
+                fattura_attiva=mov.fattura_attiva,
+                fattura_passiva=mov.fattura_passiva,
+                note=(request.POST.get('motivo') or '').strip(),
+                creato_da=request.user,
+                storna=mov,
+            )
+
+            # Se l'originale aveva chiuso (in tutto o in parte) una fattura,
+            # lo storno la riapre. Il metodo regge anche il caso dei movimenti
+            # registrati a mano, che la fattura non l'avevano mai toccata.
+            if mov.tipo == MovimentoPrimaNota.Tipo.INCASSO and mov.fattura_attiva:
+                mov.fattura_attiva.storna_incasso(mov.importo)
+            elif mov.tipo == MovimentoPrimaNota.Tipo.PAGAMENTO and mov.fattura_passiva:
+                mov.fattura_passiva.storna_pagamento(mov.importo)
+
+        messages.success(
+            request,
+            'Storno registrato: il movimento originale resta a registro, '
+            'il suo effetto sui saldi è annullato.',
+        )
+        return redirect(storno.get_absolute_url())
+
+    return render(request, 'contabilita/movimento_confirm_storno.html', {
+        'page_title': 'Storna movimento',
+        'mov':        mov,
+    })
+
+
+@login_required
 def movimento_delete(request, pk):
     mov = get_object_or_404(MovimentoPrimaNota, pk=pk)
     if mov.is_automatico:
         messages.error(request, 'I movimenti generati automaticamente non possono essere eliminati.')
+        return redirect(mov.get_absolute_url())
+    if mov.is_storno or mov.is_stornato:
+        messages.error(
+            request,
+            'Un movimento legato a uno storno non si elimina: la coppia '
+            'originale/storno è la traccia dell\'errore e resta a registro.',
+        )
         return redirect(mov.get_absolute_url())
     if request.method == 'POST':
         mov.delete()

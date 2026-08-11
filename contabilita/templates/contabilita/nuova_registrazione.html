@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+  .op-card { display: block; text-decoration: none; color: inherit; height: 100%; }
+  .op-card .card { height: 100%; transition: border-color .15s, box-shadow .15s; }
+  .op-card:hover .card { border-color: var(--brand, #2563eb);
+                         box-shadow: 0 2px 10px rgba(37,99,235,.12); }
+  .op-icona { width: 44px; height: 44px; border-radius: 10px; flex: 0 0 auto;
+              display: flex; align-items: center; justify-content: center;
+              font-size: 1.3rem; }
+  .op-guidata .op-icona { background: #dbeafe; color: #1d4ed8; }
+  .op-libera  .op-icona { background: var(--slate-100, #f1f5f9); color: var(--slate-500, #64748b); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'contabilita:dashboard' %}">Contabilità</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'contabilita:prima_nota_list' %}">Prima Nota</a></li>
+      <li class="breadcrumb-item active">Nuova registrazione</li>
+    </ol>
+  </nav>
+  <h1><i class="bi bi-plus-circle me-2 text-brand"></i>Cosa stai registrando?</h1>
+  <p class="text-muted mb-0">
+    Scegli l'operazione: nei flussi guidati la scrittura contabile la compone
+    il sistema, e i conti Dare e Avere non si possono invertire.
+  </p>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-md-6 col-lg-4">
+    <a href="{% url 'contabilita:incasso_create' %}" class="op-card op-guidata">
+      <div class="card">
+        <div class="card-body d-flex gap-3">
+          <div class="op-icona"><i class="bi bi-arrow-down-left-circle"></i></div>
+          <div>
+            <div class="fw-semibold mb-1">Incasso da cliente</div>
+            <div class="text-muted small mb-2">
+              Un cliente ha pagato una o più fatture. Aggiorna anche lo stato
+              della fattura.
+            </div>
+            {% if n_da_incassare %}
+              <span class="badge bg-primary-subtle text-primary-emphasis">
+                {{ n_da_incassare }} fattur{{ n_da_incassare|pluralize:"a,e" }} da incassare
+              </span>
+            {% else %}
+              <span class="badge bg-secondary-subtle text-secondary-emphasis">Nessuna fattura aperta</span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </a>
+  </div>
+
+  <div class="col-md-6 col-lg-4">
+    <a href="{% url 'contabilita:pagamento_create' %}" class="op-card op-guidata">
+      <div class="card">
+        <div class="card-body d-flex gap-3">
+          <div class="op-icona"><i class="bi bi-arrow-up-right-circle"></i></div>
+          <div>
+            <div class="fw-semibold mb-1">Pagamento a fornitore</div>
+            <div class="text-muted small mb-2">
+              Hai pagato una o più fatture ricevute. Aggiorna anche lo stato
+              della fattura.
+            </div>
+            {% if n_da_pagare %}
+              <span class="badge bg-primary-subtle text-primary-emphasis">
+                {{ n_da_pagare }} fattur{{ n_da_pagare|pluralize:"a,e" }} da pagare
+              </span>
+            {% else %}
+              <span class="badge bg-secondary-subtle text-secondary-emphasis">Nessuna fattura aperta</span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </a>
+  </div>
+
+  <div class="col-md-6 col-lg-4">
+    <a href="{% url 'contabilita:movimento_create' %}" class="op-card op-libera">
+      <div class="card">
+        <div class="card-body d-flex gap-3">
+          <div class="op-icona"><i class="bi bi-pencil"></i></div>
+          <div>
+            <div class="fw-semibold mb-1">Altro movimento</div>
+            <div class="text-muted small mb-2">
+              Giroconto, stipendi, casi non previsti. Qui i conti li scegli tu,
+              ma le combinazioni incoerenti vengono rifiutate.
+            </div>
+            <span class="badge bg-secondary-subtle text-secondary-emphasis">Registrazione manuale</span>
+          </div>
+        </div>
+      </div>
+    </a>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body d-flex gap-3 align-items-start">
+    <i class="bi bi-shield-check fs-4 text-brand"></i>
+    <div class="small text-muted mb-0">
+      <strong class="text-body">Perché incassi e pagamenti non sono nel form manuale.</strong>
+      Un incasso non è solo una riga di prima nota: chiude anche la fattura.
+      Registrato a mano, il movimento nasce senza toccare la fattura, che resta
+      aperta mentre il saldo del cliente è già cambiato — e i due dati non
+      tornano più. Dal flusso guidato le due cose succedono insieme, in una
+      transazione sola.
+    </div>
+  </div>
+</div>
+{% endblock %}

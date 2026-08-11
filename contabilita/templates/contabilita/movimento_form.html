@@ -81,11 +81,13 @@
             <div class="col-sm-6">
               <label class="form-label">{{ form.conto_dare.label }} <span class="text-danger">*</span></label>
               {{ form.conto_dare }}
+              <div class="form-text" id="aiuto-dare">Scegli prima il tipo di movimento.</div>
               {% if form.conto_dare.errors %}<div class="invalid-feedback d-block">{{ form.conto_dare.errors.0 }}</div>{% endif %}
             </div>
             <div class="col-sm-6">
               <label class="form-label">{{ form.conto_avere.label }} <span class="text-danger">*</span></label>
               {{ form.conto_avere }}
+              <div class="form-text" id="aiuto-avere">Scegli prima il tipo di movimento.</div>
               {% if form.conto_avere.errors %}<div class="invalid-feedback d-block">{{ form.conto_avere.errors.0 }}</div>{% endif %}
             </div>
             {% if form.non_field_errors %}
@@ -154,18 +156,38 @@
   </div>
 
   <div class="col-lg-4">
-    <div class="card">
-      <div class="card-header"><i class="bi bi-lightbulb me-2"></i>Suggerimenti dare/avere</div>
+    <div class="card mb-3">
+      <div class="card-header"><i class="bi bi-shield-check me-2"></i>Regole dare/avere</div>
       <div class="card-body small">
-        <p class="text-muted">Combinazioni tipiche in base al tipo movimento:</p>
+        <p class="text-muted">
+          Le tendine mostrano solo i conti ammessi dal tipo scelto. Non sono
+          suggerimenti: una combinazione incoerente viene rifiutata al
+          salvataggio.
+        </p>
         <ul class="mb-0 ps-3">
-          <li>Fattura cliente → Dare: <strong>Cliente</strong> — Avere: <strong>Ricavi/Generico</strong></li>
-          <li>Fattura fornitore → Dare: <strong>Costi/Generico</strong> — Avere: <strong>Fornitore</strong></li>
-          <li>Incasso → Dare: <strong>Cassa/Banca</strong> — Avere: <strong>Cliente</strong></li>
-          <li>Pagamento → Dare: <strong>Fornitore</strong> — Avere: <strong>Cassa/Banca</strong></li>
-          <li>Giroconto → Dare: <strong>Banca</strong> — Avere: <strong>Cassa</strong> (o viceversa)</li>
+          <li>Giroconto → Dare: <strong>Cassa/Banca</strong> — Avere: <strong>Cassa/Banca</strong></li>
           <li>Stipendi → Dare: <strong>Generico</strong> — Avere: <strong>Cassa/Banca</strong></li>
+          <li>Altro → nessun vincolo di tipo: è la via di fuga per i casi non previsti.</li>
         </ul>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><i class="bi bi-signpost-split me-2"></i>Cerchi altro?</div>
+      <div class="card-body small text-muted">
+        <p>
+          Incassi da cliente e pagamenti a fornitore non si registrano da qui:
+          oltre alla riga di prima nota devono chiudere la fattura, e questo
+          form la fattura non la tocca.
+        </p>
+        <div class="d-grid gap-2">
+          <a href="{% url 'contabilita:incasso_create' %}" class="btn btn-sm btn-outline-primary">
+            <i class="bi bi-arrow-down-left-circle me-1"></i>Registra un incasso
+          </a>
+          <a href="{% url 'contabilita:pagamento_create' %}" class="btn btn-sm btn-outline-primary">
+            <i class="bi bi-arrow-up-right-circle me-1"></i>Registra un pagamento
+          </a>
+        </div>
       </div>
     </div>
   </div>
@@ -323,6 +345,74 @@
   });
 
   input.addEventListener('blur', function () { setTimeout(chiudi, 120); });
+})();
+
+// ── Filtro dare/avere in base al tipo di movimento ─────────────────────────
+// Stessa matrice che il model applica al salvataggio: qui serve solo a non
+// far digitare l'errore. Il vincolo vero resta server-side.
+(function () {
+  const REGOLE = {{ form.regole_json|safe }};
+  const TIPI_CONTO = {{ form.conti_json|safe }};
+  const ETICHETTE = {
+    cliente: 'Cliente', fornitore: 'Fornitore',
+    cassa: 'Cassa', banca: 'Banca', generico: 'Generico',
+  };
+
+  const selTipo  = document.getElementById('{{ form.tipo.auto_id }}');
+  const selDare  = document.getElementById('{{ form.conto_dare.auto_id }}');
+  const selAvere = document.getElementById('{{ form.conto_avere.auto_id }}');
+  const aiutoDare  = document.getElementById('aiuto-dare');
+  const aiutoAvere = document.getElementById('aiuto-avere');
+  if (!selTipo || !selDare || !selAvere) return;
+
+  // Le option vanno conservate: filtrare significa rimuoverle dal DOM, e
+  // cambiando tipo bisogna poterle rimettere.
+  const TUTTE = {};
+  [selDare, selAvere].forEach(function (sel) {
+    TUTTE[sel.id] = Array.from(sel.options).map(function (o) {
+      return { value: o.value, text: o.text };
+    });
+  });
+
+  function applica(sel, ammessi, aiuto) {
+    const precedente = sel.value;
+    sel.replaceChildren();
+
+    TUTTE[sel.id].forEach(function (o) {
+      // La option vuota resta sempre: è il "nessuna scelta".
+      if (o.value && ammessi && !ammessi.includes(TIPI_CONTO[o.value])) return;
+      const opt = document.createElement('option');
+      opt.value = o.value;
+      opt.textContent = o.text;
+      sel.appendChild(opt);
+    });
+
+    // Se il conto già scelto non è più ammesso, la selezione cade: è
+    // esattamente quello che deve succedere cambiando tipo di movimento.
+    sel.value = Array.from(sel.options).some(o => o.value === precedente) ? precedente : '';
+
+    if (!ammessi) {
+      aiuto.textContent = 'Nessun vincolo per questo tipo: scegli qualsiasi conto.';
+    } else {
+      aiuto.textContent = 'Ammessi solo conti di tipo '
+        + ammessi.map(t => ETICHETTE[t] || t).join(' o ') + '.';
+    }
+  }
+
+  function aggiorna() {
+    const regola = REGOLE[selTipo.value];
+    if (!selTipo.value) {
+      applica(selDare, null, aiutoDare);
+      applica(selAvere, null, aiutoAvere);
+      aiutoDare.textContent = aiutoAvere.textContent = 'Scegli prima il tipo di movimento.';
+      return;
+    }
+    applica(selDare,  regola ? regola.dare  : null, aiutoDare);
+    applica(selAvere, regola ? regola.avere : null, aiutoAvere);
+  }
+
+  selTipo.addEventListener('change', aggiorna);
+  aggiorna();   // ripopola anche dopo un errore di validazione
 })();
 </script>
 {% endblock %}

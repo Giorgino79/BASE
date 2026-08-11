@@ -34,6 +34,22 @@ def fatture_da_incassare():
             .order_by('data_emissione', 'numero'))
 
 
+def fatture_da_pagare():
+    """
+    Fatture passive ancora aperte: registrate e non ancora coperte da
+    pagamenti. Sono le sole selezionabili quando si registra un pagamento.
+    """
+    from django.db.models import F
+
+    from acquisti.models import FatturaPassiva
+
+    return (FatturaPassiva.objects
+            .select_related('fornitore')
+            .filter(stato_pagamento=FatturaPassiva.StatoPagamento.DA_PAGARE,
+                    importo_pagato__lt=F('totale'))
+            .order_by('data_scadenza', 'data_fattura', 'numero_fattura'))
+
+
 def dettaglio(mov):
     """
     Dati completi del documento collegato a un movimento, normalizzati fra

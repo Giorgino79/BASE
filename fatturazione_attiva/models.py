@@ -136,6 +136,26 @@ class Fattura(models.Model):
             campi += ['stato', 'data_pagamento']
         self.save(update_fields=campi)
 
+    def storna_incasso(self, importo):
+        """
+        Toglie un incasso già registrato, riaprendo la fattura se non è più
+        coperta. Chiamata dallo storno di un movimento di prima nota.
+
+        L'incassato non scende sotto zero: i movimenti registrati a mano prima
+        dei flussi guidati non passavano da `registra_incasso`, quindi esiste
+        traccia contabile di incassi che sulla fattura non sono mai arrivati.
+        Stornarli deve poter funzionare lo stesso.
+        """
+        self.importo_incassato = max(
+            (self.importo_incassato or Decimal('0.00')) - importo, Decimal('0.00'),
+        )
+        campi = ['importo_incassato', 'updated_at']
+        if not self.is_saldata and self.stato == self.Stato.PAGATA:
+            self.stato = self.Stato.EMESSA
+            self.data_pagamento = None
+            campi += ['stato', 'data_pagamento']
+        self.save(update_fields=campi)
+
     def get_sollecito(self):
         """Restituisce soggetto e corpo standardizzati per il sollecito di pagamento."""
         giorni = self.giorni_attesa

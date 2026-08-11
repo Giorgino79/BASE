@@ -193,6 +193,10 @@ class FatturaPassiva(models.Model):
         default=StatoPagamento.DA_PAGARE,
     )
     data_pagamento = models.DateField(null=True, blank=True)
+    importo_pagato = models.DecimalField(
+        max_digits=15, decimal_places=2, default=Decimal("0.00"),
+        verbose_name="Importo pagato",
+    )
     note = models.TextField(blank=True)
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -223,3 +227,41 @@ class FatturaPassiva(models.Model):
             )
             self.totale = (self.imponibile + self.importo_iva).quantize(Decimal("0.01"))
         super().save(*args, **kwargs)
+
+    # ── Pagamento ────────────────────────────────────────────────────────────
+    # Speculare all'incasso sulle fatture attive (fatturazione_attiva.Fattura):
+    # lo stato cambia solo da contabilita.views.pagamento_create.
+
+    @property
+    def residuo(self):
+        """Quanto resta da pagare. Mai negativo."""
+        return max(self.totale - (self.importo_pagato or Decimal("0.00")), Decimal("0.00"))
+
+    @property
+    def is_saldata(self):
+        return (self.importo_pagato or Decimal("0.00")) >= self.totale
+
+    @property
+    def is_parzialmente_pagata(self):
+        return Decimal("0.00") < (self.importo_pagato or Decimal("0.00")) < self.totale
+
+    def registra_pagamento(self, importo, data):
+        self.importo_pagato = (self.importo_pagato or Decimal("0.00")) + importo
+        campi = ["importo_pagato", "updated_at"]
+        if self.is_saldata and self.stato_pagamento == self.StatoPagamento.DA_PAGARE:
+            self.stato_pagamento = self.StatoPagamento.PAGATA
+            self.data_pagamento = data
+            campi += ["stato_pagamento", "data_pagamento"]
+        self.save(update_fields=campi)
+
+    def storna_pagamento(self, importo):
+        """Toglie un pagamento già registrato, riaprendo la fattura."""
+        self.importo_pagato = max(
+            (self.importo_pagato or Decimal("0.00")) - importo, Decimal("0.00"),
+        )
+        campi = ["importo_pagato", "updated_at"]
+        if not self.is_saldata and self.stato_pagamento == self.StatoPagamento.PAGATA:
+            self.stato_pagamento = self.StatoPagamento.DA_PAGARE
+            self.data_pagamento = None
+            campi += ["stato_pagamento", "data_pagamento"]
+        self.save(update_fields=campi)

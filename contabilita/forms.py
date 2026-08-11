@@ -5,8 +5,10 @@ from django import forms
 
 from fatturazione_attiva.models import Fattura
 
-from .documenti import fatture_da_incassare
-from .models import ContoContabile, MovimentoPrimaNota
+from .documenti import fatture_da_incassare, fatture_da_pagare
+from .models import (
+    REGOLE_DARE_AVERE, ContoContabile, MovimentoPrimaNota, valida_dare_avere,
+)
 
 _BS_CLASS = {
     forms.TextInput:          "form-control",
@@ -71,7 +73,25 @@ class MovimentoPrimaNotaForm(BootstrapMixin, forms.ModelForm):
     specifico: una fattura attiva o una fattura passiva, esattamente una.
     Le due FK sono pilotate da un unico campo di ricerca nel template, quindi
     qui viaggiano come input nascosti.
+
+    Incassi e pagamenti non si registrano da qui: hanno un flusso guidato che
+    aggiorna anche lo stato della fattura, cosa che questo form non fa. Se
+    fossero selezionabili, un movimento con i conti giusti lascerebbe comunque
+    la fattura aperta e il saldo del cliente sfalsato.
     """
+
+    #: Tipi che hanno un flusso dedicato e vanno registrati solo da lì.
+    TIPI_GUIDATI = {
+        MovimentoPrimaNota.Tipo.INCASSO:   ('contabilita:incasso_create',   'Registra incasso'),
+        MovimentoPrimaNota.Tipo.PAGAMENTO: ('contabilita:pagamento_create', 'Registra pagamento'),
+    }
+
+    #: Tipi generati dai signal all'emissione/registrazione della fattura:
+    #: registrarli a mano creerebbe un doppione della scrittura automatica.
+    TIPI_AUTOMATICI = {
+        MovimentoPrimaNota.Tipo.FATTURA_CLIENTE,
+        MovimentoPrimaNota.Tipo.FATTURA_FORNITORE,
+    }
 
     class Meta:
         model  = MovimentoPrimaNota
@@ -96,6 +116,33 @@ class MovimentoPrimaNotaForm(BootstrapMixin, forms.ModelForm):
         # La validazione "una delle due" sta in clean(): singolarmente opzionali.
         self.fields['fattura_attiva'].required  = False
         self.fields['fattura_passiva'].required = False
+
+        esclusi = set(self.TIPI_GUIDATI) | self.TIPI_AUTOMATICI
+        self.fields['tipo'].choices = [
+            ('', '---------'),
+            *[(v, l) for v, l in MovimentoPrimaNota.Tipo.choices if v not in esclusi],
+        ]
+
+    def regole_json(self):
+        """
+        Matrice tipo → tipi di conto ammessi, in JSON: il template la usa per
+        filtrare le due tendine appena si sceglie il tipo, così l'errore non
+        arriva nemmeno a essere digitabile. Il vincolo vero resta comunque
+        server-side, nel model.
+        """
+        regole = {
+            tipo: {'dare': sorted(dare), 'avere': sorted(avere)}
+            for tipo, (dare, avere) in REGOLE_DARE_AVERE.items()
+            if tipo not in (set(self.TIPI_GUIDATI) | self.TIPI_AUTOMATICI)
+        }
+        return json.dumps(regole)
+
+    def conti_json(self):
+        """pk → tipo di ogni conto selezionabile, per il filtro lato client."""
+        return json.dumps({
+            str(c.pk): c.tipo
+            for c in self.fields['conto_dare'].queryset
+        })
 
     def documento_selezionato(self):
         """
@@ -125,10 +172,13 @@ class MovimentoPrimaNotaForm(BootstrapMixin, forms.ModelForm):
     def clean(self):
         cleaned = super().clean()
 
-        dare  = cleaned.get('conto_dare')
-        avere = cleaned.get('conto_avere')
-        if dare and avere and dare == avere:
-            raise forms.ValidationError('Il conto Dare e il conto Avere non possono essere lo stesso conto.')
+        # Stessa regola del model, applicata qui per legare il messaggio ai due
+        # campi invece che al form intero.
+        errore = valida_dare_avere(
+            cleaned.get('tipo'), cleaned.get('conto_dare'), cleaned.get('conto_avere'),
+        )
+        if errore:
+            self.add_error('conto_dare', errore)
 
         attiva  = cleaned.get('fattura_attiva')
         passiva = cleaned.get('fattura_passiva')
@@ -146,16 +196,20 @@ class MovimentoPrimaNotaForm(BootstrapMixin, forms.ModelForm):
         return cleaned
 
 
-class RegistrazioneIncassoForm(BootstrapMixin, forms.Form):
+class RegistrazioneQuoteForm(BootstrapMixin, forms.Form):
     """
-    Registra un movimento bancario che incassa una o più fatture attive.
+    Base dei due flussi guidati: un movimento monetario che chiude una o più
+    fatture, con l'importo ripartito fra i documenti selezionati.
 
-    L'importo ricevuto va ripartito fra le fatture selezionate: la quota di
-    ciascuna arriva come campo dinamico `incasso_<pk>`, generato dal template
-    quando si scelgono le fatture nel select2. Ogni quota non può superare il
-    residuo della fattura, e la somma delle quote deve fare esattamente
-    l'importo del movimento.
+    Incasso e pagamento sono lo stesso problema visto dai due lati: cambiano il
+    modello delle fatture, il verso della scrittura e le etichette, non la
+    logica di ripartizione. Le sottoclassi dichiarano solo le differenze.
     """
+
+    #: Prefisso dei campi quota generati dal template (`incasso_<pk>`).
+    prefisso_quota = 'quota'
+    #: Nome del documento nei messaggi d'errore ('incasso' / 'pagamento').
+    verbo = 'importo'
 
     data = forms.DateField(
         label='Data movimento',
@@ -164,15 +218,15 @@ class RegistrazioneIncassoForm(BootstrapMixin, forms.Form):
     conto = forms.ModelChoiceField(
         label='Conto banca / cassa',
         queryset=ContoContabile.objects.none(),
-        empty_label='Scegli il conto su cui è arrivato il denaro…',
+        empty_label='Scegli il conto…',
     )
     importo = forms.DecimalField(
-        label='Importo ricevuto (€)', max_digits=12, decimal_places=2,
+        label='Importo (€)', max_digits=12, decimal_places=2,
         min_value=Decimal('0.01'),
         widget=forms.NumberInput(attrs={'step': '0.01', 'placeholder': '0,00'}),
     )
     fatture = forms.ModelMultipleChoiceField(
-        label='Fatture incassate',
+        label='Fatture',
         queryset=Fattura.objects.none(),
         widget=forms.SelectMultiple(attrs={'class': 'form-select', 'data-select2': '1'}),
     )
@@ -188,20 +242,31 @@ class RegistrazioneIncassoForm(BootstrapMixin, forms.Form):
             .filter(attivo=True, tipo__in=[ContoContabile.Tipo.BANCA, ContoContabile.Tipo.CASSA])
             .order_by('tipo', 'nome')
         )
-        self.fields['fatture'].queryset = fatture_da_incassare()
+        self.fields['fatture'].queryset = self.get_fatture_queryset()
         # Le quote arrivano come campi dinamici: qui si tiene la ripartizione
         # risolta, così la view non deve rileggere il POST.
         self.ripartizione = {}
+
+    # ── Da specializzare ─────────────────────────────────────────────────────
+
+    def get_fatture_queryset(self):
+        raise NotImplementedError
+
+    def numero_fattura(self, fattura):
+        raise NotImplementedError
+
+    # ── Ripartizione ─────────────────────────────────────────────────────────
 
     def quote_inviate(self):
         """
         Quote per fattura arrivate col POST, in JSON per il template: dopo un
         errore di validazione la ripartizione digitata va ripopolata.
         """
+        prefisso = f'{self.prefisso_quota}_'
         quote = {
-            chiave.removeprefix('incasso_'): valore
+            chiave.removeprefix(prefisso): valore
             for chiave, valore in (self.data or {}).items()
-            if chiave.startswith('incasso_') and valore
+            if chiave.startswith(prefisso) and valore
         }
         return json.dumps(quote)
 
@@ -217,7 +282,8 @@ class RegistrazioneIncassoForm(BootstrapMixin, forms.Form):
         ripartizione = {}
 
         for fattura in fatture:
-            grezzo = (self.data.get(f'incasso_{fattura.pk}') or '').strip()
+            numero = self.numero_fattura(fattura)
+            grezzo = (self.data.get(f'{self.prefisso_quota}_{fattura.pk}') or '').strip()
             if not grezzo:
                 # Nessuna quota indicata: si assume il saldo del residuo.
                 quota = fattura.residuo
@@ -225,16 +291,16 @@ class RegistrazioneIncassoForm(BootstrapMixin, forms.Form):
                 try:
                     quota = Decimal(grezzo.replace(',', '.'))
                 except (InvalidOperation, AttributeError):
-                    self.add_error(None, f'Importo non valido per la fattura {fattura.numero}.')
+                    self.add_error(None, f'Importo non valido per la fattura {numero}.')
                     continue
 
             if quota <= 0:
-                self.add_error(None, f'L\'incasso della fattura {fattura.numero} deve essere maggiore di zero.')
+                self.add_error(None, f'L\'{self.verbo} della fattura {numero} deve essere maggiore di zero.')
                 continue
             if quota > fattura.residuo:
                 self.add_error(None, (
-                    f'La fattura {fattura.numero} ha un residuo di € {fattura.residuo}: '
-                    f'non puoi incassarne € {quota}.'
+                    f'La fattura {numero} ha un residuo di € {fattura.residuo}: '
+                    f'non puoi registrarne € {quota}.'
                 ))
                 continue
 
@@ -247,9 +313,59 @@ class RegistrazioneIncassoForm(BootstrapMixin, forms.Form):
         if totale_quote != importo:
             self.add_error(None, (
                 f'La ripartizione fra le fatture (€ {totale_quote}) non corrisponde '
-                f'all\'importo ricevuto (€ {importo}). Correggi le quote o l\'importo.'
+                f'all\'importo del movimento (€ {importo}). Correggi le quote o l\'importo.'
             ))
             return cleaned
 
         self.ripartizione = ripartizione
         return cleaned
+
+
+class RegistrazioneIncassoForm(RegistrazioneQuoteForm):
+    """
+    Registra un movimento bancario che incassa una o più fatture attive.
+
+    Dare il conto banca/cassa, Avere il conto del cliente: il verso non è
+    scelto dall'utente, quindi non può essere invertito.
+    """
+
+    prefisso_quota = 'incasso'
+    verbo = 'incasso'
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['conto'].label = 'Conto banca / cassa'
+        self.fields['conto'].empty_label = 'Scegli il conto su cui è arrivato il denaro…'
+        self.fields['importo'].label = 'Importo ricevuto (€)'
+        self.fields['fatture'].label = 'Fatture incassate'
+
+    def get_fatture_queryset(self):
+        return fatture_da_incassare()
+
+    def numero_fattura(self, fattura):
+        return fattura.numero
+
+
+class RegistrazionePagamentoForm(RegistrazioneQuoteForm):
+    """
+    Registra il pagamento di una o più fatture passive.
+
+    Dare il conto del fornitore, Avere il conto banca/cassa: speculare
+    all'incasso, e come quello non lascia scegliere il verso.
+    """
+
+    prefisso_quota = 'pagamento'
+    verbo = 'pagamento'
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['conto'].label = 'Conto banca / cassa'
+        self.fields['conto'].empty_label = 'Scegli il conto da cui è uscito il denaro…'
+        self.fields['importo'].label = 'Importo pagato (€)'
+        self.fields['fatture'].label = 'Fatture pagate'
+
+    def get_fatture_queryset(self):
+        return fatture_da_pagare()
+
+    def numero_fattura(self, fattura):
+        return fattura.numero_fattura

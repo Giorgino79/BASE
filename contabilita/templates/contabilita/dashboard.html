@@ -12,11 +12,44 @@
     <p class="text-muted mb-0">Prima nota, conti e mastrini</p>
   </div>
   <div class="d-flex gap-2 flex-wrap">
-    <a href="{% url 'contabilita:movimento_create' %}" class="btn btn-primary btn-sm">
+    <a href="{% url 'contabilita:nuova_registrazione' %}" class="btn btn-primary btn-sm">
       <i class="bi bi-plus-lg me-1"></i>Nuovo movimento
     </a>
   </div>
 </div>
+
+{# ── Controlli di quadratura ──────────────────────────────────────────────── #}
+{% if anomalie %}
+<div class="card mb-4 border-danger-subtle">
+  <div class="card-header bg-danger-subtle d-flex justify-content-between align-items-center">
+    <span class="fw-semibold text-danger-emphasis">
+      <i class="bi bi-exclamation-triangle-fill me-2"></i>
+      {{ n_anomalie }} cos{{ n_anomalie|pluralize:"a,e" }} da verificare
+    </span>
+    {% if n_anomalie > anomalie|length %}
+    <span class="small text-danger-emphasis">mostrate le prime {{ anomalie|length }}</span>
+    {% endif %}
+  </div>
+  <div class="list-group list-group-flush">
+    {% for a in anomalie %}
+    <div class="list-group-item d-flex justify-content-between align-items-start gap-3">
+      <div>
+        <div class="fw-semibold small">
+          {% if a.gravita == 'alta' %}
+          <i class="bi bi-x-octagon-fill text-danger me-1"></i>
+          {% else %}
+          <i class="bi bi-exclamation-circle-fill text-warning me-1"></i>
+          {% endif %}
+          {{ a.titolo }}
+        </div>
+        <div class="text-muted small">{{ a.dettaglio }}</div>
+      </div>
+      <a href="{{ a.url }}" class="btn btn-sm btn-outline-secondary flex-shrink-0">{{ a.url_label }}</a>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
 
 {# ── KPI ──────────────────────────────────────────────────────────────────── #}
 <div class="row g-3 mb-4">
@@ -66,7 +99,7 @@
     </a>
   </div>
   <div class="col-md-4">
-    <a href="{% url 'contabilita:movimento_create' %}" class="text-decoration-none">
+    <a href="{% url 'contabilita:nuova_registrazione' %}" class="text-decoration-none">
       <div class="card h-100 text-center py-4">
         <div class="mb-2"><i class="bi bi-plus-circle fs-1 text-brand"></i></div>
         <div class="fw-semibold">Nuovo movimento</div>
