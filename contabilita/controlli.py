@@ -149,6 +149,63 @@ def _fatture_disallineate():
             }
 
 
+def _fatture_senza_scrittura():
+    """
+    Fatture che non hanno la loro riga in prima nota.
+
+    Il credito verso il cliente nasce quando si emette la fattura: se quella
+    scrittura manca, a mastrino restano solo gli incassi e il conto va sotto
+    zero — un cliente che risulta a credito senza aver mai versato un acconto.
+    È successo per le fatture emesse prima che i signal esistessero; questo
+    controllo fa in modo che, se ricapita, si veda subito.
+    """
+    from acquisti.models import FatturaPassiva
+    from fatturazione_attiva.models import Fattura
+
+    con_scrittura = set(
+        MovimentoPrimaNota.objects
+        .filter(tipo=MovimentoPrimaNota.Tipo.FATTURA_CLIENTE, fattura_attiva__isnull=False)
+        .values_list('fattura_attiva_id', flat=True)
+    )
+    scoperte = (Fattura.objects
+                .exclude(pk__in=con_scrittura)
+                .exclude(stato=Fattura.Stato.ANNULLATA)
+                .order_by('-data_emissione'))
+    for f in scoperte[:LIMITE]:
+        yield {
+            'gravita':   'alta',
+            'titolo':    f'Fattura {f.numero} ({f.dest_nome}) non è in prima nota',
+            'dettaglio': (
+                f'Il credito di € {f.totale} non risulta a mastrino: senza questa '
+                'riga il conto del cliente mostra solo gli incassi e va in negativo.'
+            ),
+            'url':       reverse('fatturazione_attiva:fattura_detail', kwargs={'pk': f.pk}),
+            'url_label': 'Apri la fattura',
+        }
+
+    con_scrittura = set(
+        MovimentoPrimaNota.objects
+        .filter(tipo=MovimentoPrimaNota.Tipo.FATTURA_FORNITORE, fattura_passiva__isnull=False)
+        .values_list('fattura_passiva_id', flat=True)
+    )
+    scoperte = (FatturaPassiva.objects
+                .exclude(pk__in=con_scrittura)
+                .exclude(stato_pagamento=FatturaPassiva.StatoPagamento.ANNULLATA)
+                .select_related('fornitore')
+                .order_by('-data_fattura'))
+    for f in scoperte[:LIMITE]:
+        yield {
+            'gravita':   'alta',
+            'titolo':    f'Fattura fornitore {f.numero_fattura} ({f.fornitore}) non è in prima nota',
+            'dettaglio': (
+                f'Il debito di € {f.totale} non risulta a mastrino: senza questa '
+                'riga il conto del fornitore mostra solo i pagamenti.'
+            ),
+            'url':       reverse('acquisti:fattura_detail', kwargs={'pk': f.pk}),
+            'url_label': 'Apri la fattura',
+        }
+
+
 def _movimenti_fuori_regola():
     """
     Movimenti a registro che oggi non sarebbero registrabili.
@@ -181,6 +238,7 @@ def anomalie(limite=LIMITE):
     Restituisce (elenco, totale_trovate).
     """
     trovate = [
+        *_fatture_senza_scrittura(),
         *_movimenti_fuori_regola(),
         *_fatture_disallineate(),
         *_saldi_anomali(),
