@@ -6,6 +6,8 @@ Vive in un modulo a parte perché serve sia all'endpoint di autocomplete
 (views) sia all'etichetta del documento già scelto (forms).
 """
 
+from decimal import Decimal
+
 from django.db.models import Q
 
 ATTIVA = 'attiva'
@@ -48,6 +50,95 @@ def fatture_da_pagare():
             .filter(stato_pagamento=FatturaPassiva.StatoPagamento.DA_PAGARE,
                     importo_pagato__lt=F('totale'))
             .order_by('data_scadenza', 'data_fattura', 'numero_fattura'))
+
+
+# ── Controparti con documenti aperti ─────────────────────────────────────────
+# I flussi guidati partono dalla controparte, non dall'elenco delle fatture:
+# con qualche migliaio di documenti aperti caricarli tutti nella pagina non
+# regge. Qui si cerca fra le sole controparti che hanno qualcosa di aperto, e
+# le fatture arrivano dopo, solo quelle sue.
+
+#: Quante controparti restituisce al massimo una ricerca.
+LIMITE_CONTROPARTI = 20
+
+
+def _residuo_sql(campo_versato):
+    """Somma dei residui in SQL: la property `residuo` costerebbe una riga a query."""
+    from django.db.models import DecimalField, F, Sum
+    from django.db.models.functions import Coalesce
+
+    return Sum(
+        F('totale') - Coalesce(F(campo_versato), Decimal('0.00')),
+        output_field=DecimalField(max_digits=15, decimal_places=2),
+    )
+
+
+def clienti_da_incassare(q='', limite=LIMITE_CONTROPARTI):
+    """
+    Clienti con almeno una fattura attiva aperta, con quante sono e quanto
+    resta da incassare in tutto. Il cliente è il `dest_nome` della fattura,
+    che è anche il nome del conto contabile corrispondente.
+    """
+    from django.db.models import Count
+
+    qs = fatture_da_incassare()
+    if q:
+        qs = qs.filter(dest_nome__icontains=q)
+
+    righe = (qs.values('dest_nome')
+               .annotate(n=Count('pk'), residuo=_residuo_sql('importo_incassato'))
+               .order_by('dest_nome')[:limite])
+
+    return [
+        {
+            'id':      r['dest_nome'],
+            'nome':    r['dest_nome'],
+            'n':       r['n'],
+            'residuo': str(r['residuo'] or Decimal('0.00')),
+        }
+        for r in righe
+    ]
+
+
+def fornitori_da_pagare(q='', limite=LIMITE_CONTROPARTI):
+    """
+    Fornitori con almeno una fattura passiva aperta. Qui la controparte è una
+    FK vera, quindi l'identificativo è la pk e non il nome.
+    """
+    from django.db.models import Count
+
+    qs = fatture_da_pagare()
+    if q:
+        qs = qs.filter(fornitore__ragione_sociale__icontains=q)
+
+    righe = (qs.values('fornitore_id', 'fornitore__ragione_sociale')
+               .annotate(n=Count('pk'), residuo=_residuo_sql('importo_pagato'))
+               .order_by('fornitore__ragione_sociale')[:limite])
+
+    return [
+        {
+            'id':      str(r['fornitore_id']),
+            'nome':    r['fornitore__ragione_sociale'],
+            'n':       r['n'],
+            'residuo': str(r['residuo'] or Decimal('0.00')),
+        }
+        for r in righe
+    ]
+
+
+def righe_fatture(qs, numero):
+    """Fatture nel formato che il form guidato usa per la ripartizione."""
+    return [
+        {
+            'id':      str(f.pk),
+            'numero':  numero(f),
+            'totale':  str(f.totale),
+            'residuo': str(f.residuo),
+            'data':    f.data_emissione.strftime('%d/%m/%Y') if hasattr(f, 'data_emissione')
+                       else f.data_fattura.strftime('%d/%m/%Y'),
+        }
+        for f in qs
+    ]
 
 
 def dettaglio(mov):

@@ -1,0 +1,456 @@
+{% extends "base.html" %}
+{% load l10n %}
+
+{# ───────────────────────────────────────────────────────────────────────────
+   Pagina condivisa dei due flussi guidati (incasso e pagamento): cambiano le
+   etichette, gli endpoint e il verso della scrittura, non la meccanica. Tutte
+   le differenze arrivano dal dict `flusso` costruito nella view.
+
+   L'elenco delle fatture NON sta nella pagina: si sceglie prima la controparte
+   e le sue fatture aperte arrivano via AJAX. È l'unico modo perché la pagina
+   regga quando i documenti aperti diventano migliaia.
+   ─────────────────────────────────────────────────────────────────────────── #}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
+<style>
+  .select2-container { width: 100% !important; }
+  .select2-container--default .select2-selection--multiple,
+  .select2-container--default .select2-selection--single {
+    border-color: var(--slate-300, #cbd5e1); border-radius: .375rem; min-height: 38px;
+  }
+  .select2-container--default .select2-selection--single { padding: 3px 0; }
+  .select2-container--default .select2-selection--multiple .select2-selection__choice {
+    background: #dbeafe; border-color: #bfdbfe; color: #1e40af; font-size: .82rem;
+  }
+  .select2-dropdown { font-size: .875rem; }
+
+  .cp-riga { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; }
+  .cp-meta { font-size: .78rem; color: var(--slate-500, #64748b); white-space: nowrap; }
+
+  #tab-ripartizione th { font-size: .72rem; text-transform: uppercase;
+                         letter-spacing: .04em; color: var(--slate-500, #64748b); }
+  #tab-ripartizione td { font-size: .86rem; vertical-align: middle; }
+  #tab-ripartizione input.quota { max-width: 130px; text-align: right; }
+  .riquadro-quadratura { border: 1px solid var(--slate-200, #e2e8f0); border-radius: 8px;
+                         padding: .6rem .8rem; background: var(--slate-50, #f8fafc); }
+  .quadra-ok  { color: #166534; }
+  .quadra-ko  { color: #b91c1c; }
+  .passo-spento { opacity: .5; pointer-events: none; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'contabilita:dashboard' %}">Contabilità</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'contabilita:prima_nota_list' %}">Prima Nota</a></li>
+      <li class="breadcrumb-item active">{{ flusso.titolo }}</li>
+    </ol>
+  </nav>
+  <h1><i class="bi {{ flusso.icona }} me-2 text-brand"></i>{{ flusso.titolo }}</h1>
+  <p class="text-muted mb-0">{{ flusso.sottotitolo }}</p>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-9">
+    <form method="post" novalidate id="form-registrazione">
+      {% csrf_token %}
+
+      {% if form.non_field_errors %}
+      <div class="alert alert-danger py-2 small">
+        {% for e in form.non_field_errors %}<div>{{ e }}</div>{% endfor %}
+      </div>
+      {% endif %}
+
+      {# ── 1. La controparte ─────────────────────────────────────────────── #}
+      <div class="card mb-3">
+        <div class="card-header card-header-primary">
+          <span class="badge bg-white text-primary me-2">1</span>{{ flusso.passo_controparte }}
+        </div>
+        <div class="card-body">
+          <label class="form-label" for="id_controparte">
+            {{ form.controparte.label }} <span class="text-danger">*</span>
+          </label>
+          {# Nessuna <option> nel markup: le carica il select2 via AJAX. #}
+          <select name="controparte" id="id_controparte" class="form-select"></select>
+          {% if form.controparte.errors %}
+          <div class="invalid-feedback d-block">{{ form.controparte.errors.0 }}</div>
+          {% endif %}
+          <div class="form-text">{{ flusso.aiuto_controparte }}</div>
+        </div>
+      </div>
+
+      {# ── 2. Le fatture ─────────────────────────────────────────────────── #}
+      <div class="card mb-3" id="passo-fatture">
+        <div class="card-header">
+          <span class="badge bg-secondary me-2">2</span>{{ flusso.passo_fatture }}
+        </div>
+        <div class="card-body">
+          <label class="form-label" for="id_fatture">
+            {{ form.fatture.label }} <span class="text-danger">*</span>
+          </label>
+          <select name="fatture" id="id_fatture" class="form-select" multiple></select>
+          {% if form.fatture.errors %}
+          <div class="invalid-feedback d-block">{{ form.fatture.errors.0 }}</div>
+          {% endif %}
+          <div class="form-text" id="aiuto-fatture">{{ flusso.aiuto_fatture }}</div>
+
+          <div id="zona-ripartizione" class="mt-3 d-none">
+            <div class="table-responsive">
+              <table class="table table-sm mb-2 align-middle" id="tab-ripartizione">
+                <thead>
+                  <tr>
+                    <th>Fattura</th>
+                    <th>Data</th>
+                    <th class="text-end">Totale</th>
+                    <th class="text-end">Residuo</th>
+                    <th class="text-end">{{ flusso.colonna_quota }}</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+
+            <div class="riquadro-quadratura d-flex justify-content-between align-items-center flex-wrap gap-2">
+              <span class="small text-muted">
+                Ripartito <strong id="q-ripartito">€ 0,00</strong>
+                su <strong id="q-importo">€ 0,00</strong> {{ flusso.parola_importo }}
+              </span>
+              <span class="small fw-semibold" id="q-esito"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {# ── 3. Il movimento ───────────────────────────────────────────────── #}
+      <div class="card mb-3">
+        <div class="card-header">
+          <span class="badge bg-secondary me-2">3</span>Il movimento
+        </div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-sm-4">
+              <label class="form-label" for="{{ form.data.id_for_label }}">
+                {{ form.data.label }} <span class="text-danger">*</span>
+              </label>
+              {{ form.data }}
+              {% if form.data.errors %}<div class="invalid-feedback d-block">{{ form.data.errors.0 }}</div>{% endif %}
+            </div>
+            <div class="col-sm-5">
+              <label class="form-label" for="{{ form.conto.id_for_label }}">
+                {{ form.conto.label }} <span class="text-danger">*</span>
+              </label>
+              {{ form.conto }}
+              {% if form.conto.errors %}<div class="invalid-feedback d-block">{{ form.conto.errors.0 }}</div>{% endif %}
+            </div>
+            <div class="col-sm-3">
+              <label class="form-label" for="{{ form.importo.id_for_label }}">
+                {{ form.importo.label }} <span class="text-danger">*</span>
+              </label>
+              {{ form.importo }}
+              {% if form.importo.errors %}<div class="invalid-feedback d-block">{{ form.importo.errors.0 }}</div>{% endif %}
+            </div>
+            <div class="col-12">
+              <label class="form-label" for="{{ form.note.id_for_label }}">{{ form.note.label }}</label>
+              {{ form.note }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary" id="btn-salva">
+          <i class="bi bi-check-lg me-1"></i>{{ flusso.titolo }}
+        </button>
+        <a href="{{ flusso.annulla_url }}" class="btn btn-outline-secondary">Annulla</a>
+      </div>
+    </form>
+  </div>
+
+  <div class="col-lg-3">
+    <div class="card">
+      <div class="card-header"><i class="bi bi-info-circle me-2"></i>Cosa succede</div>
+      <div class="card-body small text-muted">
+        <ul class="ps-3 mb-0">
+          {% for voce in flusso.spiegazione %}
+          <li class="{% if not forloop.last %}mb-2{% endif %}">{{ voce|safe }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+(function () {
+  const URL_CONTROPARTI = "{{ flusso.url_controparte }}";
+  const URL_FATTURE     = "{{ flusso.url_fatture }}";
+  const PREFISSO        = "{{ flusso.prefisso_quota }}";
+
+  // Stato ripopolato dopo un errore di validazione: la pagina non contiene
+  // né le controparti né le fatture, quindi la selezione va ricostruita.
+  const CONTROPARTE_SCELTA = {{ form.controparte_scelta|safe }};
+  const FATTURE_SCELTE     = {{ form.fatture_scelte|safe }};
+  const QUOTE_INVIATE      = {{ form.quote_inviate|safe }};
+
+  // Fatture attualmente caricate, indicizzate per pk.
+  let FATTURE = {};
+
+  const $cp      = $('#id_controparte');
+  const $fatture = $('#id_fatture');
+  const passo    = document.getElementById('passo-fatture');
+  const zona     = document.getElementById('zona-ripartizione');
+  const tbody    = document.querySelector('#tab-ripartizione tbody');
+  const inpImp   = document.getElementById('{{ form.importo.id_for_label }}');
+  const aiuto    = document.getElementById('aiuto-fatture');
+  const qRip     = document.getElementById('q-ripartito');
+  const qImp     = document.getElementById('q-importo');
+  const qEsito   = document.getElementById('q-esito');
+
+  const eur = (n) => '€ ' + n.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const num = (v) => {
+    // I decimali arrivano col punto dal server ma l'utente può digitare la
+    // virgola: senza normalizzare, parseFloat tronca all'intero.
+    const n = parseFloat(String(v).replace(',', '.'));
+    return isNaN(n) ? 0 : n;
+  };
+
+  // ── 1. Controparte: ricerca server-side ──────────────────────────────────
+  $cp.select2({
+    placeholder: "{{ flusso.placeholder_controparte|escapejs }}",
+    allowClear: true,
+    width: '100%',
+    minimumInputLength: 0,
+    ajax: {
+      url: URL_CONTROPARTI,
+      dataType: 'json',
+      delay: 250,
+      data: (params) => ({ q: params.term || '' }),
+      processResults: (data) => ({
+        results: data.results.map((r) => ({
+          id: r.id, text: r.nome, n: r.n, residuo: r.residuo,
+        })),
+      }),
+      cache: true,
+    },
+    templateResult: function (r) {
+      if (!r.id) return r.text;
+      const riga = document.createElement('div');
+      riga.className = 'cp-riga';
+      const nome = document.createElement('span');
+      nome.textContent = r.text;
+      const meta = document.createElement('span');
+      meta.className = 'cp-meta';
+      meta.textContent = r.n + ' fattur' + (r.n === 1 ? 'a' : 'e') + ' · ' + eur(num(r.residuo));
+      riga.append(nome, meta);
+      return riga;
+    },
+    language: {
+      noResults: () => "{{ flusso.vuoto_controparte|escapejs }}",
+      searching: () => 'Cerco…',
+      inputTooShort: () => 'Scrivi per cercare',
+    },
+  });
+
+  // ── 2. Fatture della controparte scelta ──────────────────────────────────
+  $fatture.select2({
+    placeholder: 'Scegli le fatture coperte da questo movimento…',
+    width: '100%',
+    language: { noResults: () => 'Nessuna fattura aperta per questa controparte' },
+  });
+
+  function testoFattura(f) {
+    return f.numero + ' — ' + eur(num(f.residuo)) + ' da saldare';
+  }
+
+  function popolaFatture(righe, preselezionate) {
+    FATTURE = {};
+    $fatture.empty();
+
+    righe.forEach(function (f) {
+      FATTURE[f.id] = f;
+      const opt = new Option(testoFattura(f), f.id, false, false);
+      $fatture.append(opt);
+    });
+
+    if (preselezionate && preselezionate.length) {
+      $fatture.val(preselezionate);
+    }
+    $fatture.trigger('change');
+
+    if (!righe.length) {
+      aiuto.textContent = 'Nessuna fattura aperta per questa controparte.';
+    } else {
+      aiuto.textContent = righe.length + ' fattur' + (righe.length === 1 ? 'a aperta' : 'e aperte')
+        + '. Seleziona quelle coperte da questo movimento.';
+    }
+  }
+
+  function abilitaPasso(attivo) {
+    passo.classList.toggle('passo-spento', !attivo);
+  }
+
+  function caricaFatture(controparte, preselezionate) {
+    if (!controparte) {
+      popolaFatture([], null);
+      abilitaPasso(false);
+      aiuto.textContent = "{{ flusso.aiuto_fatture|escapejs }}";
+      return;
+    }
+    abilitaPasso(true);
+    aiuto.textContent = 'Carico le fatture…';
+
+    fetch(URL_FATTURE + '?controparte=' + encodeURIComponent(controparte), {
+      headers: { 'X-Requested-With': 'XMLHttpRequest' },
+    })
+      .then((r) => r.json())
+      .then((d) => popolaFatture(d.results, preselezionate))
+      .catch(function () {
+        aiuto.textContent = 'Non sono riuscito a caricare le fatture. Riprova.';
+      });
+  }
+
+  // Durante il ripristino post-errore il select2 va aggiornato con un
+  // trigger('change'), che però è indistinguibile da una scelta dell'utente:
+  // senza questa guardia il ripristino cancellerebbe se stesso.
+  let inRipristino = false;
+
+  $cp.on('change', function () {
+    if (inRipristino) return;
+    // Cambiando controparte la selezione precedente non ha più senso.
+    caricaFatture($cp.val(), null);
+    inpImp.value = '';
+  });
+
+  // ── 3. Ripartizione dell'importo fra le fatture ──────────────────────────
+  function riga(pk, dati) {
+    const tr = document.createElement('tr');
+    tr.dataset.pk = pk;
+
+    const tdNum = document.createElement('td');
+    tdNum.className = 'fw-semibold';
+    tdNum.textContent = dati.numero;
+
+    const tdData = document.createElement('td');
+    tdData.className = 'text-muted';
+    tdData.textContent = dati.data;
+
+    const tdTot = document.createElement('td');
+    tdTot.className = 'text-end text-muted';
+    tdTot.textContent = eur(num(dati.totale));
+
+    const tdRes = document.createElement('td');
+    tdRes.className = 'text-end';
+    tdRes.textContent = eur(num(dati.residuo));
+
+    const tdInp = document.createElement('td');
+    tdInp.className = 'text-end';
+    const inp = document.createElement('input');
+    inp.type = 'number'; inp.step = '0.01'; inp.min = '0.01';
+    inp.max = dati.residuo;
+    inp.className = 'form-control form-control-sm quota';
+    inp.name  = PREFISSO + '_' + pk;
+    inp.value = (pk in QUOTE_INVIATE) ? QUOTE_INVIATE[pk] : dati.residuo;
+    inp.addEventListener('input', aggiornaQuadratura);
+    tdInp.appendChild(inp);
+
+    const tdEsito = document.createElement('td');
+    tdEsito.className = 'small text-muted';
+
+    tr.append(tdNum, tdData, tdTot, tdRes, tdInp, tdEsito);
+    return tr;
+  }
+
+  function aggiornaQuadratura() {
+    let ripartito = 0;
+    tbody.querySelectorAll('tr').forEach(function (tr) {
+      const inp = tr.querySelector('input.quota');
+      const q   = num(inp.value);
+      const res = num(FATTURE[tr.dataset.pk].residuo);
+      ripartito += q;
+
+      const esito = tr.children[5];
+      inp.classList.remove('is-invalid');
+      if (q > res) {
+        esito.textContent = 'oltre il residuo';
+        esito.className = 'small quadra-ko';
+        inp.classList.add('is-invalid');
+      } else if (q > 0 && q < res) {
+        esito.textContent = 'parziale, resta ' + eur(res - q);
+        esito.className = 'small text-muted';
+      } else if (q === res) {
+        esito.textContent = 'salda';
+        esito.className = 'small quadra-ok';
+      } else {
+        esito.textContent = '';
+      }
+    });
+
+    const importo = num(inpImp.value);
+    qRip.textContent = eur(ripartito);
+    qImp.textContent = eur(importo);
+
+    const scarto = Math.round((ripartito - importo) * 100) / 100;
+    if (!importo && !ripartito) {
+      qEsito.textContent = '';
+    } else if (scarto === 0) {
+      qEsito.textContent = '✓ quadra';
+      qEsito.className = 'small fw-semibold quadra-ok';
+    } else if (scarto > 0) {
+      qEsito.textContent = 'ripartiti ' + eur(scarto) + ' in più dell\'importo';
+      qEsito.className = 'small fw-semibold quadra-ko';
+    } else {
+      qEsito.textContent = 'restano ' + eur(-scarto) + ' da attribuire';
+      qEsito.className = 'small fw-semibold quadra-ko';
+    }
+  }
+
+  function ridisegna() {
+    const scelte = $fatture.val() || [];
+    tbody.replaceChildren();
+
+    scelte.forEach(function (pk) {
+      if (FATTURE[pk]) tbody.appendChild(riga(pk, FATTURE[pk]));
+    });
+
+    zona.classList.toggle('d-none', scelte.length === 0);
+
+    // Comodità: se l'importo è ancora vuoto, proponi la somma dei residui.
+    if (scelte.length && !num(inpImp.value)) {
+      const somma = scelte.reduce((t, pk) => t + num(FATTURE[pk].residuo), 0);
+      inpImp.value = somma.toFixed(2);
+    }
+    aggiornaQuadratura();
+  }
+
+  $fatture.on('change', ridisegna);
+  inpImp.addEventListener('input', aggiornaQuadratura);
+
+  // ── Ripristino dopo un errore di validazione ─────────────────────────────
+  if (CONTROPARTE_SCELTA) {
+    inRipristino = true;
+    $cp.append(new Option(CONTROPARTE_SCELTA.nome, CONTROPARTE_SCELTA.id, true, true));
+    $cp.trigger('change');
+    inRipristino = false;
+
+    // Le fatture già scelte le abbiamo dal form: si ridisegnano subito, senza
+    // aspettare il round-trip, e poi si ricarica l'elenco completo.
+    const scelte = FATTURE_SCELTE.map((f) => f.id);
+    popolaFatture(FATTURE_SCELTE, scelte);
+    abilitaPasso(true);
+    caricaFatture(CONTROPARTE_SCELTA.id, scelte);
+  } else {
+    abilitaPasso(false);
+  }
+})();
+</script>
+{% endblock %}

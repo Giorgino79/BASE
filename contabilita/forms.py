@@ -220,6 +220,12 @@ class RegistrazioneQuoteForm(BootstrapMixin, forms.Form):
         queryset=ContoContabile.objects.none(),
         empty_label='Scegli il conto…',
     )
+    # La controparte si sceglie per prima e restringe le fatture. È un
+    # CharField e non un ModelChoiceField perché i due flussi la identificano
+    # in modo diverso (il cliente con `dest_nome`, il fornitore con la pk) e
+    # perché le opzioni arrivano via AJAX: renderizzarle tutte nella pagina è
+    # esattamente quello che questo campo serve a evitare.
+    controparte = forms.CharField(label='Cliente')
     importo = forms.DecimalField(
         label='Importo (€)', max_digits=12, decimal_places=2,
         min_value=Decimal('0.01'),
@@ -228,6 +234,9 @@ class RegistrazioneQuoteForm(BootstrapMixin, forms.Form):
     fatture = forms.ModelMultipleChoiceField(
         label='Fatture',
         queryset=Fattura.objects.none(),
+        # Il widget non renderizza opzioni: le carica il template dopo aver
+        # scelto la controparte. Il queryset resta quello completo e continua
+        # a validare le pk che arrivano col POST.
         widget=forms.SelectMultiple(attrs={'class': 'form-select', 'data-select2': '1'}),
     )
     note = forms.CharField(
@@ -255,6 +264,40 @@ class RegistrazioneQuoteForm(BootstrapMixin, forms.Form):
     def numero_fattura(self, fattura):
         raise NotImplementedError
 
+    def controparte_di(self, fattura):
+        """Identificativo della controparte di una fattura, come stringa."""
+        raise NotImplementedError
+
+    def nome_controparte(self, valore):
+        """Etichetta leggibile della controparte, per ripopolare il campo."""
+        raise NotImplementedError
+
+    # ── Controparte ──────────────────────────────────────────────────────────
+
+    def controparte_scelta(self):
+        """
+        Controparte già selezionata, in JSON per il template: dopo un errore di
+        validazione il select2 va ripopolato, e le sue opzioni non stanno
+        nella pagina.
+        """
+        valore = (self['controparte'].value() or '').strip()
+        if not valore:
+            return json.dumps(None)
+        return json.dumps({'id': valore, 'nome': self.nome_controparte(valore)})
+
+    def fatture_scelte(self):
+        """
+        Fatture già selezionate, coi dati che servono alla ripartizione. Stesso
+        motivo: il template non le ha, gliele passiamo noi.
+        """
+        from .documenti import righe_fatture
+
+        pks = [p for p in (self.data.getlist('fatture') if self.is_bound else []) if p]
+        if not pks:
+            return json.dumps([])
+        qs = self.get_fatture_queryset().filter(pk__in=pks)
+        return json.dumps(righe_fatture(qs, self.numero_fattura))
+
     # ── Ripartizione ─────────────────────────────────────────────────────────
 
     def quote_inviate(self):
@@ -274,6 +317,20 @@ class RegistrazioneQuoteForm(BootstrapMixin, forms.Form):
         cleaned = super().clean()
         fatture = cleaned.get('fatture')
         importo = cleaned.get('importo')
+        controparte = (cleaned.get('controparte') or '').strip()
+
+        # Le fatture arrivano da una chiamata AJAX filtrata per controparte, ma
+        # le pk viaggiano nel POST: senza questo controllo si potrebbe pagare
+        # la fattura di un cliente movimentando il conto di un altro.
+        if fatture and controparte:
+            estranee = [self.numero_fattura(f) for f in fatture
+                        if self.controparte_di(f) != controparte]
+            if estranee:
+                self.add_error('fatture', (
+                    f'{"Queste fatture non appartengono" if len(estranee) > 1 else "Questa fattura non appartiene"} '
+                    f'alla controparte selezionata: {", ".join(estranee)}.'
+                ))
+                return cleaned
 
         if not fatture or importo is None:
             return cleaned
@@ -338,12 +395,23 @@ class RegistrazioneIncassoForm(RegistrazioneQuoteForm):
         self.fields['conto'].empty_label = 'Scegli il conto su cui è arrivato il denaro…'
         self.fields['importo'].label = 'Importo ricevuto (€)'
         self.fields['fatture'].label = 'Fatture incassate'
+        self.fields['controparte'].label = 'Cliente che ha pagato'
+        self.fields['controparte'].error_messages['required'] = (
+            'Scegli prima il cliente: le sue fatture aperte compariranno qui sotto.'
+        )
 
     def get_fatture_queryset(self):
         return fatture_da_incassare()
 
     def numero_fattura(self, fattura):
         return fattura.numero
+
+    def controparte_di(self, fattura):
+        return fattura.dest_nome
+
+    def nome_controparte(self, valore):
+        # Il cliente *è* il suo nome: non c'è niente da risolvere.
+        return valore
 
 
 class RegistrazionePagamentoForm(RegistrazioneQuoteForm):
@@ -363,9 +431,24 @@ class RegistrazionePagamentoForm(RegistrazioneQuoteForm):
         self.fields['conto'].empty_label = 'Scegli il conto da cui è uscito il denaro…'
         self.fields['importo'].label = 'Importo pagato (€)'
         self.fields['fatture'].label = 'Fatture pagate'
+        self.fields['controparte'].label = 'Fornitore pagato'
+        self.fields['controparte'].error_messages['required'] = (
+            'Scegli prima il fornitore: le sue fatture aperte compariranno qui sotto.'
+        )
 
     def get_fatture_queryset(self):
         return fatture_da_pagare()
 
     def numero_fattura(self, fattura):
         return fattura.numero_fattura
+
+    def controparte_di(self, fattura):
+        return str(fattura.fornitore_id)
+
+    def nome_controparte(self, valore):
+        from anagrafica_r2.models import Fornitore
+
+        try:
+            return Fornitore.objects.get(pk=valore).ragione_sociale
+        except (Fornitore.DoesNotExist, ValueError):
+            return ''

@@ -268,6 +268,45 @@ VERSO_PAGAMENTO = {
 }
 
 
+# ── Endpoint dei flussi guidati ──────────────────────────────────────────────
+# La pagina non contiene più l'elenco delle fatture aperte: si sceglie la
+# controparte e le sue fatture arrivano da qui. Con qualche migliaio di
+# documenti aperti è la differenza fra una pagina che si apre e una che no.
+
+@login_required
+def incasso_clienti(request):
+    """Clienti con fatture attive aperte, per il select2 del flusso incasso."""
+    q = request.GET.get('q', '').strip()
+    return JsonResponse({'results': documenti.clienti_da_incassare(q)})
+
+
+@login_required
+def incasso_fatture(request):
+    """Fatture attive aperte di un cliente."""
+    cliente = request.GET.get('controparte', '').strip()
+    if not cliente:
+        return JsonResponse({'results': []})
+    qs = documenti.fatture_da_incassare().filter(dest_nome=cliente)
+    return JsonResponse({'results': documenti.righe_fatture(qs, lambda f: f.numero)})
+
+
+@login_required
+def pagamento_fornitori(request):
+    """Fornitori con fatture passive aperte, per il select2 del flusso pagamento."""
+    q = request.GET.get('q', '').strip()
+    return JsonResponse({'results': documenti.fornitori_da_pagare(q)})
+
+
+@login_required
+def pagamento_fatture(request):
+    """Fatture passive aperte di un fornitore."""
+    fornitore = request.GET.get('controparte', '').strip()
+    if not fornitore.isdigit():
+        return JsonResponse({'results': []})
+    qs = documenti.fatture_da_pagare().filter(fornitore_id=fornitore)
+    return JsonResponse({'results': documenti.righe_fatture(qs, lambda f: f.numero_fattura)})
+
+
 @login_required
 def nuova_registrazione(request):
     """
@@ -284,6 +323,70 @@ def nuova_registrazione(request):
     })
 
 
+def _flusso_incasso():
+    """Etichette ed endpoint della pagina di incasso (template condiviso)."""
+    return {
+        'titolo':      'Registra incasso',
+        'icona':       'bi-bank',
+        'sottotitolo': ('Il movimento bancario che chiude una o più fatture. '
+                        'Lo stato della fattura cambia solo da qui.'),
+        'passo_controparte': 'Chi ha pagato',
+        'passo_fatture':     'Quali fatture chiude',
+        'aiuto_controparte': ('Compaiono solo i clienti con almeno una fattura '
+                             'ancora da incassare.'),
+        'aiuto_fatture':     'Scegli prima il cliente.',
+        'placeholder_controparte': 'Cerca il cliente per nome…',
+        'vuoto_controparte': 'Nessun cliente con fatture da incassare',
+        'colonna_quota':  'Incasso',
+        'parola_importo': 'ricevuti',
+        'prefisso_quota': 'incasso',
+        'url_controparte': reverse('contabilita:incasso_clienti'),
+        'url_fatture':     reverse('contabilita:incasso_fatture'),
+        'annulla_url':     reverse('fatturazione_attiva:da_incassare'),
+        'spiegazione': [
+            'Per ogni fattura selezionata nasce <strong>un movimento</strong> in prima nota: '
+            'Dare il conto banca/cassa, Avere il conto del cliente.',
+            'La fattura accumula l\'incasso e passa a <strong>pagata</strong> '
+            'solo quando è coperta per intero.',
+            'Se incassi meno del residuo la fattura resta <strong>emessa</strong>, '
+            'con il residuo aggiornato.',
+            'La somma delle quote deve fare esattamente l\'importo ricevuto.',
+        ],
+    }
+
+
+def _flusso_pagamento():
+    """Etichette ed endpoint della pagina di pagamento (template condiviso)."""
+    return {
+        'titolo':      'Registra pagamento',
+        'icona':       'bi-cash-stack',
+        'sottotitolo': ('Il pagamento che chiude una o più fatture ricevute. '
+                        'Lo stato della fattura passiva cambia solo da qui.'),
+        'passo_controparte': 'Chi hai pagato',
+        'passo_fatture':     'Quali fatture chiude',
+        'aiuto_controparte': ('Compaiono solo i fornitori con almeno una fattura '
+                             'ancora da pagare.'),
+        'aiuto_fatture':     'Scegli prima il fornitore.',
+        'placeholder_controparte': 'Cerca il fornitore per ragione sociale…',
+        'vuoto_controparte': 'Nessun fornitore con fatture da pagare',
+        'colonna_quota':  'Pagamento',
+        'parola_importo': 'pagati',
+        'prefisso_quota': 'pagamento',
+        'url_controparte': reverse('contabilita:pagamento_fornitori'),
+        'url_fatture':     reverse('contabilita:pagamento_fatture'),
+        'annulla_url':     reverse('acquisti:fattura_list'),
+        'spiegazione': [
+            'Per ogni fattura selezionata nasce <strong>un movimento</strong> in prima nota: '
+            'Dare il conto del fornitore, Avere il conto banca/cassa.',
+            'La fattura accumula il pagamento e passa a <strong>pagata</strong> '
+            'solo quando è coperta per intero.',
+            'Se paghi meno del residuo la fattura resta <strong>da pagare</strong>, '
+            'con il residuo aggiornato.',
+            'La somma delle quote deve fare esattamente l\'importo pagato.',
+        ],
+    }
+
+
 @login_required
 def incasso_create(request):
     """
@@ -298,9 +401,10 @@ def incasso_create(request):
                         tipo=MovimentoPrimaNota.Tipo.INCASSO, verso=VERSO_INCASSO)
         return redirect(reverse('contabilita:prima_nota_list') + '?tipo=incasso')
 
-    return render(request, 'contabilita/incasso_form.html', {
+    return render(request, 'contabilita/registrazione_form.html', {
         'page_title': 'Registra incasso',
         'form':       form,
+        'flusso':     _flusso_incasso(),
     })
 
 
@@ -318,9 +422,10 @@ def pagamento_create(request):
                         tipo=MovimentoPrimaNota.Tipo.PAGAMENTO, verso=VERSO_PAGAMENTO)
         return redirect(reverse('contabilita:prima_nota_list') + '?tipo=pagamento')
 
-    return render(request, 'contabilita/pagamento_form.html', {
+    return render(request, 'contabilita/registrazione_form.html', {
         'page_title': 'Registra pagamento',
         'form':       form,
+        'flusso':     _flusso_pagamento(),
     })
 
 
