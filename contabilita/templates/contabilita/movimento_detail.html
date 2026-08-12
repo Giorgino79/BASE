@@ -33,11 +33,14 @@
       <ol class="breadcrumb">
         <li class="breadcrumb-item"><a href="{% url 'contabilita:dashboard' %}">Contabilità</a></li>
         <li class="breadcrumb-item"><a href="{% url 'contabilita:prima_nota_list' %}">Prima Nota</a></li>
-        <li class="breadcrumb-item active">Movimento del {{ mov.data|date:"d/m/Y" }}</li>
+        <li class="breadcrumb-item active">{{ mov.numero|default:"Movimento" }}</li>
       </ol>
     </nav>
     <h1><i class="bi bi-journal-text me-2 text-brand"></i>{{ mov.causale }}</h1>
     <div class="d-flex gap-2 flex-wrap mt-1">
+      {% if mov.numero %}
+      <span class="badge bg-brand text-white font-monospace">{{ mov.numero }}</span>
+      {% endif %}
       <span class="badge bg-secondary">{{ mov.get_tipo_display }}</span>
       {% if mov.is_automatico %}
       <span class="badge badge-wait"><i class="bi bi-gear-fill me-1"></i>Generato automaticamente</span>

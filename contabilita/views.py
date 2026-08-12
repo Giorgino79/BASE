@@ -20,10 +20,13 @@ from core.mixins import PrintDetailMixin, SidebarQrAllegatiMixin
 from . import documenti
 from . import controlli
 from .forms import (
-    ContoContabileForm, MovimentoPrimaNotaForm, RegistrazioneIncassoForm,
-    RegistrazionePagamentoForm,
+    ContoContabileForm, ImpostazioniContabilitaForm, MovimentoPrimaNotaForm,
+    RegistrazioneIncassoForm, RegistrazionePagamentoForm,
 )
-from .models import ContoContabile, MovimentoPrimaNota
+from .models import (
+    ContoContabile, ImpostazioniContabilita, MovimentoPrimaNota,
+    data_minima_plausibile,
+)
 from .signals import _get_or_create_conto
 
 
@@ -93,12 +96,13 @@ def prima_nota_list(request):
     Ricerca sui movimenti: senza filtri non viene mostrato alcun dato, la
     tabella compare solo dopo una ricerca.
     """
+    numero_f  = request.GET.get('numero', '').strip()
     tipo_f    = request.GET.get('tipo', '').strip()
     data_da   = request.GET.get('data_da', '').strip()
     data_a    = request.GET.get('data_a', '').strip()
     conto_f   = request.GET.get('conto', '').strip()
 
-    ricerca_eseguita = bool(tipo_f or data_da or data_a or conto_f)
+    ricerca_eseguita = bool(numero_f or tipo_f or data_da or data_a or conto_f)
     movimenti    = []
     page_obj     = None
     n_movimenti  = 0
@@ -111,6 +115,10 @@ def prima_nota_list(request):
                               'fattura_attiva', 'fattura_passiva')
               .order_by('-data', '-created_at'))
 
+        if numero_f:
+            # Si cerca sia "MOV-2026-0042" sia solo "42": il numero si cita a
+            # voce senza il prefisso.
+            qs = qs.filter(Q(numero__icontains=numero_f) | Q(causale__icontains=numero_f))
         if tipo_f:
             qs = qs.filter(tipo=tipo_f)
         if data_da:
@@ -139,6 +147,7 @@ def prima_nota_list(request):
         'ricerca_eseguita': ricerca_eseguita,
         'tipi':             MovimentoPrimaNota.Tipo.choices,
         'conti':            ContoContabile.objects.filter(attivo=True).order_by('tipo', 'nome'),
+        'numero_f':         numero_f,
         'tipo_f':           tipo_f,
         'data_da':          data_da,
         'data_a':           data_a,
@@ -440,7 +449,7 @@ class MovimentoDetailView(LoginRequiredMixin, SidebarQrAllegatiMixin,
     context_object_name = 'mov'
     print_title         = 'Movimento di prima nota'
     print_fields        = [
-        'data', 'tipo', 'causale', 'importo',
+        'numero', 'data', 'tipo', 'causale', 'importo',
         'numero_documento', 'note', 'created_at',
     ]
 
@@ -452,7 +461,7 @@ class MovimentoDetailView(LoginRequiredMixin, SidebarQrAllegatiMixin,
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         mov = self.object
-        ctx['page_title'] = f'Movimento — {mov.data:%d/%m/%Y}'
+        ctx['page_title'] = f'{mov.numero or "Movimento"} — {mov.data:%d/%m/%Y}'
         ctx['documento']  = documenti.dettaglio(mov)
         ctx['allegati']   = mov.allegati
         return ctx
@@ -626,6 +635,49 @@ def mastrino(request, pk):
         'data_a':         data_a,
     }
     return render(request, 'contabilita/mastrino.html', ctx)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# IMPOSTAZIONI — chiusura di periodo
+# ─────────────────────────────────────────────────────────────────────────────
+
+@login_required
+def impostazioni(request):
+    """
+    Chiusura di periodo. Solo per amministratori: spostarla in avanti congela
+    dei mesi, spostarla indietro li riapre — non è una scelta operativa.
+    """
+    if not request.user.is_staff:
+        messages.error(request, 'Solo un amministratore può modificare la chiusura di periodo.')
+        return redirect(reverse('contabilita:dashboard'))
+
+    impo = ImpostazioniContabilita.carica()
+    form = ImpostazioniContabilitaForm(request.POST or None, instance=impo)
+
+    if request.method == 'POST' and form.is_valid():
+        impo = form.save(commit=False)
+        impo.aggiornata_da = request.user
+        impo.save()
+        if impo.chiusa_fino_al:
+            messages.success(request, (
+                f'Contabilità chiusa fino al {impo.chiusa_fino_al:%d/%m/%Y}: '
+                'da ora nessun movimento può avere una data pari o precedente.'
+            ))
+        else:
+            messages.success(request, 'Chiusura di periodo rimossa: nessuna data è più bloccata.')
+        return redirect(reverse('contabilita:dashboard'))
+
+    # Quanti movimenti resterebbero congelati dalla chiusura attuale.
+    n_congelati = (MovimentoPrimaNota.objects.filter(data__lte=impo.chiusa_fino_al).count()
+                   if impo.chiusa_fino_al else 0)
+
+    return render(request, 'contabilita/impostazioni.html', {
+        'page_title':   'Impostazioni contabilità',
+        'form':         form,
+        'impostazioni': impo,
+        'n_congelati':  n_congelati,
+        'data_minima':  data_minima_plausibile(),
+    })
 
 
 # ─────────────────────────────────────────────────────────────────────────────

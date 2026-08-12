@@ -2,12 +2,14 @@ import json
 from decimal import Decimal, InvalidOperation
 
 from django import forms
+from django.utils import timezone
 
 from fatturazione_attiva.models import Fattura
 
 from .documenti import fatture_da_incassare, fatture_da_pagare
 from .models import (
-    REGOLE_DARE_AVERE, ContoContabile, MovimentoPrimaNota, valida_dare_avere,
+    REGOLE_DARE_AVERE, ContoContabile, ImpostazioniContabilita,
+    MovimentoPrimaNota, valida_dare_avere, valida_data_movimento,
 )
 
 _BS_CLASS = {
@@ -65,6 +67,24 @@ class ContoContabileForm(BootstrapMixin, forms.ModelForm):
                 'I conti cliente e fornitore vengono creati automaticamente '
                 'dall\'anagrafica e non si inseriscono da qui.'
             )
+
+
+class ImpostazioniContabilitaForm(BootstrapMixin, forms.ModelForm):
+    """Chiusura di periodo. La modificano solo gli amministratori."""
+
+    class Meta:
+        model  = ImpostazioniContabilita
+        fields = ['chiusa_fino_al']
+        widgets = {'chiusa_fino_al': forms.DateInput(attrs={'type': 'date'})}
+
+    def clean_chiusa_fino_al(self):
+        data = self.cleaned_data.get('chiusa_fino_al')
+        if data and data > timezone.localdate():
+            raise forms.ValidationError(
+                'Non si chiude un periodo che non è ancora finito: '
+                'la data non può essere nel futuro.'
+            )
+        return data
 
 
 class MovimentoPrimaNotaForm(BootstrapMixin, forms.ModelForm):
@@ -169,6 +189,16 @@ class MovimentoPrimaNotaForm(BootstrapMixin, forms.ModelForm):
         except (self.fields[nome].queryset.model.DoesNotExist, TypeError, ValueError):
             return None
 
+    def clean_data(self):
+        """Regole generali sulla data: l'errore va sul campo, non sul form."""
+        data = self.cleaned_data.get('data')
+        errore = valida_data_movimento(
+            data, chiusa_fino_al=ImpostazioniContabilita.chiusura(),
+        )
+        if errore:
+            raise forms.ValidationError(errore)
+        return data
+
     def clean(self):
         cleaned = super().clean()
 
@@ -272,6 +302,25 @@ class RegistrazioneQuoteForm(BootstrapMixin, forms.Form):
         """Etichetta leggibile della controparte, per ripopolare il campo."""
         raise NotImplementedError
 
+    def data_documento(self, fattura):
+        """Data del documento: il movimento non può precederla."""
+        raise NotImplementedError
+
+    # ── Data ─────────────────────────────────────────────────────────────────
+
+    def clean_data(self):
+        """
+        Regole generali sulla data. Il confronto con la data delle singole
+        fatture sta in clean(), dove le fatture sono già validate.
+        """
+        data = self.cleaned_data.get('data')
+        errore = valida_data_movimento(
+            data, chiusa_fino_al=ImpostazioniContabilita.chiusura(),
+        )
+        if errore:
+            raise forms.ValidationError(errore)
+        return data
+
     # ── Controparte ──────────────────────────────────────────────────────────
 
     def controparte_scelta(self):
@@ -329,6 +378,22 @@ class RegistrazioneQuoteForm(BootstrapMixin, forms.Form):
                 self.add_error('fatture', (
                     f'{"Queste fatture non appartengono" if len(estranee) > 1 else "Questa fattura non appartiene"} '
                     f'alla controparte selezionata: {", ".join(estranee)}.'
+                ))
+                return cleaned
+
+        # Nessun documento si salda prima di esistere. Va controllato qui e non
+        # solo nel model: qui si può dire *quale* fattura non torna.
+        data = cleaned.get('data')
+        if fatture and data:
+            precedenti = [
+                f'{self.numero_fattura(f)} (del {self.data_documento(f):%d/%m/%Y})'
+                for f in fatture if data < self.data_documento(f)
+            ]
+            if precedenti:
+                self.add_error('data', (
+                    f'Il movimento è datato {data:%d/%m/%Y}, prima di '
+                    f'{"queste fatture" if len(precedenti) > 1 else "questa fattura"}: '
+                    f'{", ".join(precedenti)}.'
                 ))
                 return cleaned
 
@@ -413,6 +478,9 @@ class RegistrazioneIncassoForm(RegistrazioneQuoteForm):
         # Il cliente *è* il suo nome: non c'è niente da risolvere.
         return valore
 
+    def data_documento(self, fattura):
+        return fattura.data_emissione
+
 
 class RegistrazionePagamentoForm(RegistrazioneQuoteForm):
     """
@@ -452,3 +520,6 @@ class RegistrazionePagamentoForm(RegistrazioneQuoteForm):
             return Fornitore.objects.get(pk=valore).ragione_sociale
         except (Fornitore.DoesNotExist, ValueError):
             return ''
+
+    def data_documento(self, fattura):
+        return fattura.data_fattura

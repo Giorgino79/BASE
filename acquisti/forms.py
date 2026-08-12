@@ -111,6 +111,24 @@ class FatturaPassivaForm(BootstrapMixin, forms.ModelForm):
             "note": forms.Textarea(attrs={"rows": 3}),
         }
 
+    def clean_data_fattura(self):
+        """
+        Registrare la fattura genera la scrittura di prima nota datata come la
+        fattura (contabilita/signals.py), che applica le regole sulla data. Il
+        controllo va anticipato qui: dal signal l'errore arriverebbe a
+        salvataggio già avviato, con una pagina di errore invece di un campo
+        segnalato.
+        """
+        from contabilita.models import ImpostazioniContabilita, valida_data_movimento
+
+        data = self.cleaned_data.get("data_fattura")
+        errore = valida_data_movimento(
+            data, chiusa_fino_al=ImpostazioniContabilita.chiusura(),
+        )
+        if errore:
+            raise forms.ValidationError(errore)
+        return data
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         from anagrafica_r2.models import Fornitore

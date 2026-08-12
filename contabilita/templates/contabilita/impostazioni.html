@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'contabilita:dashboard' %}">Contabilità</a></li>
+      <li class="breadcrumb-item active">Impostazioni</li>
+    </ol>
+  </nav>
+  <h1><i class="bi bi-lock me-2 text-brand"></i>Chiusura di periodo</h1>
+  <p class="text-muted mb-0">
+    Fino a quando la contabilità è chiusa a nuovi movimenti.
+  </p>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="card mb-3">
+      <div class="card-header card-header-primary">
+        <i class="bi bi-calendar-check me-2"></i>Stato attuale
+      </div>
+      <div class="card-body">
+        {% if impostazioni.chiusa_fino_al %}
+        <div class="d-flex align-items-center gap-3 mb-2">
+          <i class="bi bi-lock-fill fs-3 text-brand"></i>
+          <div>
+            <div class="fw-semibold">Chiusa fino al {{ impostazioni.chiusa_fino_al|date:"d/m/Y" }}</div>
+            <div class="text-muted small">
+              {{ n_congelati }} moviment{{ n_congelati|pluralize:"o,i" }} in questo periodo
+              {% if n_congelati %}non {{ n_congelati|pluralize:"è,sono" }} più modificabil{{ n_congelati|pluralize:"e,i" }}{% endif %}.
+            </div>
+          </div>
+        </div>
+        {% if impostazioni.aggiornata_da %}
+        <div class="text-muted small">
+          Impostata da {{ impostazioni.aggiornata_da }} il {{ impostazioni.updated_at|date:"d/m/Y H:i" }}.
+        </div>
+        {% endif %}
+        {% else %}
+        <div class="d-flex align-items-center gap-3">
+          <i class="bi bi-unlock fs-3 text-muted"></i>
+          <div>
+            <div class="fw-semibold">Nessun periodo chiuso</div>
+            <div class="text-muted small">
+              Ogni data plausibile è accettata, dal {{ data_minima|date:"d/m/Y" }} a oggi.
+            </div>
+          </div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <form method="post" novalidate>
+      {% csrf_token %}
+      <div class="card mb-3">
+        <div class="card-header"><i class="bi bi-pencil me-2"></i>Modifica</div>
+        <div class="card-body">
+          <label class="form-label" for="{{ form.chiusa_fino_al.id_for_label }}">
+            {{ form.chiusa_fino_al.label }}
+          </label>
+          {{ form.chiusa_fino_al }}
+          {% if form.chiusa_fino_al.errors %}
+          <div class="invalid-feedback d-block">{{ form.chiusa_fino_al.errors.0 }}</div>
+          {% endif %}
+          <div class="form-text">{{ form.chiusa_fino_al.help_text }}</div>
+        </div>
+      </div>
+
+      <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary">
+          <i class="bi bi-check-lg me-1"></i>Salva
+        </button>
+        <a href="{% url 'contabilita:dashboard' %}" class="btn btn-outline-secondary">Annulla</a>
+      </div>
+    </form>
+  </div>
+
+  <div class="col-lg-5">
+    <div class="card mb-3">
+      <div class="card-header"><i class="bi bi-info-circle me-2"></i>Come funziona</div>
+      <div class="card-body small text-muted">
+        <ul class="ps-3 mb-0">
+          <li class="mb-2">Spostala in avanti quando hai <strong>liquidato l'IVA</strong>
+              di un trimestre o chiuso l'anno.</li>
+          <li class="mb-2">Nessun movimento potrà più avere una data <strong>pari o
+              precedente</strong>, né dai flussi guidati né dal form manuale.</li>
+          <li class="mb-2">Vale anche per le <strong>fatture fornitore</strong>: registrarne
+              una datata nel periodo chiuso viene rifiutato.</li>
+          <li>I movimenti già registrati <strong>restano</strong>: la chiusura blocca
+              l'inserimento, non cancella niente. Per correggerne uno serve uno
+              storno, datato oggi.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><i class="bi bi-clock-history me-2"></i>Le due date</div>
+      <div class="card-body small text-muted mb-0">
+        <p class="mb-2">
+          La <strong>data del movimento</strong> è quella dell'operazione: può stare
+          nel passato, perché lunedì si registra il bonifico arrivato venerdì.
+        </p>
+        <p class="mb-0">
+          La <strong>data di registrazione</strong> è quando l'hai digitato: cresce
+          da sola, non è modificabile, e la trovi nella scheda di ogni movimento.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

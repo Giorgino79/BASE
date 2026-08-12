@@ -73,6 +73,7 @@
     <table class="table table-hover table-sm mb-0 align-middle">
       <thead class="table-light">
         <tr>
+          <th>N° movimento</th>
           <th>Data</th>
           <th>Causale</th>
           <th class="text-end">Dare</th>
@@ -86,7 +87,7 @@
         {# Il progressivo riparte da qui, non da zero: senza il riporto le
            pagine dalla seconda in poi mostrerebbero saldi sbagliati. #}
         <tr class="table-light">
-          <td colspan="4" class="text-end fst-italic small">
+          <td colspan="5" class="text-end fst-italic small">
             Saldo riportato dalle pagine precedenti
           </td>
           <td class="text-end fw-semibold">€ {{ saldo_apertura|floatformat:2 }}</td>
@@ -96,6 +97,10 @@
 
         {% for m in movimenti %}
         <tr>
+          <td class="text-nowrap small">
+            <a href="{% url 'contabilita:movimento_detail' m.pk %}"
+               class="fw-semibold text-decoration-none">{{ m.numero|default:"—" }}</a>
+          </td>
           <td class="text-nowrap small">{{ m.data|date:"d/m/Y" }}</td>
           <td>{{ m.causale }}</td>
           <td class="text-end">{% if m.lato == 'dare' %}€ {{ m.valore|floatformat:2 }}{% else %}—{% endif %}</td>
@@ -108,7 +113,7 @@
           </td>
         </tr>
         {% empty %}
-        <tr><td colspan="6" class="text-center text-muted py-3"><i class="bi bi-inbox me-2"></i>Nessun movimento su questo conto</td></tr>
+        <tr><td colspan="7" class="text-center text-muted py-3"><i class="bi bi-inbox me-2"></i>Nessun movimento su questo conto</td></tr>
         {% endfor %}
       </tbody>
 
@@ -116,13 +121,13 @@
       <tfoot class="table-light">
         {% if page_obj.paginator.num_pages > 1 %}
         <tr>
-          <td colspan="4" class="text-end small">Saldo a fine pagina</td>
+          <td colspan="5" class="text-end small">Saldo a fine pagina</td>
           <td class="text-end fw-semibold">€ {{ saldo_chiusura|floatformat:2 }}</td>
           <td></td>
         </tr>
         {% endif %}
         <tr>
-          <td colspan="2" class="text-end fw-semibold">
+          <td colspan="3" class="text-end fw-semibold">
             Totali del periodo{% if page_obj.paginator.num_pages > 1 %} (tutte le pagine){% endif %}
           </td>
           <td class="text-end fw-bold">€ {{ tot_dare|floatformat:2 }}</td>

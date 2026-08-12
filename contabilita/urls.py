@@ -21,6 +21,7 @@ urlpatterns = [
     path('prima-nota/<int:pk>/storna/',   views.movimento_storna, name='movimento_storna'),
     path('prima-nota/<int:pk>/elimina/',  views.movimento_delete, name='movimento_delete'),
     path('mastrino/<int:pk>/',            views.mastrino,         name='mastrino'),
+    path('impostazioni/',                 views.impostazioni,        name='impostazioni'),
     path('conti/',                        views.conti_list,          name='conti_list'),
     path('conti/suggerimenti/',           views.conti_suggerimenti,  name='conti_suggerimenti'),
     path('conti/nuovo/',                  views.conto_create,     name='conto_create'),
