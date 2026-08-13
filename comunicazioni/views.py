@@ -38,7 +38,7 @@ def promemoria_list(request):
 @login_required
 def promemoria_create(request):
     if request.method == 'POST':
-        form = PromemoriaForm(request.POST, user=request.user)
+        form = PromemoriaForm(request.POST, request.FILES, user=request.user)
         if form.is_valid():
             p = form.save(commit=False)
             p.user = request.user
@@ -59,7 +59,7 @@ def promemoria_create(request):
 def promemoria_update(request, pk):
     p = get_object_or_404(Promemoria, pk=pk, user=request.user)
     if request.method == 'POST':
-        form = PromemoriaForm(request.POST, instance=p, user=request.user)
+        form = PromemoriaForm(request.POST, request.FILES, instance=p, user=request.user)
         if form.is_valid():
             form.save()
             messages.success(request, 'Promemoria aggiornato.')
@@ -71,10 +71,25 @@ def promemoria_update(request, pk):
 
 @login_required
 def promemoria_delete(request, pk):
+    """Eliminazione definitiva: la riga sparisce dal DB e con essa l'allegato.
+
+    Se c'è un allegato serve una conferma esplicita, perché il file non è più
+    recuperabile una volta cancellato dallo storage.
+    """
     p = get_object_or_404(Promemoria, pk=pk, user=request.user)
     if request.method == 'POST':
+        if p.allegato and not request.POST.get('conferma_allegato'):
+            messages.error(
+                request,
+                'Conferma la cancellazione definitiva dell\'allegato per procedere.',
+            )
+            return render(request, 'comunicazioni/promemoria_confirm_delete.html', {'object': p})
+        nome_allegato = p.allegato_nome
         p.delete()
-        messages.success(request, 'Promemoria eliminato.')
+        if nome_allegato:
+            messages.success(request, f'Promemoria eliminato insieme all\'allegato «{nome_allegato}».')
+        else:
+            messages.success(request, 'Promemoria eliminato.')
         return redirect('comunicazioni:promemoria_list')
     return render(request, 'comunicazioni/promemoria_confirm_delete.html', {'object': p})
 

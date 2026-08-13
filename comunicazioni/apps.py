@@ -6,4 +6,4 @@ class ComunicazioniConfig(AppConfig):
     name = 'comunicazioni'
 
     def ready(self):
-        pass
+        from . import signals  # noqa: F401

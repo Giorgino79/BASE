@@ -33,6 +33,10 @@ class Promemoria(models.Model):
     completato_il = models.DateTimeField('Completato il', null=True, blank=True)
     link_url      = models.CharField('Link oggetto', max_length=500, blank=True,
                                      help_text='URL della pagina correlata (es. ODS, cliente, distinta)')
+    allegato = models.FileField(
+        'Allegato', upload_to='promemoria/allegati/%Y/%m/', null=True, blank=True,
+        help_text='Viene eliminato definitivamente insieme al promemoria',
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -58,6 +62,12 @@ class Promemoria(models.Model):
     @property
     def is_attivo(self):
         return self.stato not in ('completato', 'annullato')
+
+    @property
+    def allegato_nome(self):
+        """Nome del file senza il path di upload, per mostrarlo nell'interfaccia."""
+        import os
+        return os.path.basename(self.allegato.name) if self.allegato else ''
 
 
 class ChatConversazione(models.Model):

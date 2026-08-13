@@ -8,7 +8,8 @@ from .models import Promemoria
 class PromemoriaForm(forms.ModelForm):
     class Meta:
         model = Promemoria
-        fields = ['titolo', 'descrizione', 'priorita', 'stato', 'data_scadenza', 'assegnato_a', 'link_url']
+        fields = ['titolo', 'descrizione', 'priorita', 'stato', 'data_scadenza', 'assegnato_a',
+                  'link_url', 'allegato']
         widgets = {
             'data_scadenza': forms.DateTimeInput(attrs={'type': 'datetime-local'}, format='%Y-%m-%dT%H:%M'),
             'descrizione': forms.Textarea(attrs={'rows': 3}),
@@ -21,6 +22,7 @@ class PromemoriaForm(forms.ModelForm):
         self.fields['data_scadenza'].required = False
         self.fields['assegnato_a'].required = False
         self.fields['descrizione'].required = False
+        self.fields['allegato'].required = False
         if user:
             from users.models import User
             self.fields['assegnato_a'].queryset = User.objects.filter(is_active=True).exclude(pk=user.pk)
@@ -33,6 +35,7 @@ class PromemoriaForm(forms.ModelForm):
             Field('data_scadenza'),
             Field('assegnato_a'),
             Field('descrizione'),
+            Field('allegato'),
             # link_url rendered manually nel template con widget di ricerca
         )
 
