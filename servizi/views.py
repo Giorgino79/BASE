@@ -1516,9 +1516,11 @@ def chiudi_distinta_ufficio(request, pk):
     Chiusura distinta da parte dell'ufficio: riconcilia incassi,
     permette di riaprire singoli ODS e invia promemoria al tecnico.
 
-    I servizi OS2 (fatturazione_diversa=True) contano nei totali/promemoria
-    esattamente come un ODS normale — l'unica differenza è che, se non
-    riaperti, vengono cancellati definitivamente dal database alla chiusura.
+    I servizi OS2 (fatturazione_diversa=True) restano visibili in elenco e sono
+    riapribili, ma NON entrano nel totale incassi della distinta: hanno una
+    fatturazione esterna e, se non riaperti, vengono cancellati definitivamente
+    dal database alla chiusura. Sommarli produrrebbe un importo_ricevuto non
+    più riconciliabile con nulla, perché le righe che lo giustificano spariscono.
     """
     from decimal import Decimal, InvalidOperation
     from django.db import transaction
@@ -1548,7 +1550,7 @@ def chiudi_distinta_ufficio(request, pk):
     totale_previsto = (
         sum(
             (o.importo_incassato or Decimal("0")) for o in ods_list
-            if o.incassato and o.stato != "annullato"
+            if o.incassato and o.stato != "annullato" and not o.fatturazione_diversa
         ) +
         sum(c.totale_incassato for c in condomini_list)
     )
@@ -1601,6 +1603,7 @@ def chiudi_distinta_ufficio(request, pk):
                     (o.importo_incassato or Decimal("0"))
                     for o in ods_list
                     if o.incassato and o.stato != "annullato"
+                    and not o.fatturazione_diversa
                     and not request.POST.get(f"riapri_{o.pk}")
                 ) +
                 sum(
@@ -1690,9 +1693,11 @@ def situazione_incassi(request):
         .select_related("tecnico", "mezzo", "chiusa_da")
         .annotate(
             n_ods=Count("ods_set", distinct=True),
+            # Gli OS2 (fatturazione_diversa) hanno fatturazione esterna e vengono
+            # cancellati alla chiusura: fuori dal totale, come in chiudi_distinta_ufficio.
             totale_calcolato=Sum(
                 "ods_set__importo_incassato",
-                filter=Q(ods_set__incassato=True),
+                filter=Q(ods_set__incassato=True, ods_set__fatturazione_diversa=False),
             ),
         )
     )
