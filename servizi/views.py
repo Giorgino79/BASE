@@ -1516,11 +1516,12 @@ def chiudi_distinta_ufficio(request, pk):
     Chiusura distinta da parte dell'ufficio: riconcilia incassi,
     permette di riaprire singoli ODS e invia promemoria al tecnico.
 
-    I servizi OS2 (fatturazione_diversa=True) restano visibili in elenco e sono
-    riapribili, ma NON entrano nel totale incassi della distinta: hanno una
-    fatturazione esterna e, se non riaperti, vengono cancellati definitivamente
-    dal database alla chiusura. Sommarli produrrebbe un importo_ricevuto non
-    più riconciliabile con nulla, perché le righe che lo giustificano spariscono.
+    I servizi OS2 (fatturazione_diversa=True) sono cassa fisica che il tecnico
+    ha comunque in mano al rientro: contano nel totale richiesto in questa fase
+    esattamente come un ODS. Se non vengono riaperti, alla chiusura le righe
+    OS2 vengono però cancellate definitivamente dal database (fatturazione
+    esterna), quindi la loro quota va salvata a parte (importo_os2_incassato)
+    per restare riconciliabile nei report anche dopo la cancellazione.
     """
     from decimal import Decimal, InvalidOperation
     from django.db import transaction
@@ -1550,7 +1551,7 @@ def chiudi_distinta_ufficio(request, pk):
     totale_previsto = (
         sum(
             (o.importo_incassato or Decimal("0")) for o in ods_list
-            if o.incassato and o.stato != "annullato" and not o.fatturazione_diversa
+            if o.incassato and o.stato != "annullato"
         ) +
         sum(c.totale_incassato for c in condomini_list)
     )
@@ -1598,6 +1599,13 @@ def chiudi_distinta_ufficio(request, pk):
                     riaperti += 1
 
             # Ricalcola totale dopo eventuali riaperture
+            os2_incassato_effettivo = sum(
+                (o.importo_incassato or Decimal("0"))
+                for o in ods_list
+                if o.incassato and o.stato != "annullato"
+                and o.fatturazione_diversa
+                and not request.POST.get(f"riapri_{o.pk}")
+            )
             totale_effettivo = (
                 sum(
                     (o.importo_incassato or Decimal("0"))
@@ -1606,6 +1614,7 @@ def chiudi_distinta_ufficio(request, pk):
                     and not o.fatturazione_diversa
                     and not request.POST.get(f"riapri_{o.pk}")
                 ) +
+                os2_incassato_effettivo +
                 sum(
                     c.totale_incassato
                     for c in condomini_list
@@ -1621,9 +1630,13 @@ def chiudi_distinta_ufficio(request, pk):
 
             distinta.stato = "chiusa"
             distinta.importo_ricevuto = importo_ricevuto
+            distinta.importo_os2_incassato = os2_incassato_effettivo
             distinta.chiusa_da = request.user
             distinta.chiusa_il = timezone.now()
-            distinta.save(update_fields=["stato", "importo_ricevuto", "chiusa_da", "chiusa_il"])
+            distinta.save(update_fields=[
+                "stato", "importo_ricevuto", "importo_os2_incassato",
+                "chiusa_da", "chiusa_il",
+            ])
 
             # Promemoria al tecnico
             differenza = importo_ricevuto - totale_effettivo
@@ -1693,11 +1706,13 @@ def situazione_incassi(request):
         .select_related("tecnico", "mezzo", "chiusa_da")
         .annotate(
             n_ods=Count("ods_set", distinct=True),
-            # Gli OS2 (fatturazione_diversa) hanno fatturazione esterna e vengono
-            # cancellati alla chiusura: fuori dal totale, come in chiudi_distinta_ufficio.
+            # Per le distinte aperte gli OS2 contano qui perché le righe esistono
+            # ancora. Per le chiuse, le righe OS2 sono già state cancellate: la
+            # loro quota va recuperata da importo_os2_incassato (snapshot salvato
+            # alla chiusura), sommato più sotto.
             totale_calcolato=Sum(
                 "ods_set__importo_incassato",
-                filter=Q(ods_set__incassato=True, ods_set__fatturazione_diversa=False),
+                filter=Q(ods_set__incassato=True),
             ),
         )
     )
@@ -1718,7 +1733,7 @@ def situazione_incassi(request):
     grand_previsto = Decimal("0")
     grand_ricevuto = Decimal("0")
     for d in base_qs.filter(stato="chiusa").order_by("-data")[:5]:
-        previsto = d.totale_calcolato or Decimal("0")
+        previsto = (d.totale_calcolato or Decimal("0")) + (d.importo_os2_incassato or Decimal("0"))
         ricevuto = d.importo_ricevuto or Decimal("0")
         grand_previsto += previsto
         grand_ricevuto += ricevuto

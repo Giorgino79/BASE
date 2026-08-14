@@ -385,6 +385,15 @@ class Distinta(models.Model):
         verbose_name="Importo ricevuto",
         help_text="Contante/pagamenti effettivamente ricevuti dal tecnico all'ufficio",
     )
+    importo_os2_incassato = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True,
+        verbose_name="Di cui OS2",
+        help_text=(
+            "Quota di importo_ricevuto proveniente da servizi OS2 (fatturazione "
+            "esterna), salvata alla chiusura perché le righe OS2 vengono "
+            "cancellate e non sarebbero più ricostruibili."
+        ),
+    )
     chiusa_da = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
         null=True, blank=True, related_name="distinte_chiuse",

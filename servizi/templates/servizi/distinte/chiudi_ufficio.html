@@ -89,11 +89,9 @@
                 {% if o.stato == "annullato" %}
                   <span class="text-muted small">—</span>
                 {% elif o.incassato %}
+                  <span class="fw-semibold text-success">€ {{ o.importo_incassato|default:"—" }}</span>
                   {% if o.fatturazione_diversa %}
-                    <span class="fw-semibold text-muted">€ {{ o.importo_incassato|default:"—" }}</span>
-                    <div class="text-muted" style="font-size:.7rem;">fuori totale (OS2)</div>
-                  {% else %}
-                    <span class="fw-semibold text-success">€ {{ o.importo_incassato|default:"—" }}</span>
+                    <div class="text-muted" style="font-size:.7rem;">OS2 — cancellato alla chiusura</div>
                   {% endif %}
                 {% elif o.incasso_al_servizio %}
                   <span class="text-danger small"><i class="bi bi-exclamation-triangle me-1"></i>Da incassare</span>
@@ -168,7 +166,7 @@
         <div class="detail-field">
           <div class="detail-field-label">Incasso calcolato dal sistema</div>
           <div class="detail-field-value fw-bold text-brand" id="val-previsto">€ {{ totale_previsto }}</div>
-          <div class="text-muted" style="font-size:.72rem;">Esclusi i servizi OS2 (fatturazione esterna)</div>
+          <div class="text-muted" style="font-size:.72rem;">Include gli eventuali servizi OS2 (fatturazione esterna): il tecnico li ha comunque incassati in contanti</div>
         </div>
         <input type="hidden" id="totale-previsto-hidden" value="{{ totale_previsto }}">
 
