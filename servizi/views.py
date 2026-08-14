@@ -1638,12 +1638,16 @@ def chiudi_distinta_ufficio(request, pk):
                 "chiusa_da", "chiusa_il",
             ])
 
-            # Promemoria al tecnico
-            differenza = importo_ricevuto - totale_effettivo
+            # Promemoria al tecnico: gli OS2 hanno fatturazione esterna e non
+            # devono comparire nella quietanza — vengono tolti da entrambi i
+            # lati, quindi la differenza calcolata resta invariata.
+            previsto_ods = totale_effettivo - os2_incassato_effettivo
+            ricevuto_ods = importo_ricevuto - os2_incassato_effettivo
+            differenza = ricevuto_ods - previsto_ods
             nome_ufficio = request.user.get_full_name() or request.user.username
             righe_msg = (
-                f"Incasso previsto:  € {totale_effettivo}\n"
-                f"Importo ricevuto:  € {importo_ricevuto}\n"
+                f"Incasso previsto:  € {previsto_ods}\n"
+                f"Importo ricevuto:  € {ricevuto_ods}\n"
             )
             if differenza < 0:
                 righe_msg += f"Differenza:        € {abs(differenza)} MANCANTI"
@@ -1663,7 +1667,7 @@ def chiudi_distinta_ufficio(request, pk):
                 assegnato_a=distinta.tecnico,
                 titolo=(
                     f"Chiusura distinta {distinta.data.strftime('%d/%m/%Y')} "
-                    f"— Incasso € {importo_ricevuto}"
+                    f"— Incasso € {ricevuto_ods}"
                 ),
                 descrizione=(
                     f"Distinta del {distinta.data.strftime('%d/%m/%Y')} "
