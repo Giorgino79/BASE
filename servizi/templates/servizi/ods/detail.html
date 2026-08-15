@@ -21,7 +21,7 @@
     </h1>
     <div class="d-grid gap-2 d-md-flex">
       {% url 'servizi:ods_bollettino_pdf' ods.pk as bollettino_url %}
-      {% bottone_invia phone=invia_phone email=invia_email oggetto="Bollettino di servizio "|add:ods.numero link_url=ods.get_absolute_url destinatario_nome=invia_nome label="" btn_class="btn-outline-success" btn_size="btn-sm rounded-0" %}
+      {% bottone_invia phone=invia_phone email=invia_email oggetto="Bollettino di servizio "|add:ods.numero pdf_url=bollettino_url destinatario_nome=invia_nome label="" btn_class="btn-outline-success" btn_size="btn-sm rounded-0" %}
       <a href="{{ bollettino_url }}" target="_blank" class="btn btn-outline-primary btn-sm rounded-0">
         <i class="bi bi-printer"></i>
       </a>
@@ -214,6 +214,7 @@
            data-bs-toggle="modal" data-bs-target="#modal-personale">
           <i class="bi bi-people me-2"></i>Cambia tecnico / assistente
         </a>
+        {% bottone_invia phone=invia_phone email=invia_email oggetto="Bollettino di servizio "|add:ods.numero pdf_url=bollettino_url destinatario_nome=invia_nome label="Invia bollettino" btn_class="list-group-item list-group-item-action text-success w-100 text-start border-0 bg-transparent" btn_size="" %}
         {% if ods.incasso_al_servizio and not ods.incassato and ods.stato == "completato" %}
         <a href="#" class="list-group-item list-group-item-action text-success"
            data-bs-toggle="modal" data-bs-target="#modal-incasso">

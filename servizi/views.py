@@ -474,6 +474,14 @@ def ods_bollettino_pdf(request, pk):
         c for r in ods.righe.all() for c in r.consumi.all() if c.confermato
     ]
 
+    # Firma cliente (raccolta in chiusura o dal portale)
+    from portale.models import FirmaDigitale
+    firma = None
+    try:
+        firma = ods.firma_digitale
+    except FirmaDigitale.DoesNotExist:
+        pass
+
     ctx = {
         "ods": ods,
         "cliente_nome": cliente_nome,
@@ -482,6 +490,8 @@ def ods_bollettino_pdf(request, pk):
         "servizi_sx": servizi_sx,
         "servizi_dx": servizi_dx,
         "prodotti_usati": prodotti_usati,
+        "firma_data": firma.firma_svg if firma else "",
+        "firmato_da": firma.firmato_da if firma else "",
         "oggi": timezone.now().date(),
         # Dati azienda — adattare se cambiano
         "azienda_nome": "SERVAL SRLS UNIPERSONALE",
@@ -1425,6 +1435,18 @@ def chiudi_servizio_distinta(request, ods_pk):
                             quantita=qty,
                             confermato=True,
                         )
+
+            # Firma cliente raccolta sul campo al momento della chiusura
+            firma_data = request.POST.get("firma_data", "").strip()
+            if firma_data:
+                from portale.models import FirmaDigitale
+                FirmaDigitale.objects.get_or_create(
+                    ods=ods,
+                    defaults={
+                        "firma_svg": firma_data,
+                        "firmato_da": request.POST.get("firmato_da", "").strip(),
+                    },
+                )
 
             messages.success(request, f"ODS {ods.numero} chiuso.")
 

@@ -255,6 +255,18 @@
             <label class="form-label">Note intervento</label>
             <textarea name="note_intervento" class="form-control form-control-sm" rows="2"
                       placeholder="Note opzionali">{{ ods.note_intervento }}</textarea>
+
+            <label class="form-label mt-3">Firma cliente <span class="text-muted fw-normal">(opzionale)</span></label>
+            <canvas class="firma-canvas"
+                    style="border:2px solid #d1d5db;border-radius:8px;cursor:crosshair;touch-action:none;width:100%;height:140px;background:#fff;display:block;"></canvas>
+            <div class="d-flex justify-content-between align-items-center gap-2 mt-2">
+              <input type="text" name="firmato_da" class="form-control form-control-sm"
+                     placeholder="Nome firmatario">
+              <button type="button" class="btn btn-sm btn-outline-secondary btn-firma-clear flex-shrink-0">
+                <i class="bi bi-eraser me-1"></i>Cancella
+              </button>
+            </div>
+            <input type="hidden" name="firma_data" class="firma-data-input">
           </div>
           {# Sezione annullamento #}
           <div class="chiudi-sezione-annullato" style="display:none;">
@@ -315,7 +327,65 @@
 
   modal.addEventListener('hidden.bs.modal', function () {
     if (inAnnullamento) btnAnnulla.click();
+    if (firmaCtx) firmaCtx.clearRect(0, 0, firmaCanvas.width, firmaCanvas.height);
+    if (firmaDataInput) firmaDataInput.value = '';
   });
+
+  // ── Firma cliente ────────────────────────────────────────────────
+  var firmaCanvas    = modal.querySelector('.firma-canvas');
+  var firmaDataInput = modal.querySelector('.firma-data-input');
+  var btnFirmaClear  = modal.querySelector('.btn-firma-clear');
+  var form           = modal.querySelector('form');
+  var firmaCtx       = null;
+
+  if (firmaCanvas) {
+    firmaCtx = firmaCanvas.getContext('2d');
+    var firmaDrawing = false;
+
+    function firmaResize() {
+      var rect = firmaCanvas.getBoundingClientRect();
+      var dpr  = window.devicePixelRatio || 1;
+      firmaCanvas.width  = rect.width  * dpr;
+      firmaCanvas.height = rect.height * dpr;
+      firmaCtx.scale(dpr, dpr);
+      firmaCtx.strokeStyle = '#1e293b';
+      firmaCtx.lineWidth   = 2;
+      firmaCtx.lineCap     = 'round';
+      firmaCtx.lineJoin    = 'round';
+    }
+
+    function firmaPos(e) {
+      var r = firmaCanvas.getBoundingClientRect();
+      var t = e.touches ? e.touches[0] : e;
+      return { x: t.clientX - r.left, y: t.clientY - r.top };
+    }
+
+    modal.addEventListener('shown.bs.modal', firmaResize);
+    firmaCanvas.addEventListener('mousedown',  function (e) { firmaDrawing = true; firmaCtx.beginPath(); var p = firmaPos(e); firmaCtx.moveTo(p.x, p.y); });
+    firmaCanvas.addEventListener('mousemove',  function (e) { if (!firmaDrawing) return; var p = firmaPos(e); firmaCtx.lineTo(p.x, p.y); firmaCtx.stroke(); });
+    firmaCanvas.addEventListener('mouseup',    function () { firmaDrawing = false; });
+    firmaCanvas.addEventListener('mouseleave', function () { firmaDrawing = false; });
+    firmaCanvas.addEventListener('touchstart', function (e) { e.preventDefault(); firmaDrawing = true; firmaCtx.beginPath(); var p = firmaPos(e); firmaCtx.moveTo(p.x, p.y); });
+    firmaCanvas.addEventListener('touchmove',  function (e) { e.preventDefault(); if (!firmaDrawing) return; var p = firmaPos(e); firmaCtx.lineTo(p.x, p.y); firmaCtx.stroke(); });
+    firmaCanvas.addEventListener('touchend',   function () { firmaDrawing = false; });
+
+    if (btnFirmaClear) {
+      btnFirmaClear.addEventListener('click', function () {
+        firmaCtx.clearRect(0, 0, firmaCanvas.width, firmaCanvas.height);
+      });
+    }
+
+    if (form) {
+      form.addEventListener('submit', function () {
+        var blank = document.createElement('canvas');
+        blank.width = firmaCanvas.width;
+        blank.height = firmaCanvas.height;
+        if (firmaCanvas.toDataURL() !== blank.toDataURL()) {
+          firmaDataInput.value = firmaCanvas.toDataURL('image/png');
+        }
+      });
+    }
+  }
 })();
 </script>
 

@@ -42,6 +42,9 @@
   .firma-area { margin-top: 20px; text-align: center; }
   .firma-label { font-size: 9pt; font-weight: bold; margin-bottom: 40px; }
   .firma-line { display: inline-block; border-top: 1px solid #555; width: 260px; margin-top: 50px; }
+  .firma-area.has-img .firma-label { margin-bottom: 6px; }
+  .firma-img { display: inline-block; max-width: 260px; max-height: 90px; }
+  .firma-sub { font-size: 8pt; color: #555; margin-top: 2px; }
 
   .footer { margin-top: 12px; font-size: 7.5pt; color: #888; text-align: center; border-top: 1px solid #ccc; padding-top: 4px; }
 </style>
@@ -110,9 +113,14 @@
 </div>
 
 <!-- Firma cliente -->
-<div class="firma-area">
+<div class="firma-area{% if firma_data %} has-img{% endif %}">
   <div class="firma-label">FIRMA PER ACCETTAZIONE DEL CLIENTE</div>
+  {% if firma_data %}
+  <img src="{{ firma_data }}" alt="Firma cliente" class="firma-img">
+  {% if firmato_da %}<div class="firma-sub">{{ firmato_da }}</div>{% endif %}
+  {% else %}
   <div class="firma-line"></div>
+  {% endif %}
 </div>
 
 <div class="footer">

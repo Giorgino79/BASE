@@ -172,8 +172,10 @@ def bollettino_pdf(request, pk):
 
     # Includi firma digitale se presente
     firma = None
+    firmato_da = ""
     try:
         firma = ods.firma_digitale.firma_svg
+        firmato_da = ods.firma_digitale.firmato_da
     except FirmaDigitale.DoesNotExist:
         pass
 
@@ -187,6 +189,7 @@ def bollettino_pdf(request, pk):
         'prodotti_usati': [c for r in ods.righe.all() for c in r.consumi.all() if c.confermato],
         'oggi': timezone.now().date(),
         'firma_data': firma,
+        'firmato_da': firmato_da,
         'azienda_nome': 'SERVAL SRLS UNIPERSONALE',
         'azienda_indirizzo': 'Via Polense 473, 00132 Roma',
         'azienda_piva': '12894481006',
