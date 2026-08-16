@@ -59,25 +59,19 @@
               </div>
             </div>
           </div>
-          <div class="col-sm-3">
+          <div class="col-sm-4">
             <div class="detail-field">
               <div class="detail-field-label">Data</div>
               <div class="detail-field-value">{{ ods.data_servizio|date:"d/m/Y" }}</div>
             </div>
           </div>
-          <div class="col-sm-3">
+          <div class="col-sm-4">
             <div class="detail-field">
               <div class="detail-field-label">Ora inizio</div>
               <div class="detail-field-value {% if not ods.ora_inizio %}empty{% endif %}">{{ ods.ora_inizio|default:"—" }}</div>
             </div>
           </div>
-          <div class="col-sm-3">
-            <div class="detail-field">
-              <div class="detail-field-label">Ora fine</div>
-              <div class="detail-field-value {% if not ods.ora_fine %}empty{% endif %}">{{ ods.ora_fine|default:"—" }}</div>
-            </div>
-          </div>
-          <div class="col-sm-3">
+          <div class="col-sm-4">
             <div class="detail-field">
               <div class="detail-field-label">Totale</div>
               <div class="detail-field-value fw-bold {% if ods.prezzo_totale %}text-brand{% else %}empty{% endif %}">
@@ -119,15 +113,6 @@
             </div>
           </div>
           {% endif %}
-          {% if ods.modalita_pagamento %}
-          <div class="col-sm-6">
-            <div class="detail-field">
-              <div class="detail-field-label">Modalità pagamento</div>
-              <div class="detail-field-value">{{ ods.get_modalita_pagamento_display }}</div>
-            </div>
-          </div>
-          {% endif %}
-
           <div class="col-sm-6">
             <div class="detail-field">
               <div class="detail-field-label">Tecnico</div>
@@ -144,24 +129,6 @@
               </div>
             </div>
           </div>
-          <div class="col-sm-6">
-            <div class="detail-field">
-              <div class="detail-field-label">Pagamento</div>
-              <div class="detail-field-value">
-                {% if ods.incasso_al_servizio %}
-                  {% if ods.incassato %}
-                    <span class="badge badge-ok"><i class="bi bi-cash-coin me-1"></i>Incassato</span>
-                    {% if ods.importo_incassato %}<span class="ms-2 fw-bold text-brand">€ {{ ods.importo_incassato }}</span>{% endif %}
-                    {% if ods.data_incasso %}<span class="text-muted small ms-2">{{ ods.data_incasso|date:"d/m/Y" }}</span>{% endif %}
-                  {% else %}
-                    <span class="badge badge-wait"><i class="bi bi-clock me-1"></i>Da incassare</span>
-                  {% endif %}
-                {% else %}
-                  <span class="text-muted small">Da fatturare</span>
-                {% endif %}
-              </div>
-            </div>
-          </div>
           {% if ods.note_intervento %}
           <div class="col-12">
             <div class="detail-field">
@@ -171,36 +138,88 @@
           </div>
           {% endif %}
 
-          {# Prodotti consumati (aggregati da tutte le righe) #}
-          {% with righe=ods.righe.all %}
-          {% for r in righe %}{% for c in r.consumi.all %}
-          {% if forloop.parentloop.first and forloop.first %}
+        </div>
+      </div>
+    </div>
+
+    {% if espletamento_visibile %}
+    <div class="card mb-3">
+      <div class="card-header card-header-primary"><i class="bi bi-clipboard2-check me-2"></i>Espletamento servizio</div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-sm-4">
+            <div class="detail-field">
+              <div class="detail-field-label">Ora fine servizio</div>
+              <div class="detail-field-value {% if not ods.ora_fine %}empty{% endif %}">{{ ods.ora_fine|default:"—" }}</div>
+            </div>
+          </div>
+          {% if ods.modalita_pagamento %}
+          <div class="col-sm-4">
+            <div class="detail-field">
+              <div class="detail-field-label">Modalità incasso</div>
+              <div class="detail-field-value">{{ ods.get_modalita_pagamento_display }}</div>
+            </div>
+          </div>
+          {% endif %}
+          {% if ods.incasso_al_servizio %}
+          <div class="col-sm-4">
+            <div class="detail-field">
+              <div class="detail-field-label">Incasso</div>
+              <div class="detail-field-value">
+                {% if ods.incassato %}
+                  <span class="badge badge-ok"><i class="bi bi-cash-coin me-1"></i>Incassato</span>
+                  {% if ods.importo_incassato %}<span class="ms-2 fw-bold text-brand">€ {{ ods.importo_incassato }}</span>{% endif %}
+                  {% if ods.data_incasso %}<span class="text-muted small ms-2">{{ ods.data_incasso|date:"d/m/Y" }}</span>{% endif %}
+                {% else %}
+                  <span class="badge badge-wait"><i class="bi bi-clock me-1"></i>Da incassare</span>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+          {% endif %}
+
+          {% if consumi_effettivi %}
           <div class="col-12">
             <div class="detail-field mb-0">
-              <div class="detail-field-label"><i class="bi bi-box-seam me-1"></i>Prodotti consumati</div>
+              <div class="detail-field-label"><i class="bi bi-box-seam me-1"></i>Prodotti usati</div>
               <div class="detail-field-value">
                 <table class="table table-sm mb-0">
                   <thead class="bg-brand text-white"><tr><th>Prodotto</th><th class="text-end">Quantità</th><th>Note</th></tr></thead>
                   <tbody>
-          {% endif %}
+                    {% for c in consumi_effettivi %}
                     <tr>
                       <td class="small">{{ c.prodotto }}</td>
                       <td class="text-end small fw-bold">{{ c.quantita }} {{ c.prodotto.unita_misura }}</td>
                       <td class="text-muted small">{{ c.note|default:"" }}</td>
                     </tr>
-          {% if forloop.last and forloop.parentloop.last %}
+                    {% endfor %}
                   </tbody>
                 </table>
               </div>
             </div>
           </div>
           {% endif %}
-          {% endfor %}{% endfor %}
-          {% endwith %}
 
+          <div class="col-12 {% if consumi_effettivi %}mt-3{% endif %}">
+            <div class="detail-field mb-0">
+              <div class="detail-field-label"><i class="bi bi-pen me-1"></i>Firma cliente</div>
+              <div class="detail-field-value">
+                {% if firma_digitale %}
+                  <img src="{{ firma_digitale.firma_svg }}" alt="Firma cliente" style="max-height:80px; border:1px solid #dee2e6; border-radius:4px; background:#fff;">
+                  <div class="text-muted small mt-1">
+                    {{ firma_digitale.firmato_da|default:"—" }}
+                    <span class="ms-2">{{ firma_digitale.firmato_il|date:"d/m/Y H:i" }}</span>
+                  </div>
+                {% else %}
+                  <span class="text-muted small">Non firmato</span>
+                {% endif %}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
+    {% endif %}
 
   </div>
 

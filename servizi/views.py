@@ -619,6 +619,7 @@ class ODSDetailView(LoginRequiredMixin, DetailView):
     def get_queryset(self):
         return ODS.objects.select_related(
             "filiale__cliente", "privato", "tecnico", "assistente", "created_by", "distinta",
+            "firma_digitale",
         ).prefetch_related(
             "righe__servizio", "righe__contratto_filiale__contratto",
             "righe__consumi__prodotto",
@@ -647,6 +648,16 @@ class ODSDetailView(LoginRequiredMixin, DetailView):
             ctx["invia_phone"] = ctx["invia_email"] = ctx["invia_nome"] = ""
 
         ctx["bollettino_disabled"] = ods.stato not in (ODS.Stato.COMPLETATO, ODS.Stato.FATTURATO)
+
+        # Riepilogo espletamento: prodotti realmente usati (confermato=True) e firma cliente
+        ctx["espletamento_visibile"] = (
+            ods.stato in (ODS.Stato.COMPLETATO, ODS.Stato.FATTURATO)
+            and (not ods.distinta or ods.distinta.stato == "chiusa")
+        )
+        ctx["consumi_effettivi"] = [
+            c for r in ods.righe.all() for c in r.consumi.all() if c.confermato
+        ]
+        ctx["firma_digitale"] = getattr(ods, "firma_digitale", None)
         return ctx
 
 
@@ -1378,7 +1389,8 @@ def chiudi_servizio_distinta(request, ods_pk):
         if form.is_valid():
             cd = form.cleaned_data
             ods.stato = "completato"
-            fields = ["stato"]
+            ods.ora_fine = timezone.localtime().time()
+            fields = ["stato", "ora_fine"]
             if ods.incasso_al_servizio:
                 modalita = cd.get("modalita_pagamento") or "contanti"
                 ods.modalita_pagamento = modalita
