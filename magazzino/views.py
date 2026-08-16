@@ -650,24 +650,22 @@ def carico_cisterna_create(request, mezzo_pk):
         form = CaricoCisternaForm(request.POST)
         formset = RigaCaricoCisternaFormSet(request.POST, prefix="cisterna", form_kwargs={"mezzo": mezzo})
         if form.is_valid() and formset.is_valid():
-            litri_acqua = form.cleaned_data["litri_acqua"]
             righe_valide = [
                 rf for rf in formset
                 if rf.cleaned_data and not rf.cleaned_data.get("DELETE") and rf.cleaned_data.get("prodotto")
             ]
-            # Il prodotto usato per la diluizione non può superare quanto
+            # I litri di prodotto inseriti non possono superare quanto
             # realmente a bordo del mezzo (es. 2 lt a bordo → non posso
-            # dichiarare una diluizione che ne richiederebbe 3).
+            # dichiarare di averne inseriti 3).
             errori = []
             for riga_form in righe_valide:
                 prodotto = riga_form.cleaned_data["prodotto"]
-                perc = riga_form.cleaned_data["percentuale_diluizione"]
-                necessario = litri_acqua * perc / Decimal("100")
+                litri_inseriti = riga_form.cleaned_data["litri_inseriti"]
                 scorta = ScortaMezzo.objects.filter(mezzo=mezzo, prodotto=prodotto).first()
                 disponibile = scorta.quantita if scorta else Decimal("0")
-                if necessario > disponibile:
+                if litri_inseriti > disponibile:
                     errori.append(
-                        f"'{prodotto}': la diluizione richiede {necessario} lt di prodotto, "
+                        f"'{prodotto}': hai indicato {litri_inseriti} lt inseriti, "
                         f"ma sul mezzo ce ne sono solo {disponibile}."
                     )
             if errori:

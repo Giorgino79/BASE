@@ -169,10 +169,22 @@
 
           {{ carico_cisterna_formset.management_form }}
           <label class="form-label small mb-1 fw-semibold">Prodotti utilizzati</label>
+          <div class="row g-2 small text-muted mb-1 d-none d-sm-flex">
+            <div class="col-sm-4">Prodotto</div>
+            <div class="col-sm-3">Litri inseriti</div>
+            <div class="col-sm-3">Diluizione</div>
+            <div class="col-sm-1"></div>
+          </div>
           <div id="cisterna-righe-container">
             {% for riga_form in carico_cisterna_formset %}
             <div class="row g-2 align-items-end mb-2 cisterna-riga-form">
-              <div class="col-sm-5">{{ riga_form.prodotto }}</div>
+              <div class="col-sm-4">{{ riga_form.prodotto }}</div>
+              <div class="col-sm-3">
+                <div class="input-group input-group-sm">
+                  {{ riga_form.litri_inseriti }}
+                  <span class="input-group-text">lt</span>
+                </div>
+              </div>
               <div class="col-sm-3">
                 <div class="input-group input-group-sm">
                   {{ riga_form.percentuale_diluizione }}
@@ -203,7 +215,7 @@
           <li class="mb-1">
             <span class="text-muted">{{ c.data|date:"d/m/Y H:i" }}</span> —
             {{ c.litri_acqua }} lt acqua
-            {% for r in c.righe.all %}· {{ r.prodotto.nome_prodotto }} ({{ r.percentuale_diluizione }}%){% endfor %}
+            {% for r in c.righe.all %}· {{ r.prodotto.nome_prodotto }} ({{ r.litri_inseriti }} lt, {{ r.percentuale_diluizione }}%){% endfor %}
             {% if c.operatore %}<span class="text-muted">— {{ c.operatore.get_full_name|default:c.operatore.username }}</span>{% endif %}
           </li>
           {% endfor %}
@@ -217,7 +229,13 @@
 {# Template riga prodotto vuota per clonazione JS #}
 <div id="empty-riga-cisterna-template" style="display:none">
   <div class="row g-2 align-items-end mb-2 cisterna-riga-form">
-    <div class="col-sm-5">{{ carico_cisterna_formset.empty_form.prodotto }}</div>
+    <div class="col-sm-4">{{ carico_cisterna_formset.empty_form.prodotto }}</div>
+    <div class="col-sm-3">
+      <div class="input-group input-group-sm">
+        {{ carico_cisterna_formset.empty_form.litri_inseriti }}
+        <span class="input-group-text">lt</span>
+      </div>
+    </div>
     <div class="col-sm-3">
       <div class="input-group input-group-sm">
         {{ carico_cisterna_formset.empty_form.percentuale_diluizione }}

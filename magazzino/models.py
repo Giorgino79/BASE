@@ -425,6 +425,9 @@ class RigaCaricoCisterna(models.Model):
         Prodotto, on_delete=models.PROTECT, related_name="righe_carico_cisterna",
         verbose_name="Prodotto utilizzato",
     )
+    litri_inseriti = models.DecimalField(
+        max_digits=8, decimal_places=2, verbose_name="Litri prodotto inseriti",
+    )
     percentuale_diluizione = models.DecimalField(
         max_digits=5, decimal_places=2, verbose_name="Diluizione (%)",
     )
@@ -434,4 +437,4 @@ class RigaCaricoCisterna(models.Model):
         verbose_name_plural = "Righe carico cisterna"
 
     def __str__(self):
-        return f"{self.prodotto} {self.percentuale_diluizione}%"
+        return f"{self.prodotto} {self.litri_inseriti}lt ({self.percentuale_diluizione}%)"
