@@ -184,12 +184,13 @@
               <div class="detail-field-label"><i class="bi bi-box-seam me-1"></i>Prodotti usati</div>
               <div class="detail-field-value">
                 <table class="table table-sm mb-0">
-                  <thead class="bg-brand text-white"><tr><th>Prodotto</th><th class="text-end">Quantità</th><th>Note</th></tr></thead>
+                  <thead class="bg-brand text-white"><tr><th>Prodotto</th><th class="text-end">Quantità</th><th class="text-end">Diluizione</th><th>Note</th></tr></thead>
                   <tbody>
                     {% for c in consumi_effettivi %}
                     <tr>
                       <td class="small">{{ c.prodotto }}</td>
                       <td class="text-end small fw-bold">{{ c.quantita }} {{ c.prodotto.unita_misura }}</td>
+                      <td class="text-end small">{% if c.diluizione_percentuale is not None %}{{ c.diluizione_percentuale }}%{% else %}—{% endif %}</td>
                       <td class="text-muted small">{{ c.note|default:"" }}</td>
                     </tr>
                     {% endfor %}

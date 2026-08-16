@@ -158,24 +158,6 @@ ODSRigaFormSet = inlineformset_factory(
 )
 
 
-class ProdottoPrevitoForm(forms.Form):
-    """Riga prodotto previsto da inserire nell'ODS (non scala stock)."""
-    prodotto = forms.ModelChoiceField(
-        queryset=None,
-        widget=forms.Select(attrs={"class": "form-select form-select-sm prodotto-sel"}),
-        empty_label="— Prodotto —",
-    )
-    quantita = forms.DecimalField(
-        max_digits=10, decimal_places=3, initial=1,
-        widget=forms.NumberInput(attrs={"class": "form-control form-control-sm", "step": "0.001", "min": "0.001"}),
-    )
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        from magazzino.models import Prodotto
-        self.fields["prodotto"].queryset = Prodotto.objects.filter(attivo=True).order_by("nome_prodotto")
-
-
 class ConsumoMaterialeForm(forms.ModelForm):
     class Meta:
         model = ConsumoMateriale

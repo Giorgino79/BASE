@@ -451,6 +451,11 @@ class ConsumoMateriale(models.Model):
         default=False, verbose_name="Confermato",
         help_text="False = quantità prevista (non scala stock); True = effettivo (scala ScortaMezzo)",
     )
+    diluizione_percentuale = models.DecimalField(
+        max_digits=5, decimal_places=2, null=True, blank=True,
+        verbose_name="Diluizione (%)",
+        help_text="Solo per prodotti in litri; modificabile solo da un amministratore.",
+    )
     note       = models.CharField(max_length=300, blank=True, verbose_name="Note")
 
     class Meta:

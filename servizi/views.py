@@ -18,7 +18,7 @@ from .models import Servizio, Contratto, ContrattoFiliale, ContrattoFilialeRiga,
 from .forms import (
     ServizioForm, ContrattoForm, ContrattoRigaFormSet, ContrattoFilialeRigaFormSet,
     ODSForm, ODSRigaFormSet,
-    ConsumoMaterialeForm, ChiudiServizioForm, ProdottoPrevitoForm,
+    ConsumoMaterialeForm, ChiudiServizioForm,
     CondominioODSForm, RigaUnitaAbitativaFormSet, RigaProdottoCondominioFormSet,
     CondominioStabileForm, UnitaAbitativaBaseFormSet,
     RigaUnitaAbitativaEseguiFormSet, RigaProdottoCondominioEseguiFormSet,
@@ -672,8 +672,14 @@ def _salva_prodotti_previsti(request, formset):
     Legge i prodotti previsti per ogni riga ODSRiga dal POST e aggiorna ConsumoMateriale
     con confermato=False (non scala stock).
     Prefix per riga N: cp-righe-N-TOTAL_FORMS, cp-righe-N-{i}-prodotto, cp-righe-N-{i}-quantita
+
+    La diluizione (solo prodotti in litri) è modificabile solo da un amministratore:
+    per gli altri utenti il form non espone un campo editabile, quindi qui si
+    preserva il valore già presente sul prodotto (altrimenti andrebbe perso ad
+    ogni salvataggio, dato che le righe non confermate vengono ricreate da zero).
     """
     from decimal import Decimal, InvalidOperation
+    is_staff = request.user.is_staff
     for form in formset.forms:
         if not form.instance.pk:
             continue
@@ -686,6 +692,12 @@ def _salva_prodotti_previsti(request, formset):
             total = int(total_str)
         except ValueError:
             total = 0
+
+        diluizioni_esistenti = {
+            c.prodotto_id: c.diluizione_percentuale
+            for c in riga.consumi.filter(confermato=False)
+        }
+
         # Rimuove prodotti previsti esistenti
         riga.consumi.filter(confermato=False).delete()
         for i in range(total):
@@ -699,11 +711,25 @@ def _salva_prodotti_previsti(request, formset):
                 qty = Decimal(qty_str)
             except InvalidOperation:
                 qty = Decimal("1")
+
+            if is_staff:
+                dil_str = request.POST.get(f"{prefix}-{i}-diluizione", "").strip()
+                try:
+                    diluizione = Decimal(dil_str) if dil_str else None
+                except InvalidOperation:
+                    diluizione = None
+            else:
+                try:
+                    diluizione = diluizioni_esistenti.get(int(prodotto_id))
+                except ValueError:
+                    diluizione = None
+
             ConsumoMateriale.objects.create(
                 riga=riga,
                 prodotto_id=prodotto_id,
                 quantita=qty,
                 confermato=False,
+                diluizione_percentuale=diluizione,
             )
 
 
@@ -732,7 +758,6 @@ class ODSCreateView(LoginRequiredMixin, CreateView):
         from magazzino.models import Prodotto
         ctx["prodotti"] = Prodotto.objects.filter(attivo=True).order_by("nome_prodotto")
         ctx["formset_data"] = [(f, []) for f in ctx["formset"]]
-        ctx["prodotto_form_vuoto"] = ProdottoPrevitoForm(prefix="__cp_prefix__")
         return ctx
 
     def form_valid(self, form):
@@ -782,7 +807,6 @@ class ODSUpdateView(LoginRequiredMixin, UpdateView):
             (f, riga_previsti.get(f.instance.pk, []))
             for f in ctx["formset"]
         ]
-        ctx["prodotto_form_vuoto"] = ProdottoPrevitoForm(prefix="__cp_prefix__")
         return ctx
 
     def form_valid(self, form):

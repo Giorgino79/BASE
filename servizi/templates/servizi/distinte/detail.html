@@ -171,6 +171,7 @@
         {% endif %}
         <div class="d-flex align-items-center gap-2 mb-1">
           <span class="small">{{ c.prodotto }} — <strong>{{ c.quantita }}</strong> {{ c.prodotto.unita_misura }}</span>
+          {% if c.diluizione_percentuale is not None %}<span class="badge bg-info-subtle text-info-emphasis" title="Diluizione">{{ c.diluizione_percentuale }}%</span>{% endif %}
           {% if c.note %}<span class="text-muted small">({{ c.note }})</span>{% endif %}
           {% if distinta.stato == "aperta" and ods.stato != "completato" %}
           <form method="post" action="{% url 'servizi:elimina_consumo' c.pk %}" class="d-inline">
@@ -251,6 +252,9 @@
               </select>
               <input type="number" name="prod-quantita-{{ c.pk }}" value="{{ c.quantita }}"
                      step="0.001" min="0.001" class="form-control form-control-sm flex-shrink-0" style="width:80px">
+              {% if c.diluizione_percentuale is not None %}
+              <span class="badge bg-info-subtle text-info-emphasis flex-shrink-0" title="Diluizione (modificabile solo da un amministratore)">{{ c.diluizione_percentuale }}%</span>
+              {% endif %}
             </div>
             {% endif %}{% endfor %}{% endfor %}
             {# Prodotti aggiuntivi non previsti #}
