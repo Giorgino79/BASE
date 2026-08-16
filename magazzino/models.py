@@ -415,6 +415,13 @@ class CaricoCisterna(models.Model):
     def __str__(self):
         return f"{self.mezzo} — {self.litri_acqua} lt ({self.data:%d/%m/%Y})"
 
+    @property
+    def litri_totali(self):
+        """Litri in vasca = acqua + prodotto/i inseriti."""
+        return self.litri_acqua + sum(
+            (r.litri_inseriti for r in self.righe.all()), Decimal("0")
+        )
+
 
 class RigaCaricoCisterna(models.Model):
     """Prodotto (e relativa diluizione) usato in un carico cisterna — più righe se si mescolano più prodotti."""

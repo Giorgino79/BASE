@@ -219,10 +219,9 @@ class RigaCaricoCisternaForm(BootstrapMixin, forms.ModelForm):
 
     class Meta:
         model = RigaCaricoCisterna
-        fields = ["prodotto", "litri_inseriti", "percentuale_diluizione"]
+        fields = ["prodotto", "litri_inseriti"]
         widgets = {
-            "litri_inseriti":         forms.NumberInput(attrs={"step": "0.01", "min": "0.01"}),
-            "percentuale_diluizione": forms.NumberInput(attrs={"step": "0.01", "min": "0", "max": "100"}),
+            "litri_inseriti": forms.NumberInput(attrs={"step": "0.01", "min": "0.01"}),
         }
 
     def __init__(self, *args, mezzo=None, **kwargs):

@@ -677,7 +677,18 @@ def carico_cisterna_create(request, mezzo_pk):
                 carico.operatore = request.user
                 carico.save()
                 formset.instance = carico
-                formset.save()
+                righe = formset.save(commit=False)
+                litri_acqua = carico.litri_acqua
+                for riga in righe:
+                    riga.carico = carico
+                    # Diluizione calcolata dal sistema: litri prodotto / litri acqua, non inseribile a mano.
+                    riga.percentuale_diluizione = (
+                        (riga.litri_inseriti / litri_acqua * Decimal("100")).quantize(Decimal("0.01"))
+                        if litri_acqua else Decimal("0")
+                    )
+                    riga.save()
+                for obj in formset.deleted_objects:
+                    obj.delete()
                 messages.success(request, "Carico cisterna registrato.")
         else:
             for field_errors in form.errors.values():
