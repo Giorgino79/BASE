@@ -98,7 +98,7 @@ class ODSForm(forms.ModelForm):
         model = ODS
         fields = [
             "filiale", "privato",
-            "data_servizio", "ora_inizio", "ora_fine",
+            "data_servizio", "ora_inizio",
             "stato", "incasso_al_servizio", "fatturazione_diversa", "note_intervento",
         ]
         widgets = {
@@ -106,7 +106,6 @@ class ODSForm(forms.ModelForm):
             "privato":              forms.Select(attrs=_SEL),
             "data_servizio":        forms.DateInput(attrs=_DATE, format="%Y-%m-%d"),
             "ora_inizio":           forms.TimeInput(attrs=_TIME),
-            "ora_fine":             forms.TimeInput(attrs=_TIME),
             "stato":                forms.Select(attrs=_SEL),
             "incasso_al_servizio":  forms.CheckboxInput(attrs=_CHK),
             "fatturazione_diversa": forms.CheckboxInput(attrs=_CHK),
@@ -125,7 +124,6 @@ class ODSForm(forms.ModelForm):
         self.fields["privato"].queryset = Privato.objects.filter(attivo=True).order_by("cognome", "nome")
         self.fields["privato"].required = False
         self.fields["ora_inizio"].required = False
-        self.fields["ora_fine"].required = False
         self.fields["note_intervento"].required = False
 
 

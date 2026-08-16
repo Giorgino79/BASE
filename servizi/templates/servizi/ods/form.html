@@ -152,17 +152,13 @@
         <div class="card-header card-header-primary"><i class="bi bi-calendar me-2"></i>Programmazione</div>
         <div class="card-body">
           <div class="row g-3">
-            <div class="col-sm-4">
+            <div class="col-sm-6">
               <label class="form-label" for="{{ form.data_servizio.id_for_label }}">{{ form.data_servizio.label }} <span class="text-danger">*</span></label>
               {{ form.data_servizio }}
             </div>
-            <div class="col-sm-4">
+            <div class="col-sm-6">
               <label class="form-label" for="{{ form.ora_inizio.id_for_label }}">{{ form.ora_inizio.label }}</label>
               {{ form.ora_inizio }}
-            </div>
-            <div class="col-sm-4">
-              <label class="form-label" for="{{ form.ora_fine.id_for_label }}">{{ form.ora_fine.label }}</label>
-              {{ form.ora_fine }}
             </div>
             <div class="col-sm-6">
               <label class="form-label" for="{{ form.stato.id_for_label }}">{{ form.stato.label }}</label>
