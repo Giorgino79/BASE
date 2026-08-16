@@ -80,6 +80,8 @@
 <!-- Data e tecnico -->
 <div class="data-tecnico">
   Intervento eseguito in data<span class="dotted">&nbsp;{{ ods.data_servizio|date:"d/m/Y" }}&nbsp;</span>
+  {% if ods.ora_inizio %}dalle<span class="dotted" style="min-width:60px;">&nbsp;{{ ods.ora_inizio|time:"H:i" }}&nbsp;</span>{% endif %}
+  {% if ods.ora_fine %}alle<span class="dotted" style="min-width:60px;">&nbsp;{{ ods.ora_fine|time:"H:i" }}&nbsp;</span>{% endif %}
 </div>
 <div class="data-tecnico" style="margin-top:6px;">
   Tecnico: <span class="dotted">&nbsp;{{ ods.tecnico.get_full_name|default:ods.tecnico.username }}&nbsp;</span>
