@@ -120,15 +120,8 @@
         {% if distinta.stato == "aperta" %}
         <button type="button" class="btn btn-sm btn-brand"
                 data-bs-toggle="modal" data-bs-target="#modal-chiudi-{{ ods.pk }}">
-          <i class="bi bi-check-lg me-1"></i>Chiudi servizio
+          <i class="bi bi-check-lg me-1"></i>Espleta servizio
         </button>
-        <form method="post" action="{% url 'servizi:distinta_rimuovi_ods' ods.pk %}" class="d-inline">
-          {% csrf_token %}
-          <button type="submit" class="btn btn-sm btn-outline-danger" title="Rimuovi servizio dalla distinta"
-                  onclick="return confirm('Rimuovere {{ ods.numero }} da questa distinta? Tornerà tra i servizi da espletare.')">
-            <i class="bi bi-x-lg"></i>
-          </button>
-        </form>
         {% endif %}
       {% endif %}
     </div>
@@ -203,6 +196,18 @@
       {% endif %}
     </div>
 
+    {% if distinta.stato == "aperta" and ods.stato != "completato" and ods.stato != "annullato" and request.user.is_staff %}
+    <div class="text-end mt-3 pt-2 border-top">
+      <form method="post" action="{% url 'servizi:distinta_rimuovi_ods' ods.pk %}" class="d-inline">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-sm btn-link text-danger p-0" title="Togli servizio dalla distinta"
+                onclick="return confirm('Rimuovere {{ ods.numero }} da questa distinta? Tornerà tra i servizi da espletare.')">
+          <i class="bi bi-x-circle me-1"></i>Togli servizio dalla distinta
+        </button>
+      </form>
+    </div>
+    {% endif %}
+
   </div>
 </div>
 
@@ -212,7 +217,7 @@
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
-        <h6 class="modal-title"><i class="bi bi-check-lg me-2"></i>Chiudi {{ ods.numero }}</h6>
+        <h6 class="modal-title"><i class="bi bi-check-lg me-2"></i>Espleta {{ ods.numero }}</h6>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <form method="post" action="{% url 'servizi:chiudi_servizio_distinta' ods.pk %}">

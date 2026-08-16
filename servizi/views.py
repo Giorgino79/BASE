@@ -1429,11 +1429,15 @@ def distinta_aggiungi_ods(request, pk):
 def distinta_rimuovi_ods(request, ods_pk):
     """Rimuove un ODS da una distinta aperta, riportandolo tra i servizi da espletare.
 
+    Solo amministratori (in attesa del sistema di permessi granulare).
     Stesso comportamento della riapertura selettiva in chiudi_distinta_ufficio:
     tocca solo stato e distinta, tecnico/assistente restano invariati.
     """
     ods = get_object_or_404(ODS.objects.select_related("distinta"), pk=ods_pk)
     distinta = ods.distinta
+    if not request.user.is_staff:
+        messages.error(request, "Non hai i permessi per togliere un servizio dalla distinta.")
+        return redirect(distinta.get_absolute_url() if distinta else reverse("servizi:distinta_list"))
     if (
         request.method == "POST" and distinta and distinta.stato == "aperta"
         and ods.stato not in (ODS.Stato.COMPLETATO, ODS.Stato.ANNULLATO)
