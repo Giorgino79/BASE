@@ -136,7 +136,7 @@
           <div class="text-muted">{{ c.data|date:"d/m/Y H:i" }}{% if c.operatore %} — {{ c.operatore.get_full_name|default:c.operatore.username }}{% endif %}</div>
           <div>Litri in vasca: <strong>{{ c.litri_totali }} lt</strong></div>
           {% for r in c.righe.all %}
-          <div>Prodotto in vasca: <strong>{{ r.prodotto.nome_prodotto }}</strong> — Percentuale di prodotto: <strong>{{ r.percentuale_diluizione }}%</strong></div>
+          <div>Prodotto in vasca: <strong>{{ r.prodotto.nome_prodotto }}</strong> — Diluizione: <strong>{{ r.percentuale_diluizione }}%</strong></div>
           {% endfor %}
         </div>
         {% endfor %}
