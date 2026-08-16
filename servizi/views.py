@@ -1548,8 +1548,8 @@ def _elimina_os2(ods_os2):
 @login_required
 def chiudi_distinta_ufficio(request, pk):
     """
-    Chiusura distinta da parte dell'ufficio: riconcilia incassi,
-    permette di riaprire singoli ODS e invia promemoria al tecnico.
+    Chiusura distinta da parte dell'ufficio: riconcilia incassi
+    e permette di riaprire singoli ODS.
 
     I servizi OS2 (fatturazione_diversa=True) sono cassa fisica che il tecnico
     ha comunque in mano al rientro: contano nel totale richiesto in questa fase
@@ -1673,52 +1673,13 @@ def chiudi_distinta_ufficio(request, pk):
                 "chiusa_da", "chiusa_il",
             ])
 
-            # Promemoria al tecnico: gli OS2 hanno fatturazione esterna e non
-            # devono comparire nella quietanza — vengono tolti da entrambi i
-            # lati, quindi la differenza calcolata resta invariata.
-            previsto_ods = totale_effettivo - os2_incassato_effettivo
-            ricevuto_ods = importo_ricevuto - os2_incassato_effettivo
-            differenza = ricevuto_ods - previsto_ods
-            nome_ufficio = request.user.get_full_name() or request.user.username
-            righe_msg = (
-                f"Incasso previsto:  € {previsto_ods}\n"
-                f"Importo ricevuto:  € {ricevuto_ods}\n"
-            )
-            if differenza < 0:
-                righe_msg += f"Differenza:        € {abs(differenza)} MANCANTI"
-                priorita = "alta"
-            elif differenza > 0:
-                righe_msg += f"Differenza:        € {differenza} in eccesso"
-                priorita = "normale"
-            else:
-                righe_msg += "Tutto corrisponde."
-                priorita = "normale"
-            if riaperti:
-                righe_msg += f"\n\n{riaperti} servizio/i riportato/i a 'da espletare'."
-
-            from comunicazioni.models import Promemoria
-            Promemoria.objects.create(
-                user=request.user,
-                assegnato_a=distinta.tecnico,
-                titolo=(
-                    f"Chiusura distinta {distinta.data.strftime('%d/%m/%Y')} "
-                    f"— Incasso € {ricevuto_ods}"
-                ),
-                descrizione=(
-                    f"Distinta del {distinta.data.strftime('%d/%m/%Y')} "
-                    f"chiusa da {nome_ufficio}.\n\n{righe_msg}"
-                ),
-                priorita=priorita,
-            )
-
             # Cancellazione definitiva dei servizi OS2 non riaperti
             if os2_non_riaperti:
                 _elimina_os2(os2_non_riaperti)
 
-        nome_tec = distinta.tecnico.get_full_name() or distinta.tecnico.username
         messages.success(
             request,
-            f"Distinta chiusa. Promemoria inviato a {nome_tec}."
+            "Distinta chiusa."
             + (f" ({riaperti} ODS riaperti)" if riaperti else "")
             + (f" ({len(os2_non_riaperti)} OS2 eliminati)" if os2_non_riaperti else ""),
         )
