@@ -134,9 +134,11 @@
         {% for c in carichi_cisterna %}
         <div class="small mb-2 pb-2 {% if not forloop.last %}border-bottom{% endif %}">
           <div class="text-muted">{{ c.data|date:"d/m/Y H:i" }}{% if c.operatore %} — {{ c.operatore.get_full_name|default:c.operatore.username }}{% endif %}</div>
-          <div>Litri in vasca: <strong>{{ c.litri_totali }} lt</strong></div>
+          <div>Litri acqua: <strong>{{ c.litri_acqua }} lt</strong></div>
           {% for r in c.righe.all %}
-          <div>Prodotto in vasca: <strong>{{ r.prodotto.nome_prodotto }}</strong> — Diluizione: <strong>{{ r.percentuale_diluizione }}%</strong></div>
+          <div>Prodotto: <strong>{{ r.prodotto.nome_prodotto }}</strong></div>
+          <div>Litri prodotto: <strong>{{ r.litri_inseriti }} lt</strong></div>
+          <div>Diluizione per 100 litri di carico: <strong>{{ r.percentuale_diluizione }}%</strong></div>
           {% endfor %}
         </div>
         {% endfor %}
