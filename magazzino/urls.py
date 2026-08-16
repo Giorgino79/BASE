@@ -36,6 +36,7 @@ urlpatterns = [
     path("scorte/stabilimento/<int:pk>/rettifica/", views.rettifica_scorta, name="rettifica_scorta"),
     path("scorte/mezzo/<int:pk>/", views.scorte_mezzo, name="scorte_mezzo"),
     path("scorte/mezzo/<int:mezzo_pk>/operazione/", views.mezzo_operazione_rapida, name="mezzo_operazione_rapida"),
+    path("scorte/mezzo/<int:mezzo_pk>/carico-cisterna/", views.carico_cisterna_create, name="carico_cisterna_create"),
     path("scorte/carico/", views.carico_mezzo_list, name="carico_mezzo_list"),
     path("scorte/carico/nuovo/", views.CaricoMezzoCreateView.as_view(), name="carico_mezzo_create"),
     path("scorte/carico/<int:pk>/", views.CaricoMezzoDetailView.as_view(), name="carico_mezzo_detail"),

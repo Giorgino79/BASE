@@ -385,3 +385,53 @@ class ScortaMezzo(models.Model):
 
     def __str__(self):
         return f"{self.mezzo} — {self.prodotto}: {self.quantita}"
+
+
+class CaricoCisterna(models.Model):
+    """Carico acqua + prodotto/i diluito/i nella cisterna di un mezzo (disinfestazione).
+
+    Al momento è solo un log compilato dall'autista: NON aggiorna
+    ScortaMezzo né alcun consumo di prodotto — è fine a se stesso, in
+    attesa di essere collegato agli aggiornamenti di scorta in futuro.
+    """
+    mezzo = models.ForeignKey(
+        "cespiti.Automezzo", on_delete=models.CASCADE, related_name="carichi_cisterna",
+    )
+    litri_acqua = models.DecimalField(
+        max_digits=8, decimal_places=2, verbose_name="Litri acqua caricati",
+    )
+    operatore = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+        null=True, blank=True, related_name="carichi_cisterna",
+    )
+    note = models.CharField(max_length=300, blank=True, verbose_name="Note")
+    data = models.DateTimeField(auto_now_add=True, verbose_name="Data/ora carico")
+
+    class Meta:
+        verbose_name = "Carico cisterna"
+        verbose_name_plural = "Carichi cisterna"
+        ordering = ["-data"]
+
+    def __str__(self):
+        return f"{self.mezzo} — {self.litri_acqua} lt ({self.data:%d/%m/%Y})"
+
+
+class RigaCaricoCisterna(models.Model):
+    """Prodotto (e relativa diluizione) usato in un carico cisterna — più righe se si mescolano più prodotti."""
+    carico = models.ForeignKey(
+        CaricoCisterna, on_delete=models.CASCADE, related_name="righe",
+    )
+    prodotto = models.ForeignKey(
+        Prodotto, on_delete=models.PROTECT, related_name="righe_carico_cisterna",
+        verbose_name="Prodotto utilizzato",
+    )
+    percentuale_diluizione = models.DecimalField(
+        max_digits=5, decimal_places=2, verbose_name="Diluizione (%)",
+    )
+
+    class Meta:
+        verbose_name = "Riga carico cisterna"
+        verbose_name_plural = "Righe carico cisterna"
+
+    def __str__(self):
+        return f"{self.prodotto} {self.percentuale_diluizione}%"

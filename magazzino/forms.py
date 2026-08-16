@@ -1,6 +1,9 @@
 from django import forms
 from django.forms import inlineformset_factory
-from .models import Categoria, Prodotto, Ricezione, RigaRicezione, CaricoMezzo, RigaCaricoMezzo
+from .models import (
+    Categoria, Prodotto, Ricezione, RigaRicezione, CaricoMezzo, RigaCaricoMezzo,
+    CaricoCisterna, RigaCaricoCisterna,
+)
 
 _BS_CLASS = {
     forms.TextInput: "form-control",
@@ -185,6 +188,59 @@ RigaCaricoMezzoFormSet = inlineformset_factory(
     RigaCaricoMezzo,
     form=RigaCaricoMezzoForm,
     extra=3,
+    can_delete=True,
+    min_num=1,
+    validate_min=True,
+)
+
+
+class CaricoCisternaForm(BootstrapMixin, forms.ModelForm):
+    class Meta:
+        model = CaricoCisterna
+        fields = ["litri_acqua", "note"]
+        widgets = {
+            "litri_acqua": forms.NumberInput(attrs={"step": "0.01", "min": "0"}),
+            "note":        forms.TextInput(attrs={"placeholder": "Note (opzionale)"}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["note"].required = False
+
+
+class ProdottoCisternaChoiceField(forms.ModelChoiceField):
+    def label_from_instance(self, obj):
+        qta = getattr(obj, "_qta_a_bordo", None)
+        return f"{obj.nome_prodotto} — {qta} lt a bordo" if qta is not None else obj.nome_prodotto
+
+
+class RigaCaricoCisternaForm(BootstrapMixin, forms.ModelForm):
+    prodotto = ProdottoCisternaChoiceField(queryset=Prodotto.objects.none(), label="Prodotto utilizzato")
+
+    class Meta:
+        model = RigaCaricoCisterna
+        fields = ["prodotto", "percentuale_diluizione"]
+        widgets = {
+            "percentuale_diluizione": forms.NumberInput(attrs={"step": "0.01", "min": "0", "max": "100"}),
+        }
+
+    def __init__(self, *args, mezzo=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        from django.db.models import OuterRef, Subquery
+        from .models import ScortaMezzo
+        qs = Prodotto.objects.filter(attivo=True, unita_misura=Prodotto.UnitaMisura.LITRO)
+        if mezzo is not None:
+            # Solo prodotti effettivamente presenti sul mezzo (con relativa quantità a bordo in etichetta)
+            qta_sub = ScortaMezzo.objects.filter(mezzo=mezzo, prodotto=OuterRef("pk")).values("quantita")[:1]
+            qs = qs.filter(scorte_mezzo__mezzo=mezzo).annotate(_qta_a_bordo=Subquery(qta_sub))
+        self.fields["prodotto"].queryset = qs.order_by("nome_prodotto")
+
+
+RigaCaricoCisternaFormSet = inlineformset_factory(
+    CaricoCisterna,
+    RigaCaricoCisterna,
+    form=RigaCaricoCisternaForm,
+    extra=2,
     can_delete=True,
     min_num=1,
     validate_min=True,

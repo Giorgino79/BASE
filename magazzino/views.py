@@ -6,8 +6,14 @@ from django.views.generic import ListView, DetailView, CreateView, UpdateView, D
 from django.urls import reverse_lazy, reverse
 from decimal import Decimal
 
-from .models import Categoria, Prodotto, Ricezione, RigaRicezione, ScortaStabilimento, CaricoMezzo, RigaCaricoMezzo, ScortaMezzo
-from .forms import CategoriaForm, ProdottoForm, RicezioneForm, RigaRicezioneForm, RigaRicezioneFormSet, CaricoMezzoForm, RigaCaricoMezzoFormSet
+from .models import (
+    Categoria, Prodotto, Ricezione, RigaRicezione, ScortaStabilimento, CaricoMezzo, RigaCaricoMezzo, ScortaMezzo,
+    CaricoCisterna,
+)
+from .forms import (
+    CategoriaForm, ProdottoForm, RicezioneForm, RigaRicezioneForm, RigaRicezioneFormSet, CaricoMezzoForm, RigaCaricoMezzoFormSet,
+    CaricoCisternaForm, RigaCaricoCisternaFormSet,
+)
 
 
 @login_required
@@ -623,8 +629,67 @@ def scorte_mezzo(request, pk):
         "scorte_con_disp": scorte_con_disp,
         "stabilimenti": stabilimenti,
         "back_url": reverse("magazzino:scorte_dashboard"),
+        "carico_cisterna_form": CaricoCisternaForm(),
+        "carico_cisterna_formset": RigaCaricoCisternaFormSet(prefix="cisterna", form_kwargs={"mezzo": mezzo}),
+        "carichi_cisterna": CaricoCisterna.objects.filter(mezzo=mezzo)
+            .prefetch_related("righe__prodotto").select_related("operatore")[:5],
     }
     return render(request, "magazzino/scorte/mezzo.html", ctx)
+
+
+@login_required
+def carico_cisterna_create(request, mezzo_pk):
+    """Registra un carico cisterna (acqua + uno o più prodotti diluiti) per un mezzo.
+
+    Form facoltativo e fine a se stesso: non aggiorna ScortaMezzo né
+    alcun consumo di prodotto, è solo un log da rifinire in futuro.
+    """
+    from cespiti.models import Automezzo
+    mezzo = get_object_or_404(Automezzo, pk=mezzo_pk)
+    if request.method == "POST":
+        form = CaricoCisternaForm(request.POST)
+        formset = RigaCaricoCisternaFormSet(request.POST, prefix="cisterna", form_kwargs={"mezzo": mezzo})
+        if form.is_valid() and formset.is_valid():
+            litri_acqua = form.cleaned_data["litri_acqua"]
+            righe_valide = [
+                rf for rf in formset
+                if rf.cleaned_data and not rf.cleaned_data.get("DELETE") and rf.cleaned_data.get("prodotto")
+            ]
+            # Il prodotto usato per la diluizione non può superare quanto
+            # realmente a bordo del mezzo (es. 2 lt a bordo → non posso
+            # dichiarare una diluizione che ne richiederebbe 3).
+            errori = []
+            for riga_form in righe_valide:
+                prodotto = riga_form.cleaned_data["prodotto"]
+                perc = riga_form.cleaned_data["percentuale_diluizione"]
+                necessario = litri_acqua * perc / Decimal("100")
+                scorta = ScortaMezzo.objects.filter(mezzo=mezzo, prodotto=prodotto).first()
+                disponibile = scorta.quantita if scorta else Decimal("0")
+                if necessario > disponibile:
+                    errori.append(
+                        f"'{prodotto}': la diluizione richiede {necessario} lt di prodotto, "
+                        f"ma sul mezzo ce ne sono solo {disponibile}."
+                    )
+            if errori:
+                for e in errori:
+                    messages.error(request, e)
+            else:
+                carico = form.save(commit=False)
+                carico.mezzo = mezzo
+                carico.operatore = request.user
+                carico.save()
+                formset.instance = carico
+                formset.save()
+                messages.success(request, "Carico cisterna registrato.")
+        else:
+            for field_errors in form.errors.values():
+                for e in field_errors:
+                    messages.error(request, e)
+            for riga_form in formset:
+                for field_errors in riga_form.errors.values():
+                    for e in field_errors:
+                        messages.error(request, e)
+    return redirect("magazzino:scorte_mezzo", pk=mezzo_pk)
 
 
 @login_required
