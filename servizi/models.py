@@ -49,6 +49,10 @@ class Servizio(AllegatiMixin, models.Model):
         default=False, verbose_name="Richiede installazione",
         help_text="Se attivo, questo servizio prevede postazioni fisse da installare e monitorare",
     )
+    non_prevede_consumo_prodotti = models.BooleanField(
+        default=False, verbose_name="Servizio che non prevede consumo di prodotti",
+        help_text="Se attivo, l'ODS può essere chiuso senza indicare prodotti utilizzati o litri cisterna consumati",
+    )
     created_at       = models.DateTimeField(auto_now_add=True)
     updated_at       = models.DateTimeField(auto_now=True)
 

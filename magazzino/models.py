@@ -417,18 +417,20 @@ class CaricoCisterna(models.Model):
 
     @staticmethod
     def litri_in_vasca(mezzo):
-        """Litri di liquido attualmente presenti in cisterna: totale caricato meno totale consumato."""
+        """Litri di liquido attualmente presenti in cisterna: litri d'acqua caricati meno litri consumati.
+
+        Il prodotto diluito non si somma: è già incluso nel volume
+        d'acqua caricato (la vasca si riempie d'acqua fino al livello
+        desiderato, poi vi si versa il prodotto).
+        """
         from django.db.models import Sum
         tot_acqua = CaricoCisterna.objects.filter(mezzo=mezzo).aggregate(
             tot=Sum("litri_acqua")
         )["tot"] or Decimal("0")
-        tot_prodotto = RigaCaricoCisterna.objects.filter(carico__mezzo=mezzo).aggregate(
-            tot=Sum("litri_inseriti")
-        )["tot"] or Decimal("0")
         tot_consumato = ConsumoCisterna.objects.filter(mezzo=mezzo).aggregate(
             tot=Sum("litri_consumati")
         )["tot"] or Decimal("0")
-        return tot_acqua + tot_prodotto - tot_consumato
+        return tot_acqua - tot_consumato
 
 
 class RigaCaricoCisterna(models.Model):

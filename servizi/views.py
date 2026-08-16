@@ -1547,6 +1547,40 @@ def chiudi_servizio_distinta(request, ods_pk):
     else:
         form = ChiudiServizioForm(request.POST)
         if form.is_valid():
+            from decimal import Decimal, InvalidOperation
+
+            # Un servizio va chiuso indicando almeno un prodotto utilizzato o i
+            # litri di cisterna consumati — mai entrambi a zero — a meno che
+            # tutte le righe dell'ODS siano su servizi che non lo prevedono.
+            righe = list(ods.righe.select_related("servizio").all())
+            richiede_consumo = any(not r.servizio.non_prevede_consumo_prodotti for r in righe)
+            if richiede_consumo:
+                previsti_confermati = sum(
+                    1
+                    for riga in righe
+                    for c in ConsumoMateriale.objects.filter(riga=riga, confermato=False)
+                    if f"prod-confermato-{c.pk}" in request.POST
+                )
+                extra_total = int(request.POST.get("extra-TOTAL_FORMS", 0) or 0)
+                extra_validi = sum(
+                    1 for i in range(extra_total)
+                    if request.POST.get(f"extra-{i}-prodotto", "").strip()
+                )
+                litri_cisterna_str = request.POST.get("litri_cisterna_consumati", "").strip()
+                try:
+                    ha_litri_cisterna = litri_cisterna_str and Decimal(litri_cisterna_str) > 0
+                except InvalidOperation:
+                    ha_litri_cisterna = False
+
+                if previsti_confermati == 0 and extra_validi == 0 and not ha_litri_cisterna:
+                    messages.error(
+                        request,
+                        "Indica almeno un prodotto utilizzato oppure i litri di cisterna "
+                        "consumati per chiudere questo servizio.",
+                    )
+                    back = ods.distinta.get_absolute_url() if ods.distinta else reverse("servizi:distinta_list")
+                    return redirect(back)
+
             cd = form.cleaned_data
             ods.stato = "completato"
             ods.ora_fine = timezone.localtime().time()
@@ -1566,8 +1600,6 @@ def chiudi_servizio_distinta(request, ods_pk):
                 ods.note_intervento = note
                 fields.append("note_intervento")
             ods.save(update_fields=fields)
-
-            from decimal import Decimal, InvalidOperation
 
             # Conferma prodotti previsti (confermato=False → True se spuntati)
             for riga in ods.righe.all():

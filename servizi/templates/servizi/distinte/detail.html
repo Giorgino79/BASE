@@ -239,6 +239,10 @@
               <input type="number" name="importo_incassato" step="0.01"
                      value="{{ ods.prezzo_sum|default:'' }}" class="form-control">
             </div>
+            <p class="small text-muted fst-italic mb-2">
+              <i class="bi bi-info-circle me-1"></i>Salvo servizi che non prevedono consumo di prodotti, per chiudere
+              indica almeno un prodotto utilizzato oppure i litri di cisterna consumati.
+            </p>
             {# Prodotti previsti: cambia prodotto, quantità e spunta quelli usati #}
             <p class="small fw-semibold mb-1 mt-2"><i class="bi bi-box-seam me-1"></i>Materiali previsti:</p>
             {% for r in ods.righe.all %}{% for c in r.consumi.all %}{% if not c.confermato %}

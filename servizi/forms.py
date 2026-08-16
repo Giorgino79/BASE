@@ -13,13 +13,17 @@ _TIME = {"class": "form-control", "type": "time"}
 class ServizioForm(forms.ModelForm):
     class Meta:
         model = Servizio
-        fields = ["nome", "descrizione", "tariffa_cartello", "attivo", "richiede_installazione"]
+        fields = [
+            "nome", "descrizione", "tariffa_cartello", "attivo",
+            "richiede_installazione", "non_prevede_consumo_prodotti",
+        ]
         widgets = {
-            "nome":                    forms.TextInput(attrs=_BS),
-            "descrizione":             forms.Textarea(attrs=_AREA),
-            "tariffa_cartello":        forms.NumberInput(attrs={**_BS, "step": "0.01"}),
-            "attivo":                  forms.CheckboxInput(attrs=_CHK),
-            "richiede_installazione":  forms.CheckboxInput(attrs=_CHK),
+            "nome":                          forms.TextInput(attrs=_BS),
+            "descrizione":                   forms.Textarea(attrs=_AREA),
+            "tariffa_cartello":              forms.NumberInput(attrs={**_BS, "step": "0.01"}),
+            "attivo":                        forms.CheckboxInput(attrs=_CHK),
+            "richiede_installazione":        forms.CheckboxInput(attrs=_CHK),
+            "non_prevede_consumo_prodotti":  forms.CheckboxInput(attrs=_CHK),
         }
 
 

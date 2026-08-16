@@ -50,6 +50,15 @@
               <div class="form-text">{{ form.richiede_installazione.help_text }}</div>
               {% endif %}
             </div>
+            <div class="col-12">
+              <div class="form-check">
+                {{ form.non_prevede_consumo_prodotti }}
+                <label class="form-check-label">{{ form.non_prevede_consumo_prodotti.label }}</label>
+              </div>
+              {% if form.non_prevede_consumo_prodotti.help_text %}
+              <div class="form-text">{{ form.non_prevede_consumo_prodotti.help_text }}</div>
+              {% endif %}
+            </div>
           </div>
         </div>
       </div>
