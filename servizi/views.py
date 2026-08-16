@@ -1362,6 +1362,90 @@ def crea_distinta(request, tecnico_pk):
 
 
 @login_required
+def api_ods_search(request):
+    """Ricerca ODS per numero o nome cliente, per l'aggiunta manuale a una distinta.
+
+    Esclude gli ODS già in una distinta e quelli in stato terminale
+    (completato/fatturato/annullato), coerentemente con il filtro usato
+    da crea_distinta per l'inclusione automatica.
+    """
+    q = request.GET.get("q", "").strip()
+    if len(q) < 2:
+        return JsonResponse({"results": []})
+
+    ods_qs = ODS.objects.filter(
+        distinta__isnull=True,
+    ).exclude(
+        stato__in=[ODS.Stato.COMPLETATO, ODS.Stato.FATTURATO, ODS.Stato.ANNULLATO],
+    ).filter(
+        Q(numero__icontains=q) |
+        Q(filiale__cliente__ragione_sociale__icontains=q) |
+        Q(filiale__nome__icontains=q) |
+        Q(privato__cognome__icontains=q) |
+        Q(privato__nome__icontains=q)
+    ).select_related("filiale__cliente", "privato").distinct().order_by("-data_servizio")[:20]
+
+    results = [
+        {
+            "id": o.pk,
+            "numero": o.numero,
+            "cliente": o.cliente_display,
+            "data": o.data_servizio.strftime("%d/%m/%Y"),
+        }
+        for o in ods_qs
+    ]
+    return JsonResponse({"results": results})
+
+
+@login_required
+def distinta_aggiungi_ods(request, pk):
+    """Aggiunge manualmente un ODS esistente a una distinta aperta.
+
+    Replica quanto fa crea_distinta quando include automaticamente gli
+    ODS nella distinta del tecnico: assegna tecnico/assistente della
+    distinta e porta lo stato a "programmato".
+    """
+    distinta = get_object_or_404(Distinta, pk=pk)
+    if request.method == "POST" and distinta.stato == "aperta":
+        ods_id = request.POST.get("ods_id", "").strip()
+        ods = ODS.objects.filter(
+            pk=ods_id, distinta__isnull=True,
+        ).exclude(
+            stato__in=[ODS.Stato.COMPLETATO, ODS.Stato.FATTURATO, ODS.Stato.ANNULLATO],
+        ).first()
+        if ods:
+            ods.tecnico = distinta.tecnico
+            ods.assistente = distinta.assistente
+            ods.stato = ODS.Stato.PROGRAMMATO
+            ods.distinta = distinta
+            ods.save(update_fields=["tecnico", "assistente", "stato", "distinta"])
+            messages.success(request, f"{ods.numero} aggiunto alla distinta.")
+        else:
+            messages.error(request, "ODS non trovato o non disponibile per l'aggiunta.")
+    return redirect(distinta.get_absolute_url())
+
+
+@login_required
+def distinta_rimuovi_ods(request, ods_pk):
+    """Rimuove un ODS da una distinta aperta, riportandolo tra i servizi da espletare.
+
+    Stesso comportamento della riapertura selettiva in chiudi_distinta_ufficio:
+    tocca solo stato e distinta, tecnico/assistente restano invariati.
+    """
+    ods = get_object_or_404(ODS.objects.select_related("distinta"), pk=ods_pk)
+    distinta = ods.distinta
+    if (
+        request.method == "POST" and distinta and distinta.stato == "aperta"
+        and ods.stato not in (ODS.Stato.COMPLETATO, ODS.Stato.ANNULLATO)
+    ):
+        ods.stato = ODS.Stato.DA_ESPLETARE
+        ods.distinta = None
+        ods.save(update_fields=["stato", "distinta"])
+        messages.success(request, f"{ods.numero} rimosso dalla distinta.")
+    return redirect(distinta.get_absolute_url() if distinta else reverse("servizi:distinta_list"))
+
+
+@login_required
 def chiudi_servizio_distinta(request, ods_pk):
     """Chiude un singolo ODS dalla distinta del tecnico."""
     ods = get_object_or_404(ODS.objects.select_related("distinta"), pk=ods_pk)

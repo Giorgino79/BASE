@@ -49,6 +49,9 @@ urlpatterns = [
     path("ods/<int:ods_pk>/chiudi-servizio/",   views.chiudi_servizio_distinta,    name="chiudi_servizio_distinta"),
     path("ods/<int:ods_pk>/aggiungi-consumo/",  views.aggiungi_consumo,            name="aggiungi_consumo"),
     path("consumo/<int:consumo_pk>/elimina/",   views.elimina_consumo,             name="elimina_consumo"),
+    path("distinte/<int:pk>/aggiungi-servizio/", views.distinta_aggiungi_ods,      name="distinta_aggiungi_ods"),
+    path("ods/<int:ods_pk>/rimuovi-da-distinta/", views.distinta_rimuovi_ods,      name="distinta_rimuovi_ods"),
+    path("api/ods-search/",                     views.api_ods_search,             name="api_ods_search"),
 
     # Condomini ODS
     path("condomini/",                    views.condominio_list,   name="condominio_list"),

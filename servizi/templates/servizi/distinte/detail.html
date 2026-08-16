@@ -122,6 +122,13 @@
                 data-bs-toggle="modal" data-bs-target="#modal-chiudi-{{ ods.pk }}">
           <i class="bi bi-check-lg me-1"></i>Chiudi servizio
         </button>
+        <form method="post" action="{% url 'servizi:distinta_rimuovi_ods' ods.pk %}" class="d-inline">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-sm btn-outline-danger" title="Rimuovi servizio dalla distinta"
+                  onclick="return confirm('Rimuovere {{ ods.numero }} da questa distinta? Tornerà tra i servizi da espletare.')">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </form>
         {% endif %}
       {% endif %}
     </div>
@@ -428,6 +435,14 @@
 <div class="alert alert-info"><i class="bi bi-info-circle me-2"></i>Nessun servizio in questa distinta.</div>
 {% endif %}
 
+{% if distinta.stato == "aperta" %}
+<div class="text-end mb-4">
+  <button type="button" class="btn btn-brand" data-bs-toggle="modal" data-bs-target="#modal-aggiungi-servizio">
+    <i class="bi bi-plus-lg me-1"></i>Aggiungi servizio
+  </button>
+</div>
+{% endif %}
+
 {# ── CONDOMINI ─────────────────────────────────────────────────────────────── #}
 {% for c in condomini_list %}
 <div class="card mb-3">
@@ -479,6 +494,38 @@
 
 {# Sorgente opzioni prodotto per la clonazione JS #}
 <div id="prod-src-wrapper" style="display:none" aria-hidden="true">{{ consumo_form.prodotto }}</div>
+
+{% if distinta.stato == "aperta" %}
+{# Modal aggiungi servizio esistente alla distinta #}
+<div class="modal fade" id="modal-aggiungi-servizio" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h6 class="modal-title"><i class="bi bi-plus-lg me-2"></i>Aggiungi servizio alla distinta</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" action="{% url 'servizi:distinta_aggiungi_ods' distinta.pk %}" id="form-aggiungi-servizio">
+        {% csrf_token %}
+        <div class="modal-body">
+          <label class="form-label">Cerca per numero ODS o nome cliente</label>
+          <input type="text" class="form-control" id="ags-search" autocomplete="off"
+                 placeholder="Es. 00123 oppure Rossi">
+          <div class="form-text">Digita almeno 2 caratteri.</div>
+          <div id="ags-results" class="list-group mt-2" style="max-height:260px; overflow-y:auto;"></div>
+          <input type="hidden" name="ods_id" id="ags-ods-id">
+          <div id="ags-selected" class="alert alert-success py-2 mb-0 mt-2 d-none"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Annulla</button>
+          <button type="submit" class="btn btn-sm btn-brand" id="ags-submit" disabled>
+            <i class="bi bi-check-lg me-1"></i>Aggiungi
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
 {% endblock %}
 
 {% block extra_js %}
@@ -581,6 +628,69 @@
       renumber(remBtn.closest("form"));
     }
   });
+})();
+</script>
+
+<script>
+(function () {
+  const input    = document.getElementById("ags-search");
+  if (!input) return;
+  const results  = document.getElementById("ags-results");
+  const hidden   = document.getElementById("ags-ods-id");
+  const submit   = document.getElementById("ags-submit");
+  const selected = document.getElementById("ags-selected");
+  const modalEl  = document.getElementById("modal-aggiungi-servizio");
+  const SEARCH_URL = "{% url 'servizi:api_ods_search' %}";
+  let timer = null;
+
+  function resetSelezione() {
+    hidden.value = "";
+    submit.disabled = true;
+    selected.classList.add("d-none");
+  }
+
+  input.addEventListener("input", function () {
+    clearTimeout(timer);
+    resetSelezione();
+    const q = input.value.trim();
+    if (q.length < 2) { results.innerHTML = ""; return; }
+    timer = setTimeout(function () {
+      fetch(SEARCH_URL + "?q=" + encodeURIComponent(q))
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          results.innerHTML = "";
+          if (!d.results.length) {
+            results.innerHTML = '<div class="text-muted small p-2">Nessun risultato</div>';
+            return;
+          }
+          d.results.forEach(function (item) {
+            const a = document.createElement("a");
+            a.href = "#";
+            a.className = "list-group-item list-group-item-action";
+            a.innerHTML = "<strong>" + item.numero + "</strong> — " + item.cliente
+                        + '<span class="text-muted small ms-2">' + item.data + "</span>";
+            a.addEventListener("click", function (e) {
+              e.preventDefault();
+              hidden.value = item.id;
+              submit.disabled = false;
+              results.innerHTML = "";
+              input.value = item.numero + " — " + item.cliente;
+              selected.textContent = "Selezionato: " + item.numero + " — " + item.cliente;
+              selected.classList.remove("d-none");
+            });
+            results.appendChild(a);
+          });
+        });
+    }, 250);
+  });
+
+  if (modalEl) {
+    modalEl.addEventListener("hidden.bs.modal", function () {
+      input.value = "";
+      results.innerHTML = "";
+      resetSelezione();
+    });
+  }
 })();
 </script>
 {% endblock %}
