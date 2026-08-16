@@ -128,9 +128,13 @@
           </div>
         </div>
 
-        {% if carichi_cisterna %}
+        {% if litri_in_vasca is not None %}
         <div class="mb-3">
-          <div class="fw-semibold small mb-2"><i class="bi bi-droplet-half me-1"></i>Carico cisterna</div>
+          <div class="fw-semibold small mb-2"><i class="bi bi-droplet-half me-1"></i>Cisterna</div>
+          <div class="small mb-2">Litri in vasca: <strong class="text-brand">{{ litri_in_vasca }} lt</strong></div>
+          {% if carichi_cisterna %}
+          <div class="text-muted small mb-1">Ultimi carichi</div>
+          {% endif %}
           {% for c in carichi_cisterna %}
           <div class="small mb-2 pb-2 {% if not forloop.last %}border-bottom{% endif %}">
             <div class="text-muted">{{ c.data|date:"d/m/Y H:i" }}{% if c.operatore %} — {{ c.operatore.get_full_name|default:c.operatore.username }}{% endif %}</div>

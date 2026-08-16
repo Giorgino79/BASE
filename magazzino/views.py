@@ -633,6 +633,7 @@ def scorte_mezzo(request, pk):
         "carico_cisterna_formset": RigaCaricoCisternaFormSet(prefix="cisterna", form_kwargs={"mezzo": mezzo}),
         "carichi_cisterna": CaricoCisterna.objects.filter(mezzo=mezzo)
             .prefetch_related("righe__prodotto").select_related("operatore")[:5],
+        "litri_in_vasca": CaricoCisterna.litri_in_vasca(mezzo),
     }
     return render(request, "magazzino/scorte/mezzo.html", ctx)
 
@@ -641,8 +642,11 @@ def scorte_mezzo(request, pk):
 def carico_cisterna_create(request, mezzo_pk):
     """Registra un carico cisterna (acqua + uno o più prodotti diluiti) per un mezzo.
 
-    Form facoltativo e fine a se stesso: non aggiorna ScortaMezzo né
-    alcun consumo di prodotto, è solo un log da rifinire in futuro.
+    Il prodotto usato per la diluizione viene scalato da ScortaMezzo al
+    momento del carico (anche se il liquido in cisterna non è ancora
+    stato utilizzato in un servizio) — coerente col fatto che il
+    prodotto lascia fisicamente la sua confezione/scorta a bordo non
+    appena viene versato in cisterna.
     """
     from cespiti.models import Automezzo
     mezzo = get_object_or_404(Automezzo, pk=mezzo_pk)
@@ -672,6 +676,7 @@ def carico_cisterna_create(request, mezzo_pk):
                 for e in errori:
                     messages.error(request, e)
             else:
+                from django.db.models import F
                 carico = form.save(commit=False)
                 carico.mezzo = mezzo
                 carico.operatore = request.user
@@ -687,6 +692,9 @@ def carico_cisterna_create(request, mezzo_pk):
                         if litri_acqua else Decimal("0")
                     )
                     riga.save()
+                    ScortaMezzo.objects.filter(mezzo=mezzo, prodotto=riga.prodotto).update(
+                        quantita=F("quantita") - riga.litri_inseriti
+                    )
                 for obj in formset.deleted_objects:
                     obj.delete()
                 messages.success(request, "Carico cisterna registrato.")

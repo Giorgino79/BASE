@@ -268,6 +268,16 @@
             <p class="small text-muted fst-italic mb-2">
               <i class="bi bi-info-circle me-1"></i>In caso di servizi aggiuntivi richiesti dal cliente inserire motivazione nelle note.
             </p>
+
+            {% if mezzo %}
+            <label class="form-label">
+              Litri di liquido cisterna consumati per questo servizio
+              <span class="text-muted fw-normal">(facoltativo{% if litri_in_vasca is not None %} — in vasca: {{ litri_in_vasca }} lt{% endif %})</span>
+            </label>
+            <input type="number" name="litri_cisterna_consumati" step="0.01" min="0"
+                   class="form-control form-control-sm mb-3" placeholder="Es. 50">
+            {% endif %}
+
             <label class="form-label">Note intervento</label>
             <textarea name="note_intervento" class="form-control form-control-sm" rows="2"
                       placeholder="Note opzionali">{{ ods.note_intervento }}</textarea>

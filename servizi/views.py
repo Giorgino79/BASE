@@ -116,12 +116,14 @@ def dashboard_tecnico(request):
     ).order_by("-created_at")
 
     carichi_cisterna = []
+    litri_in_vasca = None
     if mezzo:
         from magazzino.models import CaricoCisterna
         carichi_cisterna = list(
             CaricoCisterna.objects.filter(mezzo=mezzo)
             .prefetch_related("righe__prodotto").select_related("operatore")[:5]
         )
+        litri_in_vasca = CaricoCisterna.litri_in_vasca(mezzo)
 
     return render(request, "servizi/dashboard_tecnico.html", {
         "distinte_aperte": distinte_aperte,
@@ -131,6 +133,7 @@ def dashboard_tecnico(request):
         "prodotti_mancanti": prodotti_mancanti,
         "promemoria_list": promemoria_list,
         "carichi_cisterna": carichi_cisterna,
+        "litri_in_vasca": litri_in_vasca,
     })
 
 
@@ -1286,8 +1289,9 @@ class DistintaDetailView(LoginRequiredMixin, DetailView):
         ctx["chiudi_form"] = ChiudiServizioForm()
         ctx["consumo_form"] = ConsumoMaterialeForm(mezzo=mezzo)
         ctx["chiudi_choices"] = ChiudiServizioForm().fields["modalita_pagamento"].choices
-        from magazzino.models import Prodotto, ScortaMezzo
+        from magazzino.models import Prodotto, ScortaMezzo, CaricoCisterna
         ctx["prodotti_attivi"] = list(Prodotto.objects.filter(attivo=True).order_by("nome_prodotto"))
+        ctx["litri_in_vasca"] = CaricoCisterna.litri_in_vasca(mezzo) if mezzo else None
 
         # Prodotti mancanti sul mezzo per questa distinta
         prodotti_mancanti = []
@@ -1604,6 +1608,29 @@ def chiudi_servizio_distinta(request, ods_pk):
                             quantita=qty,
                             confermato=True,
                         )
+
+            # Litri di liquido cisterna (miscela acqua+prodotto) consumati per questo servizio
+            litri_cisterna_str = request.POST.get("litri_cisterna_consumati", "").strip()
+            if litri_cisterna_str:
+                try:
+                    litri_cisterna = Decimal(litri_cisterna_str)
+                except InvalidOperation:
+                    litri_cisterna = None
+                mezzo = ods.distinta.mezzo if ods.distinta else None
+                if litri_cisterna and litri_cisterna > 0:
+                    if not mezzo:
+                        messages.error(request, "Nessun mezzo assegnato alla distinta: litri cisterna non registrati.")
+                    else:
+                        from magazzino.models import CaricoCisterna, ConsumoCisterna
+                        disponibile = CaricoCisterna.litri_in_vasca(mezzo)
+                        if litri_cisterna > disponibile:
+                            messages.error(
+                                request,
+                                f"Litri cisterna consumati ({litri_cisterna}) superiori a quelli "
+                                f"disponibili in vasca ({disponibile}) — non registrati.",
+                            )
+                        else:
+                            ConsumoCisterna.objects.create(ods=ods, mezzo=mezzo, litri_consumati=litri_cisterna)
 
             # Firma cliente raccolta sul campo al momento della chiusura
             firma_data = request.POST.get("firma_data", "").strip()

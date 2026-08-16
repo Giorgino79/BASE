@@ -415,6 +415,21 @@ class CaricoCisterna(models.Model):
     def __str__(self):
         return f"{self.mezzo} — {self.litri_acqua} lt ({self.data:%d/%m/%Y})"
 
+    @staticmethod
+    def litri_in_vasca(mezzo):
+        """Litri di liquido attualmente presenti in cisterna: totale caricato meno totale consumato."""
+        from django.db.models import Sum
+        tot_acqua = CaricoCisterna.objects.filter(mezzo=mezzo).aggregate(
+            tot=Sum("litri_acqua")
+        )["tot"] or Decimal("0")
+        tot_prodotto = RigaCaricoCisterna.objects.filter(carico__mezzo=mezzo).aggregate(
+            tot=Sum("litri_inseriti")
+        )["tot"] or Decimal("0")
+        tot_consumato = ConsumoCisterna.objects.filter(mezzo=mezzo).aggregate(
+            tot=Sum("litri_consumati")
+        )["tot"] or Decimal("0")
+        return tot_acqua + tot_prodotto - tot_consumato
+
 
 class RigaCaricoCisterna(models.Model):
     """Prodotto (e relativa diluizione) usato in un carico cisterna — più righe se si mescolano più prodotti."""
@@ -438,3 +453,25 @@ class RigaCaricoCisterna(models.Model):
 
     def __str__(self):
         return f"{self.prodotto} {self.litri_inseriti}lt ({self.percentuale_diluizione}%)"
+
+
+class ConsumoCisterna(models.Model):
+    """Litri di liquido (miscela acqua+prodotto) prelevati dalla cisterna per espletare un servizio."""
+    ods = models.ForeignKey(
+        "servizi.ODS", on_delete=models.CASCADE, related_name="consumi_cisterna",
+    )
+    mezzo = models.ForeignKey(
+        "cespiti.Automezzo", on_delete=models.CASCADE, related_name="consumi_cisterna",
+    )
+    litri_consumati = models.DecimalField(
+        max_digits=8, decimal_places=2, verbose_name="Litri consumati",
+    )
+    data = models.DateTimeField(auto_now_add=True, verbose_name="Data/ora consumo")
+
+    class Meta:
+        verbose_name = "Consumo cisterna"
+        verbose_name_plural = "Consumi cisterna"
+        ordering = ["-data"]
+
+    def __str__(self):
+        return f"{self.ods.numero} — {self.litri_consumati} lt"
