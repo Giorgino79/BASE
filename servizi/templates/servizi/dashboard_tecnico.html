@@ -127,6 +127,24 @@
             <div class="text-muted small">{{ mezzo.marca }} {{ mezzo.modello }}</div>
           </div>
         </div>
+
+        {% if carichi_cisterna %}
+        <div class="mb-3">
+          <div class="fw-semibold small mb-2"><i class="bi bi-droplet-half me-1"></i>Carico cisterna</div>
+          {% for c in carichi_cisterna %}
+          <div class="small mb-2 pb-2 {% if not forloop.last %}border-bottom{% endif %}">
+            <div class="text-muted">{{ c.data|date:"d/m/Y H:i" }}{% if c.operatore %} — {{ c.operatore.get_full_name|default:c.operatore.username }}{% endif %}</div>
+            <div>Litri acqua: <strong>{{ c.litri_acqua }} lt</strong></div>
+            {% for r in c.righe.all %}
+            <div>Prodotto: <strong>{{ r.prodotto.nome_prodotto }}</strong></div>
+            <div>Litri prodotto: <strong>{{ r.litri_inseriti }} lt</strong></div>
+            <div>Diluizione per 100 litri di carico: <strong>{{ r.percentuale_diluizione }}%</strong></div>
+            {% endfor %}
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+
         <a href="{% url 'cespiti:automezzo_detail' mezzo.pk %}"
            class="btn btn-sm w-100" style="background:var(--color-1-light);color:var(--color-1);border:none;">
           <i class="bi bi-box-arrow-up-right me-1"></i>Scheda mezzo

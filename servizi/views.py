@@ -115,6 +115,14 @@ def dashboard_tecnico(request):
         stato__in=["completato", "annullato"]
     ).order_by("-created_at")
 
+    carichi_cisterna = []
+    if mezzo:
+        from magazzino.models import CaricoCisterna
+        carichi_cisterna = list(
+            CaricoCisterna.objects.filter(mezzo=mezzo)
+            .prefetch_related("righe__prodotto").select_related("operatore")[:5]
+        )
+
     return render(request, "servizi/dashboard_tecnico.html", {
         "distinte_aperte": distinte_aperte,
         "n_distinte": distinte_aperte.count(),
@@ -122,6 +130,7 @@ def dashboard_tecnico(request):
         "scorte": scorte,
         "prodotti_mancanti": prodotti_mancanti,
         "promemoria_list": promemoria_list,
+        "carichi_cisterna": carichi_cisterna,
     })
 
 
