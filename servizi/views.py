@@ -628,7 +628,6 @@ class ODSDetailView(LoginRequiredMixin, DetailView):
         ctx = super().get_context_data(**kwargs)
         ctx["back_url"] = reverse("servizi:ods_list")
         ctx["edit_url"] = reverse("servizi:ods_update", kwargs={"pk": self.object.pk})
-        ctx["stato_choices"] = ODS.Stato.choices
         ctx["content_type_id"] = ContentType.objects.get_for_model(ODS).pk
         ctx["object_id"] = self.object.pk
         from django.contrib.auth import get_user_model

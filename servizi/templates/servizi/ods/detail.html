@@ -233,21 +233,6 @@
       </div>
     </div>
 
-    <div class="card mb-3">
-      <div class="card-header"><i class="bi bi-arrow-repeat me-2"></i>Cambia stato</div>
-      <div class="card-body">
-        <form method="post" action="{% url 'servizi:ods_set_stato' ods.pk %}">
-          {% csrf_token %}
-          <select name="stato" class="form-select form-select-sm mb-2">
-            {% for val, label in stato_choices %}
-            <option value="{{ val }}" {% if ods.stato == val %}selected{% endif %}>{{ label }}</option>
-            {% endfor %}
-          </select>
-          <button type="submit" class="btn btn-sm btn-brand w-100">Aggiorna stato</button>
-        </form>
-      </div>
-    </div>
-
     {% include 'commons_templates/components/sidebar_allegati_qr.html' with object=ods %}
 
     <div class="card mb-3">
