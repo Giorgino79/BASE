@@ -110,12 +110,18 @@ def dashboard_tecnico(request):
                 })
         prodotti_mancanti.sort(key=lambda x: x["nome"])
 
+    from comunicazioni.models import Promemoria
+    promemoria_list = Promemoria.objects.filter(assegnato_a=user).exclude(
+        stato__in=["completato", "annullato"]
+    ).order_by("-created_at")
+
     return render(request, "servizi/dashboard_tecnico.html", {
         "distinte_aperte": distinte_aperte,
         "n_distinte": distinte_aperte.count(),
         "mezzo": mezzo,
         "scorte": scorte,
         "prodotti_mancanti": prodotti_mancanti,
+        "promemoria_list": promemoria_list,
     })
 
 
@@ -1419,6 +1425,20 @@ def distinta_aggiungi_ods(request, pk):
             ods.stato = ODS.Stato.PROGRAMMATO
             ods.distinta = distinta
             ods.save(update_fields=["tecnico", "assistente", "stato", "distinta"])
+
+            from comunicazioni.models import Promemoria
+            Promemoria.objects.create(
+                user=request.user,
+                assegnato_a=distinta.tecnico,
+                titolo=f"Servizio aggiunto — distinta {distinta.data.strftime('%d/%m/%Y')}",
+                descrizione=(
+                    f"{ods.numero} — {ods.cliente_display} è stato aggiunto "
+                    f"alla tua distinta del {distinta.data.strftime('%d/%m/%Y')}."
+                ),
+                priorita="alta",
+                link_url=distinta.get_absolute_url(),
+            )
+
             messages.success(request, f"{ods.numero} aggiunto alla distinta.")
         else:
             messages.error(request, "ODS non trovato o non disponibile per l'aggiunta.")
@@ -1442,10 +1462,25 @@ def distinta_rimuovi_ods(request, ods_pk):
         request.method == "POST" and distinta and distinta.stato == "aperta"
         and ods.stato not in (ODS.Stato.COMPLETATO, ODS.Stato.ANNULLATO)
     ):
+        numero, cliente_display = ods.numero, ods.cliente_display
         ods.stato = ODS.Stato.DA_ESPLETARE
         ods.distinta = None
         ods.save(update_fields=["stato", "distinta"])
-        messages.success(request, f"{ods.numero} rimosso dalla distinta.")
+
+        from comunicazioni.models import Promemoria
+        Promemoria.objects.create(
+            user=request.user,
+            assegnato_a=distinta.tecnico,
+            titolo=f"Servizio tolto — distinta {distinta.data.strftime('%d/%m/%Y')}",
+            descrizione=(
+                f"{numero} — {cliente_display} è stato tolto "
+                f"dalla tua distinta del {distinta.data.strftime('%d/%m/%Y')}."
+            ),
+            priorita="alta",
+            link_url=distinta.get_absolute_url(),
+        )
+
+        messages.success(request, f"{numero} rimosso dalla distinta.")
     return redirect(distinta.get_absolute_url() if distinta else reverse("servizi:distinta_list"))
 
 

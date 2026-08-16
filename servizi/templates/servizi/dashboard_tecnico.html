@@ -45,6 +45,23 @@
 </div>
 {% endif %}
 
+{% if promemoria_list %}
+<div class="mb-4">
+  {% for p in promemoria_list %}
+  <div class="alert alert-warning d-flex align-items-start justify-content-between gap-3 shadow-sm" id="promemoria-{{ p.pk }}">
+    <div>
+      <div class="fw-bold"><i class="bi bi-bell-fill me-2"></i>{{ p.titolo }}</div>
+      {% if p.descrizione %}<div class="small mt-1">{{ p.descrizione|linebreaksbr }}</div>{% endif %}
+      {% if p.link_url %}<a href="{{ p.link_url }}" class="small">Apri distinta <i class="bi bi-arrow-right ms-1"></i></a>{% endif %}
+    </div>
+    <button type="button" class="btn btn-sm btn-outline-secondary flex-shrink-0 promemoria-toggle-btn" data-pk="{{ p.pk }}">
+      <i class="bi bi-check-lg me-1"></i>Ho letto
+    </button>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
 <div class="row g-3">
 
   {# ── DISTINTE ─────────────────────────────────────────────────── #}
@@ -170,4 +187,31 @@
   </div>
 
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  function getCsrf() {
+    const m = document.cookie.match('(^|;)\\s*csrftoken\\s*=\\s*([^;]+)');
+    return m ? m.pop() : '';
+  }
+  document.querySelectorAll('.promemoria-toggle-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      const pk = btn.dataset.pk;
+      btn.disabled = true;
+      fetch('/comunicazioni/promemoria/' + pk + '/toggle/', {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCsrf(), 'X-Requested-With': 'XMLHttpRequest' },
+      })
+      .then(function (r) { return r.json(); })
+      .then(function () {
+        const el = document.getElementById('promemoria-' + pk);
+        if (el) el.remove();
+      })
+      .catch(function () { btn.disabled = false; });
+    });
+  });
+})();
+</script>
 {% endblock %}
