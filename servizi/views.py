@@ -646,6 +646,8 @@ class ODSDetailView(LoginRequiredMixin, DetailView):
             ctx["invia_nome"]  = str(ods.privato)
         else:
             ctx["invia_phone"] = ctx["invia_email"] = ctx["invia_nome"] = ""
+
+        ctx["bollettino_disabled"] = ods.stato not in (ODS.Stato.COMPLETATO, ODS.Stato.FATTURATO)
         return ctx
 
 

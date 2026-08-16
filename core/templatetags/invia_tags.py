@@ -16,6 +16,8 @@ Parametri:
     label            — testo del bottone (default "Invia")
     btn_class        — classe Bootstrap (default "btn-primary")
     btn_size         — "btn-sm" / "btn-lg" / "" (default "")
+    disabled         — se True il bottone è disabilitato (default False)
+    disabled_title   — tooltip mostrato quando disabled=True
 """
 
 import uuid
@@ -38,6 +40,8 @@ def bottone_invia(
     label="Invia",
     btn_class="btn-primary",
     btn_size="",
+    disabled=False,
+    disabled_title="",
 ):
     return {
         "modal_id": f"modalInvia{uuid.uuid4().hex[:8]}",
@@ -52,5 +56,7 @@ def bottone_invia(
         "label": label,
         "btn_class": btn_class or "btn-primary",
         "btn_size": btn_size,
+        "disabled": disabled,
+        "disabled_title": disabled_title or "Non disponibile",
         "request": context.get("request"),
     }
