@@ -61,31 +61,40 @@
 </div>
 {% endif %}
 
-<div class="row g-3 mb-4">
-  <div class="col-sm-3">
-    <div class="detail-field">
-      <div class="detail-field-label">Tecnico</div>
-      <div class="detail-field-value fw-semibold">{{ distinta.tecnico.get_full_name|default:distinta.tecnico.username }}</div>
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+  <div class="row g-3 flex-grow-1">
+    <div class="col-sm-3">
+      <div class="detail-field">
+        <div class="detail-field-label">Tecnico</div>
+        <div class="detail-field-value fw-semibold">{{ distinta.tecnico.get_full_name|default:distinta.tecnico.username }}</div>
+      </div>
     </div>
+    <div class="col-sm-3">
+      <div class="detail-field">
+        <div class="detail-field-label">Data servizi</div>
+        <div class="detail-field-value">{{ distinta.data|date:"d/m/Y" }}</div>
+      </div>
+    </div>
+    <div class="col-sm-3">
+      <div class="detail-field">
+        <div class="detail-field-label">Avanzamento</div>
+        <div class="detail-field-value">{{ distinta.n_completati }} / {{ distinta.n_totale }} servizi</div>
+      </div>
+    </div>
+    {% if mezzo %}
+    <div class="col-sm-3">
+      <div class="detail-field">
+        <div class="detail-field-label">Mezzo assegnato</div>
+        <div class="detail-field-value">{{ mezzo }}</div>
+      </div>
+    </div>
+    {% endif %}
   </div>
-  <div class="col-sm-3">
-    <div class="detail-field">
-      <div class="detail-field-label">Data servizi</div>
-      <div class="detail-field-value">{{ distinta.data|date:"d/m/Y" }}</div>
-    </div>
-  </div>
-  <div class="col-sm-3">
-    <div class="detail-field">
-      <div class="detail-field-label">Avanzamento</div>
-      <div class="detail-field-value">{{ distinta.n_completati }} / {{ distinta.n_totale }} servizi</div>
-    </div>
-  </div>
-  {% if mezzo %}
-  <div class="col-sm-3">
-    <div class="detail-field">
-      <div class="detail-field-label">Mezzo assegnato</div>
-      <div class="detail-field-value">{{ mezzo }}</div>
-    </div>
+  {% if distinta.stato == "aperta" %}
+  <div class="flex-shrink-0">
+    <button type="button" class="btn btn-brand btn-sm" data-bs-toggle="modal" data-bs-target="#modal-aggiungi-servizio">
+      <i class="bi bi-plus-lg me-1"></i>Aggiungi servizio
+    </button>
   </div>
   {% endif %}
 </div>
@@ -456,14 +465,6 @@
 
 {% if not ods_list and not condomini_list %}
 <div class="alert alert-info"><i class="bi bi-info-circle me-2"></i>Nessun servizio in questa distinta.</div>
-{% endif %}
-
-{% if distinta.stato == "aperta" %}
-<div class="text-end mb-4">
-  <button type="button" class="btn btn-brand" data-bs-toggle="modal" data-bs-target="#modal-aggiungi-servizio">
-    <i class="bi bi-plus-lg me-1"></i>Aggiungi servizio
-  </button>
-</div>
 {% endif %}
 
 {# ── CONDOMINI ─────────────────────────────────────────────────────────────── #}
