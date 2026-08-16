@@ -103,10 +103,12 @@
                       <option value="{{ p.pk }}" data-um="{{ p.unita_misura }}" {% if p.pk == c.prodotto_id %}selected{% endif %}>{{ p }}</option>
                       {% endfor %}
                     </select>
-                    <input type="number"
-                           name="cp-{{ form_riga.prefix }}-{{ forloop.counter0 }}-quantita"
-                           value="{{ c.quantita }}" step="0.001" min="0.001"
-                           class="form-control form-control-sm" style="width:90px">
+                    <div class="cp-quantita-wrap" style="{% if c.prodotto.unita_misura == 'lt' %}display:none{% endif %}">
+                      <input type="number"
+                             name="cp-{{ form_riga.prefix }}-{{ forloop.counter0 }}-quantita"
+                             value="{{ c.quantita }}" step="0.001" min="0.001"
+                             class="form-control form-control-sm" style="width:90px">
+                    </div>
                     {% if request.user.is_staff %}
                     <div class="cp-diluizione-wrap" style="{% if c.prodotto.unita_misura != 'lt' %}display:none{% endif %}">
                       <div class="input-group input-group-sm" style="width:100px">
@@ -132,6 +134,11 @@
                   </div>
                   {% endfor %}
                 </div>
+                {% if request.user.is_staff %}
+                <div class="form-text mb-1" style="font-size:.75rem">
+                  Per i prodotti in litri si indica solo la % di diluizione su 100 litri — i litri da usare li decide il tecnico in base al liquido rimasto in cisterna.
+                </div>
+                {% endif %}
                 <button type="button" class="btn btn-sm btn-outline-secondary mt-1 btn-aggiungi-prodotto"
                         style="font-size:.8rem;padding:2px 8px">
                   <i class="bi bi-plus-sm me-1"></i>Prodotto previsto
@@ -245,8 +252,10 @@
       <option value="{{ p.pk }}" data-um="{{ p.unita_misura }}">{{ p }}</option>
       {% endfor %}
     </select>
-    <input type="number" name="__cp_prefix__-quantita" value="1" step="0.001" min="0.001"
-           class="form-control form-control-sm" style="width:90px">
+    <div class="cp-quantita-wrap">
+      <input type="number" name="__cp_prefix__-quantita" value="1" step="0.001" min="0.001"
+             class="form-control form-control-sm" style="width:90px">
+    </div>
     {% if request.user.is_staff %}
     <div class="cp-diluizione-wrap" style="display:none">
       <div class="input-group input-group-sm" style="width:100px">
@@ -352,17 +361,28 @@
   // ── Prodotti previsti per riga ────────────────────────────────────────────────
   const emptyProdTemplate = document.getElementById("empty-prodotto-template");
 
-  // ── Diluizione: visibile solo per prodotti con unità "lt" ──────────────────────
+  // ── Prodotti in litri: si indica solo la % diluizione (decide il tecnico
+  //    in base al liquido rimasto in cisterna), non i litri di prodotto ─────────
   function updateDiluizioneVisibility(rowEl) {
-    const sel  = rowEl.querySelector(".cp-prodotto-select");
-    const wrap = rowEl.querySelector(".cp-diluizione-wrap");
-    if (!sel || !wrap) return;
+    const sel = rowEl.querySelector(".cp-prodotto-select");
+    if (!sel) return;
     const opt = sel.options[sel.selectedIndex];
     const isLitri = !!(opt && opt.dataset.um === "lt");
-    wrap.style.display = isLitri ? "" : "none";
-    if (!isLitri) {
-      const input = wrap.querySelector("input");
-      if (input) input.value = "";
+
+    const diluizioneWrap = rowEl.querySelector(".cp-diluizione-wrap");
+    if (diluizioneWrap) {
+      diluizioneWrap.style.display = isLitri ? "" : "none";
+      if (!isLitri) {
+        const input = diluizioneWrap.querySelector("input");
+        if (input) input.value = "";
+      }
+    }
+
+    const quantitaWrap = rowEl.querySelector(".cp-quantita-wrap");
+    if (quantitaWrap) {
+      quantitaWrap.style.display = isLitri ? "none" : "";
+      const qtyInput = quantitaWrap.querySelector("input");
+      if (qtyInput) qtyInput.value = isLitri ? "1" : (qtyInput.value || "1");
     }
   }
 
