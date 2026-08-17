@@ -98,6 +98,10 @@ class Fattura(models.Model):
     def __str__(self):
         return self.numero
 
+    def get_absolute_url(self):
+        from django.urls import reverse
+        return reverse("fatturazione_attiva:fattura_detail", kwargs={"pk": self.pk})
+
     @property
     def is_libera(self):
         """True se la fattura è stata emessa senza ODS collegati (fattura libera)."""
@@ -433,6 +437,10 @@ class NotaCredito(models.Model):
 
     def __str__(self):
         return self.numero
+
+    def get_absolute_url(self):
+        from django.urls import reverse
+        return reverse("fatturazione_attiva:nc_detail", kwargs={"pk": self.pk})
 
     @classmethod
     def crea(cls, fattura, imponibile, note, emessa_da):
