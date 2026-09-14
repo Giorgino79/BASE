@@ -8,7 +8,7 @@ from decimal import Decimal
 
 from .models import (
     Categoria, Prodotto, Ricezione, RigaRicezione, ScortaStabilimento, CaricoMezzo, RigaCaricoMezzo, ScortaMezzo,
-    CaricoCisterna,
+    CaricoCisterna, TipoAttrezzatura, AttrezzaturaAutomezzo,
 )
 from .forms import (
     CategoriaForm, ProdottoForm, RicezioneForm, RigaRicezioneForm, RigaRicezioneFormSet, CaricoMezzoForm, RigaCaricoMezzoFormSet,
@@ -528,7 +528,8 @@ def api_scorta_prodotto(request, pk):
 
 @login_required
 def scorte_dashboard(request):
-    from cespiti.models import Automezzo, Stabilimento
+    from stabilimenti.models import Stabilimento
+    from automezzi.models import Automezzo
     stabilimenti = Stabilimento.objects.attivi().order_by("nome")
     mezzi = Automezzo.objects.filter(attivo=True).select_related("assegnato_a").order_by("targa")
     return render(request, "magazzino/scorte/dashboard.html", {
@@ -540,7 +541,7 @@ def scorte_dashboard(request):
 
 @login_required
 def scorte_stabilimento(request, pk):
-    from cespiti.models import Stabilimento
+    from stabilimenti.models import Stabilimento
     stabilimento = get_object_or_404(Stabilimento, pk=pk)
     scorte = (
         ScortaStabilimento.objects
@@ -597,7 +598,7 @@ def rettifica_scorta(request, pk):
 
 @login_required
 def scorte_mezzo(request, pk):
-    from cespiti.models import Automezzo
+    from automezzi.models import Automezzo
     mezzo = get_object_or_404(Automezzo, pk=pk)
     from django.db.models import Subquery, OuterRef
     ultimo_mov_qs = (
@@ -622,7 +623,7 @@ def scorte_mezzo(request, pk):
         ).values("prodotto_id").annotate(tot=Sum("quantita"))
     }
     scorte_con_disp = [(s, disp_per_prodotto.get(s.prodotto_id, Decimal("0"))) for s in scorte]
-    from cespiti.models import Stabilimento
+    from stabilimenti.models import Stabilimento
     stabilimenti = Stabilimento.objects.attivi().order_by("nome")
     ctx = {
         "mezzo": mezzo,
@@ -648,7 +649,7 @@ def carico_cisterna_create(request, mezzo_pk):
     prodotto lascia fisicamente la sua confezione/scorta a bordo non
     appena viene versato in cisterna.
     """
-    from cespiti.models import Automezzo
+    from automezzi.models import Automezzo
     mezzo = get_object_or_404(Automezzo, pk=mezzo_pk)
     if request.method == "POST":
         form = CaricoCisternaForm(request.POST)
@@ -712,12 +713,12 @@ def carico_cisterna_create(request, mezzo_pk):
 @login_required
 def mezzo_operazione_rapida(request, mezzo_pk):
     """Carico o scarico rapido di un singolo prodotto su un mezzo."""
-    from cespiti.models import Automezzo
+    from automezzi.models import Automezzo
     from django.db.models import F
     if request.method != "POST":
         return redirect("magazzino:scorte_mezzo", pk=mezzo_pk)
 
-    from cespiti.models import Stabilimento
+    from stabilimenti.models import Stabilimento
     mezzo = get_object_or_404(Automezzo, pk=mezzo_pk)
     prodotto = get_object_or_404(Prodotto, pk=request.POST.get("prodotto_id", 0))
     tipo = request.POST.get("tipo", "")
@@ -766,7 +767,7 @@ def mezzo_operazione_rapida(request, mezzo_pk):
 
 @login_required
 def carico_mezzo_list(request):
-    from cespiti.models import Automezzo
+    from automezzi.models import Automezzo
     from servizi.models import ConsumoMateriale
 
     automezzi = Automezzo.objects.filter(attivo=True).order_by("targa")
@@ -1002,3 +1003,71 @@ def prodotto_invia_scheda(request, pk):
         except Exception as e:
             messages.error(request, f"Errore invio email: {e}")
     return redirect("magazzino:prodotto_detail", pk=pk)
+
+
+# ============================================================
+# ATTREZZATURA AUTOMEZZI
+# ============================================================
+# Spostate da cespiti il 26/08/2026 — vedi magazzino/models.py.
+
+@login_required
+def attrezzatura_add(request, automezzo_pk):
+    from automezzi.models import Automezzo
+    automezzo = get_object_or_404(Automezzo, pk=automezzo_pk)
+    if request.method == "POST":
+        tipo_pk = request.POST.get("tipo")
+        fissa = request.POST.get("fissa") == "on"
+        note = request.POST.get("note", "").strip()
+        if tipo_pk:
+            tipo = get_object_or_404(TipoAttrezzatura, pk=tipo_pk)
+            obj, created = AttrezzaturaAutomezzo.objects.get_or_create(
+                automezzo=automezzo, tipo=tipo,
+                defaults={"fissa": fissa, "note": note},
+            )
+            if created:
+                messages.success(request, f"Attrezzatura «{tipo}» aggiunta.")
+            else:
+                messages.info(request, f"Attrezzatura «{tipo}» già presente.")
+    return redirect(automezzo.get_absolute_url() + "#attrezzature")
+
+
+@login_required
+def attrezzatura_remove(request, pk):
+    attr = get_object_or_404(AttrezzaturaAutomezzo, pk=pk)
+    automezzo = attr.automezzo
+    if request.method == "POST":
+        nome = str(attr.tipo)
+        attr.delete()
+        messages.success(request, f"Attrezzatura «{nome}» rimossa.")
+    return redirect(automezzo.get_absolute_url() + "#attrezzature")
+
+
+@login_required
+def tipo_attrezzatura_list(request):
+    if request.method == "POST":
+        nome = request.POST.get("nome", "").strip()
+        descrizione = request.POST.get("descrizione", "").strip()
+        if nome:
+            _, created = TipoAttrezzatura.objects.get_or_create(
+                nome=nome, defaults={"descrizione": descrizione},
+            )
+            if created:
+                messages.success(request, f"Tipo «{nome}» aggiunto.")
+            else:
+                messages.warning(request, f"Tipo «{nome}» già esistente.")
+        return redirect(reverse("magazzino:tipo_attrezzatura_list"))
+    tipi = TipoAttrezzatura.objects.all()
+    return render(request, "magazzino/tipo_attrezzatura_list.html", {"tipi": tipi})
+
+
+@login_required
+def tipo_attrezzatura_delete(request, pk):
+    tipo = get_object_or_404(TipoAttrezzatura, pk=pk)
+    if request.method == "POST":
+        nome = tipo.nome
+        try:
+            tipo.delete()
+            messages.success(request, f"Tipo «{nome}» eliminato.")
+        except Exception:
+            messages.error(request, f"Non è possibile eliminare «{nome}»: è in uso su alcuni automezzi.")
+    return redirect(reverse("magazzino:tipo_attrezzatura_list"))

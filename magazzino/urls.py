@@ -42,4 +42,10 @@ urlpatterns = [
     path("scorte/carico/<int:pk>/", views.CaricoMezzoDetailView.as_view(), name="carico_mezzo_detail"),
     path("scorte/carico/<int:pk>/modifica/", views.CaricoMezzoUpdateView.as_view(), name="carico_mezzo_update"),
     path("scorte/carico/<int:pk>/elimina/", views.carico_mezzo_delete, name="carico_mezzo_delete"),
+
+    # Attrezzatura automezzi (spostate da cespiti il 26/08/2026)
+    path("automezzi/<int:automezzo_pk>/attrezzature/aggiungi/", views.attrezzatura_add, name="attrezzatura_add"),
+    path("automezzi/attrezzature/<int:pk>/rimuovi/", views.attrezzatura_remove, name="attrezzatura_remove"),
+    path("tipi-attrezzatura/", views.tipo_attrezzatura_list, name="tipo_attrezzatura_list"),
+    path("tipi-attrezzatura/<int:pk>/elimina/", views.tipo_attrezzatura_delete, name="tipo_attrezzatura_delete"),
 ]

@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}WhatsApp — Invia Messaggio{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'whatsapp:dashboard' %}">WhatsApp</a></li>
+<li class="breadcrumb-item active">Invia Messaggio</li>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-send-fill me-2 text-success"></i>Invia Messaggio</h5>
+                <a href="{% url 'whatsapp:dashboard' %}" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i>
+                </a>
+            </div>
+            <div class="card-body">
+                {% if not config.attivo %}
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle me-1"></i>
+                    Il modulo WhatsApp non è attivo. <a href="{% url 'whatsapp:impostazioni' %}">Configuralo prima.</a>
+                </div>
+                {% endif %}
+
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">
+                            Numero destinatario <span class="text-danger">*</span>
+                        </label>
+                        {{ form.numero }}
+                        <div class="form-text">Senza + né spazi. Es: 393331234567</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Nome (opzionale)</label>
+                        {{ form.nome }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">
+                            Messaggio <span class="text-danger">*</span>
+                        </label>
+                        {{ form.testo }}
+                        <div class="form-text d-flex justify-content-between">
+                            <span>Testo del messaggio WhatsApp</span>
+                            <span id="char-count" class="text-muted">0 caratteri</span>
+                        </div>
+                    </div>
+
+                    {% if form.errors %}
+                    <div class="alert alert-danger">
+                        {% for field, errors in form.errors.items %}
+                            {% for err in errors %}<div>{{ err }}</div>{% endfor %}
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-success" {% if not config.attivo %}disabled{% endif %}>
+                            <i class="bi bi-send me-1"></i>Invia
+                        </button>
+                        <a href="{% url 'whatsapp:dashboard' %}" class="btn btn-outline-secondary">Annulla</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Cerca in anagrafica -->
+        <div class="card mt-3">
+            <div class="card-header"><h6 class="mb-0">Cerca in anagrafica</h6></div>
+            <div class="card-body">
+                <div class="input-group mb-2">
+                    <input type="text" class="form-control" id="cerca-anagrafica"
+                           placeholder="Cerca cliente o fornitore...">
+                    <button class="btn btn-outline-secondary" onclick="cercaAnagrafica()">
+                        <i class="bi bi-search"></i>
+                    </button>
+                </div>
+                <div id="risultati-anagrafica"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById("id_testo")?.addEventListener("input", function() {
+    document.getElementById("char-count").textContent = this.value.length + " caratteri";
+});
+
+function cercaAnagrafica() {
+    const q = document.getElementById("cerca-anagrafica").value.trim();
+    if (q.length < 2) return;
+    fetch(`/anagrafica/api/cerca/?q=${encodeURIComponent(q)}`)
+        .then(r => r.json())
+        .then(data => {
+            const div = document.getElementById("risultati-anagrafica");
+            if (!data.length) { div.innerHTML = '<p class="text-muted small">Nessun risultato.</p>'; return; }
+            div.innerHTML = data.map(c =>
+                `<button class="btn btn-sm btn-outline-success me-1 mb-1"
+                    onclick="selezionaContatto('${c.telefono}','${c.nome}')">
+                    ${c.nome} <small class="text-muted">${c.telefono}</small>
+                </button>`
+            ).join("");
+        })
+        .catch(() => {});
+}
+
+function selezionaContatto(numero, nome) {
+    document.getElementById("id_numero").value = numero.replace(/\D/g, "");
+    document.getElementById("id_nome").value = nome;
+}
+</script>
+{% endblock %}

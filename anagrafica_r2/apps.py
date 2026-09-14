@@ -48,3 +48,25 @@ class AnagraficaR2Config(AppConfig):
             ],
             order=10,
         )
+
+        try:
+            from whatsapp.contact_sources import register_source
+
+            def _contatti_aziende():
+                from .models import Azienda
+                return [(a.telefono, str(a)) for a in Azienda.objects.filter(attivo=True).exclude(telefono="")]
+
+            def _contatti_privati():
+                from .models import Privato
+                return [(p.telefono, str(p)) for p in Privato.objects.filter(attivo=True).exclude(telefono="")]
+
+            def _contatti_fornitori():
+                from .models import Fornitore
+                return [(f.telefono, str(f)) for f in Fornitore.objects.exclude(telefono="")]
+
+            register_source("aziende", "Tutte le aziende attive", _contatti_aziende)
+            register_source("privati", "Tutti i privati attivi", _contatti_privati)
+            register_source("fornitori", "Tutti i fornitori", _contatti_fornitori)
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning(f"Errore registro contatti whatsapp: {e}")

@@ -357,68 +357,73 @@ def register_default_models():
         icon="bi-droplet-fill",
     )
 
-    # ========== APP: CESPITI (Automezzi e Stabilimenti) ==========
+    # ========== APP: AUTOMEZZI ==========
+    # Estratta da cespiti il 26/08/2026 in un'app standalone, allineata a
+    # em26 — vedi ~/.claude/plans (standardizzazione automezzi/stabilimenti).
     registry.register(
-        app_label="cespiti",
+        app_label="automezzi",
         model_name="automezzo",
         display_name="Automezzi",
-        category="🚚 Cespiti - Automezzi e Stabilimenti",
+        category="🚚 Automezzi",
         icon="bi-truck",
     )
 
     registry.register(
-        app_label="cespiti",
-        model_name="tipoattrezzatura",
-        display_name="Tipi Attrezzatura",
-        category="🚚 Cespiti - Automezzi e Stabilimenti",
-        icon="bi-tools",
-    )
-
-    registry.register(
-        app_label="cespiti",
+        app_label="automezzi",
         model_name="manutenzione",
         display_name="Manutenzioni",
-        category="🚚 Cespiti - Automezzi e Stabilimenti",
+        category="🚚 Automezzi",
         icon="bi-wrench-adjustable",
     )
 
     registry.register(
-        app_label="cespiti",
+        app_label="automezzi",
         model_name="rifornimento",
         display_name="Rifornimenti",
-        category="🚚 Cespiti - Automezzi e Stabilimenti",
+        category="🚚 Automezzi",
         icon="bi-fuel-pump-fill",
     )
 
     registry.register(
-        app_label="cespiti",
+        app_label="automezzi",
         model_name="eventoautomezzo",
         display_name="Eventi Automezzo",
-        category="🚚 Cespiti - Automezzi e Stabilimenti",
+        category="🚚 Automezzi",
         icon="bi-calendar-event",
     )
 
     registry.register(
-        app_label="cespiti",
+        app_label="magazzino",
+        model_name="tipoattrezzatura",
+        display_name="Tipi Attrezzatura",
+        category="📦 Magazzino",
+        icon="bi-tools",
+    )
+
+    # ========== APP: STABILIMENTI ==========
+    # Estratta da cespiti il 26/08/2026 in un'app standalone, allineata a
+    # em26 — vedi ~/.claude/plans (standardizzazione automezzi/stabilimenti).
+    registry.register(
+        app_label="stabilimenti",
         model_name="stabilimento",
         display_name="Stabilimenti",
-        category="🚚 Cespiti - Automezzi e Stabilimenti",
+        category="🏢 Stabilimenti",
         icon="bi-building-gear",
     )
 
     registry.register(
-        app_label="cespiti",
+        app_label="stabilimenti",
         model_name="costistabilimento",
         display_name="Costi Stabilimento",
-        category="🚚 Cespiti - Automezzi e Stabilimenti",
+        category="🏢 Stabilimenti",
         icon="bi-cash-coin",
     )
 
     registry.register(
-        app_label="cespiti",
+        app_label="stabilimenti",
         model_name="docstabilimento",
         display_name="Documenti Stabilimento",
-        category="🚚 Cespiti - Automezzi e Stabilimenti",
+        category="🏢 Stabilimenti",
         icon="bi-file-earmark-text",
     )
 

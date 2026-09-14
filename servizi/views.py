@@ -58,7 +58,7 @@ def dashboard_tecnico(request):
     ).order_by("-data")
 
     # Mezzo: prima cerca nella distinta aperta più recente, poi fallback su assegnato_a
-    from cespiti.models import Automezzo
+    from automezzi.models import Automezzo
     mezzo = None
     distinta_con_mezzo = distinte_aperte.exclude(mezzo=None).first()
     if distinta_con_mezzo:
@@ -965,7 +965,7 @@ def organizzazione_giri(request):
             "senza_distinta": senza_distinta,
         })
 
-    from cespiti.models import Automezzo
+    from automezzi.models import Automezzo
     from magazzino.models import ScortaMezzo
     automezzi = Automezzo.objects.filter(attivo=True).order_by("targa")
 
@@ -1206,7 +1206,7 @@ class DistintaListView(LoginRequiredMixin, ListView):
     def get_context_data(self, **kwargs):
         from django.db.models import Count
         from django.contrib.auth import get_user_model
-        from cespiti.models import Automezzo
+        from automezzi.models import Automezzo
 
         ctx = super().get_context_data(**kwargs)
         User = get_user_model()
@@ -1389,7 +1389,7 @@ def crea_distinta(request, tecnico_pk):
     telefono = getattr(tecnico, 'telefono', '').strip()
     wu_esito = ""
     if telefono and telefono not in ('.', '-'):
-        from core.whatsapp_sender import WhatsAppSender, is_configured
+        from whatsapp.services import send_message, is_configured
         if is_configured():
             nome_tecnico = tecnico.get_full_name() or tecnico.username
             msg = (
@@ -1397,8 +1397,8 @@ def crea_distinta(request, tecnico_pk):
                 f"Ciao {nome_tecnico}! Hai {n} servizi assegnati.\n"
                 f"Apri la distinta dal link:\n{distinta_url_abs}"
             )
-            ok = WhatsAppSender.send_message(telefono, msg)
-            wu_esito = " WU inviato." if ok else " WU non inviato (controlla configurazione)."
+            result = send_message(telefono, msg)
+            wu_esito = " WU inviato." if result.get("success") else " WU non inviato (controlla configurazione)."
 
     messages.success(request, f"Distinta creata con {n_ods} ODS e {n_cond} condomini. Promemoria assegnato a {tecnico.get_full_name() or tecnico.username}.{wu_esito}")
     return redirect(distinta.get_absolute_url())
@@ -2155,7 +2155,7 @@ def condominio_esegui(request, pk):
         mezzo = condominio.distinta.mezzo
     elif condominio.tecnico_id:
         try:
-            from cespiti.models import Automezzo
+            from automezzi.models import Automezzo
             mezzo = Automezzo.objects.filter(
                 assegnato_a_id=condominio.tecnico_id, attivo=True
             ).first()

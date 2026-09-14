@@ -161,6 +161,44 @@ class User(AbstractUser, AllegatiMixin, TimestampMixin, SoftDeleteMixin):
         related_name="utenti_associati",
     )
 
+    # ========== ASPETTO ==========
+    class Palette(models.TextChoices):
+        BLU = "1", "Blu"
+        VERDE = "2", "Verde"
+        MARRONCINO = "3", "Marroncino"
+        LAVANDA = "4", "Lavanda"
+
+    palette = models.CharField(
+        "Palette colori",
+        max_length=1,
+        choices=Palette.choices,
+        default=Palette.BLU,
+        help_text="Schema colori dell'interfaccia, scelto liberamente da ogni utente",
+    )
+
+    class RuoloSlot(models.TextChoices):
+        UNO = "1", "1° colore"
+        DUE = "2", "2° colore"
+        TRE = "3", "3° colore"
+        QUATTRO = "4", "4° colore"
+
+    sidebar_role = models.CharField(
+        "Colore sidebar", max_length=1, choices=RuoloSlot.choices, default=RuoloSlot.UNO,
+        help_text="Quale colore della palette scelta usare per la sidebar",
+    )
+    navbar_role = models.CharField(
+        "Colore navbar", max_length=1, choices=RuoloSlot.choices, default=RuoloSlot.UNO,
+        help_text="Quale colore della palette scelta usare per la barra in alto",
+    )
+    accento_role = models.CharField(
+        "Colore accento primario", max_length=1, choices=RuoloSlot.choices, default=RuoloSlot.UNO,
+        help_text="Quale colore usare per bottoni/link/accenti principali",
+    )
+    accento2_role = models.CharField(
+        "Colore accento secondario", max_length=1, choices=RuoloSlot.choices, default=RuoloSlot.DUE,
+        help_text="Quale colore usare per accenti secondari (badge, dettagli)",
+    )
+
     class Meta:
         db_table = "users_user"
         verbose_name = "User"

@@ -40,7 +40,10 @@ INSTALLED_APPS = [
     "corrispondenza",
     "payroll",
     "anagrafica_r2",
-    "cespiti",
+    "cespiti",  # ritirata dal catalogo 26/08/2026 — resta solo come ancora migrazioni, vedi cespiti/models.py
+    "stabilimenti",
+    "automezzi",
+    "whatsapp",
     "acquisti",
     "magazzino",
     "servizi",
@@ -67,10 +70,17 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "core.middleware.ModuleGatingMiddleware",
     "portale.middleware.PortaleMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
+
+# Gating runtime dei moduli venduti/attivi per questa installazione (vedi
+# core/module_gating.py e core/middleware.py). Spento di default: va attivato
+# esplicitamente solo dopo aver lanciato `sync_module_registry` e verificato
+# lo stato su un DB non di produzione.
+MODULE_GATING_ENABLED = os.environ.get('MODULE_GATING_ENABLED', 'False') == 'True'
 
 ROOT_URLCONF = "config.urls"
 

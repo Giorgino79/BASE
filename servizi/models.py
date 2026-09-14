@@ -376,7 +376,7 @@ class Distinta(models.Model):
         verbose_name="Assistente",
     )
     mezzo     = models.ForeignKey(
-        "cespiti.Automezzo", on_delete=models.SET_NULL,
+        "automezzi.Automezzo", on_delete=models.SET_NULL,
         null=True, blank=True, related_name="distinte_mezzo",
         verbose_name="Mezzo",
     )
@@ -470,7 +470,7 @@ class ConsumoMateriale(models.Model):
         return f"{self.prodotto} ×{self.quantita}"
 
     def _mezzo_tecnico(self):
-        from cespiti.models import Automezzo
+        from automezzi.models import Automezzo
         ods = self.riga.ods
         # Priorità: mezzo agganciato alla distinta (scelta esplicita al momento della creazione)
         if ods.distinta_id:
@@ -722,10 +722,10 @@ class RigaProdottoCondominio(models.Model):
         if c.distinta_id:
             row = Distinta.objects.filter(pk=c.distinta_id).values("mezzo_id").first()
             if row and row["mezzo_id"]:
-                from cespiti.models import Automezzo
+                from automezzi.models import Automezzo
                 return Automezzo.objects.filter(pk=row["mezzo_id"]).first()
         if c.tecnico_id:
-            from cespiti.models import Automezzo
+            from automezzi.models import Automezzo
             return Automezzo.objects.filter(assegnato_a_id=c.tecnico_id, attivo=True).first()
         return None
 

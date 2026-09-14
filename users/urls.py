@@ -51,6 +51,8 @@ urlpatterns = [
     # ========== PROFILO E IMPOSTAZIONI ==========
     path("profilo/", views.profilo_view, name="profilo"),
     path("profilo/modifica/", views.profilo_update_view, name="profilo_update"),
+    path("profilo/aspetto/", views.profilo_palette_view, name="profilo_palette"),
+    path("tema.css", views.theme_css_view, name="theme_css"),
     path("tesserino/", views.tesserino_view, name="tesserino"),
     path("tesserino/<int:pk>/", views.tesserino_view, name="tesserino"),
     path("tesserino/pdf/", views.tesserino_pdf_view, name="tesserino_pdf"),

@@ -18,6 +18,17 @@ class CoreConfig(AppConfig):
         # Registra modelli di default
         register_default_models()
 
+        # Gating moduli: invalida la cache di get_active_modules() quando
+        # ModuloRegistry cambia, cosi' attivazioni/disattivazioni sono visibili
+        # entro la prossima richiesta invece di aspettare i 5 minuti di TTL.
+        from django.db.models.signals import post_delete, post_save
+
+        from .models_legacy import ModuloRegistry
+        from .module_gating import invalidate_cache
+
+        post_save.connect(invalidate_cache, sender=ModuloRegistry, dispatch_uid="module_gating_invalidate_on_save")
+        post_delete.connect(invalidate_cache, sender=ModuloRegistry, dispatch_uid="module_gating_invalidate_on_delete")
+
         # Registra provider eventi manuali nel CalendarioRegistry
         try:
             from .calendario_registry import CalendarioRegistry

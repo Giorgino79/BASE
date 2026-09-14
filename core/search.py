@@ -105,12 +105,19 @@ class SearchRegistry:
         if not query or not query.strip():
             return []
 
+        from core.module_gating import is_module_active
+
         results_by_category = {}
 
         # Itera tutti i model registrati
         for model_key, model_info in cls._registry.items():
             model = model_info["model"]
             category = model_info["category"]
+
+            # Salta i model di app disattivate per questa installazione
+            # (fail-open: is_module_active ritorna True se non c'e' alcun filtro).
+            if not is_module_active(model._meta.app_label):
+                continue
 
             # Esegue ricerca nel model
             try:

@@ -90,7 +90,6 @@ def logout_view(request):
 
 @login_required
 def dashboard_view(request):
-    from comunicazioni.models import Promemoria, ChatConversazione, ChatMessaggio
     from django.db.models import Q
 
     oggi = date.today()
@@ -104,22 +103,36 @@ def dashboard_view(request):
     permessi_pending = request.user.richieste_permessi.filter(stato="in_attesa").count()
     richieste_pending = ferie_pending + permessi_pending
 
-    promemoria_attivi = Promemoria.objects.filter(
-        assegnato_a=request.user, stato__in=["pending", "in_corso"]
-    ).count()
+    # `comunicazioni` e' un modulo opzionale (vendibile separatamente): `users'
+    # e' core e non deve mai smettere di funzionare se `comunicazioni' non e'
+    # installato. Stesso pattern difensivo gia' usato in
+    # core/views_calendario.py::CalendarioPersonaleEventiAPIView.
+    promemoria_attivi = 0
+    recent_promemoria = []
+    total_conversations = 0
+    unread_messages = 0
+    try:
+        from comunicazioni.models import Promemoria, ChatConversazione, ChatMessaggio
 
-    recent_promemoria = Promemoria.objects.filter(
-        Q(assegnato_a=request.user) | Q(user=request.user),
-        stato__in=["pending", "in_corso"],
-    ).distinct().order_by("-created_at")[:5]
+        promemoria_attivi = Promemoria.objects.filter(
+            assegnato_a=request.user, stato__in=["pending", "in_corso"]
+        ).count()
 
-    total_conversations = ChatConversazione.objects.filter(
-        partecipanti=request.user
-    ).count()
+        recent_promemoria = Promemoria.objects.filter(
+            Q(assegnato_a=request.user) | Q(user=request.user),
+            stato__in=["pending", "in_corso"],
+        ).distinct().order_by("-created_at")[:5]
 
-    unread_messages = ChatMessaggio.objects.filter(
-        conversazione__partecipanti=request.user
-    ).exclude(mittente=request.user).exclude(letto_da=request.user).count()
+        total_conversations = ChatConversazione.objects.filter(
+            partecipanti=request.user
+        ).count()
+
+        unread_messages = ChatMessaggio.objects.filter(
+            conversazione__partecipanti=request.user
+        ).exclude(mittente=request.user).exclude(letto_da=request.user).count()
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning(f"Modulo comunicazioni non disponibile per la dashboard: {e}")
 
     context = {
         "oggi": oggi,
@@ -1042,6 +1055,8 @@ def profilo_view(request):
         {"label": "Richiedi Permesso", "url": reverse("users:richiesta_permesso_create"), "icon": "bi-clock"},
         {"label": "Le Mie Giornate", "url": reverse("users:giornata_list"), "icon": "bi-calendar3"},
         {"label": "Ferie & Permessi", "url": reverse("users:richieste_ferie_list"), "icon": "bi-calendar-check"},
+        {"label": "Aspetto", "url": reverse("users:profilo_palette"), "icon": "bi-palette"},
+        {"label": "Cambia Password", "url": reverse("users:change_password"), "icon": "bi-key"},
     ]
 
     return render(request, "users/profilo.html", {
@@ -1072,6 +1087,47 @@ def profilo_update_view(request):
     else:
         form = UserProfiloForm(instance=request.user)
     return render(request, "users/user_profilo_form.html", {"form": form})
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def profilo_palette_view(request):
+    from . import theme
+
+    if request.method == "POST":
+        scelta = request.POST.get("palette")
+        campi = ["palette"]
+        if scelta in theme.PALETTE_FAMIGLIE:
+            request.user.palette = scelta
+        for ruolo in theme.RUOLI:
+            valore = request.POST.get(ruolo)
+            if valore in dict(User.RuoloSlot.choices):
+                setattr(request.user, ruolo, valore)
+                campi.append(ruolo)
+        request.user.save(update_fields=campi)
+        messages.success(request, "Aspetto aggiornato.")
+        return redirect("users:profilo_palette")
+
+    palette_id, ruoli = theme.get_ruoli_utente(request.user)
+    return render(request, "users/profilo_palette.html", {
+        "famiglie": theme.PALETTE_FAMIGLIE,
+        "palette_attuale": palette_id,
+        "ruoli": ruoli,
+    })
+
+
+def theme_css_view(request):
+    from . import theme
+    from django.http import HttpResponse
+
+    if request.user.is_authenticated:
+        palette_id, ruoli = theme.get_ruoli_utente(request.user)
+    else:
+        palette_id, ruoli = "1", {r: "1" for r in theme.RUOLI}
+        ruoli["accento2_role"] = "2"
+
+    css = theme.genera_root_css(palette_id, ruoli)
+    return HttpResponse(css, content_type="text/css")
 
 
 @login_required

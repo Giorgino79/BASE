@@ -95,7 +95,8 @@ class RicezioneForm(BootstrapMixin, forms.ModelForm):
         super().__init__(*args, **kwargs)
         from anagrafica_r2.models import Fornitore
         from acquisti.models import OrdineAcquisto
-        from cespiti.models import Stabilimento, Automezzo
+        from stabilimenti.models import Stabilimento
+        from automezzi.models import Automezzo
         self.fields["fornitore"].queryset = Fornitore.objects.order_by("ragione_sociale")
         self.fields["ordine"].queryset = OrdineAcquisto.objects.exclude(
             stato__in=["annullato", "pagato", "ricevuto"]
@@ -165,7 +166,8 @@ class CaricoMezzoForm(BootstrapMixin, forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        from cespiti.models import Automezzo, Stabilimento
+        from stabilimenti.models import Stabilimento
+        from automezzi.models import Automezzo
         self.fields["mezzo"].queryset = Automezzo.objects.filter(attivo=True).order_by("targa")
         self.fields["stabilimento"].queryset = Stabilimento.objects.attivi().order_by("nome")
         self.fields["note"].required = False

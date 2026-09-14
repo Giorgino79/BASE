@@ -1,0 +1,219 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}WhatsApp{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'whatsapp:dashboard' %}">WhatsApp</a></li>
+<li class="breadcrumb-item active">Dashboard</li>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.wa-status-dot {
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 6px;
+}
+.wa-status-dot.connected { background: #25D366; }
+.wa-status-dot.disconnected { background: #dc3545; }
+#qr-container canvas, #qr-container img { max-width: 200px; }
+.stat-card { border-left: 4px solid #25D366; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2><i class="bi bi-whatsapp text-success"></i> WhatsApp</h2>
+        <p class="text-muted mb-0">Gestione messaggi e broadcast</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{% url 'whatsapp:invia' %}" class="btn btn-success">
+            <i class="bi bi-send-fill me-1"></i>Invia Messaggio
+        </a>
+        <a href="{% url 'whatsapp:broadcast_create' %}" class="btn btn-outline-success">
+            <i class="bi bi-megaphone-fill me-1"></i>Broadcast
+        </a>
+        <a href="{% url 'whatsapp:impostazioni' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-gear-fill me-1"></i>Impostazioni
+        </a>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <!-- Stato connessione -->
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0">Stato Connessione</h6>
+                <button class="btn btn-sm btn-outline-secondary" onclick="aggiornaStatus()" title="Aggiorna">
+                    <i class="bi bi-arrow-clockwise"></i>
+                </button>
+            </div>
+            <div class="card-body text-center" id="status-body">
+                {% if status.connected %}
+                    <div class="mb-3">
+                        <span class="wa-status-dot connected"></span>
+                        <strong class="text-success">Connesso</strong>
+                    </div>
+                    <p class="text-muted small mb-2">
+                        <i class="bi bi-phone me-1"></i>{{ config.numero_mittente|default:"Numero non configurato" }}
+                    </p>
+                    <button class="btn btn-sm btn-outline-danger" onclick="disconnetti()">
+                        <i class="bi bi-power me-1"></i>Disconnetti
+                    </button>
+                {% else %}
+                    <div class="mb-3">
+                        <span class="wa-status-dot disconnected"></span>
+                        <strong class="text-danger">Non connesso</strong>
+                    </div>
+                    {% if status.qr %}
+                    <div id="qr-container" class="mb-3">
+                        <p class="text-muted small">Scansiona il QR con WhatsApp</p>
+                        <img src="{{ status.qr }}" alt="QR Code WhatsApp" class="img-fluid" style="max-width:200px">
+                    </div>
+                    {% elif status.error %}
+                    <p class="text-danger small">
+                        <i class="bi bi-exclamation-triangle me-1"></i>
+                        Microservizio non raggiungibile.<br>
+                        <small>Avvia <code>whatsapp_service/</code> prima.</small>
+                    </p>
+                    {% else %}
+                    <p class="text-muted small">In attesa del QR code...</p>
+                    {% endif %}
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistiche -->
+    <div class="col-md-8">
+        <div class="row g-3">
+            <div class="col-6 col-md-3">
+                <div class="card stat-card text-center">
+                    <div class="card-body py-3">
+                        <p class="display-6 mb-0 text-success">{{ stats.oggi }}</p>
+                        <small class="text-muted">Oggi</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card stat-card text-center">
+                    <div class="card-body py-3">
+                        <p class="display-6 mb-0 text-success">{{ stats.settimana }}</p>
+                        <small class="text-muted">7 giorni</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card stat-card text-center">
+                    <div class="card-body py-3">
+                        <p class="display-6 mb-0 text-success">{{ stats.totale }}</p>
+                        <small class="text-muted">Totale inviati</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card" style="border-left:4px solid #dc3545" >
+                    <div class="card-body py-3 text-center">
+                        <p class="display-6 mb-0 text-danger">{{ stats.falliti }}</p>
+                        <small class="text-muted">Falliti</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Azioni rapide dall'anagrafica -->
+        <div class="card mt-3">
+            <div class="card-header"><h6 class="mb-0">Azioni rapide</h6></div>
+            <div class="card-body">
+                <div class="row g-2">
+                    <div class="col-md-6">
+                        <a href="{% url 'whatsapp:broadcast_create' %}" class="list-group-item list-group-item-action rounded">
+                            <i class="bi bi-people-fill me-2 text-success"></i>Broadcast a tutti i clienti
+                        </a>
+                    </div>
+                    <div class="col-md-6">
+                        <a href="{% url 'whatsapp:broadcast_list' %}" class="list-group-item list-group-item-action rounded">
+                            <i class="bi bi-clock-history me-2 text-secondary"></i>Storico broadcast
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Ultimi messaggi -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h6 class="mb-0">Ultimi messaggi inviati</h6>
+    </div>
+    <div class="card-body p-0">
+        {% if ultimi_messaggi %}
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Destinatario</th>
+                        <th>Numero</th>
+                        <th>Messaggio</th>
+                        <th>Stato</th>
+                        <th>Data</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for msg in ultimi_messaggi %}
+                    <tr>
+                        <td>{{ msg.destinatario_nome|default:"—" }}</td>
+                        <td><code>{{ msg.destinatario_numero }}</code></td>
+                        <td class="text-truncate" style="max-width:200px">{{ msg.testo }}</td>
+                        <td>
+                            {% if msg.stato == "sent" %}
+                                <span class="badge bg-success">Inviato</span>
+                            {% elif msg.stato == "failed" %}
+                                <span class="badge bg-danger">Fallito</span>
+                            {% else %}
+                                <span class="badge bg-warning text-dark">In attesa</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-muted small">{{ msg.created_at|date:"d/m/Y H:i" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-4 text-muted">
+            <i class="bi bi-chat-dots fs-1 d-block mb-2"></i>
+            Nessun messaggio ancora inviato.
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function aggiornaStatus() {
+    fetch("{% url 'whatsapp:api_status' %}")
+        .then(r => r.json())
+        .then(data => location.reload());
+}
+
+function disconnetti() {
+    if (!confirm("Disconnettere la sessione WhatsApp?")) return;
+    fetch("{% url 'whatsapp:api_disconnetti' %}", {
+        method: "POST",
+        headers: {"X-CSRFToken": "{{ csrf_token }}"}
+    }).then(() => location.reload());
+}
+
+// Auto-refresh QR ogni 25 secondi se non connesso
+{% if not status.connected %}
+setTimeout(() => location.reload(), 25000);
+{% endif %}
+</script>
+{% endblock %}

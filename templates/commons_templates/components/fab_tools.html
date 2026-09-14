@@ -1,5 +1,5 @@
 {% comment %}
-FAB Strumenti — card fissa in basso a destra con funzioni generali.
+FAB Strumenti — pannello a tendina fisso in basso a destra con funzioni generali.
 Appare su tutte le pagine (incluso in base.html).
 
 Item context-aware (appaiono solo se il contesto è disponibile):
@@ -13,68 +13,46 @@ Item globali (sempre visibili):
 
 <div id="fab-tools" class="fab-tools-container">
 
-  <!-- Sub-items: si espandono verso l'alto al click sul FAB principale -->
+  <!-- Pannello: si apre verso l'alto al click sul FAB principale -->
   <div id="fab-tools-items" class="fab-tools-items" aria-hidden="true">
 
     {% if print_url %}
-    <div class="fab-tool-row">
-      <span class="fab-tool-label">Stampa</span>
-      <a href="{{ print_url }}" target="_blank" class="fab-tool-btn" title="Stampa">
-        <i class="bi bi-printer"></i>
-      </a>
-    </div>
+    <a href="{{ print_url }}" target="_blank" class="fab-tool-row" title="Stampa">
+      <i class="bi bi-printer"></i><span>Stampa</span>
+    </a>
     {% endif %}
 
     {% if object_id and content_type_id %}
-    <div class="fab-tool-row">
-      <span class="fab-tool-label">Allegati</span>
-      <button type="button" class="fab-tool-btn" id="fab-allegati-btn" title="Allegati">
-        <i class="bi bi-paperclip"></i>
-      </button>
-    </div>
+    <button type="button" class="fab-tool-row" id="fab-allegati-btn" title="Allegati">
+      <i class="bi bi-paperclip"></i><span>Allegati</span>
+    </button>
 
-    <div class="fab-tool-row">
-      <span class="fab-tool-label">QR Code</span>
-      <button type="button" class="fab-tool-btn" id="fab-qr-btn" title="QR Code">
-        <i class="bi bi-qr-code"></i>
-      </button>
-    </div>
+    <button type="button" class="fab-tool-row" id="fab-qr-btn" title="QR Code">
+      <i class="bi bi-qr-code"></i><span>QR Code</span>
+    </button>
 
-    <div class="fab-tool-row">
-      <span class="fab-tool-label">Invia (WhatsApp / Email)</span>
-      <button type="button" class="fab-tool-btn" id="fab-invia-btn" title="Invia">
-        <i class="bi bi-send"></i>
-      </button>
-    </div>
+    <button type="button" class="fab-tool-row" id="fab-invia-btn" title="Invia">
+      <i class="bi bi-send"></i><span>Invia (WhatsApp / Email)</span>
+    </button>
+
+    <div class="fab-tool-divider"></div>
     {% endif %}
 
-    <div class="fab-tool-row">
-      <span class="fab-tool-label">Cal. Aziendale</span>
-      <a href="{% url 'core:calendario_aziendale' %}" class="fab-tool-btn" title="Calendario Aziendale">
-        <i class="bi bi-calendar2-week"></i>
-      </a>
-    </div>
+    <a href="{% url 'core:calendario_aziendale' %}" class="fab-tool-row" title="Calendario Aziendale">
+      <i class="bi bi-calendar2-week"></i><span>Cal. Aziendale</span>
+    </a>
 
-    <div class="fab-tool-row">
-      <span class="fab-tool-label">Il mio Calendario</span>
-      <a href="{% url 'core:calendario_personale' %}" class="fab-tool-btn" title="Calendario Personale">
-        <i class="bi bi-person-calendar"></i>
-      </a>
-    </div>
+    <a href="{% url 'core:calendario_personale' %}" class="fab-tool-row" title="Calendario Personale">
+      <i class="bi bi-calendar-event"></i><span>Il mio Calendario</span>
+    </a>
 
-    <div class="fab-tool-row">
-      <span class="fab-tool-label">Promemoria</span>
-      <a href="{% url 'comunicazioni:promemoria_list' %}" class="fab-tool-btn" title="Promemoria">
-        <i class="bi bi-bell"></i>
-      </a>
-    </div>
+    <a href="{% url 'comunicazioni:promemoria_list' %}" class="fab-tool-row" title="Promemoria">
+      <i class="bi bi-bell"></i><span>Promemoria</span>
+    </a>
 
-    <div class="fab-tool-row">
-      <span class="fab-tool-label">Chat</span>
-      <a href="{% url 'comunicazioni:chat_list' %}" class="fab-tool-btn" title="Chat">
-        <i class="bi bi-chat-dots"></i>
-      </a>
-    </div>
+    <a href="{% url 'comunicazioni:chat_list' %}" class="fab-tool-row" title="Chat">
+      <i class="bi bi-chat-dots"></i><span>Chat</span>
+    </a>
 
   </div>
 
@@ -97,7 +75,7 @@ Item globali (sempre visibili):
   flex-direction: column;
   align-items: flex-end;
   gap: 10px;
-  /* Il contenitore riserva spazio in layout anche per gli item nascosti
+  /* Il contenitore riserva spazio in layout anche per il pannello nascosto
      (opacity:0, non display:none): senza questo, la sua hitbox invisibile
      intercetta i click destinati al contenuto sottostante in quell'angolo. */
   pointer-events: none;
@@ -108,8 +86,8 @@ Item globali (sempre visibili):
   width: 50px;
   height: 50px;
   border-radius: 50%;
-  background: var(--color-1, #2563eb);
-  color: #fff;
+  background: var(--sidebar-bg, #2563eb);
+  color: var(--sidebar-text-active, #fff);
   border: none;
   box-shadow: 0 4px 14px rgba(0,0,0,.25);
   font-size: 1.1rem;
@@ -122,7 +100,7 @@ Item globali (sempre visibili):
   pointer-events: auto;
 }
 .fab-tools-main:hover {
-  transform: scale(1.08);
+  transform: scale(1.06);
   box-shadow: 0 6px 18px rgba(0,0,0,.3);
 }
 
@@ -131,12 +109,15 @@ Item globali (sempre visibili):
 .fab-tools-container.open .fab-icon-open  { display: none; }
 .fab-tools-container.open .fab-icon-close { display: inline; }
 
-/* ── Lista sub-item ───────────────────────────────────── */
+/* ── Pannello a tendina ───────────────────────────────── */
 .fab-tools-items {
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
-  gap: 8px;
+  background: var(--sidebar-bg, #1f2937);
+  border-radius: var(--radius-lg, 12px);
+  box-shadow: 0 10px 30px rgba(0,0,0,.28);
+  padding: .4rem;
+  min-width: 230px;
   /* nascosto di default */
   opacity: 0;
   pointer-events: none;
@@ -149,49 +130,45 @@ Item globali (sempre visibili):
   transform: translateY(0);
 }
 
-/* ── Riga singolo item ────────────────────────────────── */
+/* ── Righe del pannello ───────────────────────────────── */
 .fab-tool-row {
   display: flex;
   align-items: center;
-  gap: 8px;
-}
-
-/* ── Label tooltip ────────────────────────────────────── */
-.fab-tool-label {
-  background: rgba(15,23,42,.82);
-  color: #fff;
-  padding: 3px 9px;
-  border-radius: 5px;
-  font-size: .73rem;
-  white-space: nowrap;
-  pointer-events: none;
-  backdrop-filter: blur(4px);
-}
-
-/* ── Bottoni rotondi ──────────────────────────────────── */
-.fab-tool-btn {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: #fff;
-  border: 1px solid rgba(0,0,0,.1);
-  box-shadow: 0 2px 8px rgba(0,0,0,.14);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--slate-700, #374151);
-  font-size: .95rem;
-  cursor: pointer;
+  gap: .65rem;
+  width: 100%;
+  padding: .55rem .7rem;
+  border-radius: var(--radius-md, 8px);
+  background: none;
+  border: none;
+  color: var(--sidebar-text, #cbd5e1);
+  font-size: .85rem;
+  font-weight: 500;
+  text-align: left;
   text-decoration: none;
-  transition: background .15s, color .15s, transform .15s;
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+.fab-tool-row:hover, .fab-tool-row:focus {
+  background: var(--sidebar-hover, rgba(255,255,255,.12));
+  color: var(--sidebar-text-active, #fff);
+  outline: none;
+}
+.fab-tool-row i {
+  font-size: 1rem;
+  width: 20px;
+  text-align: center;
   flex-shrink: 0;
 }
-.fab-tool-btn:hover, .fab-tool-btn:focus {
-  background: var(--color-1, #2563eb);
-  color: #fff;
-  border-color: transparent;
-  transform: scale(1.1);
-  outline: none;
+.fab-tool-row span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fab-tool-divider {
+  height: 1px;
+  background: rgba(255,255,255,.14);
+  margin: .35rem .3rem;
 }
 
 /* ── Non mostrare in stampa ───────────────────────────── */

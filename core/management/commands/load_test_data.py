@@ -173,7 +173,7 @@ class Command(BaseCommand):
 
     # ------------------------------------------------------------------
     def _crea_automezzo(self):
-        from cespiti.models import Automezzo
+        from automezzi.models import Automezzo
         obj, created = Automezzo.objects.get_or_create(
             targa="AA123BB",
             defaults=dict(
@@ -192,7 +192,7 @@ class Command(BaseCommand):
 
     # ------------------------------------------------------------------
     def _crea_stabilimento(self):
-        from cespiti.models import Stabilimento
+        from stabilimenti.models import Stabilimento
         superuser = User.objects.filter(is_superuser=True).first()
         creato_da = superuser or (self._tecnici[0] if self._tecnici else User.objects.first())
         obj, created = Stabilimento.objects.get_or_create(

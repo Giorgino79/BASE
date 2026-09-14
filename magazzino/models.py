@@ -128,14 +128,14 @@ class Ricezione(AllegatiMixin, models.Model):
         verbose_name="ODA di riferimento",
     )
     stabilimento = models.ForeignKey(
-        "cespiti.Stabilimento",
+        "stabilimenti.Stabilimento",
         on_delete=models.PROTECT,
         null=True, blank=True,
         related_name="ricezioni_magazzino",
         verbose_name="Stabilimento destinatario",
     )
     mezzo = models.ForeignKey(
-        "cespiti.Automezzo",
+        "automezzi.Automezzo",
         on_delete=models.SET_NULL,
         null=True, blank=True,
         related_name="ricezioni_mezzo",
@@ -277,7 +277,7 @@ class RigaRicezione(models.Model):
 class ScortaStabilimento(models.Model):
     """Giacenza di un prodotto nel magazzino di uno stabilimento."""
     stabilimento = models.ForeignKey(
-        "cespiti.Stabilimento",
+        "stabilimenti.Stabilimento",
         on_delete=models.CASCADE,
         related_name="scorte_prodotti",
     )
@@ -317,10 +317,10 @@ class CaricoMezzo(AllegatiMixin, models.Model):
         SCARICO = "scarico", "Scarico mezzo"
 
     mezzo = models.ForeignKey(
-        "cespiti.Automezzo", on_delete=models.CASCADE, related_name="carichi_magazzino"
+        "automezzi.Automezzo", on_delete=models.CASCADE, related_name="carichi_magazzino"
     )
     stabilimento = models.ForeignKey(
-        "cespiti.Stabilimento",
+        "stabilimenti.Stabilimento",
         on_delete=models.PROTECT,
         null=True, blank=True,
         related_name="carichi_mezzo",
@@ -369,7 +369,7 @@ class RigaCaricoMezzo(models.Model):
 class ScortaMezzo(models.Model):
     """Giacenza di un prodotto a bordo di un mezzo specifico."""
     mezzo = models.ForeignKey(
-        "cespiti.Automezzo", on_delete=models.CASCADE, related_name="scorte_magazzino"
+        "automezzi.Automezzo", on_delete=models.CASCADE, related_name="scorte_magazzino"
     )
     prodotto = models.ForeignKey(
         Prodotto, on_delete=models.CASCADE, related_name="scorte_mezzo"
@@ -395,7 +395,7 @@ class CaricoCisterna(models.Model):
     attesa di essere collegato agli aggiornamenti di scorta in futuro.
     """
     mezzo = models.ForeignKey(
-        "cespiti.Automezzo", on_delete=models.CASCADE, related_name="carichi_cisterna",
+        "automezzi.Automezzo", on_delete=models.CASCADE, related_name="carichi_cisterna",
     )
     litri_acqua = models.DecimalField(
         max_digits=8, decimal_places=2, verbose_name="Litri acqua caricati",
@@ -463,7 +463,7 @@ class ConsumoCisterna(models.Model):
         "servizi.ODS", on_delete=models.CASCADE, related_name="consumi_cisterna",
     )
     mezzo = models.ForeignKey(
-        "cespiti.Automezzo", on_delete=models.CASCADE, related_name="consumi_cisterna",
+        "automezzi.Automezzo", on_delete=models.CASCADE, related_name="consumi_cisterna",
     )
     litri_consumati = models.DecimalField(
         max_digits=8, decimal_places=2, verbose_name="Litri consumati",
@@ -477,3 +477,45 @@ class ConsumoCisterna(models.Model):
 
     def __str__(self):
         return f"{self.ods.numero} — {self.litri_consumati} lt"
+
+
+# ============================================================
+# ATTREZZATURA AUTOMEZZI
+# ============================================================
+# Spostate da cespiti il 26/08/2026 — sono un bisogno specifico di
+# rattus26 (attrezzatura montata sui mezzi: pompe, nebulizzatori),
+# l'app automezzi resta standard/generica e non le conosce.
+
+class TipoAttrezzatura(models.Model):
+    nome = models.CharField(max_length=100, unique=True, verbose_name="Nome")
+    descrizione = models.TextField(blank=True, verbose_name="Descrizione")
+
+    class Meta:
+        verbose_name = "Tipo attrezzatura"
+        verbose_name_plural = "Tipi attrezzatura"
+        ordering = ["nome"]
+
+    def __str__(self):
+        return self.nome
+
+
+class AttrezzaturaAutomezzo(models.Model):
+    automezzo = models.ForeignKey(
+        "automezzi.Automezzo", on_delete=models.CASCADE,
+        related_name="attrezzature", verbose_name="Automezzo",
+    )
+    tipo = models.ForeignKey(
+        TipoAttrezzatura, on_delete=models.PROTECT,
+        related_name="attrezzature_automezzo", verbose_name="Tipo attrezzatura",
+    )
+    fissa = models.BooleanField(default=True, verbose_name="Fissa")
+    note = models.TextField(blank=True, verbose_name="Note")
+
+    class Meta:
+        verbose_name = "Attrezzatura automezzo"
+        verbose_name_plural = "Attrezzature automezzo"
+        ordering = ["tipo__nome"]
+        unique_together = [("automezzo", "tipo")]
+
+    def __str__(self):
+        return f"{self.tipo} — {self.automezzo.targa}"

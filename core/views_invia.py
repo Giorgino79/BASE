@@ -14,7 +14,10 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from django.conf import settings as django_settings
 
-from .whatsapp_sender import WhatsAppSender, is_configured, check_authorized, normalize_phone
+from whatsapp.services import (
+    is_configured, check_authorized, normalize_phone,
+    send_message, send_file, send_file_by_url,
+)
 from .models.invia_log import InvioLog
 
 
@@ -119,21 +122,28 @@ def invia_documento(request):
 
             # --- WhatsApp ---
             if canale in ("whatsapp", "entrambi"):
-                wa_log = log if canale == "whatsapp" else None
                 if local_path and os.path.exists(local_path):
                     # Upload diretto: funziona anche con URL protette da login
-                    WhatsAppSender.send_pdf(telefono, local_path, caption=caption, log_entry=wa_log)
+                    wa_result = send_file(telefono, local_path, caption=caption)
                 elif abs_pdf_url and abs_pdf_url.startswith("http"):
                     # Fallback URL pubblica (es. file su S3/media)
                     filename = os.path.basename(pdf_url.split("?")[0]) or "documento.pdf"
                     if not filename.endswith(".pdf"):
                         filename += ".pdf"
-                    WhatsAppSender.send_pdf_by_url(telefono, abs_pdf_url, filename=filename, caption=caption, log_entry=wa_log)
+                    wa_result = send_file_by_url(telefono, abs_pdf_url, filename=filename, caption=caption)
                 else:
                     testo = f"{oggetto}\n\n{testo_extra}".strip() if testo_extra else oggetto
                     if not testo:
                         testo = "Messaggio da Rattus26"
-                    WhatsAppSender.send_message(telefono, testo, log_entry=wa_log)
+                    wa_result = send_message(telefono, testo)
+
+                if canale == "whatsapp":
+                    if wa_result.get("success"):
+                        log.stato = "inviato"
+                    else:
+                        log.stato = "errore"
+                        log.errore_dettaglio = wa_result.get("error", "") or ""
+                    log.save(update_fields=["stato", "errore_dettaglio", "updated_at"])
 
             # --- Email ---
             if canale in ("email", "entrambi"):

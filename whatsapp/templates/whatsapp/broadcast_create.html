@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}WhatsApp — Nuovo Broadcast{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'whatsapp:dashboard' %}">WhatsApp</a></li>
+<li class="breadcrumb-item"><a href="{% url 'whatsapp:broadcast_list' %}">Broadcast</a></li>
+<li class="breadcrumb-item active">Nuovo</li>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <h2 class="mb-4"><i class="bi bi-megaphone-fill me-2 text-success"></i>Nuovo Broadcast</h2>
+
+        <form method="post">
+            {% csrf_token %}
+            <div class="card mb-3">
+                <div class="card-header"><h6 class="mb-0">Messaggio</h6></div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Titolo interno <span class="text-danger">*</span></label>
+                        {{ form.titolo }}
+                        <div class="form-text">Solo per riferimento interno, non viene inviato</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Testo messaggio <span class="text-danger">*</span></label>
+                        {{ form.messaggio }}
+                        <div class="d-flex justify-content-between mt-1">
+                            <small class="text-muted">Questo testo verrà inviato a tutti i destinatari</small>
+                            <small id="char-count" class="text-muted">0 caratteri</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-3">
+                <div class="card-header"><h6 class="mb-0">Destinatari</h6></div>
+                <div class="card-body">
+                    {% for checkbox in dest_form.fonti %}
+                    <div class="form-check mb-2">
+                        {{ checkbox.tag }}
+                        <label class="form-check-label" for="{{ checkbox.id_for_label }}">
+                            {{ checkbox.choice_label }}
+                        </label>
+                    </div>
+                    {% endfor %}
+
+                    <div class="mt-3">
+                        <label class="form-label">Numeri manuali (in aggiunta alle fonti selezionate)</label>
+                        {{ dest_form.numeri_manuali }}
+                        <div class="form-text">{{ dest_form.numeri_manuali.help_text }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="alert alert-warning">
+                <i class="bi bi-info-circle me-1"></i>
+                Il broadcast viene avviato manualmente dopo la creazione. Potrai verificare i destinatari prima di procedere.
+            </div>
+
+            {% if form.errors or dest_form.errors %}
+            <div class="alert alert-danger">Correggi gli errori sopra.</div>
+            {% endif %}
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-success">
+                    <i class="bi bi-check-lg me-1"></i>Crea broadcast
+                </button>
+                <a href="{% url 'whatsapp:broadcast_list' %}" class="btn btn-outline-secondary">Annulla</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById("id_messaggio")?.addEventListener("input", function() {
+    document.getElementById("char-count").textContent = this.value.length + " caratteri";
+});
+</script>
+{% endblock %}

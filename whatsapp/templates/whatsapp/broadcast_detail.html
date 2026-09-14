@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Broadcast — {{ broadcast.titolo }}{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'whatsapp:dashboard' %}">WhatsApp</a></li>
+<li class="breadcrumb-item"><a href="{% url 'whatsapp:broadcast_list' %}">Broadcast</a></li>
+<li class="breadcrumb-item active">{{ broadcast.titolo }}</li>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2>{{ broadcast.titolo }}</h2>
+        <p class="text-muted mb-0">Creato il {{ broadcast.created_at|date:"d/m/Y H:i" }}</p>
+    </div>
+    <div class="d-flex gap-2 align-items-center">
+        {% if broadcast.stato == "bozza" %}
+        <form method="post" action="{% url 'whatsapp:broadcast_avvia' pk=broadcast.pk %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-success"
+                onclick="return confirm('Avviare il broadcast a {{ broadcast.totale }} destinatari?')">
+                <i class="bi bi-play-fill me-1"></i>Avvia invio
+            </button>
+        </form>
+        {% endif %}
+        <a href="{% url 'whatsapp:broadcast_list' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Lista
+        </a>
+    </div>
+</div>
+
+<!-- Stato e statistiche -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body py-3">
+                {% if broadcast.stato == "completata" %}
+                    <span class="badge bg-success fs-6">Completata</span>
+                {% elif broadcast.stato == "in_corso" %}
+                    <span class="badge bg-warning text-dark fs-6">In corso</span>
+                {% elif broadcast.stato == "annullata" %}
+                    <span class="badge bg-danger fs-6">Annullata</span>
+                {% else %}
+                    <span class="badge bg-secondary fs-6">Bozza</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body py-3">
+                <p class="display-6 mb-0">{{ broadcast.totale }}</p>
+                <small class="text-muted">Totale destinatari</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center" style="border-top:3px solid #25D366">
+            <div class="card-body py-3">
+                <p class="display-6 mb-0 text-success">{{ broadcast.inviati }}</p>
+                <small class="text-muted">Inviati</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center" style="border-top:3px solid #dc3545">
+            <div class="card-body py-3">
+                <p class="display-6 mb-0 text-danger">{{ broadcast.falliti }}</p>
+                <small class="text-muted">Falliti</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Testo messaggio -->
+<div class="card mb-4">
+    <div class="card-header"><h6 class="mb-0">Testo messaggio</h6></div>
+    <div class="card-body">
+        <pre class="mb-0" style="white-space:pre-wrap;font-family:inherit">{{ broadcast.messaggio }}</pre>
+    </div>
+</div>
+
+<!-- Lista destinatari -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between">
+        <h6 class="mb-0">Destinatari ({{ broadcast.totale }})</h6>
+        {% if broadcast.stato == "in_corso" %}
+        <button class="btn btn-sm btn-outline-secondary" onclick="location.reload()">
+            <i class="bi bi-arrow-clockwise me-1"></i>Aggiorna
+        </button>
+        {% endif %}
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive" style="max-height:500px;overflow-y:auto">
+            <table class="table table-sm table-hover mb-0">
+                <thead class="table-light sticky-top">
+                    <tr>
+                        <th>Nome</th>
+                        <th>Numero</th>
+                        <th>Stato</th>
+                        <th>Inviato</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for d in destinatari %}
+                    <tr>
+                        <td>{{ d.nome|default:"—" }}</td>
+                        <td><code>{{ d.numero }}</code></td>
+                        <td>
+                            {% if d.stato == "sent" %}
+                                <span class="badge bg-success">Inviato</span>
+                            {% elif d.stato == "failed" %}
+                                <span class="badge bg-danger" title="{{ d.errore }}">Fallito</span>
+                            {% elif d.stato == "skipped" %}
+                                <span class="badge bg-secondary">Saltato</span>
+                            {% else %}
+                                <span class="badge bg-warning text-dark">In attesa</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-muted small">
+                            {{ d.inviato_at|date:"H:i:s"|default:"—" }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% if broadcast.stato == "in_corso" %}
+<script>
+setTimeout(() => location.reload(), 10000);
+</script>
+{% endif %}
+{% endblock %}

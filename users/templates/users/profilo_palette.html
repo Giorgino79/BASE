@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+
+{% block title %}Aspetto{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-xl-9 col-lg-10">
+    <div class="card">
+      <div class="card-header" style="background:var(--slate-50);">
+        <h5 class="fw-semibold mb-0" style="color:var(--slate-900);">
+          <i class="bi bi-palette me-2" style="color:var(--slate-700);"></i>Aspetto
+        </h5>
+      </div>
+      <div class="card-body">
+        <p style="color:var(--slate-500);" class="mb-4">
+          È una preferenza personale: non cambia niente per gli altri utenti.
+          Scegli prima una famiglia di colori, poi decidi quale dei suoi 4 colori
+          usare per sidebar, barra in alto e accenti.
+        </p>
+
+        <form method="post" id="paletteForm">
+          {% csrf_token %}
+          <input type="hidden" name="palette" id="paletteInput" value="{{ palette_attuale }}">
+          <input type="hidden" name="sidebar_role" id="sidebar_roleInput" value="{{ ruoli.sidebar_role }}">
+          <input type="hidden" name="navbar_role" id="navbar_roleInput" value="{{ ruoli.navbar_role }}">
+          <input type="hidden" name="accento_role" id="accento_roleInput" value="{{ ruoli.accento_role }}">
+          <input type="hidden" name="accento2_role" id="accento2_roleInput" value="{{ ruoli.accento2_role }}">
+
+          <h6 class="fw-semibold mb-2" style="font-size:.75rem;text-transform:uppercase;letter-spacing:.06em;color:var(--slate-400);">
+            1. Famiglia di colori
+          </h6>
+          <div class="row g-3 mb-4" id="famiglieRow">
+            {% for id, dati in famiglie.items %}
+            <div class="col-sm-6 col-lg-3">
+              <div class="palette-card {% if palette_attuale == id %}selected{% endif %}" data-famiglia="{{ id }}">
+                <div class="palette-swatches">
+                  {% for colore in dati.colori %}<span style="background:{{ colore }};"></span>{% endfor %}
+                </div>
+                <div class="palette-name">{{ dati.nome }}</div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+
+          <h6 class="fw-semibold mb-2" style="font-size:.75rem;text-transform:uppercase;letter-spacing:.06em;color:var(--slate-400);">
+            2. Dove va ciascun colore
+          </h6>
+          <div class="role-row" data-role="sidebar_role">
+            <span class="role-label"><i class="bi bi-layout-sidebar-inset me-2"></i>Sidebar</span>
+            <div class="role-swatches"></div>
+          </div>
+          <div class="role-row" data-role="navbar_role">
+            <span class="role-label"><i class="bi bi-menu-up me-2"></i>Barra in alto</span>
+            <div class="role-swatches"></div>
+          </div>
+          <div class="role-row" data-role="accento_role">
+            <span class="role-label"><i class="bi bi-square-fill me-2"></i>Accento primario<br><small style="color:var(--slate-400);font-weight:400;">bottoni, link, card</small></span>
+            <div class="role-swatches"></div>
+          </div>
+          <div class="role-row" data-role="accento2_role">
+            <span class="role-label"><i class="bi bi-square-fill me-2" style="opacity:.6;"></i>Accento secondario<br><small style="color:var(--slate-400);font-weight:400;">badge, dettagli</small></span>
+            <div class="role-swatches"></div>
+          </div>
+
+          <div class="d-flex gap-2 justify-content-end pt-4 mt-3" style="border-top:1px solid var(--slate-100);">
+            <a href="{% url 'users:profilo' %}" class="btn btn-outline-secondary">Torna al profilo</a>
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-check-lg me-1"></i>Applica
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.palette-card {
+  cursor: pointer;
+  border: 2px solid var(--slate-200);
+  border-radius: var(--radius-lg);
+  padding: 1rem;
+  transition: border-color .15s, box-shadow .15s;
+}
+.palette-card:hover { border-color: var(--slate-400); }
+.palette-card.selected { border-color: var(--color-1); box-shadow: 0 0 0 3px var(--color-1-light); }
+.palette-swatches {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  margin-bottom: .6rem;
+}
+.palette-swatches span { display: block; height: 32px; }
+.palette-name { font-size: .85rem; font-weight: 600; color: var(--slate-800); text-align: center; }
+
+.role-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: .75rem 0;
+  border-bottom: 1px solid var(--slate-100);
+}
+.role-row:last-of-type { border-bottom: none; }
+.role-label {
+  flex: 0 0 220px;
+  font-size: .85rem;
+  font-weight: 600;
+  color: var(--slate-800);
+}
+.role-swatches { display: flex; gap: .5rem; }
+.role-swatch {
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 3px solid transparent;
+  transition: transform .12s, border-color .12s;
+}
+.role-swatch:hover { transform: scale(1.08); }
+.role-swatch.selected { border-color: var(--slate-800); }
+</style>
+
+<script>
+(function () {
+  const FAMIGLIE = {
+    {% for id, dati in famiglie.items %}"{{ id }}": {{ dati.colori|safe }}{% if not forloop.last %},{% endif %}{% endfor %}
+  };
+  const ROLES = ["sidebar_role", "navbar_role", "accento_role", "accento2_role"];
+  let famigliaAttuale = document.getElementById("paletteInput").value;
+
+  function renderSwatches() {
+    const colori = FAMIGLIE[famigliaAttuale] || FAMIGLIE["1"];
+    ROLES.forEach(function (role) {
+      const row = document.querySelector('.role-row[data-role="' + role + '"] .role-swatches');
+      const input = document.getElementById(role + "Input");
+      row.innerHTML = "";
+      colori.forEach(function (colore, i) {
+        const slot = String(i + 1);
+        const btn = document.createElement("div");
+        btn.className = "role-swatch" + (input.value === slot ? " selected" : "");
+        btn.style.background = colore;
+        btn.title = "Colore " + slot;
+        btn.addEventListener("click", function () {
+          input.value = slot;
+          row.querySelectorAll(".role-swatch").forEach(function (s) { s.classList.remove("selected"); });
+          btn.classList.add("selected");
+        });
+        row.appendChild(btn);
+      });
+    });
+  }
+
+  document.querySelectorAll(".palette-card").forEach(function (card) {
+    card.addEventListener("click", function () {
+      document.querySelectorAll(".palette-card").forEach(function (c) { c.classList.remove("selected"); });
+      card.classList.add("selected");
+      famigliaAttuale = card.dataset.famiglia;
+      document.getElementById("paletteInput").value = famigliaAttuale;
+      renderSwatches();
+    });
+  });
+
+  renderSwatches();
+})();
+</script>
+{% endblock %}

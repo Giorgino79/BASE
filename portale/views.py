@@ -76,9 +76,9 @@ def _notify_riferimento(cliente, oggetto, messaggio, urgenza='media'):
     if telefono:
         def _send_wa():
             try:
-                from core.whatsapp_sender import WhatsAppSender, is_configured
+                from whatsapp.services import send_message, is_configured
                 if is_configured():
-                    WhatsAppSender.send_message(
+                    send_message(
                         telefono,
                         f"📋 *Portale Clienti — {cliente.ragione_sociale}*\n\n"
                         f"*{oggetto}*\n\n{messaggio}",

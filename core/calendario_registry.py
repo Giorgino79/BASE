@@ -49,7 +49,8 @@ class CalendarioRegistry:
         category: str = 'Altri',
         description: str = '',
         color: Optional[str] = None,
-        priority: int = 50
+        priority: int = 50,
+        app_name: Optional[str] = None,
     ):
         """
         Registra un event provider.
@@ -62,6 +63,11 @@ class CalendarioRegistry:
             description: Descrizione breve
             color: Colore default eventi (hex)
             priority: Ordine rendering (più basso = prima)
+            app_name: (opzionale) app_label proprietaria del provider — se
+                impostato, il provider viene nascosto quando quell'app risulta
+                disattivata per l'installazione corrente (vedi core.module_gating).
+                Omesso di default: nessun comportamento diverso per i provider
+                esistenti finché non viene aggiunto esplicitamente.
         """
         if name in cls._providers:
             logger.warning(f"Provider '{name}' già registrato. Verrà sovrascritto.")
@@ -74,6 +80,7 @@ class CalendarioRegistry:
             'description': description,
             'color': color,
             'priority': priority,
+            'app_name': app_name,
         }
         logger.info(f"Provider calendario '{name}' registrato (categoria: {category})")
 
@@ -108,6 +115,8 @@ class CalendarioRegistry:
         if not user or not user.is_authenticated:
             return []
 
+        from core.module_gating import is_module_active
+
         all_events = []
 
         sorted_providers = sorted(
@@ -116,6 +125,11 @@ class CalendarioRegistry:
         )
 
         for provider in sorted_providers:
+            # Modulo proprietario disattivato per questa installazione (solo
+            # se il provider ha dichiarato app_name — vedi register()).
+            if provider.get('app_name') and not is_module_active(provider['app_name']):
+                continue
+
             # Filtro per provider name esplicito
             if providers and provider['name'] not in providers:
                 continue

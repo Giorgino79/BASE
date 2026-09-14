@@ -26,20 +26,20 @@ Variabili opzionali:
     {% if edit_url %}
     <a href="{{ edit_url }}" class="list-group-item list-group-item-action py-2"
        style="color:var(--slate-700);">
-      <i class="bi bi-pencil-square me-2" style="color:var(--color-1);"></i>Modifica
+      <i class="bi bi-pencil-square me-2" style="color:var(--slate-700);"></i>Modifica
     </a>
     {% endif %}
     {% if print_url %}
     <a href="{{ print_url }}" target="_blank"
        class="list-group-item list-group-item-action py-2"
        style="color:var(--slate-700);">
-      <i class="bi bi-printer me-2" style="color:var(--color-1);"></i>Stampa scheda
+      <i class="bi bi-printer me-2" style="color:var(--slate-700);"></i>Stampa scheda
     </a>
     {% endif %}
     {% for action in extra_actions %}
     <a href="{{ action.url }}" class="list-group-item list-group-item-action py-2"
        style="color:var(--slate-700);">
-      <i class="bi {{ action.icon|default:'bi-arrow-right' }} me-2" style="color:var(--color-1);"></i>{{ action.label }}
+      <i class="bi {{ action.icon|default:'bi-arrow-right' }} me-2" style="color:var(--slate-700);"></i>{{ action.label }}
     </a>
     {% endfor %}
     {% if list_url %}

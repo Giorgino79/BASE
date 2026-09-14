@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}WhatsApp — Broadcast{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'whatsapp:dashboard' %}">WhatsApp</a></li>
+<li class="breadcrumb-item active">Broadcast</li>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-megaphone-fill me-2 text-success"></i>Broadcast</h2>
+    <a href="{% url 'whatsapp:broadcast_create' %}" class="btn btn-success">
+        <i class="bi bi-plus-lg me-1"></i>Nuovo Broadcast
+    </a>
+</div>
+
+{% if broadcasts %}
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Titolo</th>
+                        <th>Stato</th>
+                        <th>Destinatari</th>
+                        <th>Inviati</th>
+                        <th>Falliti</th>
+                        <th>Data creazione</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for b in broadcasts %}
+                    <tr>
+                        <td>{{ b.titolo }}</td>
+                        <td>
+                            {% if b.stato == "completata" %}
+                                <span class="badge bg-success">Completata</span>
+                            {% elif b.stato == "in_corso" %}
+                                <span class="badge bg-warning text-dark">In corso</span>
+                            {% elif b.stato == "annullata" %}
+                                <span class="badge bg-danger">Annullata</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Bozza</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ b.totale }}</td>
+                        <td class="text-success">{{ b.inviati }}</td>
+                        <td class="text-danger">{{ b.falliti }}</td>
+                        <td class="text-muted small">{{ b.created_at|date:"d/m/Y H:i" }}</td>
+                        <td>
+                            <a href="{% url 'whatsapp:broadcast_detail' pk=b.pk %}"
+                               class="btn btn-sm btn-outline-secondary">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="text-center py-5 text-muted">
+    <i class="bi bi-megaphone fs-1 d-block mb-3"></i>
+    Nessun broadcast ancora. <a href="{% url 'whatsapp:broadcast_create' %}">Crea il primo.</a>
+</div>
+{% endif %}
+{% endblock %}
