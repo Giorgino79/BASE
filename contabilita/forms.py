@@ -8,8 +8,8 @@ from fatturazione_attiva.models import Fattura
 
 from .documenti import fatture_da_incassare, fatture_da_pagare
 from .models import (
-    REGOLE_DARE_AVERE, ContoContabile, ImpostazioniContabilita,
-    MovimentoPrimaNota, valida_dare_avere, valida_data_movimento,
+    REGOLE_DARE_AVERE, ContoContabile, ImpostazioniContabilita, LiquidazioneIva,
+    MovimentoPrimaNota, RegimeIva, valida_dare_avere, valida_data_movimento,
 )
 
 _BS_CLASS = {
@@ -87,6 +87,63 @@ class ImpostazioniContabilitaForm(BootstrapMixin, forms.ModelForm):
         return data
 
 
+class RegimeIvaForm(BootstrapMixin, forms.ModelForm):
+    class Meta:
+        model = RegimeIva
+        fields = ['tipo', 'valido_dal', 'note']
+        widgets = {
+            'valido_dal': forms.DateInput(attrs={'type': 'date'}),
+            'note': forms.Textarea(attrs={'rows': 2}),
+        }
+
+    def clean_valido_dal(self):
+        data = self.cleaned_data.get('valido_dal')
+        precedente = RegimeIva.objects.exclude(pk=self.instance.pk).order_by('-valido_dal').first()
+        if precedente and data and data <= precedente.valido_dal:
+            raise forms.ValidationError(
+                f'Il regime precedente parte dal {precedente.valido_dal:%d/%m/%Y}: '
+                'un nuovo regime va aggiunto in coda alla storia, non prima.'
+            )
+        return data
+
+
+class LiquidazioneIvaForm(BootstrapMixin, forms.Form):
+    """
+    Non un ModelForm: gli importi (iva_a_debito/iva_a_credito) non li digita
+    l'utente, li calcola la view sommando i movimenti IVA del periodo — qui
+    si sceglie solo *quale* periodo liquidare.
+    """
+
+    periodicita = forms.ChoiceField(choices=LiquidazioneIva.Periodicita.choices, label='Periodicità')
+    anno = forms.IntegerField(label='Anno', min_value=2000, max_value=2100)
+    periodo = forms.IntegerField(label='Periodo (mese 1-12 o trimestre 1-4)', min_value=1, max_value=12)
+
+    def clean(self):
+        cleaned = super().clean()
+        periodicita = cleaned.get('periodicita')
+        periodo = cleaned.get('periodo')
+        if periodicita == LiquidazioneIva.Periodicita.TRIMESTRE and periodo and periodo > 4:
+            self.add_error('periodo', 'Un trimestre va da 1 a 4.')
+        if periodicita == LiquidazioneIva.Periodicita.MESE and periodo and periodo > 12:
+            self.add_error('periodo', 'Un mese va da 1 a 12.')
+        return cleaned
+
+
+class VersamentoIvaForm(BootstrapMixin, forms.ModelForm):
+    class Meta:
+        model = LiquidazioneIva
+        fields = ['data_versamento', 'riferimento_pagamento']
+        widgets = {'data_versamento': forms.DateInput(attrs={'type': 'date'})}
+
+    def clean_data_versamento(self):
+        data = self.cleaned_data.get('data_versamento')
+        if not data:
+            raise forms.ValidationError('Indica la data del versamento.')
+        if data > timezone.localdate():
+            raise forms.ValidationError('Non si registra un versamento nel futuro.')
+        return data
+
+
 class MovimentoPrimaNotaForm(BootstrapMixin, forms.ModelForm):
     """
     Un movimento registrato a mano deve sempre riferirsi a un documento
@@ -111,6 +168,7 @@ class MovimentoPrimaNotaForm(BootstrapMixin, forms.ModelForm):
     TIPI_AUTOMATICI = {
         MovimentoPrimaNota.Tipo.FATTURA_CLIENTE,
         MovimentoPrimaNota.Tipo.FATTURA_FORNITORE,
+        MovimentoPrimaNota.Tipo.NOTA_CREDITO_CLIENTE,
     }
 
     class Meta:

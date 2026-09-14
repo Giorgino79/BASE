@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 
 from django.conf import settings
@@ -18,11 +18,13 @@ class ContoContabile(models.Model):
     """
 
     class Tipo(models.TextChoices):
-        CLIENTE    = 'cliente',    'Cliente'
-        FORNITORE  = 'fornitore',  'Fornitore'
-        CASSA      = 'cassa',      'Cassa'
-        BANCA      = 'banca',      'Banca'
-        GENERICO   = 'generico',   'Generico'
+        CLIENTE      = 'cliente',      'Cliente'
+        FORNITORE    = 'fornitore',    'Fornitore'
+        CASSA        = 'cassa',        'Cassa'
+        BANCA        = 'banca',        'Banca'
+        IVA_CREDITO  = 'iva_credito',  'IVA a credito'
+        IVA_DEBITO   = 'iva_debito',   'IVA a debito'
+        GENERICO     = 'generico',     'Generico'
 
     nome        = models.CharField(max_length=200, verbose_name='Nome conto')
     tipo        = models.CharField(max_length=20, choices=Tipo.choices, verbose_name='Tipo')
@@ -106,19 +108,176 @@ class ImpostazioniContabilita(models.Model):
         return cls.objects.filter(pk=1).values_list('chiusa_fino_al', flat=True).first()
 
 
+class RegimeIva(models.Model):
+    """
+    Regime di liquidazione IVA dell'azienda, storicizzato: non "qual è il
+    regime oggi" ma "quale regime era vigente in una data data". Un cambio di
+    regime non deve mai riscrivere la lettura delle liquidazioni passate —
+    per questo non è un campo su un'impostazione singola, ma uno storico con
+    validità temporale.
+    """
+
+    class Tipo(models.TextChoices):
+        MENSILE              = 'mensile',              'Mensile'
+        TRIMESTRALE_OPZIONE  = 'trimestrale_opzione',   'Trimestrale per opzione (+1% interessi)'
+        TRIMESTRALE_NATURALE = 'trimestrale_naturale',  'Trimestrale naturale (senza interessi)'
+
+    tipo       = models.CharField(max_length=25, choices=Tipo.choices, verbose_name='Regime IVA')
+    valido_dal = models.DateField(verbose_name='Valido dal')
+    valido_al  = models.DateField(
+        null=True, blank=True, verbose_name='Valido fino al',
+        help_text='Lascia vuoto se è il regime tuttora in vigore.',
+    )
+    note       = models.TextField(blank=True, verbose_name='Note')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name        = 'Regime IVA'
+        verbose_name_plural = 'Storico regimi IVA'
+        ordering            = ['-valido_dal']
+
+    def __str__(self):
+        fino = f' al {self.valido_al:%d/%m/%Y}' if self.valido_al else ' (in corso)'
+        return f'{self.get_tipo_display()} dal {self.valido_dal:%d/%m/%Y}{fino}'
+
+    @property
+    def ha_interessi(self):
+        """Il trimestrale per opzione paga l'1% di interesse, quello naturale no."""
+        return self.tipo == self.Tipo.TRIMESTRALE_OPZIONE
+
+    @property
+    def periodicita_mesi(self):
+        """1 per il mensile, 3 per entrambi i trimestrali."""
+        return 1 if self.tipo == self.Tipo.MENSILE else 3
+
+    def save(self, *args, **kwargs):
+        # Un solo regime "aperto" alla volta: inserendone uno nuovo senza
+        # valido_al, quello precedentemente aperto si chiude da solo il
+        # giorno prima. Supporta solo l'aggiunta in coda alla storia, non la
+        # correzione di un periodo passato.
+        if self.valido_al is None:
+            (RegimeIva.objects
+             .filter(valido_al__isnull=True)
+             .exclude(pk=self.pk)
+             .update(valido_al=self.valido_dal - timedelta(days=1)))
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def vigente_al(cls, data):
+        """Il regime in vigore a una certa data, o None se non ancora impostato."""
+        return (cls.objects
+                .filter(valido_dal__lte=data)
+                .filter(models.Q(valido_al__isnull=True) | models.Q(valido_al__gte=data))
+                .order_by('-valido_dal')
+                .first())
+
+
+class LiquidazioneIva(models.Model):
+    """
+    Il versamento IVA di un periodo: quanto è dovuto (o quanto resta a
+    credito) e se è già stato versato.
+
+    Le fatture incluse non sono un elenco scelto a mano né una tabella ponte:
+    sono quelle i cui movimenti IVA (vedi `MovimentoPrimaNota.liquidazione_iva`)
+    vengono agganciati a questa liquidazione. Il dettaglio fattura risale a
+    questo oggetto passando dal proprio movimento, non il contrario.
+    """
+
+    class Periodicita(models.TextChoices):
+        MESE      = 'mese',      'Mensile'
+        TRIMESTRE = 'trimestre', 'Trimestrale'
+
+    class Stato(models.TextChoices):
+        DA_VERSARE = 'da_versare', 'Da versare'
+        VERSATA    = 'versata',    'Versata'
+
+    periodicita = models.CharField(
+        max_length=10, choices=Periodicita.choices, verbose_name='Periodicità')
+    anno        = models.PositiveSmallIntegerField(verbose_name='Anno')
+    periodo     = models.PositiveSmallIntegerField(
+        verbose_name='Periodo',
+        help_text='Mese (1-12) se mensile, trimestre (1-4) se trimestrale.',
+    )
+
+    iva_a_debito       = models.DecimalField(
+        max_digits=12, decimal_places=2, verbose_name='IVA a debito del periodo')
+    iva_a_credito       = models.DecimalField(
+        max_digits=12, decimal_places=2, verbose_name='IVA a credito del periodo')
+    credito_precedente = models.DecimalField(
+        max_digits=12, decimal_places=2, default=Decimal('0.00'),
+        verbose_name='Credito riportato dal periodo precedente',
+    )
+    interessi          = models.DecimalField(
+        max_digits=12, decimal_places=2, default=Decimal('0.00'),
+        verbose_name='Interessi (1% trimestrale per opzione)',
+    )
+
+    stato                 = models.CharField(
+        max_length=15, choices=Stato.choices, default=Stato.DA_VERSARE, verbose_name='Stato')
+    data_versamento       = models.DateField(null=True, blank=True, verbose_name='Data versamento')
+    riferimento_pagamento = models.CharField(
+        max_length=100, blank=True, verbose_name='Riferimento pagamento',
+        help_text='Es. quietanza F24, CRO del bonifico.',
+    )
+
+    creato_da  = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True, blank=True,
+        on_delete=models.PROTECT,
+        related_name='+',
+        verbose_name='Creata da',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name        = 'Liquidazione IVA'
+        verbose_name_plural = 'Liquidazioni IVA'
+        ordering            = ['-anno', '-periodo']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['periodicita', 'anno', 'periodo'],
+                name='contabilita_liquidazione_iva_unica_per_periodo',
+            ),
+        ]
+
+    def __str__(self):
+        if self.periodicita == self.Periodicita.TRIMESTRE:
+            return f'Liquidazione IVA {self.periodo}° trim. {self.anno}'
+        return f'Liquidazione IVA {self.periodo:02d}/{self.anno}'
+
+    def get_absolute_url(self):
+        return reverse('contabilita:liquidazione_iva_detail', kwargs={'pk': self.pk})
+
+    @property
+    def saldo(self):
+        """Positivo: da versare. Negativo: credito da riportare al periodo dopo."""
+        return (self.iva_a_debito - self.iva_a_credito
+                - self.credito_precedente + self.interessi)
+
+    @property
+    def importo_dovuto(self):
+        return self.saldo if self.saldo > 0 else Decimal('0.00')
+
+    @property
+    def credito_riportato(self):
+        return -self.saldo if self.saldo < 0 else Decimal('0.00')
+
+
 class MovimentoPrimaNota(AllegatiMixin, models.Model):
     """
     Singola riga della prima nota: un dare, un avere, un importo.
     """
 
     class Tipo(models.TextChoices):
-        FATTURA_CLIENTE    = 'fattura_cliente',    'Fattura cliente'
-        FATTURA_FORNITORE  = 'fattura_fornitore',  'Fattura fornitore'
-        INCASSO            = 'incasso',            'Incasso da cliente'
-        PAGAMENTO          = 'pagamento',          'Pagamento a fornitore'
-        GIROCONTO          = 'giroconto',          'Giroconto cassa/banca'
-        STIPENDI           = 'stipendi',           'Pagamento stipendi'
-        ALTRO              = 'altro',              'Altro'
+        FATTURA_CLIENTE      = 'fattura_cliente',      'Fattura cliente'
+        NOTA_CREDITO_CLIENTE = 'nota_credito_cliente', 'Nota di credito a cliente'
+        FATTURA_FORNITORE    = 'fattura_fornitore',    'Fattura fornitore'
+        INCASSO              = 'incasso',              'Incasso da cliente'
+        PAGAMENTO            = 'pagamento',            'Pagamento a fornitore'
+        GIROCONTO            = 'giroconto',            'Giroconto cassa/banca'
+        STIPENDI             = 'stipendi',             'Pagamento stipendi'
+        ALTRO                = 'altro',                'Altro'
 
     # Numero di protocollo: MOV-2026-0001. L'anno è quello della data
     # dell'operazione, il progressivo cresce dentro l'anno. Assegnato al primo
@@ -167,6 +326,18 @@ class MovimentoPrimaNota(AllegatiMixin, models.Model):
         on_delete=models.SET_NULL,
         related_name='movimenti_prima_nota',
         verbose_name='Fattura fornitore',
+    )
+
+    # Valorizzata solo sui righi IVA generati dallo scorporo (vedi signals.py):
+    # dice se quell'IVA è stata inclusa in una liquidazione, e quale. Il
+    # dettaglio fattura la legge per mostrare "IVA versata"/"IVA da versare"
+    # col link diretto, senza bisogno di una relazione a parte.
+    liquidazione_iva = models.ForeignKey(
+        'LiquidazioneIva',
+        null=True, blank=True,
+        on_delete=models.PROTECT,
+        related_name='movimenti',
+        verbose_name='Liquidazione IVA',
     )
 
     is_automatico    = models.BooleanField(default=False, verbose_name='Generato automaticamente')
@@ -313,13 +484,28 @@ MONETARI = frozenset({_C.CASSA, _C.BANCA})
 #: Per ogni tipo di movimento, i tipi di conto ammessi in Dare e in Avere.
 #: È la stessa tabella che prima viveva come testo nel pannello dei
 #: suggerimenti: qui è un dato, e vincola invece di consigliare.
+#:
+#: FATTURA_CLIENTE e FATTURA_FORNITORE ammettono anche il conto IVA come
+#: contropartita: una fattura genera due movimenti, non uno — un rigo per
+#: l'imponibile (Avere/Dare GENERICO) e uno per l'IVA (Avere/Dare
+#: IVA_DEBITO/IVA_CREDITO), vedi signals.py. La matrice non sa che sono "due
+#: righi di una fattura sola": vede solo due movimenti dello stesso tipo,
+#: ciascuno con la propria contropartita ammessa.
 REGOLE_DARE_AVERE = {
-    _T.FATTURA_CLIENTE:   (frozenset({_C.CLIENTE}),   frozenset({_C.GENERICO})),
-    _T.FATTURA_FORNITORE: (frozenset({_C.GENERICO}),  frozenset({_C.FORNITORE})),
-    _T.INCASSO:           (MONETARI,                  frozenset({_C.CLIENTE})),
-    _T.PAGAMENTO:         (frozenset({_C.FORNITORE}), MONETARI),
-    _T.GIROCONTO:         (MONETARI,                  MONETARI),
-    _T.STIPENDI:          (frozenset({_C.GENERICO}),  MONETARI),
+    _T.FATTURA_CLIENTE:      (frozenset({_C.CLIENTE}),
+                              frozenset({_C.GENERICO, _C.IVA_DEBITO})),
+    # Storna una fattura cliente: stessa coppia di conti, orientamento
+    # opposto — non è lo storno di un movimento specifico (`storna`/
+    # `is_storno`), è un documento fiscale a sé, quindi ha una propria voce
+    # in tabella invece di bypassare la matrice.
+    _T.NOTA_CREDITO_CLIENTE: (frozenset({_C.GENERICO, _C.IVA_DEBITO}),
+                              frozenset({_C.CLIENTE})),
+    _T.FATTURA_FORNITORE:    (frozenset({_C.GENERICO, _C.IVA_CREDITO}),
+                              frozenset({_C.FORNITORE})),
+    _T.INCASSO:              (MONETARI,                  frozenset({_C.CLIENTE})),
+    _T.PAGAMENTO:            (frozenset({_C.FORNITORE}), MONETARI),
+    _T.GIROCONTO:            (MONETARI,                  MONETARI),
+    _T.STIPENDI:             (frozenset({_C.GENERICO}),  MONETARI),
     # ALTRO è la via di fuga per i casi non previsti: nessun vincolo di tipo,
     # restano solo le regole generali qui sotto.
 }

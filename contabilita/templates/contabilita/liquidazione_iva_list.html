@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'contabilita:dashboard' %}">Contabilità</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'contabilita:scadenziario_iva' %}">Scadenziario IVA</a></li>
+      <li class="breadcrumb-item active">Liquidazioni</li>
+    </ol>
+  </nav>
+  <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <h1><i class="bi bi-list-check me-2 text-brand"></i>Liquidazioni IVA</h1>
+    <a href="{% url 'contabilita:scadenziario_iva' %}" class="btn btn-primary btn-sm">
+      <i class="bi bi-plus-lg me-1"></i>Nuova (dallo scadenziario)
+    </a>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-sm mb-0">
+      <thead>
+        <tr>
+          <th>Periodo</th>
+          <th class="text-end">Debito</th>
+          <th class="text-end">Credito</th>
+          <th class="text-end">Saldo</th>
+          <th>Stato</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for l in liquidazioni %}
+        <tr>
+          <td><a href="{{ l.get_absolute_url }}">{{ l }}</a></td>
+          <td class="text-end">€ {{ l.iva_a_debito|floatformat:2 }}</td>
+          <td class="text-end">€ {{ l.iva_a_credito|floatformat:2 }}</td>
+          <td class="text-end">
+            {% if l.importo_dovuto %}€ {{ l.importo_dovuto|floatformat:2 }} da versare
+            {% else %}€ {{ l.credito_riportato|floatformat:2 }} a credito{% endif %}
+          </td>
+          <td>
+            {% if l.stato == 'versata' %}
+            <span class="badge bg-success">Versata</span>
+            {% else %}
+            <span class="badge bg-warning text-dark">Da versare</span>
+            {% endif %}
+          </td>
+          <td><a href="{{ l.get_absolute_url }}" class="btn btn-sm btn-outline-secondary">Apri</a></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" class="text-muted text-center py-3">Nessuna liquidazione creata.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

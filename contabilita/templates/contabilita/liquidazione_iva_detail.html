@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'contabilita:dashboard' %}">Contabilità</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'contabilita:liquidazione_iva_list' %}">Liquidazioni IVA</a></li>
+      <li class="breadcrumb-item active">{{ liquidazione }}</li>
+    </ol>
+  </nav>
+  <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <h1><i class="bi bi-receipt me-2 text-brand"></i>{{ liquidazione }}</h1>
+    {% if liquidazione.stato == 'versata' %}
+    <span class="badge bg-success fs-6">Versata il {{ liquidazione.data_versamento|date:"d/m/Y" }}</span>
+    {% else %}
+    <span class="badge bg-warning text-dark fs-6">Da versare</span>
+    {% endif %}
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="card mb-3">
+      <div class="card-header card-header-primary"><i class="bi bi-calculator me-2"></i>Totali del periodo</div>
+      <table class="table table-sm mb-0">
+        <tr><th style="width:260px">IVA a debito</th><td>€ {{ liquidazione.iva_a_debito|floatformat:2 }}</td></tr>
+        <tr><th>IVA a credito</th><td>€ {{ liquidazione.iva_a_credito|floatformat:2 }}</td></tr>
+        <tr><th>Credito precedente utilizzato</th><td>€ {{ liquidazione.credito_precedente|floatformat:2 }}</td></tr>
+        <tr><th>Interessi</th><td>€ {{ liquidazione.interessi|floatformat:2 }}</td></tr>
+        <tr class="fw-bold">
+          <th>{% if liquidazione.importo_dovuto %}Importo dovuto{% else %}Credito riportato{% endif %}</th>
+          <td>€ {{ liquidazione.importo_dovuto|default:liquidazione.credito_riportato|floatformat:2 }}</td>
+        </tr>
+        {% if liquidazione.riferimento_pagamento %}
+        <tr><th>Riferimento pagamento</th><td>{{ liquidazione.riferimento_pagamento }}</td></tr>
+        {% endif %}
+      </table>
+    </div>
+
+    {% if liquidazione.stato != 'versata' and liquidazione.importo_dovuto %}
+    <div class="card mb-3">
+      <div class="card-header"><i class="bi bi-cash-coin me-2"></i>Registra il versamento</div>
+      <div class="card-body">
+        <form method="post" action="{% url 'contabilita:liquidazione_iva_versa' liquidazione.pk %}" class="row g-2 align-items-end">
+          {% csrf_token %}
+          <div class="col-auto">
+            <label class="form-label">{{ versamento_form.data_versamento.label }}</label>
+            {{ versamento_form.data_versamento }}
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">{{ versamento_form.riferimento_pagamento.label }}</label>
+            {{ versamento_form.riferimento_pagamento }}
+          </div>
+          <div class="col-auto">
+            <button class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Segna come versata</button>
+          </div>
+        </form>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card mt-3">
+  <div class="card-header"><i class="bi bi-list-ul me-2"></i>Movimenti inclusi</div>
+  <div class="table-responsive">
+    <table class="table table-sm mb-0">
+      <thead>
+        <tr><th>Data</th><th>Causale</th><th>Documento</th><th class="text-end">Importo</th></tr>
+      </thead>
+      <tbody>
+        {% for m in movimenti %}
+        <tr>
+          <td>{{ m.data|date:"d/m/Y" }}</td>
+          <td><a href="{{ m.get_absolute_url }}">{{ m.causale }}</a></td>
+          <td>
+            {% if m.fattura_attiva %}<a href="{{ m.fattura_attiva.get_absolute_url }}">{{ m.fattura_attiva.numero }}</a>{% endif %}
+            {% if m.fattura_passiva %}{{ m.fattura_passiva.numero_fattura }}{% endif %}
+            {% if not m.fattura_attiva and not m.fattura_passiva %}{{ m.numero_documento }}{% endif %}
+          </td>
+          <td class="text-end">€ {{ m.importo|floatformat:2 }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4" class="text-muted text-center py-3">Nessun movimento.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

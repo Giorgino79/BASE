@@ -1,3 +1,4 @@
+import calendar
 from decimal import Decimal
 
 from django.contrib import messages
@@ -20,12 +21,13 @@ from core.mixins import PrintDetailMixin, SidebarQrAllegatiMixin
 from . import documenti
 from . import controlli
 from .forms import (
-    ContoContabileForm, ImpostazioniContabilitaForm, MovimentoPrimaNotaForm,
-    RegistrazioneIncassoForm, RegistrazionePagamentoForm,
+    ContoContabileForm, ImpostazioniContabilitaForm, LiquidazioneIvaForm,
+    MovimentoPrimaNotaForm, RegimeIvaForm, RegistrazioneIncassoForm,
+    RegistrazionePagamentoForm, VersamentoIvaForm,
 )
 from .models import (
-    ContoContabile, ImpostazioniContabilita, MovimentoPrimaNota,
-    data_minima_plausibile,
+    ContoContabile, ImpostazioniContabilita, LiquidazioneIva, MovimentoPrimaNota,
+    RegimeIva, data_minima_plausibile,
 )
 from .signals import _get_or_create_conto
 
@@ -677,7 +679,25 @@ def impostazioni(request):
         'impostazioni': impo,
         'n_congelati':  n_congelati,
         'data_minima':  data_minima_plausibile(),
+        'regimi':       RegimeIva.objects.order_by('-valido_dal'),
+        'regime_form':  RegimeIvaForm(),
     })
+
+
+@login_required
+def regime_iva_create(request):
+    if not request.user.is_staff:
+        messages.error(request, 'Solo un amministratore può modificare il regime IVA.')
+        return redirect(reverse('contabilita:impostazioni'))
+    form = RegimeIvaForm(request.POST or None)
+    if request.method == 'POST' and form.is_valid():
+        form.save()
+        messages.success(request, 'Regime IVA aggiornato.')
+    else:
+        for errori in form.errors.values():
+            for errore in errori:
+                messages.error(request, errore)
+    return redirect(reverse('contabilita:impostazioni'))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -823,3 +843,197 @@ def conto_delete(request, pk):
         return redirect(reverse('contabilita:conti_list'))
     ctx = {'page_title': 'Elimina Conto', 'conto': conto}
     return render(request, 'contabilita/conto_confirm_delete.html', ctx)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# SCADENZIARIO IVA + LIQUIDAZIONE
+# ─────────────────────────────────────────────────────────────────────────────
+
+def intervallo_periodo(periodicita, anno, periodo):
+    """(data_da, data_a) del periodo — mese secco o trimestre di 3 mesi."""
+    from datetime import date
+    if periodicita == LiquidazioneIva.Periodicita.TRIMESTRE:
+        mese_da = (periodo - 1) * 3 + 1
+        mese_a = mese_da + 2
+    else:
+        mese_da = mese_a = periodo
+    data_da = date(anno, mese_da, 1)
+    ultimo_giorno = calendar.monthrange(anno, mese_a)[1]
+    data_a = date(anno, mese_a, ultimo_giorno)
+    return data_da, data_a
+
+
+def _movimenti_iva_periodo(data_da, data_a):
+    """Movimenti IVA (debito+credito) del periodo, non ancora liquidati."""
+    return (MovimentoPrimaNota.objects
+            .filter(Q(conto_dare__tipo__in=[ContoContabile.Tipo.IVA_CREDITO, ContoContabile.Tipo.IVA_DEBITO])
+                    | Q(conto_avere__tipo__in=[ContoContabile.Tipo.IVA_CREDITO, ContoContabile.Tipo.IVA_DEBITO]))
+            .filter(data__gte=data_da, data__lte=data_a, liquidazione_iva__isnull=True)
+            .select_related('conto_dare', 'conto_avere', 'fattura_attiva', 'fattura_passiva')
+            .order_by('data'))
+
+
+def _totali_iva(qs):
+    debito = qs.filter(
+        Q(conto_dare__tipo=ContoContabile.Tipo.IVA_DEBITO) | Q(conto_avere__tipo=ContoContabile.Tipo.IVA_DEBITO)
+    ).aggregate(
+        d=Sum(Case(When(conto_avere__tipo=ContoContabile.Tipo.IVA_DEBITO, then='importo'), default=0, output_field=DField())),
+        c=Sum(Case(When(conto_dare__tipo=ContoContabile.Tipo.IVA_DEBITO, then='importo'), default=0, output_field=DField())),
+    )
+    iva_a_debito = (debito['d'] or Decimal('0.00')) - (debito['c'] or Decimal('0.00'))
+
+    credito = qs.filter(
+        Q(conto_dare__tipo=ContoContabile.Tipo.IVA_CREDITO) | Q(conto_avere__tipo=ContoContabile.Tipo.IVA_CREDITO)
+    ).aggregate(
+        d=Sum(Case(When(conto_dare__tipo=ContoContabile.Tipo.IVA_CREDITO, then='importo'), default=0, output_field=DField())),
+        c=Sum(Case(When(conto_avere__tipo=ContoContabile.Tipo.IVA_CREDITO, then='importo'), default=0, output_field=DField())),
+    )
+    iva_a_credito = (credito['d'] or Decimal('0.00')) - (credito['c'] or Decimal('0.00'))
+    return iva_a_debito, iva_a_credito
+
+
+def _periodo_precedente(periodicita, anno, periodo):
+    if periodo > 1:
+        return anno, periodo - 1
+    return anno - 1, (4 if periodicita == LiquidazioneIva.Periodicita.TRIMESTRE else 12)
+
+
+@login_required
+def scadenziario_iva(request):
+    oggi = timezone.localdate()
+    regime = RegimeIva.vigente_al(oggi)
+
+    periodicita = request.GET.get('periodicita') or (
+        LiquidazioneIva.Periodicita.TRIMESTRE
+        if regime and regime.periodicita_mesi == 3 else LiquidazioneIva.Periodicita.MESE
+    )
+    anno = int(request.GET.get('anno') or oggi.year)
+    periodo = int(request.GET.get('periodo') or (
+        ((oggi.month - 1) // 3 + 1) if periodicita == LiquidazioneIva.Periodicita.TRIMESTRE else oggi.month
+    ))
+
+    data_da, data_a = intervallo_periodo(periodicita, anno, periodo)
+    movimenti = list(_movimenti_iva_periodo(data_da, data_a))
+    iva_a_debito, iva_a_credito = _totali_iva(_movimenti_iva_periodo(data_da, data_a))
+
+    anno_prec, periodo_prec = _periodo_precedente(periodicita, anno, periodo)
+    liquidazione_prec = LiquidazioneIva.objects.filter(
+        periodicita=periodicita, anno=anno_prec, periodo=periodo_prec).first()
+    credito_precedente = liquidazione_prec.credito_riportato if liquidazione_prec else Decimal('0.00')
+
+    gia_liquidato = LiquidazioneIva.objects.filter(
+        periodicita=periodicita, anno=anno, periodo=periodo).first()
+
+    saldo_provvisorio = iva_a_debito - iva_a_credito - credito_precedente
+
+    ctx = {
+        'page_title': 'Scadenziario IVA',
+        'periodicita': periodicita,
+        'anno': anno,
+        'periodo': periodo,
+        'data_da': data_da,
+        'data_a': data_a,
+        'movimenti': movimenti,
+        'iva_a_debito': iva_a_debito,
+        'iva_a_credito': iva_a_credito,
+        'credito_precedente': credito_precedente,
+        'saldo_provvisorio': saldo_provvisorio,
+        'regime': regime,
+        'gia_liquidato': gia_liquidato,
+        'periodicita_scelte': LiquidazioneIva.Periodicita.choices,
+    }
+    return render(request, 'contabilita/scadenziario_iva.html', ctx)
+
+
+@login_required
+def liquidazione_iva_create(request):
+    if request.method != 'POST':
+        return redirect(reverse('contabilita:scadenziario_iva'))
+
+    form = LiquidazioneIvaForm(request.POST)
+    if not form.is_valid():
+        for errori in form.errors.values():
+            for errore in errori:
+                messages.error(request, errore)
+        return redirect(reverse('contabilita:scadenziario_iva'))
+
+    periodicita = form.cleaned_data['periodicita']
+    anno = form.cleaned_data['anno']
+    periodo = form.cleaned_data['periodo']
+
+    if LiquidazioneIva.objects.filter(periodicita=periodicita, anno=anno, periodo=periodo).exists():
+        messages.error(request, 'Questo periodo è già stato liquidato.')
+        return redirect(reverse('contabilita:scadenziario_iva'))
+
+    data_da, data_a = intervallo_periodo(periodicita, anno, periodo)
+
+    with transaction.atomic():
+        qs = _movimenti_iva_periodo(data_da, data_a)
+        iva_a_debito, iva_a_credito = _totali_iva(qs)
+
+        anno_prec, periodo_prec = _periodo_precedente(periodicita, anno, periodo)
+        liquidazione_prec = LiquidazioneIva.objects.filter(
+            periodicita=periodicita, anno=anno_prec, periodo=periodo_prec).first()
+        credito_precedente = liquidazione_prec.credito_riportato if liquidazione_prec else Decimal('0.00')
+
+        regime = RegimeIva.vigente_al(data_a)
+        raw = iva_a_debito - iva_a_credito - credito_precedente
+        interessi = (raw * Decimal('0.01')).quantize(Decimal('0.01')) if regime and regime.ha_interessi and raw > 0 else Decimal('0.00')
+
+        liquidazione = LiquidazioneIva.objects.create(
+            periodicita=periodicita, anno=anno, periodo=periodo,
+            iva_a_debito=iva_a_debito, iva_a_credito=iva_a_credito,
+            credito_precedente=credito_precedente, interessi=interessi,
+            creato_da=request.user,
+        )
+        # Blocca i movimenti del periodo su questa liquidazione: da qui in poi
+        # sono "IVA versata" (o da versare), non più liberi.
+        MovimentoPrimaNota.objects.filter(pk__in=[m.pk for m in qs]).update(liquidazione_iva=liquidazione)
+
+    messages.success(request, f'{liquidazione} creata: {liquidazione.movimenti.count()} movimenti agganciati.')
+    return redirect(liquidazione.get_absolute_url())
+
+
+@login_required
+def liquidazione_iva_list(request):
+    liquidazioni = LiquidazioneIva.objects.order_by('-anno', '-periodo')
+    return render(request, 'contabilita/liquidazione_iva_list.html', {
+        'page_title': 'Liquidazioni IVA',
+        'liquidazioni': liquidazioni,
+    })
+
+
+class LiquidazioneIvaDetailView(LoginRequiredMixin, DetailView):
+    model = LiquidazioneIva
+    template_name = 'contabilita/liquidazione_iva_detail.html'
+    context_object_name = 'liquidazione'
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx['page_title'] = str(self.object)
+        ctx['movimenti'] = (self.object.movimenti
+                            .select_related('conto_dare', 'conto_avere', 'fattura_attiva', 'fattura_passiva')
+                            .order_by('data'))
+        ctx['versamento_form'] = VersamentoIvaForm(instance=self.object)
+        return ctx
+
+
+@login_required
+def liquidazione_iva_versa(request, pk):
+    liquidazione = get_object_or_404(LiquidazioneIva, pk=pk)
+    if liquidazione.stato == LiquidazioneIva.Stato.VERSATA:
+        messages.warning(request, 'Questa liquidazione è già segnata come versata.')
+        return redirect(liquidazione.get_absolute_url())
+
+    form = VersamentoIvaForm(request.POST or None, instance=liquidazione)
+    if request.method == 'POST' and form.is_valid():
+        versamento = form.save(commit=False)
+        versamento.stato = LiquidazioneIva.Stato.VERSATA
+        versamento.save()
+        messages.success(request, 'Versamento registrato.')
+        return redirect(liquidazione.get_absolute_url())
+
+    for errori in form.errors.values():
+        for errore in errori:
+            messages.error(request, errore)
+    return redirect(liquidazione.get_absolute_url())

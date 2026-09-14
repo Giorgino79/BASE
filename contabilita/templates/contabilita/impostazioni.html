@@ -111,4 +111,72 @@
     </div>
   </div>
 </div>
+
+<div class="row g-3 mt-1">
+  <div class="col-lg-7">
+    <div class="card mb-3">
+      <div class="card-header card-header-primary"><i class="bi bi-percent me-2"></i>Regime IVA</div>
+      <div class="table-responsive">
+        <table class="table table-sm mb-0">
+          <thead><tr><th>Regime</th><th>Dal</th><th>Al</th></tr></thead>
+          <tbody>
+            {% for r in regimi %}
+            <tr {% if not r.valido_al %}class="fw-semibold"{% endif %}>
+              <td>{{ r.get_tipo_display }}</td>
+              <td>{{ r.valido_dal|date:"d/m/Y" }}</td>
+              <td>{{ r.valido_al|date:"d/m/Y"|default:"in corso" }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="3" class="text-muted text-center py-3">Nessun regime IVA impostato.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    {% if request.user.is_staff %}
+    <form method="post" action="{% url 'contabilita:regime_iva_create' %}" class="card">
+      {% csrf_token %}
+      <div class="card-header"><i class="bi bi-plus-lg me-2"></i>Nuovo regime (aggiunto in coda alla storia)</div>
+      <div class="card-body row g-2 align-items-end">
+        <div class="col-md-4">
+          <label class="form-label" for="{{ regime_form.tipo.id_for_label }}">{{ regime_form.tipo.label }}</label>
+          {{ regime_form.tipo }}
+        </div>
+        <div class="col-md-3">
+          <label class="form-label" for="{{ regime_form.valido_dal.id_for_label }}">{{ regime_form.valido_dal.label }}</label>
+          {{ regime_form.valido_dal }}
+        </div>
+        <div class="col-md-3">
+          <label class="form-label" for="{{ regime_form.note.id_for_label }}">{{ regime_form.note.label }}</label>
+          {{ regime_form.note }}
+        </div>
+        <div class="col-md-2">
+          <button type="submit" class="btn btn-primary w-100"><i class="bi bi-check-lg me-1"></i>Salva</button>
+        </div>
+      </div>
+    </form>
+    {% endif %}
+  </div>
+
+  <div class="col-lg-5">
+    <div class="card">
+      <div class="card-header"><i class="bi bi-info-circle me-2"></i>A cosa serve</div>
+      <div class="card-body small text-muted mb-0">
+        <p class="mb-2">
+          Il regime determina la <strong>periodicità</strong> (mensile o
+          trimestrale) usata come default nello
+          <a href="{% url 'contabilita:scadenziario_iva' %}">scadenziario IVA</a>,
+          e se al saldo del trimestre vanno aggiunti gli
+          <strong>interessi dell'1%</strong> (solo per il trimestrale per opzione).
+        </p>
+        <p class="mb-0">
+          Un cambio di regime non riscrive le liquidazioni già fatte: inseriscine
+          uno nuovo solo da quando è effettivamente cambiato, non serve
+          correggere lo storico.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}

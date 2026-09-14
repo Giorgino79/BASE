@@ -26,6 +26,12 @@ class ContabilitaConfig(AppConfig):
                     "icon":  "bi-bank",
                     "active_app": "contabilita",
                 },
+                {
+                    "label": "Scadenziario IVA",
+                    "url":   "contabilita:scadenziario_iva",
+                    "icon":  "bi-calendar2-check",
+                    "active_app": "contabilita",
+                },
             ],
             order=40,
         )
