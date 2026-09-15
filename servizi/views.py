@@ -716,6 +716,9 @@ class ODSDetailView(LoginRequiredMixin, DetailView):
         ctx["consumi_effettivi"] = [
             c for r in ods.righe.all() for c in r.consumi.all() if c.confermato
         ]
+        ctx["consumi_previsti"] = [
+            c for r in ods.righe.all() for c in r.consumi.all() if not c.confermato
+        ]
         ctx["firma_digitale"] = getattr(ods, "firma_digitale", None)
         return ctx
 

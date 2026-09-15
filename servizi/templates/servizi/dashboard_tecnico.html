@@ -112,8 +112,13 @@
   {# ── AUTOMEZZO ────────────────────────────────────────────────── #}
   <div class="col-md-5">
     <div class="card h-100">
-      <div class="card-header card-header-primary">
-        <i class="bi bi-truck me-2"></i>Il mio mezzo
+      <div class="card-header card-header-primary d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-truck me-2"></i>Il mio mezzo</span>
+        {% if mezzo %}
+        <a href="{% url 'magazzino:scorte_mezzo' mezzo.pk %}" class="text-white small text-decoration-none">
+          <i class="bi bi-box-arrow-in-down me-1"></i>Carica mezzo
+        </a>
+        {% endif %}
       </div>
       {% if mezzo %}
       <div class="card-body">

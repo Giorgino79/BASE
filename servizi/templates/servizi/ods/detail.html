@@ -34,111 +34,105 @@
 
     <div class="card mb-3">
       <div class="card-header card-header-primary"><i class="bi bi-info-circle me-2"></i>Dati ODS</div>
-      <div class="card-body">
-        <div class="row">
-          <div class="col-sm-6">
-            <div class="detail-field">
-              <div class="detail-field-label">Cliente</div>
-              <div class="detail-field-value">
+      <div class="table-responsive">
+        <table class="table table-sm mb-0 align-middle">
+          <tbody>
+            <tr>
+              <th class="text-muted small text-uppercase" style="width:180px;">Cliente</th>
+              <td>
                 {% if ods.filiale %}
                   <a href="{{ ods.filiale.cliente.get_absolute_url }}" class="text-decoration-none">{{ ods.filiale.cliente }}</a>
                   <span class="text-muted small"> — {{ ods.filiale.nome }}</span>
                 {% else %}
                   <a href="{{ ods.privato.get_absolute_url }}" class="text-decoration-none">{{ ods.privato }}</a>
                 {% endif %}
-              </div>
-            </div>
-          </div>
-          <div class="col-sm-6">
-            <div class="detail-field">
-              <div class="detail-field-label">Servizio</div>
-              <div class="detail-field-value">
-                {% with r=ods.righe.all.0 %}
-                  {% if r %}<a href="{{ r.servizio.get_absolute_url }}" class="text-decoration-none">{{ r.servizio }}</a>{% else %}—{% endif %}
-                {% endwith %}
-              </div>
-            </div>
-          </div>
-          <div class="col-sm-4">
-            <div class="detail-field">
-              <div class="detail-field-label">Data</div>
-              <div class="detail-field-value">{{ ods.data_servizio|date:"d/m/Y" }}</div>
-            </div>
-          </div>
-          <div class="col-sm-4">
-            <div class="detail-field">
-              <div class="detail-field-label">Ora inizio</div>
-              <div class="detail-field-value {% if not ods.ora_inizio %}empty{% endif %}">{{ ods.ora_inizio|default:"—" }}</div>
-            </div>
-          </div>
-          <div class="col-sm-4">
-            <div class="detail-field">
-              <div class="detail-field-label">Totale</div>
-              <div class="detail-field-value fw-bold {% if ods.prezzo_totale %}text-brand{% else %}empty{% endif %}">
-                {% if ods.prezzo_totale %}€ {{ ods.prezzo_totale }}{% else %}—{% endif %}
-              </div>
-            </div>
-          </div>
-          {% with righe=ods.righe.all %}
-          {% if righe.count > 1 %}
-          <div class="col-12">
-            <div class="detail-field mb-0">
-              <div class="detail-field-label">Righe servizio</div>
-              <div class="detail-field-value p-0">
+              </td>
+            </tr>
+            {% with righe=ods.righe.all %}
+            <tr>
+              <th class="text-muted small text-uppercase">{% if righe.count > 1 %}Servizi{% else %}Servizio{% endif %}</th>
+              <td>
+                {% if righe.count > 1 %}
+                  <table class="table table-sm mb-0">
+                    <thead class="bg-brand text-white"><tr><th>Servizio</th><th class="text-end">Prezzo</th><th>Note</th></tr></thead>
+                    <tbody>
+                      {% for r in righe %}
+                      <tr>
+                        <td><a href="{{ r.servizio.get_absolute_url }}" class="text-decoration-none">{{ r.servizio }}</a></td>
+                        <td class="text-end">{% if r.prezzo %}€ {{ r.prezzo }}{% else %}<em class="text-muted">—</em>{% endif %}</td>
+                        <td class="text-muted small">{{ r.note|default:"" }}</td>
+                      </tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+                {% else %}
+                  {% with r=righe.0 %}
+                    {% if r %}<a href="{{ r.servizio.get_absolute_url }}" class="text-decoration-none">{{ r.servizio }}</a>{% else %}—{% endif %}
+                  {% endwith %}
+                {% endif %}
+              </td>
+            </tr>
+            {% endwith %}
+            {% if consumi_previsti %}
+            <tr>
+              <th class="text-muted small text-uppercase"><i class="bi bi-box-seam me-1"></i>Prodotti previsti</th>
+              <td>
                 <table class="table table-sm mb-0">
-                  <thead class="bg-brand text-white"><tr><th>Servizio</th><th class="text-end">Prezzo</th><th>Note</th></tr></thead>
+                  <thead class="bg-brand text-white"><tr><th>Prodotto</th><th class="text-end">Quantità</th><th class="text-end">Diluizione</th><th>Note</th></tr></thead>
                   <tbody>
-                    {% for r in righe %}
+                    {% for c in consumi_previsti %}
                     <tr>
-                      <td><a href="{{ r.servizio.get_absolute_url }}" class="text-decoration-none">{{ r.servizio }}</a></td>
-                      <td class="text-end">{% if r.prezzo %}€ {{ r.prezzo }}{% else %}<em class="text-muted">—</em>{% endif %}</td>
-                      <td class="text-muted small">{{ r.note|default:"" }}</td>
+                      <td class="small">{{ c.prodotto }}</td>
+                      <td class="text-end small fw-bold">{{ c.quantita }} {{ c.prodotto.unita_misura }}</td>
+                      <td class="text-end small">{% if c.diluizione_percentuale is not None %}{{ c.diluizione_percentuale }}%{% else %}—{% endif %}</td>
+                      <td class="text-muted small">{{ c.note|default:"" }}</td>
                     </tr>
                     {% endfor %}
                   </tbody>
                 </table>
-              </div>
-            </div>
-          </div>
-          {% endif %}
-          {% endwith %}
-
-          {% if ods.distinta %}
-          <div class="col-sm-6">
-            <div class="detail-field">
-              <div class="detail-field-label">Distinta</div>
-              <div class="detail-field-value">
-                <a href="{{ ods.distinta.get_absolute_url }}" class="text-decoration-none">{{ ods.distinta }}</a>
-              </div>
-            </div>
-          </div>
-          {% endif %}
-          <div class="col-sm-6">
-            <div class="detail-field">
-              <div class="detail-field-label">Tecnico</div>
-              <div class="detail-field-value {% if not ods.tecnico %}empty{% endif %}">
+              </td>
+            </tr>
+            {% endif %}
+            <tr>
+              <th class="text-muted small text-uppercase">Data</th>
+              <td>{{ ods.data_servizio|date:"d/m/Y" }}</td>
+            </tr>
+            <tr>
+              <th class="text-muted small text-uppercase">Ora inizio</th>
+              <td class="{% if not ods.ora_inizio %}text-muted fst-italic{% endif %}">{{ ods.ora_inizio|default:"—" }}</td>
+            </tr>
+            <tr>
+              <th class="text-muted small text-uppercase">Totale</th>
+              <td class="fw-bold {% if ods.prezzo_totale %}text-brand{% else %}text-muted fst-italic{% endif %}">
+                {% if ods.prezzo_totale %}€ {{ ods.prezzo_totale }}{% else %}—{% endif %}
+              </td>
+            </tr>
+            {% if ods.distinta %}
+            <tr>
+              <th class="text-muted small text-uppercase">Distinta</th>
+              <td><a href="{{ ods.distinta.get_absolute_url }}" class="text-decoration-none">{{ ods.distinta }}</a></td>
+            </tr>
+            {% endif %}
+            <tr>
+              <th class="text-muted small text-uppercase">Tecnico</th>
+              <td class="{% if not ods.tecnico %}text-muted fst-italic{% endif %}">
                 {% if ods.tecnico %}{{ ods.tecnico.get_full_name|default:ods.tecnico.username }}{% else %}—{% endif %}
-              </div>
-            </div>
-          </div>
-          <div class="col-sm-6">
-            <div class="detail-field">
-              <div class="detail-field-label">Assistente</div>
-              <div class="detail-field-value {% if not ods.assistente %}empty{% endif %}">
+              </td>
+            </tr>
+            <tr>
+              <th class="text-muted small text-uppercase">Assistente</th>
+              <td class="{% if not ods.assistente %}text-muted fst-italic{% endif %}">
                 {% if ods.assistente %}{{ ods.assistente.get_full_name|default:ods.assistente.username }}{% else %}—{% endif %}
-              </div>
-            </div>
-          </div>
-          {% if ods.note_intervento %}
-          <div class="col-12">
-            <div class="detail-field">
-              <div class="detail-field-label">Note intervento</div>
-              <div class="detail-field-value">{{ ods.note_intervento|linebreaksbr }}</div>
-            </div>
-          </div>
-          {% endif %}
-
-        </div>
+              </td>
+            </tr>
+            {% if ods.note_intervento %}
+            <tr>
+              <th class="text-muted small text-uppercase">Note intervento</th>
+              <td>{{ ods.note_intervento|linebreaksbr }}</td>
+            </tr>
+            {% endif %}
+          </tbody>
+        </table>
       </div>
     </div>
 
