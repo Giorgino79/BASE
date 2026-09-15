@@ -56,66 +56,6 @@
 </div>
 {% endif %}
 
-{# ── KPI ──────────────────────────────────────────────────────────────────── #}
-<div class="row g-3 mb-4">
-  <div class="col-sm-6 col-lg-3">
-    <div class="card text-center h-100">
-      <div class="card-body py-4">
-        <div class="text-muted small mb-1">Crediti clienti</div>
-        <div class="fw-bold fs-2 text-brand">€ {{ crediti_clienti }}</div>
-      </div>
-    </div>
-  </div>
-  <div class="col-sm-6 col-lg-3">
-    <div class="card text-center h-100">
-      <div class="card-body py-4">
-        <div class="text-muted small mb-1">Debiti fornitori</div>
-        <div class="fw-bold fs-2 text-brand">€ {{ debiti_fornitori }}</div>
-      </div>
-    </div>
-  </div>
-  <div class="col-sm-6 col-lg-3">
-    <div class="card text-center h-100">
-      <div class="card-body py-4">
-        <div class="text-muted small mb-1">Casse attive</div>
-        <div class="fw-bold fs-2 text-brand">{{ casse|length }}</div>
-      </div>
-    </div>
-  </div>
-  <div class="col-sm-6 col-lg-3">
-    <div class="card text-center h-100">
-      <div class="card-body py-4">
-        <div class="text-muted small mb-1">Conti bancari</div>
-        <div class="fw-bold fs-2 text-brand">{{ banche|length }}</div>
-      </div>
-    </div>
-  </div>
-</div>
-
-{# ── Denaro in mano al personale ─────────────────────────────────────────── #}
-<div class="card mb-4">
-  <div class="card-header card-header-primary d-flex align-items-center justify-content-between">
-    <span><i class="bi bi-people me-2"></i>Denaro in mano al personale</span>
-    <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalPassaggioCassa">
-      <i class="bi bi-arrow-left-right me-1"></i>Passaggio di cassa
-    </button>
-  </div>
-  <div class="table-responsive">
-    <table class="table table-sm mb-0 align-middle">
-      <tbody>
-        {% for c in in_mano_al_personale %}
-        <tr>
-          <td><a href="{% url 'contabilita:mastrino' c.pk %}">{{ c.nome }}</a></td>
-          <td class="text-end">€ {{ c.saldo }}</td>
-        </tr>
-        {% empty %}
-        <tr><td class="text-center text-muted py-3"><i class="bi bi-inbox me-2"></i>Nessuno ha contanti o assegni in mano al momento</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-</div>
-
 {# ── Quick links ──────────────────────────────────────────────────────────── #}
 <div class="row g-3 mb-4">
   <div class="col-md-6 col-lg-3">
@@ -154,91 +94,14 @@
       </div>
     </a>
   </div>
-</div>
-
-{# ── Casse e Banche ───────────────────────────────────────────────────────── #}
-<div class="row g-3 mb-4">
-  <div class="col-lg-6">
-    <div class="card h-100">
-      <div class="card-header card-header-primary"><i class="bi bi-cash-stack me-2"></i>Casse</div>
-      <div class="table-responsive">
-        <table class="table table-sm mb-0 align-middle">
-          <tbody>
-            {% for c in casse %}
-            <tr>
-              <td><a href="{% url 'contabilita:mastrino' c.pk %}">{{ c.nome }}</a></td>
-              <td class="text-end">€ {{ c.saldo }}</td>
-            </tr>
-            {% empty %}
-            <tr><td class="text-center text-muted py-3"><i class="bi bi-inbox me-2"></i>Nessuna cassa</td></tr>
-            {% endfor %}
-          </tbody>
-        </table>
+  <div class="col-md-6 col-lg-3">
+    <a href="{% url 'servizi:ods_list' %}" class="text-decoration-none">
+      <div class="card h-100 text-center py-4">
+        <div class="mb-2"><i class="bi bi-clipboard-check fs-1 text-brand"></i></div>
+        <div class="fw-semibold">Ordini di servizio</div>
+        <div class="text-muted small">Elenco ODS</div>
       </div>
-    </div>
-  </div>
-  <div class="col-lg-6">
-    <div class="card h-100">
-      <div class="card-header card-header-primary"><i class="bi bi-bank me-2"></i>Banche</div>
-      <div class="table-responsive">
-        <table class="table table-sm mb-0 align-middle">
-          <tbody>
-            {% for b in banche %}
-            <tr>
-              <td><a href="{% url 'contabilita:mastrino' b.pk %}">{{ b.nome }}</a></td>
-              <td class="text-end">€ {{ b.saldo }}</td>
-            </tr>
-            {% empty %}
-            <tr><td class="text-center text-muted py-3"><i class="bi bi-inbox me-2"></i>Nessun conto bancario</td></tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-</div>
-
-{# ── Ultimi movimenti ─────────────────────────────────────────────────────── #}
-<div class="card">
-  <div class="card-header card-header-primary">
-    <i class="bi bi-clock-history me-2"></i>Ultimi movimenti
-  </div>
-  <div class="table-responsive">
-    <table class="table table-hover table-sm mb-0 align-middle">
-      <thead class="table-light">
-        <tr>
-          <th>N° movimento</th>
-          <th>Data</th>
-          <th>Causale</th>
-          <th>Dare</th>
-          <th>Avere</th>
-          <th class="text-end">Importo</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for m in ultimi %}
-        <tr>
-          <td class="text-nowrap small">
-            <a href="{% url 'contabilita:movimento_detail' m.pk %}"
-               class="fw-semibold text-decoration-none">{{ m.numero|default:"—" }}</a>
-          </td>
-          <td class="text-nowrap small">{{ m.data|date:"d/m/Y" }}</td>
-          <td>{{ m.causale }}</td>
-          <td class="small">{{ m.conto_dare.nome }}</td>
-          <td class="small">{{ m.conto_avere.nome }}</td>
-          <td class="text-end">€ {{ m.importo }}</td>
-          <td class="text-end">
-            <a href="{% url 'contabilita:movimento_detail' m.pk %}" class="btn btn-outline-secondary btn-sm">
-              <i class="bi bi-eye"></i>
-            </a>
-          </td>
-        </tr>
-        {% empty %}
-        <tr><td colspan="7" class="text-center text-muted py-3"><i class="bi bi-inbox me-2"></i>Nessun movimento registrato</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
+    </a>
   </div>
 </div>
 

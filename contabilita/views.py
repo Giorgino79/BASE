@@ -39,55 +39,12 @@ from .signals import _get_or_create_conto
 
 @login_required
 def dashboard(request):
-    # Crediti clienti: somma dare - somma avere sui conti tipo 'cliente'
-    agg_cl = MovimentoPrimaNota.objects.filter(
-        Q(conto_dare__tipo='cliente') | Q(conto_avere__tipo='cliente')
-    ).aggregate(
-        dare=Sum(Case(When(conto_dare__tipo='cliente', then='importo'),
-                      default=0, output_field=DField())),
-        avere=Sum(Case(When(conto_avere__tipo='cliente', then='importo'),
-                       default=0, output_field=DField())),
-    )
-    crediti_clienti = (agg_cl['dare'] or Decimal('0')) - (agg_cl['avere'] or Decimal('0'))
-
-    # Debiti fornitori: somma avere - somma dare sui conti tipo 'fornitore'
-    agg_fo = MovimentoPrimaNota.objects.filter(
-        Q(conto_dare__tipo='fornitore') | Q(conto_avere__tipo='fornitore')
-    ).aggregate(
-        dare=Sum(Case(When(conto_dare__tipo='fornitore', then='importo'),
-                      default=0, output_field=DField())),
-        avere=Sum(Case(When(conto_avere__tipo='fornitore', then='importo'),
-                       default=0, output_field=DField())),
-    )
-    debiti_fornitori = (agg_fo['avere'] or Decimal('0')) - (agg_fo['dare'] or Decimal('0'))
-
-    # Saldi casse e banche
-    casse  = ContoContabile.objects.filter(tipo='cassa',  attivo=True)
-    banche = ContoContabile.objects.filter(tipo='banca',  attivo=True)
-
-    # Denaro in mano al personale: solo chi ha davvero qualcosa in mano adesso,
-    # altrimenti la lista sarebbe lunga quanto gli utenti attivi in azienda.
-    in_mano_al_personale = [
-        c for c in ContoContabile.objects.filter(tipo='custodia', attivo=True).order_by('nome')
-        if c.saldo
-    ]
-
-    ultimi = (MovimentoPrimaNota.objects
-              .select_related('conto_dare', 'conto_avere', 'creato_da')
-              .order_by('-data', '-created_at')[:15])
-
     # Rete di sicurezza: i vincoli impediscono di registrare una scrittura
     # sbagliata, questi controlli fanno emergere quelle già a registro.
     anomalie, n_anomalie = controlli.anomalie()
 
     ctx = {
         'page_title':      'Contabilità — Prima Nota',
-        'crediti_clienti': crediti_clienti,
-        'debiti_fornitori': debiti_fornitori,
-        'casse':           casse,
-        'banche':          banche,
-        'in_mano_al_personale': in_mano_al_personale,
-        'ultimi':          ultimi,
         'anomalie':        anomalie,
         'n_anomalie':      n_anomalie,
         'form_passaggio':  PassaggioCassaForm(),
