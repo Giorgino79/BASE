@@ -134,6 +134,25 @@ def dashboard_view(request):
         import logging
         logging.getLogger(__name__).warning(f"Modulo comunicazioni non disponibile per la dashboard: {e}")
 
+    # `contabilita` e' un modulo opzionale: stesso pattern difensivo di
+    # comunicazioni qui sopra. Il memo compare solo se l'utente ha davvero
+    # un passaggio di cassa in attesa della sua conferma.
+    passaggi_cassa_in_attesa = []
+    try:
+        from contabilita.models import ContoContabile, PassaggioCassa
+
+        conto_custodia = ContoContabile.objects.filter(utente=request.user, tipo="custodia").first()
+        if conto_custodia:
+            passaggi_cassa_in_attesa = list(
+                PassaggioCassa.objects
+                .filter(a_conto=conto_custodia, confermato_il__isnull=True)
+                .select_related("da_conto")
+                .order_by("-created_at")
+            )
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning(f"Modulo contabilita non disponibile per la dashboard: {e}")
+
     context = {
         "oggi": oggi,
         "stats": {
@@ -145,6 +164,7 @@ def dashboard_view(request):
             "unread_messages": unread_messages,
         },
         "recent_promemoria": recent_promemoria,
+        "passaggi_cassa_in_attesa": passaggi_cassa_in_attesa,
     }
 
     return render(request, "commons_templates/dashboard.html", context)
