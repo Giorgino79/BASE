@@ -26,6 +26,7 @@ urlpatterns = [
     path("users/<int:pk>/update/", views.user_update_view, name="user_update"),
     path("users/<int:pk>/permissions/", views.user_permissions_manage_view, name="user_permissions"),
     path("users/<int:pk>/permissions/apply-template/", views.user_permissions_apply_template_view, name="user_apply_template"),
+    path("users/<int:pk>/permissions/toggle-contabile/", views.user_toggle_contabile_view, name="user_toggle_contabile"),
     # ========== TIMBRATURE ==========
     path("timbratura/quick/", views.timbratura_quick_view, name="timbratura_quick"),
     path("timbratura/stato/", views.timbratura_stato_api, name="timbratura_stato"),

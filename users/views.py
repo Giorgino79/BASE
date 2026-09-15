@@ -1290,6 +1290,7 @@ def user_permissions_manage_view(request, pk):
         "profile_user": user_obj,
         "fields_by_category": fields_by_category,
         "available_templates": available_templates,
+        "is_contabile": user_obj.is_contabile,
         "title": f"Gestione Permessi - {user_obj.get_full_name() or user_obj.username}",
     }
 
@@ -1328,6 +1329,31 @@ def user_permissions_apply_template_view(request, pk):
     except Exception as e:
         messages.error(request, f"Errore: {str(e)}")
         return redirect("users:user_permissions", pk=pk)
+
+
+@login_required
+@permission_required("users.gestione_completa_users", raise_exception=True)
+@require_http_methods(["POST"])
+def user_toggle_contabile_view(request, pk):
+    """
+    Aggiunge/toglie l'utente dal gruppo Django "Contabili" (vedi
+    User.is_contabile e core/management/commands/setup_permissions.py).
+    A differenza dei Template Permessi, è un'appartenenza continua: se il
+    gruppo cambia permessi in futuro, tutti i membri li ricevono subito.
+    """
+    from django.contrib.auth.models import Group
+
+    user_obj = get_object_or_404(User, pk=pk)
+    gruppo, _ = Group.objects.get_or_create(name="Contabili")
+
+    if user_obj.groups.filter(pk=gruppo.pk).exists():
+        user_obj.groups.remove(gruppo)
+        messages.success(request, f"{user_obj.get_full_name() or user_obj.username} rimosso dal gruppo Contabili.")
+    else:
+        user_obj.groups.add(gruppo)
+        messages.success(request, f"{user_obj.get_full_name() or user_obj.username} aggiunto al gruppo Contabili.")
+
+    return redirect("users:user_permissions", pk=pk)
 
 
 # ============================================================================
