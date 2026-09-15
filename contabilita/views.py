@@ -14,6 +14,7 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.views.decorators.http import require_POST
 from django.views.generic import DetailView
 
 from core.mixins import PrintDetailMixin, SidebarQrAllegatiMixin
@@ -22,12 +23,12 @@ from . import documenti
 from . import controlli
 from .forms import (
     ContoContabileForm, ImpostazioniContabilitaForm, LiquidazioneIvaForm,
-    MovimentoPrimaNotaForm, RegimeIvaForm, RegistrazioneIncassoForm,
-    RegistrazionePagamentoForm, VersamentoIvaForm,
+    MovimentoPrimaNotaForm, PassaggioCassaForm, RegimeIvaForm,
+    RegistrazioneIncassoForm, RegistrazionePagamentoForm, VersamentoIvaForm,
 )
 from .models import (
     ContoContabile, ImpostazioniContabilita, LiquidazioneIva, MovimentoPrimaNota,
-    RegimeIva, data_minima_plausibile,
+    PassaggioCassa, RegimeIva, data_minima_plausibile,
 )
 from .signals import _get_or_create_conto
 
@@ -64,6 +65,13 @@ def dashboard(request):
     casse  = ContoContabile.objects.filter(tipo='cassa',  attivo=True)
     banche = ContoContabile.objects.filter(tipo='banca',  attivo=True)
 
+    # Denaro in mano al personale: solo chi ha davvero qualcosa in mano adesso,
+    # altrimenti la lista sarebbe lunga quanto gli utenti attivi in azienda.
+    in_mano_al_personale = [
+        c for c in ContoContabile.objects.filter(tipo='custodia', attivo=True).order_by('nome')
+        if c.saldo
+    ]
+
     ultimi = (MovimentoPrimaNota.objects
               .select_related('conto_dare', 'conto_avere', 'creato_da')
               .order_by('-data', '-created_at')[:15])
@@ -78,9 +86,11 @@ def dashboard(request):
         'debiti_fornitori': debiti_fornitori,
         'casse':           casse,
         'banche':          banche,
+        'in_mano_al_personale': in_mano_al_personale,
         'ultimi':          ultimi,
         'anomalie':        anomalie,
         'n_anomalie':      n_anomalie,
+        'form_passaggio':  PassaggioCassaForm(),
     }
     return render(request, 'contabilita/dashboard.html', ctx)
 
@@ -331,6 +341,7 @@ def nuova_registrazione(request):
         'page_title': 'Nuova registrazione',
         'n_da_incassare': documenti.fatture_da_incassare().count(),
         'n_da_pagare':    documenti.fatture_da_pagare().count(),
+        'form_passaggio': PassaggioCassaForm(),
     })
 
 
@@ -438,6 +449,95 @@ def pagamento_create(request):
         'form':       form,
         'flusso':     _flusso_pagamento(),
     })
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PASSAGGI DI CASSA
+# ─────────────────────────────────────────────────────────────────────────────
+
+PASSAGGI_PER_PAGINA = 50
+
+
+@login_required
+@require_POST
+def passaggio_cassa_create(request):
+    """
+    Registra un passaggio di cassa dal modale veloce (tecnico→cassiere,
+    cassiere→cassaforte, cassaforte→banca, persona→persona). Risponde in
+    JSON: il modale può stare su qualsiasi pagina senza bisogno di una vista
+    a sé, e in caso di errore resta aperto invece di far perdere i campi già
+    compilati con una navigazione a vuoto.
+    """
+    form = PassaggioCassaForm(request.POST)
+    if not form.is_valid():
+        return JsonResponse({
+            'error':  'Controlla i campi evidenziati.',
+            'errors': form.errors.get_json_data(),
+        }, status=400)
+
+    with transaction.atomic():
+        passaggio = form.save(commit=False)
+        passaggio.creato_da = request.user
+        passaggio.save()
+        allegato = request.FILES.get('allegato')
+        if allegato:
+            passaggio.aggiungi_allegato(allegato, user=request.user)
+
+    return JsonResponse({
+        'success': True,
+        'message': (f'Passaggio registrato: {passaggio.da_conto.nome} → '
+                    f'{passaggio.a_conto.nome} (€ {passaggio.importo}).'),
+        'url':     passaggio.get_absolute_url(),
+    })
+
+
+@login_required
+def passaggio_cassa_list(request):
+    """Elenco dei passaggi di cassa, consultabile dall'amministrazione."""
+    conto_f = request.GET.get('conto', '').strip()
+
+    qs = (PassaggioCassa.objects
+          .select_related('da_conto', 'a_conto', 'creato_da')
+          .order_by('-data', '-created_at'))
+    if conto_f:
+        qs = qs.filter(Q(da_conto_id=conto_f) | Q(a_conto_id=conto_f))
+
+    paginator = Paginator(qs, PASSAGGI_PER_PAGINA)
+    page_obj  = paginator.get_page(request.GET.get('page'))
+
+    ctx = {
+        'page_title': 'Passaggi di cassa',
+        'page_obj':   page_obj,
+        'passaggi':   page_obj.object_list,
+        'conto_f':    conto_f,
+        'conti': (ContoContabile.objects
+                  .filter(attivo=True, tipo__in=['cassa', 'banca', 'custodia'])
+                  .order_by('tipo', 'nome')),
+        'form_passaggio': PassaggioCassaForm(),
+    }
+    return render(request, 'contabilita/passaggio_cassa_list.html', ctx)
+
+
+class PassaggioCassaDetailView(LoginRequiredMixin, SidebarQrAllegatiMixin,
+                               PrintDetailMixin, DetailView):
+    """Dettaglio del passaggio: chi, a chi, quanto, con quale pezza d'appoggio."""
+    model               = PassaggioCassa
+    template_name       = 'contabilita/passaggio_cassa_detail.html'
+    context_object_name = 'passaggio'
+    print_title         = 'Passaggio di cassa'
+    print_fields        = [
+        'data', 'da_conto', 'a_conto', 'importo', 'forma', 'causale', 'note', 'created_at',
+    ]
+
+    def get_queryset(self):
+        return (super().get_queryset()
+                .select_related('da_conto', 'a_conto', 'creato_da', 'movimento'))
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx['page_title'] = f'Passaggio di cassa — {self.object.data:%d/%m/%Y}'
+        ctx['allegati']   = self.object.allegati
+        return ctx
 
 
 class MovimentoDetailView(LoginRequiredMixin, SidebarQrAllegatiMixin,

@@ -9,7 +9,7 @@ from fatturazione_attiva.models import Fattura
 from .documenti import fatture_da_incassare, fatture_da_pagare
 from .models import (
     REGOLE_DARE_AVERE, ContoContabile, ImpostazioniContabilita, LiquidazioneIva,
-    MovimentoPrimaNota, RegimeIva, valida_dare_avere, valida_data_movimento,
+    MovimentoPrimaNota, PassaggioCassa, RegimeIva, valida_dare_avere, valida_data_movimento,
 )
 
 _BS_CLASS = {
@@ -581,3 +581,64 @@ class RegistrazionePagamentoForm(RegistrazioneQuoteForm):
 
     def data_documento(self, fattura):
         return fattura.data_fattura
+
+
+class PassaggioCassaForm(BootstrapMixin, forms.ModelForm):
+    """
+    Passaggio veloce di contanti/assegni fra due conti di custodia (persona o
+    cassaforte): pensato per un modale, non per una pagina a sé — niente
+    fatture da collegare, genera da solo il giroconto in prima nota (vedi
+    contabilita/signals.py::registra_passaggio_cassa).
+    """
+
+    class Meta:
+        model  = PassaggioCassa
+        fields = ['data', 'da_conto', 'a_conto', 'importo', 'forma', 'causale', 'note']
+        widgets = {
+            'data':    forms.DateInput(attrs={'type': 'date'}),
+            'forma':   forms.RadioSelect,
+            'causale': forms.TextInput(attrs={
+                'placeholder': 'Facoltativa: si genera da sola se la lasci vuota',
+            }),
+            'note':    forms.Textarea(attrs={'rows': 2}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['data'].initial = timezone.localdate
+        self.fields['causale'].required = False
+        conti = (
+            ContoContabile.objects
+            .filter(attivo=True, tipo__in=[ContoContabile.Tipo.CASSA, ContoContabile.Tipo.BANCA,
+                                            ContoContabile.Tipo.CUSTODIA])
+            .order_by('tipo', 'nome')
+        )
+        self.fields['da_conto'].queryset = conti
+        self.fields['da_conto'].empty_label = 'Chi consegna il denaro…'
+        self.fields['a_conto'].queryset = conti
+        self.fields['a_conto'].empty_label = 'Chi riceve il denaro…'
+
+    def clean_data(self):
+        data = self.cleaned_data.get('data')
+        errore = valida_data_movimento(
+            data, chiusa_fino_al=ImpostazioniContabilita.chiusura(),
+        )
+        if errore:
+            raise forms.ValidationError(errore)
+        return data
+
+    def clean(self):
+        cleaned = super().clean()
+        da_conto = cleaned.get('da_conto')
+        a_conto  = cleaned.get('a_conto')
+        if da_conto and a_conto and da_conto == a_conto:
+            self.add_error('a_conto', 'Chi consegna e chi riceve non possono essere lo stesso conto.')
+
+        # Causale facoltativa: si autogenera dai due conti se lasciata vuota,
+        # così il modale resta veloce senza lasciare mai un evento senza
+        # etichetta nell'elenco dei passaggi.
+        causale = (cleaned.get('causale') or '').strip()
+        if not causale and da_conto and a_conto:
+            forma = dict(PassaggioCassa.Forma.choices).get(cleaned.get('forma'), '')
+            cleaned['causale'] = f'Passaggio {forma} — {da_conto.nome} → {a_conto.nome}'
+        return cleaned

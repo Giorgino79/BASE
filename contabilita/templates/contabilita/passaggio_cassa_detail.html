@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+  .kv { margin-bottom: 0; }
+  .kv dt { font-size: .72rem; font-weight: 700; text-transform: uppercase;
+           letter-spacing: .04em; color: var(--slate-500, #64748b); }
+  .kv dd { font-size: .9rem; }
+  .dare-avere { display: flex; align-items: stretch; gap: .5rem; }
+  .dare-avere .lato { flex: 1; padding: .7rem .8rem; border-radius: 8px;
+                      background: var(--slate-50, #f8fafc);
+                      border: 1px solid var(--slate-200, #e2e8f0); }
+  .dare-avere .lato .etichetta { font-size: .68rem; font-weight: 700;
+                                 text-transform: uppercase; letter-spacing: .05em;
+                                 color: var(--slate-500, #64748b); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-start mb-4">
+  <div>
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'contabilita:dashboard' %}">Contabilità</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'contabilita:passaggio_cassa_list' %}">Passaggi di cassa</a></li>
+        <li class="breadcrumb-item active">{{ passaggio.data|date:"d/m/Y" }}</li>
+      </ol>
+    </nav>
+    <h1><i class="bi bi-arrow-left-right me-2 text-brand"></i>{{ passaggio.causale }}</h1>
+    <span class="badge bg-secondary">{{ passaggio.get_forma_display }}</span>
+  </div>
+  <div class="d-flex gap-2 flex-wrap">
+    {% if print_url %}
+    <a href="{{ print_url }}" target="_blank" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-printer me-1"></i>Stampa
+    </a>
+    {% endif %}
+    {% if passaggio.movimento_id %}
+    <a href="{% url 'contabilita:movimento_detail' passaggio.movimento_id %}" class="btn btn-outline-primary btn-sm">
+      <i class="bi bi-journal-text me-1"></i>Movimento in prima nota
+    </a>
+    {% endif %}
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="card mb-3">
+      <div class="card-header card-header-primary"><i class="bi bi-info-circle me-2"></i>Passaggio</div>
+      <div class="card-body">
+        <div class="dare-avere mb-3">
+          <div class="lato">
+            <div class="etichetta">Chi consegna</div>
+            <a href="{% url 'contabilita:mastrino' passaggio.da_conto_id %}" class="fw-semibold">
+              {{ passaggio.da_conto.nome }}
+            </a>
+            <div class="text-muted small">{{ passaggio.da_conto.get_tipo_display }}</div>
+          </div>
+          <div class="d-flex align-items-center text-muted"><i class="bi bi-arrow-right"></i></div>
+          <div class="lato">
+            <div class="etichetta">Chi riceve</div>
+            <a href="{% url 'contabilita:mastrino' passaggio.a_conto_id %}" class="fw-semibold">
+              {{ passaggio.a_conto.nome }}
+            </a>
+            <div class="text-muted small">{{ passaggio.a_conto.get_tipo_display }}</div>
+          </div>
+        </div>
+
+        <dl class="row kv">
+          <dt class="col-sm-4">Data</dt>
+          <dd class="col-sm-8">{{ passaggio.data|date:"d/m/Y" }}</dd>
+
+          <dt class="col-sm-4">Forma</dt>
+          <dd class="col-sm-8">{{ passaggio.get_forma_display }}</dd>
+
+          <dt class="col-sm-4">Causale</dt>
+          <dd class="col-sm-8">{{ passaggio.causale }}</dd>
+
+          <dt class="col-sm-4">Importo</dt>
+          <dd class="col-sm-8 fw-bold fs-5 text-brand">€ {{ passaggio.importo|floatformat:2 }}</dd>
+
+          {% if passaggio.note %}
+          <dt class="col-sm-4">Note</dt>
+          <dd class="col-sm-8">{{ passaggio.note|linebreaksbr }}</dd>
+          {% endif %}
+        </dl>
+      </div>
+    </div>
+
+    <div class="card mb-3">
+      <div class="card-header"><i class="bi bi-clock-history me-2"></i>Tracciabilità</div>
+      <div class="card-body">
+        <dl class="row kv">
+          <dt class="col-sm-4">Registrato da</dt>
+          <dd class="col-sm-8">
+            {% if passaggio.creato_da %}
+              {% firstof passaggio.creato_da.get_full_name passaggio.creato_da.get_username %}
+            {% else %}
+              <span class="text-muted">—</span>
+            {% endif %}
+          </dd>
+
+          <dt class="col-sm-4">Registrato il</dt>
+          <dd class="col-sm-8">{{ passaggio.created_at|date:"d/m/Y H:i" }}</dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-5">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-paperclip me-2"></i>Allegati</span>
+        <span class="badge bg-secondary">{{ allegati|length }}</span>
+      </div>
+      <div class="card-body">
+        {% for a in allegati %}
+        <div class="d-flex justify-content-between align-items-center py-1">
+          <a href="{{ a.file.url }}" target="_blank" class="small text-truncate">
+            <i class="bi bi-file-earmark me-1"></i>{{ a.nome_originale|default:a.file.name }}
+          </a>
+          <span class="text-muted small">{{ a.created_at|date:"d/m/Y" }}</span>
+        </div>
+        {% empty %}
+        <p class="text-muted small mb-0">
+          Nessun allegato. Usa il pulsante <i class="bi bi-tools"></i> <strong>Strumenti</strong>
+          in basso a destra per caricarne uno.
+        </p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

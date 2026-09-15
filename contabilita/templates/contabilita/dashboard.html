@@ -92,9 +92,33 @@
   </div>
 </div>
 
+{# ── Denaro in mano al personale ─────────────────────────────────────────── #}
+<div class="card mb-4">
+  <div class="card-header card-header-primary d-flex align-items-center justify-content-between">
+    <span><i class="bi bi-people me-2"></i>Denaro in mano al personale</span>
+    <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalPassaggioCassa">
+      <i class="bi bi-arrow-left-right me-1"></i>Passaggio di cassa
+    </button>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-sm mb-0 align-middle">
+      <tbody>
+        {% for c in in_mano_al_personale %}
+        <tr>
+          <td><a href="{% url 'contabilita:mastrino' c.pk %}">{{ c.nome }}</a></td>
+          <td class="text-end">€ {{ c.saldo }}</td>
+        </tr>
+        {% empty %}
+        <tr><td class="text-center text-muted py-3"><i class="bi bi-inbox me-2"></i>Nessuno ha contanti o assegni in mano al momento</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
 {# ── Quick links ──────────────────────────────────────────────────────────── #}
 <div class="row g-3 mb-4">
-  <div class="col-md-4">
+  <div class="col-md-6 col-lg-3">
     <a href="{% url 'contabilita:prima_nota_list' %}" class="text-decoration-none">
       <div class="card h-100 text-center py-4">
         <div class="mb-2"><i class="bi bi-journal-richtext fs-1 text-brand"></i></div>
@@ -103,7 +127,7 @@
       </div>
     </a>
   </div>
-  <div class="col-md-4">
+  <div class="col-md-6 col-lg-3">
     <a href="{% url 'contabilita:nuova_registrazione' %}" class="text-decoration-none">
       <div class="card h-100 text-center py-4">
         <div class="mb-2"><i class="bi bi-plus-circle fs-1 text-brand"></i></div>
@@ -112,12 +136,21 @@
       </div>
     </a>
   </div>
-  <div class="col-md-4">
+  <div class="col-md-6 col-lg-3">
     <a href="{% url 'contabilita:conti_list' %}" class="text-decoration-none">
       <div class="card h-100 text-center py-4">
         <div class="mb-2"><i class="bi bi-diagram-3 fs-1 text-brand"></i></div>
         <div class="fw-semibold">Conti contabili</div>
         <div class="text-muted small">Clienti, fornitori, casse e banche</div>
+      </div>
+    </a>
+  </div>
+  <div class="col-md-6 col-lg-3">
+    <a href="{% url 'contabilita:passaggio_cassa_list' %}" class="text-decoration-none">
+      <div class="card h-100 text-center py-4">
+        <div class="mb-2"><i class="bi bi-arrow-left-right fs-1 text-brand"></i></div>
+        <div class="fw-semibold">Passaggi di cassa</div>
+        <div class="text-muted small">Chi ha consegnato denaro a chi</div>
       </div>
     </a>
   </div>
@@ -208,4 +241,6 @@
     </table>
   </div>
 </div>
+
+{% include "contabilita/_modal_passaggio_cassa.html" %}
 {% endblock %}

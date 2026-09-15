@@ -22,6 +22,7 @@ class ContoContabile(models.Model):
         FORNITORE    = 'fornitore',    'Fornitore'
         CASSA        = 'cassa',        'Cassa'
         BANCA        = 'banca',        'Banca'
+        CUSTODIA     = 'custodia',     'Custodia (persona)'
         IVA_CREDITO  = 'iva_credito',  'IVA a credito'
         IVA_DEBITO   = 'iva_debito',   'IVA a debito'
         GENERICO     = 'generico',     'Generico'
@@ -479,7 +480,12 @@ class MovimentoPrimaNota(AllegatiMixin, models.Model):
 _T = MovimentoPrimaNota.Tipo
 _C = ContoContabile.Tipo
 
-MONETARI = frozenset({_C.CASSA, _C.BANCA})
+#: Un conto CUSTODIA (persona che ha in mano contanti/assegni) vale come
+#: liquidità aziendale esattamente quanto cassa e banca: è solo "in transito"
+#: presso qualcuno invece che in un luogo fisso. Farlo rientrare qui abilita
+#: GIROCONTO anche persona↔persona e persona↔cassaforte, senza toccare la
+#: matrice né la validazione: sono già generiche su MONETARI.
+MONETARI = frozenset({_C.CASSA, _C.BANCA, _C.CUSTODIA})
 
 #: Per ogni tipo di movimento, i tipi di conto ammessi in Dare e in Avere.
 #: È la stessa tabella che prima viveva come testo nel pannello dei
@@ -657,3 +663,84 @@ def valida_dare_avere(tipo, conto_dare, conto_avere, is_storno=False):
         )
 
     return None
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PASSAGGIO CASSA
+# ─────────────────────────────────────────────────────────────────────────────
+
+class PassaggioCassa(AllegatiMixin, models.Model):
+    """
+    Un passaggio di contanti/assegni da un conto di custodia a un altro:
+    tecnico → cassiere, cassiere → cassaforte, cassaforte → banca, o fra due
+    persone qualsiasi. È un oggetto di per sé, non solo una riga di prima
+    nota — l'amministrazione deve poterlo consultare come evento (chi, a chi,
+    quanto, quando, con che pezza d'appoggio), non solo come dare/avere.
+
+    Alla creazione genera in automatico il `MovimentoPrimaNota` di tipo
+    GIROCONTO corrispondente (vedi `contabilita/signals.py`), stesso
+    meccanismo già usato per `Fattura` e `FatturaPassiva`: qui vive il fatto
+    di dominio, il movimento è la sua ombra contabile.
+    """
+
+    class Forma(models.TextChoices):
+        CONTANTI = 'contanti', 'Contanti'
+        ASSEGNO  = 'assegno',  'Assegno'
+
+    data       = models.DateField(default=timezone.localdate, verbose_name='Data')
+    da_conto   = models.ForeignKey(
+        ContoContabile, on_delete=models.PROTECT,
+        related_name='passaggi_consegnati', verbose_name='Chi consegna',
+    )
+    a_conto    = models.ForeignKey(
+        ContoContabile, on_delete=models.PROTECT,
+        related_name='passaggi_ricevuti', verbose_name='Chi riceve',
+    )
+    importo    = models.DecimalField(
+        max_digits=12, decimal_places=2, verbose_name='Importo (€)',
+        validators=[MinValueValidator(Decimal('0.01'))],
+    )
+    forma      = models.CharField(
+        max_length=10, choices=Forma.choices, default=Forma.CONTANTI,
+        verbose_name='Forma',
+    )
+    causale    = models.CharField(max_length=300, verbose_name='Causale')
+    note       = models.TextField(blank=True, verbose_name='Note')
+
+    # Valorizzato dal signal appena il movimento viene creato: SET_NULL e non
+    # CASCADE perché uno storno in prima nota non deve far sparire il
+    # passaggio che lo ha originato, resta l'evento consultabile.
+    movimento  = models.OneToOneField(
+        MovimentoPrimaNota, null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name='passaggio_cassa', verbose_name='Movimento generato',
+    )
+
+    creato_da  = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True,
+        on_delete=models.SET_NULL, related_name='passaggi_cassa_creati',
+        verbose_name='Registrato da',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name        = 'Passaggio di cassa'
+        verbose_name_plural  = 'Passaggi di cassa'
+        ordering             = ['-data', '-created_at']
+
+    def __str__(self):
+        return f'{self.da_conto.nome} → {self.a_conto.nome} — € {self.importo}'
+
+    def get_absolute_url(self):
+        return reverse('contabilita:passaggio_cassa_detail', kwargs={'pk': self.pk})
+
+    def clean(self):
+        if self.da_conto_id and self.a_conto_id and self.da_conto_id == self.a_conto_id:
+            raise ValidationError('Chi consegna e chi riceve non possono essere lo stesso conto.')
+        for campo, conto in (('da_conto', self.da_conto if self.da_conto_id else None),
+                             ('a_conto', self.a_conto if self.a_conto_id else None)):
+            if conto and conto.tipo not in MONETARI:
+                raise ValidationError({
+                    campo: f'"{conto.nome}" è un conto {conto.get_tipo_display().lower()}: '
+                           'un passaggio di cassa si fa solo fra cassa, banca o persona.',
+                })

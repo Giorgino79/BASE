@@ -82,6 +82,24 @@
   </div>
 
   <div class="col-md-6 col-lg-4">
+    <a href="#" class="op-card op-guidata" data-bs-toggle="modal" data-bs-target="#modalPassaggioCassa">
+      <div class="card">
+        <div class="card-body d-flex gap-3">
+          <div class="op-icona"><i class="bi bi-arrow-left-right"></i></div>
+          <div>
+            <div class="fw-semibold mb-1">Passaggio di cassa</div>
+            <div class="text-muted small mb-2">
+              Contanti o assegni che cambiano mano: tecnico → cassiere,
+              cassiere → cassaforte, cassaforte → banca, o fra due persone.
+            </div>
+            <span class="badge bg-primary-subtle text-primary-emphasis">Modale veloce</span>
+          </div>
+        </div>
+      </div>
+    </a>
+  </div>
+
+  <div class="col-md-6 col-lg-4">
     <a href="{% url 'contabilita:movimento_create' %}" class="op-card op-libera">
       <div class="card">
         <div class="card-body d-flex gap-3">
@@ -113,4 +131,6 @@
     </div>
   </div>
 </div>
+
+{% include "contabilita/_modal_passaggio_cassa.html" %}
 {% endblock %}

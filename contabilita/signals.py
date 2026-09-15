@@ -1,5 +1,6 @@
 from decimal import Decimal
 
+from django.conf import settings
 from django.db.models import Q
 from django.db.models.signals import post_save
 from django.dispatch import receiver
@@ -40,6 +41,20 @@ def on_fornitore_creato(sender, instance, created, **kwargs):
     if created:
         from contabilita.models import ContoContabile
         _get_or_create_conto(ContoContabile.Tipo.FORNITORE, str(instance))
+
+
+@receiver(post_save, sender=settings.AUTH_USER_MODEL)
+def on_user_creato(sender, instance, created, **kwargs):
+    """
+    Ogni persona che può avere contanti/assegni in mano — tecnico, cassiere,
+    impiegato, non solo chi guida un mezzo — ha il proprio conto di custodia,
+    esattamente come un cliente o un fornitore. Nasce vuoto: il saldo si
+    muove solo con un giroconto esplicito (vedi custodia_create).
+    """
+    if created:
+        from contabilita.models import ContoContabile
+        nome = instance.get_full_name() or instance.username
+        _get_or_create_conto(ContoContabile.Tipo.CUSTODIA, nome)
 
 
 # ── Movimenti da fatture ──────────────────────────────────────────────────────
@@ -271,3 +286,37 @@ def on_nota_credito_creata(sender, instance, created, **kwargs):
 def on_fattura_passiva_creata(sender, instance, created, **kwargs):
     if created:
         registra_fattura_passiva(instance)
+
+
+# ── Movimento da passaggio di cassa ──────────────────────────────────────────
+
+def registra_passaggio_cassa(instance):
+    """
+    Un solo movimento (mai scorporo IVA: qui non c'è un documento fiscale,
+    solo denaro che cambia mano). Chi consegna va in Avere — il suo saldo
+    scende — chi riceve in Dare: stesso verso di un giroconto cassa→banca.
+    """
+    from contabilita.models import MovimentoPrimaNota
+
+    if instance.movimento_id:
+        return False
+
+    movimento = MovimentoPrimaNota.objects.create(
+        data=instance.data,
+        causale=instance.causale,
+        importo=instance.importo,
+        tipo=MovimentoPrimaNota.Tipo.GIROCONTO,
+        conto_dare=instance.a_conto,
+        conto_avere=instance.da_conto,
+        is_automatico=True,
+        creato_da=instance.creato_da,
+    )
+    instance.movimento = movimento
+    instance.save(update_fields=['movimento'])
+    return True
+
+
+@receiver(post_save, sender='contabilita.PassaggioCassa')
+def on_passaggio_cassa_creato(sender, instance, created, **kwargs):
+    if created:
+        registra_passaggio_cassa(instance)

@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block title %}Passaggi di cassa{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-start mb-4">
+  <div>
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'contabilita:dashboard' %}">Contabilità</a></li>
+        <li class="breadcrumb-item active">Passaggi di cassa</li>
+      </ol>
+    </nav>
+    <h1><i class="bi bi-arrow-left-right me-2 text-brand"></i>Passaggi di cassa</h1>
+    <p class="text-muted mb-0">
+      Chi ha consegnato contanti o assegni a chi: tecnico → cassiere,
+      cassiere → cassaforte, cassaforte → banca.
+    </p>
+  </div>
+  <div class="d-flex gap-2 flex-wrap">
+    <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalPassaggioCassa">
+      <i class="bi bi-plus-lg me-1"></i>Nuovo passaggio
+    </button>
+  </div>
+</div>
+
+<div class="card mb-3">
+  <div class="card-body">
+    <form method="get" class="row g-2 align-items-end">
+      <div class="col-sm-6">
+        <label class="form-label small mb-1">Conto (chi consegna o chi riceve)</label>
+        <select name="conto" class="form-select form-select-sm">
+          <option value="">Tutti</option>
+          {% for c in conti %}
+          <option value="{{ c.pk }}" {% if conto_f == c.pk|stringformat:"s" %}selected{% endif %}>{{ c.nome }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-sm-3 d-flex gap-2">
+        <button type="submit" class="btn btn-primary btn-sm flex-fill"><i class="bi bi-funnel me-1"></i>Filtra</button>
+        {% if conto_f %}
+        <a href="{% url 'contabilita:passaggio_cassa_list' %}" class="btn btn-outline-secondary btn-sm" title="Azzera i filtri"><i class="bi bi-x-lg"></i></a>
+        {% endif %}
+      </div>
+    </form>
+  </div>
+</div>
+
+{% if passaggi %}
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover table-sm mb-0 align-middle">
+      <thead class="table-light">
+        <tr>
+          <th>Data</th>
+          <th>Da</th>
+          <th>A</th>
+          <th>Forma</th>
+          <th>Causale</th>
+          <th class="text-end">Importo</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in passaggi %}
+        <tr>
+          <td class="text-nowrap small">{{ p.data|date:"d/m/Y" }}</td>
+          <td class="small">{{ p.da_conto.nome }}</td>
+          <td class="small">{{ p.a_conto.nome }}</td>
+          <td class="small">{{ p.get_forma_display }}</td>
+          <td>{{ p.causale }}</td>
+          <td class="text-end">€ {{ p.importo|floatformat:2 }}</td>
+          <td class="text-end">
+            <a href="{% url 'contabilita:passaggio_cassa_detail' p.pk %}" class="btn btn-outline-secondary btn-sm">
+              <i class="bi bi-eye"></i>
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% include 'commons_templates/components/paginazione.html' %}
+{% else %}
+<div class="alert alert-info">
+  <i class="bi bi-info-circle me-2"></i>Nessun passaggio di cassa registrato.
+</div>
+{% endif %}
+
+{% include "contabilita/_modal_passaggio_cassa.html" %}
+{% endblock %}
