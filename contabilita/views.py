@@ -439,7 +439,23 @@ def passaggio_cassa_create(request):
         if allegato:
             passaggio.aggiungi_allegato(allegato, user=request.user)
 
-    if passaggio.richiede_conferma:
+        # Chi crea il passaggio dichiarando "ho ricevuto questi soldi" non
+        # deve poi confermare a se stesso: la conferma serve a far validare
+        # da chi riceve un passaggio dichiarato da qualcun altro (chi
+        # consegna, o un terzo come un cassiere), non a raddoppiare un
+        # click quando il ricevente è già chi sta compilando il modale.
+        auto_confermato = (
+            passaggio.richiede_conferma
+            and passaggio.a_conto.utente_id == request.user.pk
+        )
+        if auto_confermato:
+            passaggio.confermato_il = timezone.now()
+            passaggio.confermato_da = request.user
+            passaggio.save(update_fields=['confermato_il', 'confermato_da'])
+            registra_passaggio_cassa(passaggio)
+            notifica_conferma_ricezione(passaggio)
+
+    if passaggio.richiede_conferma and not passaggio.confermato_il:
         messaggio = (f'Passaggio registrato: in attesa che {passaggio.a_conto.nome} '
                      f'confermi la ricezione di € {passaggio.importo_totale}.')
     else:
