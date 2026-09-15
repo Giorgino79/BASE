@@ -1623,10 +1623,14 @@ def chiudi_servizio_distinta(request, ods_pk):
                     return redirect(back)
 
             cd = form.cleaned_data
+            registra_incasso = request.POST.get("registra_incasso") == "1"
             ods.stato = "completato"
             ods.ora_fine = timezone.localtime().time()
             fields = ["stato", "ora_fine"]
-            if ods.incasso_al_servizio:
+            if registra_incasso != ods.incasso_al_servizio:
+                ods.incasso_al_servizio = registra_incasso
+                fields.append("incasso_al_servizio")
+            if registra_incasso:
                 modalita = cd.get("modalita_pagamento") or "contanti"
                 ods.modalita_pagamento = modalita
                 fields.append("modalita_pagamento")

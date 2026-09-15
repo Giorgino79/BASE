@@ -233,20 +233,32 @@
       <form method="post" action="{% url 'servizi:chiudi_servizio_distinta' ods.pk %}">
         {% csrf_token %}
         <input type="hidden" name="azione" value="completato" class="chiudi-azione">
+        <input type="hidden" name="registra_incasso"
+               value="{% if ods.pagamento_immediato %}1{% else %}0{% endif %}" class="registra-incasso-input">
         <div class="modal-body">
           {# Sezione completamento normale #}
           <div class="chiudi-sezione-completato">
-            <label class="form-label">Modalità pagamento</label>
-            <select name="modalita_pagamento" class="form-select form-select-sm mb-2">
-              {% for val, label in chiudi_choices %}
-              <option value="{{ val }}" {% if val == "contanti" %}selected{% endif %}>{{ label }}</option>
-              {% endfor %}
-            </select>
-            <label class="form-label">Importo incassato</label>
-            <div class="input-group input-group-sm mb-3">
-              <span class="input-group-text">€</span>
-              <input type="number" name="importo_incassato" step="0.01"
-                     value="{{ ods.prezzo_sum|default:'' }}" class="form-control">
+            {% if not ods.pagamento_immediato %}
+            <div class="form-check mb-3">
+              <input type="checkbox" class="form-check-input chk-pagamento-non-previsto" id="chkPagNonPrevisto{{ ods.pk }}">
+              <label class="form-check-label small" for="chkPagNonPrevisto{{ ods.pk }}">
+                Pagamento non previsto <span class="text-muted">(cliente a fattura differita — spunta se in realtà incassi ora)</span>
+              </label>
+            </div>
+            {% endif %}
+            <div class="blocco-incasso {% if not ods.pagamento_immediato %}d-none{% endif %}">
+              <label class="form-label">Modalità pagamento</label>
+              <select name="modalita_pagamento" class="form-select form-select-sm mb-2">
+                {% for val, label in chiudi_choices %}
+                <option value="{{ val }}" {% if val == "contanti" %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+              <label class="form-label">Importo incassato</label>
+              <div class="input-group input-group-sm mb-3">
+                <span class="input-group-text">€</span>
+                <input type="number" name="importo_incassato" step="0.01"
+                       value="{{ ods.prezzo_sum|default:'' }}" class="form-control">
+              </div>
             </div>
             <p class="small text-muted fst-italic mb-2">
               <i class="bi bi-info-circle me-1"></i>Salvo servizi che non prevedono consumo di prodotti, per chiudere
@@ -343,6 +355,16 @@
   var azioneInput = modal.querySelector('.chiudi-azione');
   var btnSubmit   = modal.querySelector('.btn-conferma-submit');
   var inAnnullamento = false;
+
+  var chkPagNonPrevisto = modal.querySelector('.chk-pagamento-non-previsto');
+  var blocoIncasso      = modal.querySelector('.blocco-incasso');
+  var registraIncasso   = modal.querySelector('.registra-incasso-input');
+  if (chkPagNonPrevisto && blocoIncasso) {
+    chkPagNonPrevisto.addEventListener('change', function () {
+      blocoIncasso.classList.toggle('d-none', !chkPagNonPrevisto.checked);
+      if (registraIncasso) registraIncasso.value = chkPagNonPrevisto.checked ? '1' : '0';
+    });
+  }
 
   btnAnnulla.addEventListener('click', function () {
     if (!inAnnullamento) {

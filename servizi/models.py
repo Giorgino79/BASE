@@ -329,6 +329,18 @@ class ODS(AllegatiMixin, models.Model):
         total = sum((r.prezzo for r in self.righe.all() if r.prezzo), Decimal("0.00"))
         return total if total else None
 
+    @property
+    def pagamento_immediato(self):
+        """True se l'incasso va riscosso al momento del servizio.
+
+        Un'azienda con fattura differita (30/60/90/120 gg) viene di norma
+        pagata a fattura, non in loco — un privato invece paga sempre al
+        momento del servizio, non avendo termini di fatturazione.
+        """
+        if self.filiale_id:
+            return self.filiale.cliente.tipo_pagamento == "immediato"
+        return True
+
 
 class ODSRiga(models.Model):
 
