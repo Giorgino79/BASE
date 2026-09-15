@@ -1,6 +1,11 @@
 {% extends "base.html" %}
 {% load static %}
-{% block extra_css %}<link rel="stylesheet" href="{% static 'css/detail.css' %}">{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/detail.css' %}">
+<style>
+  tr.riga-da-eliminare td { text-decoration: line-through; opacity: .5; }
+</style>
+{% endblock %}
 {% block content %}
 <div class="page-header mb-4">
   <nav aria-label="breadcrumb">
@@ -27,18 +32,18 @@
             <tr><th>Servizio</th><th class="text-end">Prezzo contratto</th><th class="text-end">Prezzo questa sede</th></tr>
           </thead>
           <tbody>
-            {% for r in righe_base %}
-            {% with override=righe_sede|dictsort:"servizio_id" %}
+            {% for rc in righe_confronto %}
             <tr>
-              <td>{{ r.servizio }}</td>
-              <td class="text-end text-muted">€ {{ r.prezzo }}</td>
+              <td>{{ rc.servizio }}</td>
+              <td class="text-end text-muted">€ {{ rc.prezzo_base }}</td>
               <td class="text-end">
-                {% for rs in righe_sede %}{% if rs.servizio_id == r.servizio_id %}<span class="fw-bold text-brand">€ {{ rs.prezzo }}</span>{% endif %}{% endfor %}
-                {% for rs in righe_sede %}{% if rs.servizio_id == r.servizio_id %}{% empty %}<span class="text-muted small">— usa base</span>{% endfor %}
-                {# Workaround per empty su for annidato: #}
+                {% if rc.prezzo_sede is not None %}
+                  <span class="fw-bold text-brand">€ {{ rc.prezzo_sede }}</span>
+                {% else %}
+                  <span class="text-muted small">— usa base</span>
+                {% endif %}
               </td>
             </tr>
-            {% endwith %}
             {% empty %}
             <tr><td colspan="3" class="text-muted text-center py-2">Nessun servizio nel contratto.</td></tr>
             {% endfor %}
@@ -96,9 +101,10 @@
                 </td>
                 <td class="text-center">
                   {% if f.DELETE %}
-                  <div class="form-check d-flex justify-content-center" title="Elimina">
-                    {{ f.DELETE }}
-                  </div>
+                  <span class="visually-hidden">{{ f.DELETE }}</span>
+                  <button type="button" class="btn btn-sm btn-outline-danger btn-elimina-riga" title="Elimina riga">
+                    <i class="bi bi-trash"></i>
+                  </button>
                   {% endif %}
                 </td>
               </tr>
@@ -170,7 +176,12 @@
       </div>
     </td>
     <td class="text-center"><span class="badge bg-secondary">Nuovo</span></td>
-    <td></td>
+    <td class="text-center">
+      <input type="checkbox" name="sede-__prefix__-DELETE" id="id_sede-__prefix__-DELETE" class="visually-hidden">
+      <button type="button" class="btn btn-sm btn-outline-danger btn-elimina-riga" title="Elimina riga">
+        <i class="bi bi-trash"></i>
+      </button>
+    </td>
   </tr>
 </template>
 
@@ -188,6 +199,18 @@
     });
     body.appendChild(clone);
     totalFormsInput.value = idx + 1;
+  });
+
+  body.addEventListener('click', function (e) {
+    const btn = e.target.closest('.btn-elimina-riga');
+    if (!btn) return;
+    const row = btn.closest('tr');
+    const checkbox = row.querySelector('input[type="checkbox"][name$="-DELETE"]');
+    if (!checkbox) return;
+    checkbox.checked = !checkbox.checked;
+    row.classList.toggle('riga-da-eliminare', checkbox.checked);
+    btn.classList.toggle('btn-danger', checkbox.checked);
+    btn.classList.toggle('btn-outline-danger', !checkbox.checked);
   });
 })();
 </script>

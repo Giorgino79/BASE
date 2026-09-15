@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% load static %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/detail.css' %}">{% endblock %}
+{% block content %}
+<div class="page-header mb-4">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'servizi:dashboard' %}">Servizi</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'servizi:contratto_list' %}">Contratti</a></li>
+      <li class="breadcrumb-item"><a href="{{ contratto.get_absolute_url }}">{{ contratto }}</a></li>
+      <li class="breadcrumb-item active">{{ cf.filiale.nome }}</li>
+    </ol>
+  </nav>
+  <h1><i class="bi bi-geo-alt me-2 text-brand"></i>Prezzi sede — {{ cf.filiale.nome }}</h1>
+  <p class="text-muted mb-0">{{ cf.filiale.citta }} · Contratto {{ contratto.get_periodicita_display }}</p>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-8">
+
+    <div class="card mb-3">
+      <div class="card-header card-header-primary"><i class="bi bi-list-ul me-2"></i>Prezzi servizi del contratto</div>
+      <div class="table-responsive">
+        <table class="table table-sm mb-0 align-middle">
+          <thead class="table-light">
+            <tr><th>Servizio</th><th class="text-end">Prezzo contratto</th><th class="text-end">Prezzo questa sede</th></tr>
+          </thead>
+          <tbody>
+            {% for rc in righe_confronto %}
+            <tr>
+              <td>{{ rc.servizio }}</td>
+              <td class="text-end text-muted">€ {{ rc.prezzo_base }}</td>
+              <td class="text-end">
+                {% if rc.prezzo_sede is not None %}
+                  <span class="fw-bold text-brand">€ {{ rc.prezzo_sede }}</span>
+                {% else %}
+                  <span class="text-muted small">— usa base</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="3" class="text-muted text-center py-2">Nessun servizio nel contratto.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    {% if righe_extra %}
+    <div class="card mb-3">
+      <div class="card-header card-header-primary"><i class="bi bi-plus-circle me-2"></i>Servizi extra solo per questa sede</div>
+      <div class="table-responsive">
+        <table class="table table-sm mb-0 align-middle">
+          <thead class="table-light">
+            <tr><th>Servizio</th><th class="text-end">Prezzo</th></tr>
+          </thead>
+          <tbody>
+            {% for r in righe_extra %}
+            <tr>
+              <td>{{ r.servizio }}</td>
+              <td class="text-end">€ {{ r.prezzo }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card mb-3">
+      <div class="card-header"><i class="bi bi-info-circle me-2"></i>Sede</div>
+      <div class="card-body">
+        <div class="detail-field">
+          <div class="detail-field-label">Nome sede</div>
+          <div class="detail-field-value fw-semibold">{{ cf.filiale.nome }}</div>
+        </div>
+        <div class="detail-field">
+          <div class="detail-field-label">Città</div>
+          <div class="detail-field-value">{{ cf.filiale.citta }}</div>
+        </div>
+        <div class="detail-field">
+          <div class="detail-field-label">Cliente</div>
+          <div class="detail-field-value">{{ contratto.cliente }}</div>
+        </div>
+        <div class="detail-field mb-0">
+          <div class="detail-field-label">Note sede</div>
+          <div class="detail-field-value">{{ cf.note|default:"—" }}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card mb-3">
+      <div class="card-header"><i class="bi bi-gear me-2"></i>Azioni</div>
+      <div class="list-group list-group-flush">
+        <a href="{% url 'servizi:contratto_filiale_gestisci' cf.pk %}" class="list-group-item list-group-item-action"><i class="bi bi-pencil me-2"></i>Modifica prezzi</a>
+      </div>
+    </div>
+
+    <a href="{{ contratto.get_absolute_url }}" class="btn btn-outline-secondary btn-sm w-100">
+      <i class="bi bi-arrow-left me-1"></i>Torna al contratto
+    </a>
+  </div>
+</div>
+{% endblock %}

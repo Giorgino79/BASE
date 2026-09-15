@@ -20,7 +20,8 @@ urlpatterns = [
     path("contratti/nuovo/",                        views.ContrattoCreateView.as_view(), name="contratto_create"),
     path("contratti/<int:pk>/",                     views.ContrattoDetailView.as_view(), name="contratto_detail"),
     path("contratti/<int:pk>/modifica/",            views.ContrattoUpdateView.as_view(), name="contratto_update"),
-    path("contratti/<int:pk>/elimina/",             views.ContrattoDeleteView.as_view(), name="contratto_delete"),
+    path("contratti/<int:pk>/disattiva/",           views.ContrattoDisattivaView.as_view(), name="contratto_disattiva"),
+    path("contratti/filiale/<int:cf_pk>/",          views.contratto_filiale_detail,      name="contratto_filiale_detail"),
     path("contratti/filiale/<int:cf_pk>/gestisci/", views.contratto_filiale_gestisci,    name="contratto_filiale_gestisci"),
     path("contratti/<int:pk>/pdf/",                 views.contratto_pdf,                 name="contratto_pdf"),
 

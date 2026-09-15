@@ -330,16 +330,22 @@ class ContrattoUpdateView(LoginRequiredMixin, UpdateView):
         return self.render_to_response(ctx)
 
 
-class ContrattoDeleteView(LoginRequiredMixin, DeleteView):
+class ContrattoDisattivaView(LoginRequiredMixin, DetailView):
     model = Contratto
-    template_name = "servizi/contratti/confirm_delete.html"
-    success_url = reverse_lazy("servizi:contratto_list")
+    template_name = "servizi/contratti/confirm_disattiva.html"
 
     def dispatch(self, request, *args, **kwargs):
         if not request.user.is_staff:
-            messages.error(request, "Solo gli amministratori possono eliminare i contratti.")
+            messages.error(request, "Solo gli amministratori possono disattivare i contratti.")
             return redirect("servizi:contratto_list")
         return super().dispatch(request, *args, **kwargs)
+
+    def post(self, request, *args, **kwargs):
+        contratto = self.get_object()
+        contratto.stato = Contratto.Stato.ANNULLATO
+        contratto.save(update_fields=["stato"])
+        messages.success(request, f"Contratto {contratto} disattivato.")
+        return redirect("servizi:contratto_list")
 
     def form_valid(self, form):
         messages.success(self.request, "Contratto eliminato.")
@@ -408,6 +414,39 @@ def api_prezzo_contratto(request):
     return JsonResponse({"prezzo": None, "contratto_filiale_id": None, "fonte": None})
 
 
+def _righe_confronto_sede(cf, righe_base, servizi_base_ids):
+    """Righe del contratto con relativo prezzo override per la sede (None = usa il base)."""
+    override_by_servizio = {
+        r.servizio_id: r.prezzo for r in cf.righe_sede.select_related("servizio")
+    }
+    righe_confronto = [
+        {"servizio": r.servizio, "prezzo_base": r.prezzo, "prezzo_sede": override_by_servizio.get(r.servizio_id)}
+        for r in righe_base
+    ]
+    righe_extra = [
+        r for r in cf.righe_sede.select_related("servizio") if r.servizio_id not in servizi_base_ids
+    ]
+    return righe_confronto, righe_extra
+
+
+@login_required
+def contratto_filiale_detail(request, cf_pk):
+    """Dettaglio prezzi (sola lettura) di una singola sede del contratto."""
+    cf = get_object_or_404(ContrattoFiliale.objects.select_related("contratto__cliente", "filiale"), pk=cf_pk)
+    contratto = cf.contratto
+    righe_base = contratto.righe.select_related("servizio")
+    servizi_base_ids = set(righe_base.values_list("servizio_id", flat=True))
+    righe_confronto, righe_extra = _righe_confronto_sede(cf, righe_base, servizi_base_ids)
+
+    ctx = {
+        "cf": cf,
+        "contratto": contratto,
+        "righe_confronto": righe_confronto,
+        "righe_extra": righe_extra,
+    }
+    return render(request, "servizi/contratti/filiale_detail.html", ctx)
+
+
 @login_required
 def contratto_filiale_gestisci(request, cf_pk):
     """Gestisce prezzi override e servizi extra per una singola sede del contratto."""
@@ -415,6 +454,7 @@ def contratto_filiale_gestisci(request, cf_pk):
     contratto = cf.contratto
     righe_base = contratto.righe.select_related("servizio")
     servizi_base_ids = set(righe_base.values_list("servizio_id", flat=True))
+    righe_confronto, _ = _righe_confronto_sede(cf, righe_base, servizi_base_ids)
 
     if request.method == "POST":
         fs = ContrattoFilialeRigaFormSet(request.POST, instance=cf, prefix="sede")
@@ -430,6 +470,7 @@ def contratto_filiale_gestisci(request, cf_pk):
         "contratto": contratto,
         "fs": fs,
         "righe_base": righe_base,
+        "righe_confronto": righe_confronto,
         "servizi_base_ids": servizi_base_ids,
         "righe_sede": cf.righe_sede.select_related("servizio"),
     }
