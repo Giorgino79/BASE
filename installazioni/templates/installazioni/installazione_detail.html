@@ -26,11 +26,7 @@
     <a href="{% url 'installazioni:installazione_pdf' inst.pk %}" class="btn btn-outline-secondary btn-sm" target="_blank">
       <i class="bi bi-file-earmark-pdf me-1"></i>Report PDF
     </a>
-    {% bottone_invia phone=invia_phone email=invia_email
-       oggetto="Installazione completata — "|add:inst.numero
-       messaggio="Gentile cliente, in allegato trova il report dell'installazione effettuata presso la Sua sede."
-       pdf_url=pdf_url destinatario_nome=invia_nome
-       label="Invia al cliente" btn_class="btn-success" btn_size="btn-sm" %}
+    {% bottone_invia phone=invia_phone email=invia_email oggetto="Installazione completata — "|add:inst.numero messaggio="Gentile cliente, in allegato trova il report dell'installazione effettuata presso la Sua sede." pdf_url=pdf_url destinatario_nome=invia_nome label="Invia al cliente" btn_class="btn-success" btn_size="btn-sm" %}
     {% if request.user.is_staff %}
       {% if inst.is_completata %}
       <form method="post" action="{% url 'installazioni:installazione_riapri' inst.pk %}" class="d-inline"
