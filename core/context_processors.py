@@ -16,8 +16,13 @@ def passaggio_cassa_modal(request):
         return {}
 
     from contabilita.forms import PassaggioCassaForm
+    from contabilita.signals import conto_custodia_di
 
-    return {'form_passaggio': PassaggioCassaForm()}
+    conto = conto_custodia_di(request.user)
+    return {
+        'form_passaggio': PassaggioCassaForm(user=request.user),
+        'passaggio_cassa_saldo': conto.saldo if conto else None,
+    }
 
 
 def google_maps(request):

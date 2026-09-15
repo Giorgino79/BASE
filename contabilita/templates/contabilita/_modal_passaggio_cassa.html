@@ -1,6 +1,8 @@
 {% comment %}
-Modale veloce per un passaggio di cassa (persona→persona, persona→cassaforte,
-cassaforte→banca). Richiede nel contesto: form_passaggio (PassaggioCassaForm).
+Modale veloce per un passaggio di cassa: chi consegna è sempre chi lo apre
+(niente select "chi consegna" — la view lo valorizza da request.user).
+Richiede nel contesto: form_passaggio (PassaggioCassaForm),
+passaggio_cassa_saldo (saldo del conto di custodia dell'utente).
 Incluso globalmente da commons_templates/components/fab_tools.html: apertura
 da qualunque pagina con
   <button data-bs-toggle="modal" data-bs-target="#modalPassaggioCassa">…</button>
@@ -19,14 +21,14 @@ da qualunque pagina con
         <div class="modal-body">
           <div id="passaggio-alert" class="alert alert-danger d-none mb-3" role="alert"></div>
 
+          {% if passaggio_cassa_saldo is not None %}
+          <p class="text-muted small mb-3">
+            <i class="bi bi-wallet2 me-1"></i>Il tuo saldo attuale: <strong>€ {{ passaggio_cassa_saldo|floatformat:2 }}</strong>
+          </p>
+          {% endif %}
+
           <div class="row g-3">
-            <div class="col-sm-6">
-              <label class="form-label">{{ form_passaggio.da_conto.label }} <span class="text-danger">*</span></label>
-              {{ form_passaggio.da_conto }}
-              <div class="form-text" id="passaggio-saldo-da"></div>
-              <div class="invalid-feedback d-block small" data-errore-per="da_conto"></div>
-            </div>
-            <div class="col-sm-6">
+            <div class="col-12">
               <label class="form-label">{{ form_passaggio.a_conto.label }} <span class="text-danger">*</span></label>
               {{ form_passaggio.a_conto }}
               <div class="invalid-feedback d-block small" data-errore-per="a_conto"></div>
@@ -87,23 +89,6 @@ da qualunque pagina con
   const form      = document.getElementById('formPassaggioCassa');
   const alertBox  = document.getElementById('passaggio-alert');
   const submitBtn = document.getElementById('passaggio-submit-btn');
-  const SALDI     = {{ form_passaggio.saldi_json|safe }};
-
-  // ── Saldo di chi consegna, mostrato appena scelto ──────────────────────
-  const selDaConto  = form.querySelector('[name="da_conto"]');
-  const saldoDaConto = document.getElementById('passaggio-saldo-da');
-
-  function aggiornaSaldo() {
-    if (!selDaConto.value || !(selDaConto.value in SALDI)) {
-      saldoDaConto.textContent = '';
-      return;
-    }
-    saldoDaConto.textContent = 'Saldo attuale: € ' + SALDI[selDaConto.value];
-  }
-  if (selDaConto) {
-    selDaConto.addEventListener('change', aggiornaSaldo);
-    aggiornaSaldo();
-  }
 
   // ── Righe importo mostrate solo per le forme selezionate ───────────────
   const checkForme = form.querySelectorAll('input[name="forme"]');
@@ -132,7 +117,6 @@ da qualunque pagina con
   function resetForm() {
     form.reset();
     pulisciErroriCampo();
-    aggiornaSaldo();
     aggiornaRigheForma();
     submitBtn.disabled = false;
   }

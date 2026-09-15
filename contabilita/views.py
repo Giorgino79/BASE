@@ -30,7 +30,10 @@ from .models import (
     ContoContabile, ImpostazioniContabilita, LiquidazioneIva, MovimentoPrimaNota,
     PassaggioCassa, RegimeIva, data_minima_plausibile,
 )
-from .signals import _get_or_create_conto, notifica_conferma_ricezione, registra_passaggio_cassa
+from .signals import (
+    _get_or_create_conto, conto_custodia_di, notifica_conferma_ricezione,
+    registra_passaggio_cassa,
+)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -417,13 +420,16 @@ PASSAGGI_PER_PAGINA = 50
 @require_POST
 def passaggio_cassa_create(request):
     """
-    Registra un passaggio di cassa dal modale veloce (tecnico→cassiere,
-    cassiere→cassaforte, cassaforte→banca, persona→persona). Risponde in
-    JSON: il modale può stare su qualsiasi pagina senza bisogno di una vista
-    a sé, e in caso di errore resta aperto invece di far perdere i campi già
-    compilati con una navigazione a vuoto.
+    Registra un passaggio di cassa dal modale veloce. Chi consegna è sempre
+    chi sta facendo la richiesta — non è un campo del form, non arriva mai
+    dal client — altrimenti chiunque potrebbe dichiarare un passaggio fra
+    due terze persone senza che nessuna delle due lo sappia.
+
+    Risponde in JSON: il modale può stare su qualsiasi pagina senza bisogno
+    di una vista a sé, e in caso di errore resta aperto invece di far
+    perdere i campi già compilati con una navigazione a vuoto.
     """
-    form = PassaggioCassaForm(request.POST)
+    form = PassaggioCassaForm(request.POST, user=request.user)
     if not form.is_valid():
         return JsonResponse({
             'error':  'Controlla i campi evidenziati.',
@@ -433,34 +439,19 @@ def passaggio_cassa_create(request):
     with transaction.atomic():
         passaggio = form.save(commit=False)
         passaggio.data = timezone.localdate()
+        passaggio.da_conto = conto_custodia_di(request.user)
         passaggio.creato_da = request.user
         passaggio.save()
         allegato = request.FILES.get('allegato')
         if allegato:
             passaggio.aggiungi_allegato(allegato, user=request.user)
 
-        # Chi crea il passaggio dichiarando "ho ricevuto questi soldi" non
-        # deve poi confermare a se stesso: la conferma serve a far validare
-        # da chi riceve un passaggio dichiarato da qualcun altro (chi
-        # consegna, o un terzo come un cassiere), non a raddoppiare un
-        # click quando il ricevente è già chi sta compilando il modale.
-        auto_confermato = (
-            passaggio.richiede_conferma
-            and passaggio.a_conto.utente_id == request.user.pk
-        )
-        if auto_confermato:
-            passaggio.confermato_il = timezone.now()
-            passaggio.confermato_da = request.user
-            passaggio.save(update_fields=['confermato_il', 'confermato_da'])
-            registra_passaggio_cassa(passaggio)
-            notifica_conferma_ricezione(passaggio)
-
-    if passaggio.richiede_conferma and not passaggio.confermato_il:
+    if passaggio.richiede_conferma:
         messaggio = (f'Passaggio registrato: in attesa che {passaggio.a_conto.nome} '
                      f'confermi la ricezione di € {passaggio.importo_totale}.')
     else:
-        messaggio = (f'Passaggio registrato: {passaggio.da_conto.nome} → '
-                     f'{passaggio.a_conto.nome} (€ {passaggio.importo_totale}).')
+        messaggio = (f'Passaggio registrato: hai consegnato € {passaggio.importo_totale} '
+                     f'a {passaggio.a_conto.nome}.')
 
     return JsonResponse({
         'success': True,

@@ -586,26 +586,31 @@ class RegistrazionePagamentoForm(RegistrazioneQuoteForm):
 
 class PassaggioCassaForm(BootstrapMixin, forms.ModelForm):
     """
-    Passaggio veloce di contanti/assegni fra due conti di custodia (persona o
-    cassaforte): pensato per un modale, non per una pagina a sé — niente
-    fatture da collegare, genera da solo il giroconto in prima nota (vedi
-    contabilita/signals.py::registra_passaggio_cassa).
+    Passaggio veloce di contanti/assegni: pensato per un modale, non per una
+    pagina a sé — niente fatture da collegare, genera da solo il giroconto in
+    prima nota (vedi contabilita/signals.py::registra_passaggio_cassa).
 
-    La data non si sceglie: è sempre oggi, per questo non è fra i campi. Le
-    due forme (contanti/assegno) sono un multiplo scelta a monte: `forme`
-    decide quali dei due campi importo sono richiesti, il resto (mostrare o
-    nascondere la riga giusta) lo fa il template via JS.
+    Niente select "chi consegna": chi consegna è sempre chi compila il
+    form, punto — altrimenti chiunque potrebbe registrare un passaggio fra
+    due terze persone senza che nessuna delle due lo sappia. `da_conto` lo
+    valorizza la view con il conto di custodia di `request.user`, non
+    arriva mai dal client.
+
+    La data non si sceglie: è sempre oggi. Le due forme (contanti/assegno)
+    sono una scelta multipla a monte: `forme` decide quali dei due campi
+    importo sono richiesti, il resto (mostrare o nascondere la riga giusta)
+    lo fa il template via JS.
     """
 
     forme = forms.MultipleChoiceField(
-        label='Cosa consegna', choices=FormaConsegna.choices,
+        label='Cosa consegni', choices=FormaConsegna.choices,
         widget=forms.CheckboxSelectMultiple,
         error_messages={'required': 'Scegli almeno una forma: contanti, assegno, o entrambe.'},
     )
 
     class Meta:
         model  = PassaggioCassa
-        fields = ['da_conto', 'a_conto', 'importo_contanti', 'importo_assegno', 'causale', 'note']
+        fields = ['a_conto', 'importo_contanti', 'importo_assegno', 'causale', 'note']
         widgets = {
             'causale': forms.TextInput(attrs={
                 'placeholder': 'Facoltativa: si genera da sola se la lasci vuota',
@@ -613,19 +618,28 @@ class PassaggioCassaForm(BootstrapMixin, forms.ModelForm):
             'note':    forms.Textarea(attrs={'rows': 2}),
         }
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, user=None, **kwargs):
         super().__init__(*args, **kwargs)
+        self.user = user
+        self.fields['a_conto'].label = 'A chi consegni'
         self.fields['causale'].required = False
         self.fields['importo_contanti'].required = False
         self.fields['importo_assegno'].required = False
+
+        # Cassaforte e banca solo per i contabili: un tecnico può consegnare
+        # solo a un'altra persona, non "versare in cassaforte" o "in banca"
+        # — quel movimento lo registra chi tiene i conti.
+        tipi_ammessi = [ContoContabile.Tipo.CUSTODIA]
+        if user is not None and getattr(user, 'is_contabile', False):
+            tipi_ammessi += [ContoContabile.Tipo.CASSA, ContoContabile.Tipo.BANCA]
+
         conti = (
             ContoContabile.objects
-            .filter(attivo=True, tipo__in=[ContoContabile.Tipo.CASSA, ContoContabile.Tipo.BANCA,
-                                            ContoContabile.Tipo.CUSTODIA])
+            .filter(attivo=True, tipo__in=tipi_ammessi)
             .order_by('tipo', 'nome')
         )
-        self.fields['da_conto'].queryset = conti
-        self.fields['da_conto'].empty_label = 'Chi consegna il denaro…'
+        if user is not None:
+            conti = conti.exclude(utente=user)
         self.fields['a_conto'].queryset = conti
         self.fields['a_conto'].empty_label = 'Chi riceve il denaro…'
         if self.instance.pk:
@@ -636,18 +650,9 @@ class PassaggioCassaForm(BootstrapMixin, forms.ModelForm):
                 iniziali.append(FormaConsegna.ASSEGNO)
             self.fields['forme'].initial = iniziali
 
-    def saldi_json(self):
-        """pk → saldo di ogni conto selezionabile, per mostrarlo dal vivo alla scelta."""
-        return json.dumps({
-            str(c.pk): str(c.saldo) for c in self.fields['da_conto'].queryset
-        })
-
     def clean(self):
         cleaned = super().clean()
-        da_conto = cleaned.get('da_conto')
-        a_conto  = cleaned.get('a_conto')
-        if da_conto and a_conto and da_conto == a_conto:
-            self.add_error('a_conto', 'Chi consegna e chi riceve non possono essere lo stesso conto.')
+        a_conto = cleaned.get('a_conto')
 
         forme = cleaned.get('forme') or []
         importo_contanti = cleaned.get('importo_contanti')
@@ -663,10 +668,11 @@ class PassaggioCassaForm(BootstrapMixin, forms.ModelForm):
         elif not importo_assegno:
             self.add_error('importo_assegno', 'Indica l\'importo in assegni.')
 
-        # Causale facoltativa: si autogenera dai due conti se lasciata vuota,
-        # così il modale resta veloce senza lasciare mai un evento senza
-        # etichetta nell'elenco dei passaggi.
+        # Causale facoltativa: si autogenera se lasciata vuota, così il
+        # modale resta veloce senza lasciare mai un evento senza etichetta
+        # nell'elenco dei passaggi.
         causale = (cleaned.get('causale') or '').strip()
-        if not causale and da_conto and a_conto:
-            cleaned['causale'] = f'Passaggio — {da_conto.nome} → {a_conto.nome}'
+        if not causale and a_conto and self.user:
+            nome_utente = self.user.get_full_name() or self.user.username
+            cleaned['causale'] = f'Passaggio — {nome_utente} → {a_conto.nome}'
         return cleaned

@@ -43,21 +43,36 @@ def on_fornitore_creato(sender, instance, created, **kwargs):
         _get_or_create_conto(ContoContabile.Tipo.FORNITORE, str(instance))
 
 
+def conto_custodia_di(user):
+    """
+    Il conto di custodia di uno user, creandolo (e collegandolo) al volo se
+    per qualche motivo manca ancora — difesa in profondità: dovrebbe sempre
+    esistere già grazie a `on_user_creato`, ma un passaggio di cassa non deve
+    fallire per un utente storico mai passato dal backfill.
+    """
+    from contabilita.models import ContoContabile
+
+    conto = ContoContabile.objects.filter(utente=user, tipo=ContoContabile.Tipo.CUSTODIA).first()
+    if conto:
+        return conto
+    nome = user.get_full_name() or user.username
+    conto = _get_or_create_conto(ContoContabile.Tipo.CUSTODIA, nome)
+    if conto and not conto.utente_id:
+        conto.utente = user
+        conto.save(update_fields=['utente'])
+    return conto
+
+
 @receiver(post_save, sender=settings.AUTH_USER_MODEL)
 def on_user_creato(sender, instance, created, **kwargs):
     """
     Ogni persona che può avere contanti/assegni in mano — tecnico, cassiere,
     impiegato, non solo chi guida un mezzo — ha il proprio conto di custodia,
     esattamente come un cliente o un fornitore. Nasce vuoto: il saldo si
-    muove solo con un giroconto esplicito (vedi custodia_create).
+    muove solo con un giroconto esplicito (vedi passaggio_cassa_create).
     """
     if created:
-        from contabilita.models import ContoContabile
-        nome = instance.get_full_name() or instance.username
-        conto = _get_or_create_conto(ContoContabile.Tipo.CUSTODIA, nome)
-        if conto and not conto.utente_id:
-            conto.utente = instance
-            conto.save(update_fields=['utente'])
+        conto_custodia_di(instance)
 
 
 # ── Movimenti da fatture ──────────────────────────────────────────────────────

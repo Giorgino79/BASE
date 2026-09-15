@@ -103,6 +103,25 @@ class Command(BaseCommand):
         else:
             self.stdout.write(self.style.WARNING(f"○ Gruppo 'HR' già esistente"))
 
+        # ===== GRUPPO: CONTABILI =====
+        # Riutilizzabile ovunque serva distinguere "chi maneggia soldi e dati
+        # aziendali" da "chi gestisce il personale": può fare tutto tranne
+        # la gestione del personale (users/payroll), che si affronta con
+        # permessi a parte. Vedi anche User.is_contabile.
+        contabili_group, created = Group.objects.get_or_create(name='Contabili')
+        if created:
+            apps_gestione_personale = ['users', 'payroll']
+            contabili_perms = Permission.objects.exclude(
+                content_type__app_label__in=apps_gestione_personale
+            )
+            contabili_group.permissions.add(*contabili_perms)
+            self.stdout.write(self.style.SUCCESS(
+                f"✓ Creato gruppo 'Contabili' con {contabili_perms.count()} permessi "
+                f"(tutto tranne gestione del personale)"
+            ))
+        else:
+            self.stdout.write(self.style.WARNING(f"○ Gruppo 'Contabili' già esistente"))
+
         # ===== GRUPPO: MANAGER =====
         manager_group, created = Group.objects.get_or_create(name='Manager')
         if created:

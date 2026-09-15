@@ -269,6 +269,17 @@ class User(AbstractUser, AllegatiMixin, TimestampMixin, SoftDeleteMixin):
         return self.stato == "attivo"
 
     @property
+    def is_contabile(self):
+        """
+        Appartiene al gruppo Django "Contabili" (creato da
+        `setup_permissions --create-groups`): può fare tutto tranne la
+        gestione del personale (users/payroll restano fuori dal gruppo).
+        Un superuser è sempre considerato contabile, come per ogni altro
+        permesso Django.
+        """
+        return self.is_superuser or self.groups.filter(name="Contabili").exists()
+
+    @property
     def ferie_utilizzate(self):
         return self.giorni_ferie_anno - self.giorni_ferie_residui
 
