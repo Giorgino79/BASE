@@ -121,6 +121,83 @@
   </div>
 </div>
 
+{% if mostra_sezione_cassa %}
+<!-- ── Passaggi di cassa ────────────────────────────────── -->
+{% if passaggi_cassa_in_attesa %}
+<div class="card card-body mb-3 border-warning-subtle">
+  <h6 class="fw-semibold mb-3" style="color:var(--slate-900);">
+    <i class="bi bi-hourglass-split me-2 text-warning"></i>Da confermare
+  </h6>
+  {% for p in passaggi_cassa_in_attesa %}
+  <div class="d-flex justify-content-between align-items-center py-2 {% if not forloop.last %}border-bottom{% endif %}">
+    <div>
+      <div class="small">{{ p.da_conto.nome }} ti ha consegnato <strong>€ {{ p.importo_totale|floatformat:2 }}</strong></div>
+      <div class="text-muted small">{{ p.data|date:"d/m/Y" }} — {{ p.causale }}</div>
+    </div>
+    <form method="post" action="{% url 'contabilita:passaggio_cassa_conferma' p.pk %}">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-success btn-sm">
+        <i class="bi bi-check-lg me-1"></i>Conferma
+      </button>
+    </form>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="card card-body mb-3">
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <h6 class="fw-semibold mb-0" style="color:var(--slate-900);">
+      <i class="bi bi-arrow-left-right me-2" style="color:var(--slate-700);"></i>I miei passaggi di cassa
+    </h6>
+    <a href="{% url 'contabilita:passaggio_cassa_list' %}" class="small">Tutti i passaggi</a>
+  </div>
+
+  <form method="get" class="row g-2 align-items-end mb-3">
+    <div class="col-sm-4">
+      <label class="form-label small mb-1">Da</label>
+      <input type="date" name="pc_da" value="{{ passaggi_cassa_periodo.data_da }}" class="form-control form-control-sm">
+    </div>
+    <div class="col-sm-4">
+      <label class="form-label small mb-1">A</label>
+      <input type="date" name="pc_a" value="{{ passaggi_cassa_periodo.data_a }}" class="form-control form-control-sm">
+    </div>
+    <div class="col-sm-4 d-flex gap-2">
+      <button type="submit" class="btn btn-primary btn-sm flex-fill"><i class="bi bi-funnel me-1"></i>Cerca periodo</button>
+      {% if passaggi_cassa_periodo.data_da or passaggi_cassa_periodo.data_a %}
+      <a href="{% url 'users:profilo' %}" class="btn btn-outline-secondary btn-sm" title="Azzera"><i class="bi bi-x-lg"></i></a>
+      {% endif %}
+    </div>
+  </form>
+
+  {% if not passaggi_cassa_periodo.data_da and not passaggi_cassa_periodo.data_a %}
+  <div class="text-muted small mb-2">Ultimi 2 passaggi</div>
+  {% endif %}
+
+  {% for p in passaggi_cassa %}
+  <a href="{% url 'contabilita:passaggio_cassa_detail' p.pk %}"
+     class="d-flex justify-content-between align-items-center py-2 text-decoration-none {% if not forloop.last %}border-bottom{% endif %}">
+    <div>
+      <div class="small text-body">
+        {% if p.da_conto.utente_id == request.user.pk %}
+        A {{ p.a_conto.nome }}
+        {% else %}
+        Da {{ p.da_conto.nome }}
+        {% endif %}
+      </div>
+      <div class="text-muted small">{{ p.data|date:"d/m/Y" }} — {{ p.causale }}</div>
+    </div>
+    <div class="text-end">
+      <div class="fw-semibold">€ {{ p.importo_totale|floatformat:2 }}</div>
+      {% if p.in_attesa %}<span class="badge bg-warning text-dark">In attesa</span>{% endif %}
+    </div>
+  </a>
+  {% empty %}
+  <p class="text-muted small mb-0">Nessun passaggio di cassa nel periodo indicato.</p>
+  {% endfor %}
+</div>
+{% endif %}
+
 <!-- ── Calendario personale ───────────────────────────── -->
 <div class="card card-body">
   <div class="d-flex align-items-center justify-content-between mb-3">

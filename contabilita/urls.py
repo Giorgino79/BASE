@@ -20,6 +20,7 @@ urlpatterns = [
     path('passaggi-cassa/',               views.passaggio_cassa_list,   name='passaggio_cassa_list'),
     path('passaggi-cassa/nuovo/',         views.passaggio_cassa_create, name='passaggio_cassa_create'),
     path('passaggi-cassa/<int:pk>/',      views.PassaggioCassaDetailView.as_view(), name='passaggio_cassa_detail'),
+    path('passaggi-cassa/<int:pk>/conferma/', views.passaggio_cassa_conferma, name='passaggio_cassa_conferma'),
     path('prima-nota/<int:pk>/',          views.MovimentoDetailView.as_view(), name='movimento_detail'),
     path('prima-nota/<int:pk>/storna/',   views.movimento_storna, name='movimento_storna'),
     path('prima-nota/<int:pk>/elimina/',  views.movimento_delete, name='movimento_delete'),

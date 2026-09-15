@@ -8,8 +8,9 @@ from fatturazione_attiva.models import Fattura
 
 from .documenti import fatture_da_incassare, fatture_da_pagare
 from .models import (
-    REGOLE_DARE_AVERE, ContoContabile, ImpostazioniContabilita, LiquidazioneIva,
-    MovimentoPrimaNota, PassaggioCassa, RegimeIva, valida_dare_avere, valida_data_movimento,
+    REGOLE_DARE_AVERE, ContoContabile, FormaConsegna, ImpostazioniContabilita,
+    LiquidazioneIva, MovimentoPrimaNota, PassaggioCassa, RegimeIva,
+    valida_dare_avere, valida_data_movimento,
 )
 
 _BS_CLASS = {
@@ -589,14 +590,23 @@ class PassaggioCassaForm(BootstrapMixin, forms.ModelForm):
     cassaforte): pensato per un modale, non per una pagina a sé — niente
     fatture da collegare, genera da solo il giroconto in prima nota (vedi
     contabilita/signals.py::registra_passaggio_cassa).
+
+    La data non si sceglie: è sempre oggi, per questo non è fra i campi. Le
+    due forme (contanti/assegno) sono un multiplo scelta a monte: `forme`
+    decide quali dei due campi importo sono richiesti, il resto (mostrare o
+    nascondere la riga giusta) lo fa il template via JS.
     """
+
+    forme = forms.MultipleChoiceField(
+        label='Cosa consegna', choices=FormaConsegna.choices,
+        widget=forms.CheckboxSelectMultiple,
+        error_messages={'required': 'Scegli almeno una forma: contanti, assegno, o entrambe.'},
+    )
 
     class Meta:
         model  = PassaggioCassa
-        fields = ['data', 'da_conto', 'a_conto', 'importo', 'forma', 'causale', 'note']
+        fields = ['da_conto', 'a_conto', 'importo_contanti', 'importo_assegno', 'causale', 'note']
         widgets = {
-            'data':    forms.DateInput(attrs={'type': 'date'}),
-            'forma':   forms.RadioSelect,
             'causale': forms.TextInput(attrs={
                 'placeholder': 'Facoltativa: si genera da sola se la lasci vuota',
             }),
@@ -605,8 +615,9 @@ class PassaggioCassaForm(BootstrapMixin, forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['data'].initial = timezone.localdate
         self.fields['causale'].required = False
+        self.fields['importo_contanti'].required = False
+        self.fields['importo_assegno'].required = False
         conti = (
             ContoContabile.objects
             .filter(attivo=True, tipo__in=[ContoContabile.Tipo.CASSA, ContoContabile.Tipo.BANCA,
@@ -617,15 +628,19 @@ class PassaggioCassaForm(BootstrapMixin, forms.ModelForm):
         self.fields['da_conto'].empty_label = 'Chi consegna il denaro…'
         self.fields['a_conto'].queryset = conti
         self.fields['a_conto'].empty_label = 'Chi riceve il denaro…'
+        if self.instance.pk:
+            iniziali = []
+            if self.instance.importo_contanti:
+                iniziali.append(FormaConsegna.CONTANTI)
+            if self.instance.importo_assegno:
+                iniziali.append(FormaConsegna.ASSEGNO)
+            self.fields['forme'].initial = iniziali
 
-    def clean_data(self):
-        data = self.cleaned_data.get('data')
-        errore = valida_data_movimento(
-            data, chiusa_fino_al=ImpostazioniContabilita.chiusura(),
-        )
-        if errore:
-            raise forms.ValidationError(errore)
-        return data
+    def saldi_json(self):
+        """pk → saldo di ogni conto selezionabile, per mostrarlo dal vivo alla scelta."""
+        return json.dumps({
+            str(c.pk): str(c.saldo) for c in self.fields['da_conto'].queryset
+        })
 
     def clean(self):
         cleaned = super().clean()
@@ -634,11 +649,24 @@ class PassaggioCassaForm(BootstrapMixin, forms.ModelForm):
         if da_conto and a_conto and da_conto == a_conto:
             self.add_error('a_conto', 'Chi consegna e chi riceve non possono essere lo stesso conto.')
 
+        forme = cleaned.get('forme') or []
+        importo_contanti = cleaned.get('importo_contanti')
+        importo_assegno  = cleaned.get('importo_assegno')
+
+        if FormaConsegna.CONTANTI not in forme:
+            cleaned['importo_contanti'] = None
+        elif not importo_contanti:
+            self.add_error('importo_contanti', 'Indica l\'importo in contanti.')
+
+        if FormaConsegna.ASSEGNO not in forme:
+            cleaned['importo_assegno'] = None
+        elif not importo_assegno:
+            self.add_error('importo_assegno', 'Indica l\'importo in assegni.')
+
         # Causale facoltativa: si autogenera dai due conti se lasciata vuota,
         # così il modale resta veloce senza lasciare mai un evento senza
         # etichetta nell'elenco dei passaggi.
         causale = (cleaned.get('causale') or '').strip()
         if not causale and da_conto and a_conto:
-            forma = dict(PassaggioCassa.Forma.choices).get(cleaned.get('forma'), '')
-            cleaned['causale'] = f'Passaggio {forma} — {da_conto.nome} → {a_conto.nome}'
+            cleaned['causale'] = f'Passaggio — {da_conto.nome} → {a_conto.nome}'
         return cleaned

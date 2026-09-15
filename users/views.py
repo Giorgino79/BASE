@@ -1048,6 +1048,44 @@ def profilo_view(request):
 
     ct_id = ContentType.objects.get_for_model(User).pk
 
+    # contabilita è un modulo opzionale: se non è installato il profilo deve
+    # continuare a funzionare, solo senza questa sezione (stesso pattern già
+    # usato qui per comunicazioni/servizi — vedi CLAUDE.md).
+    passaggi_cassa = []
+    passaggi_cassa_in_attesa = []
+    passaggi_cassa_periodo = {"data_da": "", "data_a": ""}
+    mostra_sezione_cassa = False
+    try:
+        from django.db.models import Q as _Q
+
+        from contabilita.models import ContoContabile, PassaggioCassa
+
+        conto_custodia = ContoContabile.objects.filter(utente=user, tipo="custodia").first()
+        if conto_custodia:
+            mostra_sezione_cassa = True
+            data_da = request.GET.get("pc_da", "").strip()
+            data_a = request.GET.get("pc_a", "").strip()
+            passaggi_cassa_periodo = {"data_da": data_da, "data_a": data_a}
+
+            qs = (PassaggioCassa.objects
+                  .filter(_Q(da_conto=conto_custodia) | _Q(a_conto=conto_custodia))
+                  .select_related("da_conto", "a_conto")
+                  .order_by("-data", "-created_at"))
+            if data_da:
+                qs = qs.filter(data__gte=data_da)
+            if data_a:
+                qs = qs.filter(data__lte=data_a)
+            passaggi_cassa = list(qs) if (data_da or data_a) else list(qs[:2])
+
+            passaggi_cassa_in_attesa = list(
+                PassaggioCassa.objects
+                .filter(a_conto=conto_custodia, confermato_il__isnull=True)
+                .select_related("da_conto")
+                .order_by("-created_at")
+            )
+    except ImportError:
+        pass
+
     extra_actions = [
         {"label": "Tesserino", "url": reverse("users:tesserino"), "icon": "bi-person-badge"},
         {"label": "Nuovo Evento", "url": reverse("users:evento_personale_create"), "icon": "bi-calendar-plus"},
@@ -1070,6 +1108,10 @@ def profilo_view(request):
         "ferie_approvate": ferie_approvate,
         "ferie_in_attesa": ferie_in_attesa,
         "ore_permesso": ore_permesso,
+        "passaggi_cassa": passaggi_cassa,
+        "passaggi_cassa_in_attesa": passaggi_cassa_in_attesa,
+        "passaggi_cassa_periodo": passaggi_cassa_periodo,
+        "mostra_sezione_cassa": mostra_sezione_cassa,
     })
 
 

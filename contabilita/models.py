@@ -11,6 +11,17 @@ from django.utils import timezone
 from core.mixins import AllegatiMixin
 
 
+class FormaConsegna(models.TextChoices):
+    """
+    Come viaggia il denaro in un passaggio di cassa. Condivisa fra
+    `PassaggioCassa` (dove si sceglie cosa si sta consegnando) e
+    `MovimentoPrimaNota` (dove ogni forma diventa una riga a sé, perché un
+    passaggio può consegnare contanti e assegni insieme).
+    """
+    CONTANTI = 'contanti', 'Contanti'
+    ASSEGNO  = 'assegno',  'Assegno'
+
+
 class ContoContabile(models.Model):
     """
     Conto del libro mastro semplificato.
@@ -32,6 +43,15 @@ class ContoContabile(models.Model):
     iban        = models.CharField(
         max_length=34, blank=True, verbose_name='IBAN',
         help_text='Solo per conti di tipo Banca',
+    )
+    # Solo sui conti tipo CUSTODIA: chi è la persona dietro il conto. Serve a
+    # verificare i permessi (solo il titolare può confermare una ricezione,
+    # solo lui vede "i suoi" passaggi nel profilo) senza affidarsi al nome,
+    # che è solo un'etichetta e potrebbe anche cambiare o duplicarsi.
+    utente      = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True,
+        on_delete=models.SET_NULL, related_name='conto_custodia',
+        verbose_name='Utente',
     )
     descrizione = models.TextField(blank=True, verbose_name='Descrizione / note')
     attivo      = models.BooleanField(default=True, verbose_name='Attivo')
@@ -327,6 +347,22 @@ class MovimentoPrimaNota(AllegatiMixin, models.Model):
         on_delete=models.SET_NULL,
         related_name='movimenti_prima_nota',
         verbose_name='Fattura fornitore',
+    )
+    passaggio_cassa  = models.ForeignKey(
+        'PassaggioCassa',
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name='movimenti_prima_nota',
+        verbose_name='Passaggio di cassa',
+    )
+
+    # Valorizzata solo sui righi generati da un passaggio di cassa: un
+    # passaggio può consegnare contanti e assegni insieme, quindi genera una
+    # riga per ciascuna forma presente (vedi signals.py::registra_passaggio_cassa),
+    # e questo campo dice a quale delle due si riferisce quella riga.
+    forma            = models.CharField(
+        max_length=10, choices=FormaConsegna.choices, blank=True,
+        verbose_name='Forma',
     )
 
     # Valorizzata solo sui righi IVA generati dallo scorporo (vedi signals.py):
@@ -683,10 +719,10 @@ class PassaggioCassa(AllegatiMixin, models.Model):
     di dominio, il movimento è la sua ombra contabile.
     """
 
-    class Forma(models.TextChoices):
-        CONTANTI = 'contanti', 'Contanti'
-        ASSEGNO  = 'assegno',  'Assegno'
-
+    # data non è mai scelta dall'utente: è sempre "oggi", come un
+    # auto_now_add. Il default resta un default (non auto_now_add vero e
+    # proprio) solo perché la data va comunque scrivibile dal backfill/shell,
+    # ma il form del modale non la espone.
     data       = models.DateField(default=timezone.localdate, verbose_name='Data')
     da_conto   = models.ForeignKey(
         ContoContabile, on_delete=models.PROTECT,
@@ -696,24 +732,37 @@ class PassaggioCassa(AllegatiMixin, models.Model):
         ContoContabile, on_delete=models.PROTECT,
         related_name='passaggi_ricevuti', verbose_name='Chi riceve',
     )
-    importo    = models.DecimalField(
-        max_digits=12, decimal_places=2, verbose_name='Importo (€)',
+
+    # Due importi e non uno + forma: un passaggio può consegnare contanti e
+    # assegni insieme (es. l'incasso della giornata è misto), e non sono la
+    # stessa cosa spacchettata in due — vanno registrati come due quantità
+    # distinte fin da qui, non solo nel movimento di prima nota che generano.
+    importo_contanti = models.DecimalField(
+        max_digits=12, decimal_places=2, null=True, blank=True,
         validators=[MinValueValidator(Decimal('0.01'))],
+        verbose_name='Importo in contanti (€)',
     )
-    forma      = models.CharField(
-        max_length=10, choices=Forma.choices, default=Forma.CONTANTI,
-        verbose_name='Forma',
+    importo_assegno  = models.DecimalField(
+        max_digits=12, decimal_places=2, null=True, blank=True,
+        validators=[MinValueValidator(Decimal('0.01'))],
+        verbose_name='Importo in assegni (€)',
     )
+
     causale    = models.CharField(max_length=300, verbose_name='Causale')
     note       = models.TextField(blank=True, verbose_name='Note')
 
-    # Valorizzato dal signal appena il movimento viene creato: SET_NULL e non
-    # CASCADE perché uno storno in prima nota non deve far sparire il
-    # passaggio che lo ha originato, resta l'evento consultabile.
-    movimento  = models.OneToOneField(
-        MovimentoPrimaNota, null=True, blank=True,
-        on_delete=models.SET_NULL,
-        related_name='passaggio_cassa', verbose_name='Movimento generato',
+    # Se chi riceve è una persona, il denaro non è "arrivato" solo perché chi
+    # consegna dice di averlo dato: serve la conferma di chi lo riceve
+    # davvero in mano. Finché manca, il movimento di prima nota non esiste
+    # (vedi signals.py::registra_passaggio_cassa) — non è solo una spunta
+    # visiva, è la condizione che decide se la scrittura contabile parte.
+    # Se invece chi riceve è la cassaforte non c'è nessuno che debba
+    # confermare: il movimento nasce subito, come prima.
+    confermato_il = models.DateTimeField(null=True, blank=True, verbose_name='Confermato il')
+    confermato_da = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True,
+        on_delete=models.SET_NULL, related_name='passaggi_cassa_confermati',
+        verbose_name='Confermato da',
     )
 
     creato_da  = models.ForeignKey(
@@ -729,10 +778,23 @@ class PassaggioCassa(AllegatiMixin, models.Model):
         ordering             = ['-data', '-created_at']
 
     def __str__(self):
-        return f'{self.da_conto.nome} → {self.a_conto.nome} — € {self.importo}'
+        return f'{self.da_conto.nome} → {self.a_conto.nome} — € {self.importo_totale}'
 
     def get_absolute_url(self):
         return reverse('contabilita:passaggio_cassa_detail', kwargs={'pk': self.pk})
+
+    @property
+    def importo_totale(self):
+        return (self.importo_contanti or Decimal('0.00')) + (self.importo_assegno or Decimal('0.00'))
+
+    @property
+    def richiede_conferma(self):
+        """True se chi riceve è una persona (conto CUSTODIA) e non la cassaforte."""
+        return self.a_conto.tipo == ContoContabile.Tipo.CUSTODIA
+
+    @property
+    def in_attesa(self):
+        return self.richiede_conferma and not self.confermato_il
 
     def clean(self):
         if self.da_conto_id and self.a_conto_id and self.da_conto_id == self.a_conto_id:
@@ -744,3 +806,5 @@ class PassaggioCassa(AllegatiMixin, models.Model):
                     campo: f'"{conto.nome}" è un conto {conto.get_tipo_display().lower()}: '
                            'un passaggio di cassa si fa solo fra cassa, banca o persona.',
                 })
+        if not self.importo_contanti and not self.importo_assegno:
+            raise ValidationError('Indica almeno un importo, in contanti o in assegni.')

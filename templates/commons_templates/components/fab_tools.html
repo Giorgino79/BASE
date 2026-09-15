@@ -54,6 +54,13 @@ Item globali (sempre visibili):
       <i class="bi bi-chat-dots"></i><span>Chat</span>
     </a>
 
+    {% if form_passaggio %}
+    <button type="button" class="fab-tool-row" title="Passaggio di cassa"
+            data-bs-toggle="modal" data-bs-target="#modalPassaggioCassa">
+      <i class="bi bi-arrow-left-right"></i><span>Passaggio di cassa</span>
+    </button>
+    {% endif %}
+
   </div>
 
   <!-- Bottone principale -->
@@ -251,3 +258,7 @@ Item globali (sempre visibili):
   }
 })();
 </script>
+
+{% if form_passaggio %}
+{% include "contabilita/_modal_passaggio_cassa.html" %}
+{% endif %}

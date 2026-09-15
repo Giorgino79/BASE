@@ -1,5 +1,23 @@
+from django.apps import apps
 from django.conf import settings
 from django.urls import reverse, NoReverseMatch
+
+
+def passaggio_cassa_modal(request):
+    """
+    Il modale di passaggio di cassa vive nel FAB "Strumenti", quindi deve
+    poter comparire su qualunque pagina — non solo su quelle di contabilità,
+    perché chi lo usa (un tecnico, un cassiere) spesso non ha accesso al
+    modulo contabilità in sidebar. `contabilita` resta comunque un modulo
+    opzionale (vedi CLAUDE.md): sulle installazioni dove non è installato
+    questo processor non deve rompere ogni pagina del sito.
+    """
+    if not request.user.is_authenticated or not apps.is_installed('contabilita'):
+        return {}
+
+    from contabilita.forms import PassaggioCassaForm
+
+    return {'form_passaggio': PassaggioCassaForm()}
 
 
 def google_maps(request):

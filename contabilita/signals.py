@@ -54,7 +54,10 @@ def on_user_creato(sender, instance, created, **kwargs):
     if created:
         from contabilita.models import ContoContabile
         nome = instance.get_full_name() or instance.username
-        _get_or_create_conto(ContoContabile.Tipo.CUSTODIA, nome)
+        conto = _get_or_create_conto(ContoContabile.Tipo.CUSTODIA, nome)
+        if conto and not conto.utente_id:
+            conto.utente = instance
+            conto.save(update_fields=['utente'])
 
 
 # ── Movimenti da fatture ──────────────────────────────────────────────────────
@@ -292,31 +295,83 @@ def on_fattura_passiva_creata(sender, instance, created, **kwargs):
 
 def registra_passaggio_cassa(instance):
     """
-    Un solo movimento (mai scorporo IVA: qui non c'è un documento fiscale,
-    solo denaro che cambia mano). Chi consegna va in Avere — il suo saldo
-    scende — chi riceve in Dare: stesso verso di un giroconto cassa→banca.
+    Una riga per ogni forma consegnata (mai scorporo IVA: qui non c'è un
+    documento fiscale, solo denaro che cambia mano) — un passaggio può
+    portare contanti e assegni insieme, e i due non si sommano in
+    un'unica riga per lo stesso motivo per cui non si sommano sul modello:
+    restano quantità distinte anche in prima nota. Chi consegna va in
+    Avere — il suo saldo scende — chi riceve in Dare: stesso verso di un
+    giroconto cassa→banca.
     """
-    from contabilita.models import MovimentoPrimaNota
+    from contabilita.models import FormaConsegna, MovimentoPrimaNota
 
-    if instance.movimento_id:
+    if instance.richiede_conferma and not instance.confermato_il:
+        return False
+    if instance.movimenti_prima_nota.exists():
         return False
 
-    movimento = MovimentoPrimaNota.objects.create(
-        data=instance.data,
-        causale=instance.causale,
-        importo=instance.importo,
-        tipo=MovimentoPrimaNota.Tipo.GIROCONTO,
-        conto_dare=instance.a_conto,
-        conto_avere=instance.da_conto,
-        is_automatico=True,
-        creato_da=instance.creato_da,
+    righe = (
+        (FormaConsegna.CONTANTI, instance.importo_contanti),
+        (FormaConsegna.ASSEGNO, instance.importo_assegno),
     )
-    instance.movimento = movimento
-    instance.save(update_fields=['movimento'])
-    return True
+    creati = False
+    for forma, importo in righe:
+        if not importo:
+            continue
+        MovimentoPrimaNota.objects.create(
+            data=instance.data,
+            causale=f'{instance.causale} ({forma.label.lower()})',
+            importo=importo,
+            tipo=MovimentoPrimaNota.Tipo.GIROCONTO,
+            conto_dare=instance.a_conto,
+            conto_avere=instance.da_conto,
+            forma=forma,
+            passaggio_cassa=instance,
+            is_automatico=True,
+            creato_da=instance.creato_da,
+        )
+        creati = True
+    return creati
 
 
 @receiver(post_save, sender='contabilita.PassaggioCassa')
 def on_passaggio_cassa_creato(sender, instance, created, **kwargs):
     if created:
         registra_passaggio_cassa(instance)
+
+
+def notifica_conferma_ricezione(instance):
+    """
+    Messaggio di chat dal ricevente al consegnante, a conferma avvenuta —
+    solo se anche chi consegna è una persona: se il denaro veniva dalla
+    cassaforte non c'è nessuno a cui scrivere. Riusa la stessa logica di
+    "trova o crea la conversazione diretta" già usata da
+    comunicazioni.views.chat_nuova, per non aprirne una doppia se i due si
+    sono già scritti.
+    """
+    if not instance.confermato_da_id or not instance.da_conto.utente_id:
+        return None
+
+    from django.utils import timezone as tz
+
+    from comunicazioni.models import ChatConversazione, ChatMessaggio
+
+    mittente = instance.confermato_da
+    destinatario = instance.da_conto.utente
+
+    conv = (ChatConversazione.objects
+            .filter(tipo='direct', partecipanti=mittente)
+            .filter(partecipanti=destinatario)
+            .first())
+    if not conv:
+        conv = ChatConversazione.objects.create(tipo='direct', creata_da=mittente)
+        conv.partecipanti.add(mittente, destinatario)
+
+    messaggio = ChatMessaggio.objects.create(
+        conversazione=conv,
+        mittente=mittente,
+        contenuto=f'Mi hai appena consegnato € {instance.importo_totale} — {instance.causale}',
+    )
+    conv.last_message_at = tz.now()
+    conv.save(update_fields=['last_message_at'])
+    return messaggio

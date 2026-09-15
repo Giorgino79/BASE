@@ -1,7 +1,8 @@
 {% comment %}
 Modale veloce per un passaggio di cassa (persona→persona, persona→cassaforte,
 cassaforte→banca). Richiede nel contesto: form_passaggio (PassaggioCassaForm).
-Apertura da qualunque pagina con:
+Incluso globalmente da commons_templates/components/fab_tools.html: apertura
+da qualunque pagina con
   <button data-bs-toggle="modal" data-bs-target="#modalPassaggioCassa">…</button>
 {% endcomment %}
 <div class="modal fade" id="modalPassaggioCassa" tabindex="-1" aria-labelledby="modalPassaggioCassaLabel" aria-hidden="true">
@@ -22,6 +23,7 @@ Apertura da qualunque pagina con:
             <div class="col-sm-6">
               <label class="form-label">{{ form_passaggio.da_conto.label }} <span class="text-danger">*</span></label>
               {{ form_passaggio.da_conto }}
+              <div class="form-text" id="passaggio-saldo-da"></div>
               <div class="invalid-feedback d-block small" data-errore-per="da_conto"></div>
             </div>
             <div class="col-sm-6">
@@ -29,20 +31,24 @@ Apertura da qualunque pagina con:
               {{ form_passaggio.a_conto }}
               <div class="invalid-feedback d-block small" data-errore-per="a_conto"></div>
             </div>
-            <div class="col-sm-6">
-              <label class="form-label">{{ form_passaggio.importo.label }} <span class="text-danger">*</span></label>
-              {{ form_passaggio.importo }}
-              <div class="invalid-feedback d-block small" data-errore-per="importo"></div>
-            </div>
-            <div class="col-sm-6">
-              <label class="form-label">{{ form_passaggio.data.label }} <span class="text-danger">*</span></label>
-              {{ form_passaggio.data }}
-              <div class="invalid-feedback d-block small" data-errore-per="data"></div>
-            </div>
+
             <div class="col-12">
-              <label class="form-label d-block">{{ form_passaggio.forma.label }}</label>
-              {{ form_passaggio.forma }}
+              <label class="form-label d-block">{{ form_passaggio.forme.label }} <span class="text-danger">*</span></label>
+              {{ form_passaggio.forme }}
+              <div class="invalid-feedback d-block small" data-errore-per="forme"></div>
             </div>
+
+            <div class="col-sm-6 riga-forma d-none" data-riga-forma="contanti">
+              <label class="form-label">{{ form_passaggio.importo_contanti.label }} <span class="text-danger">*</span></label>
+              {{ form_passaggio.importo_contanti }}
+              <div class="invalid-feedback d-block small" data-errore-per="importo_contanti"></div>
+            </div>
+            <div class="col-sm-6 riga-forma d-none" data-riga-forma="assegno">
+              <label class="form-label">{{ form_passaggio.importo_assegno.label }} <span class="text-danger">*</span></label>
+              {{ form_passaggio.importo_assegno }}
+              <div class="invalid-feedback d-block small" data-errore-per="importo_assegno"></div>
+            </div>
+
             <div class="col-12">
               <label class="form-label">{{ form_passaggio.causale.label }}</label>
               {{ form_passaggio.causale }}
@@ -81,6 +87,37 @@ Apertura da qualunque pagina con:
   const form      = document.getElementById('formPassaggioCassa');
   const alertBox  = document.getElementById('passaggio-alert');
   const submitBtn = document.getElementById('passaggio-submit-btn');
+  const SALDI     = {{ form_passaggio.saldi_json|safe }};
+
+  // ── Saldo di chi consegna, mostrato appena scelto ──────────────────────
+  const selDaConto  = form.querySelector('[name="da_conto"]');
+  const saldoDaConto = document.getElementById('passaggio-saldo-da');
+
+  function aggiornaSaldo() {
+    if (!selDaConto.value || !(selDaConto.value in SALDI)) {
+      saldoDaConto.textContent = '';
+      return;
+    }
+    saldoDaConto.textContent = 'Saldo attuale: € ' + SALDI[selDaConto.value];
+  }
+  if (selDaConto) {
+    selDaConto.addEventListener('change', aggiornaSaldo);
+    aggiornaSaldo();
+  }
+
+  // ── Righe importo mostrate solo per le forme selezionate ───────────────
+  const checkForme = form.querySelectorAll('input[name="forme"]');
+  function aggiornaRigheForma() {
+    checkForme.forEach(function (cb) {
+      const riga = form.querySelector('.riga-forma[data-riga-forma="' + cb.value + '"]');
+      if (!riga) return;
+      riga.classList.toggle('d-none', !cb.checked);
+      const input = riga.querySelector('input');
+      if (input && !cb.checked) input.value = '';
+    });
+  }
+  checkForme.forEach(function (cb) { cb.addEventListener('change', aggiornaRigheForma); });
+  aggiornaRigheForma();
 
   function mostraErrore(msg) {
     alertBox.textContent = msg;
@@ -95,6 +132,8 @@ Apertura da qualunque pagina con:
   function resetForm() {
     form.reset();
     pulisciErroriCampo();
+    aggiornaSaldo();
+    aggiornaRigheForma();
     submitBtn.disabled = false;
   }
 
@@ -119,13 +158,9 @@ Apertura da qualunque pagina con:
           return;
         }
         const errori = (res.data.errors) || {};
-        let visualizzato = false;
         Object.keys(errori).forEach(function (campo) {
           const el = form.querySelector('[data-errore-per="' + campo + '"]');
-          if (el) {
-            el.textContent = errori[campo].map(function (er) { return er.message; }).join(' ');
-            visualizzato = true;
-          }
+          if (el) el.textContent = errori[campo].map(function (er) { return er.message; }).join(' ');
         });
         mostraErrore(res.data.error || 'Controlla i campi evidenziati.');
         submitBtn.disabled = false;

@@ -97,6 +97,7 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
                 "core.context_processors.sidebar_nav",
                 "core.context_processors.google_maps",
+                "core.context_processors.passaggio_cassa_modal",
             ],
         },
     },

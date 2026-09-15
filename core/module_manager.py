@@ -67,7 +67,10 @@ MODULE_DEPENDENCIES = {
     'analysis': ['core', 'acquisti', 'magazzino', 'payroll', 'servizi'],  # mini-BI: legge da (quasi) tutti i moduli
     'portale': ['core', 'anagrafica_r2', 'comunicazioni', 'magazzino', 'servizi', 'whatsapp'],
     'fatturazione_attiva': ['core', 'anagrafica_r2', 'servizi'],
-    'contabilita': ['core', 'acquisti', 'anagrafica_r2', 'fatturazione_attiva'],
+    # comunicazioni: la conferma di ricezione di un passaggio di cassa manda
+    # un messaggio di chat dal ricevente al consegnante (vedi
+    # contabilita/signals.py::notifica_conferma_ricezione).
+    'contabilita': ['core', 'acquisti', 'anagrafica_r2', 'fatturazione_attiva', 'comunicazioni'],
     'whatsapp': ['core'],
 }
 

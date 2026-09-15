@@ -30,7 +30,7 @@ from .models import (
     ContoContabile, ImpostazioniContabilita, LiquidazioneIva, MovimentoPrimaNota,
     PassaggioCassa, RegimeIva, data_minima_plausibile,
 )
-from .signals import _get_or_create_conto
+from .signals import _get_or_create_conto, notifica_conferma_ricezione, registra_passaggio_cassa
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -47,7 +47,6 @@ def dashboard(request):
         'page_title':      'Contabilità — Prima Nota',
         'anomalie':        anomalie,
         'n_anomalie':      n_anomalie,
-        'form_passaggio':  PassaggioCassaForm(),
     }
     return render(request, 'contabilita/dashboard.html', ctx)
 
@@ -298,7 +297,6 @@ def nuova_registrazione(request):
         'page_title': 'Nuova registrazione',
         'n_da_incassare': documenti.fatture_da_incassare().count(),
         'n_da_pagare':    documenti.fatture_da_pagare().count(),
-        'form_passaggio': PassaggioCassaForm(),
     })
 
 
@@ -434,18 +432,58 @@ def passaggio_cassa_create(request):
 
     with transaction.atomic():
         passaggio = form.save(commit=False)
+        passaggio.data = timezone.localdate()
         passaggio.creato_da = request.user
         passaggio.save()
         allegato = request.FILES.get('allegato')
         if allegato:
             passaggio.aggiungi_allegato(allegato, user=request.user)
 
+    if passaggio.richiede_conferma:
+        messaggio = (f'Passaggio registrato: in attesa che {passaggio.a_conto.nome} '
+                     f'confermi la ricezione di € {passaggio.importo_totale}.')
+    else:
+        messaggio = (f'Passaggio registrato: {passaggio.da_conto.nome} → '
+                     f'{passaggio.a_conto.nome} (€ {passaggio.importo_totale}).')
+
     return JsonResponse({
         'success': True,
-        'message': (f'Passaggio registrato: {passaggio.da_conto.nome} → '
-                    f'{passaggio.a_conto.nome} (€ {passaggio.importo}).'),
+        'message': messaggio,
         'url':     passaggio.get_absolute_url(),
     })
+
+
+@login_required
+@require_POST
+def passaggio_cassa_conferma(request, pk):
+    """
+    Conferma di aver ricevuto davvero il denaro: solo il titolare del conto
+    che riceve può farlo. Finché non succede, `registra_passaggio_cassa` non
+    ha creato nessun movimento — lo crea da qui, ora che c'è la conferma, e
+    avvisa chi ha consegnato con un messaggio in chat.
+    """
+    passaggio = get_object_or_404(
+        PassaggioCassa.objects.select_related('da_conto', 'a_conto'), pk=pk,
+    )
+    if not passaggio.richiede_conferma:
+        messages.info(request, 'Questo passaggio non richiede conferma.')
+        return redirect(passaggio.get_absolute_url())
+    if passaggio.a_conto.utente_id != request.user.pk:
+        messages.error(request, 'Solo chi ha ricevuto il denaro può confermarlo.')
+        return redirect(passaggio.get_absolute_url())
+    if passaggio.confermato_il:
+        messages.info(request, 'Ricezione già confermata.')
+        return redirect(passaggio.get_absolute_url())
+
+    with transaction.atomic():
+        passaggio.confermato_il = timezone.now()
+        passaggio.confermato_da = request.user
+        passaggio.save(update_fields=['confermato_il', 'confermato_da'])
+        registra_passaggio_cassa(passaggio)
+        notifica_conferma_ricezione(passaggio)
+
+    messages.success(request, 'Ricezione confermata.')
+    return redirect(passaggio.get_absolute_url())
 
 
 @login_required
@@ -470,7 +508,6 @@ def passaggio_cassa_list(request):
         'conti': (ContoContabile.objects
                   .filter(attivo=True, tipo__in=['cassa', 'banca', 'custodia'])
                   .order_by('tipo', 'nome')),
-        'form_passaggio': PassaggioCassaForm(),
     }
     return render(request, 'contabilita/passaggio_cassa_list.html', ctx)
 
@@ -483,12 +520,14 @@ class PassaggioCassaDetailView(LoginRequiredMixin, SidebarQrAllegatiMixin,
     context_object_name = 'passaggio'
     print_title         = 'Passaggio di cassa'
     print_fields        = [
-        'data', 'da_conto', 'a_conto', 'importo', 'forma', 'causale', 'note', 'created_at',
+        'data', 'da_conto', 'a_conto', 'importo_contanti', 'importo_assegno',
+        'causale', 'note', 'created_at',
     ]
 
     def get_queryset(self):
         return (super().get_queryset()
-                .select_related('da_conto', 'a_conto', 'creato_da', 'movimento'))
+                .select_related('da_conto', 'a_conto', 'creato_da')
+                .prefetch_related('movimenti_prima_nota'))
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)

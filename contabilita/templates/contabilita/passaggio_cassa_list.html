@@ -58,6 +58,7 @@
           <th>Forma</th>
           <th>Causale</th>
           <th class="text-end">Importo</th>
+          <th>Stato</th>
           <th></th>
         </tr>
       </thead>
@@ -67,9 +68,21 @@
           <td class="text-nowrap small">{{ p.data|date:"d/m/Y" }}</td>
           <td class="small">{{ p.da_conto.nome }}</td>
           <td class="small">{{ p.a_conto.nome }}</td>
-          <td class="small">{{ p.get_forma_display }}</td>
+          <td class="small">
+            {% if p.importo_contanti %}<span class="badge bg-light text-dark border">Contanti € {{ p.importo_contanti|floatformat:2 }}</span>{% endif %}
+            {% if p.importo_assegno %}<span class="badge bg-light text-dark border">Assegno € {{ p.importo_assegno|floatformat:2 }}</span>{% endif %}
+          </td>
           <td>{{ p.causale }}</td>
-          <td class="text-end">€ {{ p.importo|floatformat:2 }}</td>
+          <td class="text-end">€ {{ p.importo_totale|floatformat:2 }}</td>
+          <td class="small">
+            {% if p.in_attesa %}
+            <span class="badge bg-warning text-dark">In attesa</span>
+            {% elif p.richiede_conferma %}
+            <span class="badge bg-success">Confermato</span>
+            {% else %}
+            <span class="text-muted">—</span>
+            {% endif %}
+          </td>
           <td class="text-end">
             <a href="{% url 'contabilita:passaggio_cassa_detail' p.pk %}" class="btn btn-outline-secondary btn-sm">
               <i class="bi bi-eye"></i>
@@ -89,5 +102,4 @@
 </div>
 {% endif %}
 
-{% include "contabilita/_modal_passaggio_cassa.html" %}
 {% endblock %}
