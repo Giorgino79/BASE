@@ -1316,14 +1316,23 @@ class DistintaDetailView(LoginRequiredMixin, DetailView):
         ctx = super().get_context_data(**kwargs)
         from django.db.models import Sum
         ods_qs = self.object.ods_set.select_related(
-            "filiale__cliente", "privato"
+            "filiale__cliente", "privato", "firma_digitale",
         ).prefetch_related(
             "righe__servizio",
             "righe__consumi__prodotto",
         ).annotate(
             prezzo_sum=Sum("righe__prezzo"),
         ).order_by("data_servizio", "pk")
-        ctx["ods_list"] = ods_qs
+        ods_list = list(ods_qs)
+        for o in ods_list:
+            consumi = [c for r in o.righe.all() for c in r.consumi.all()]
+            if o.stato == "completato":
+                o.consumi_display = [c for c in consumi if c.confermato]
+                o.consumi_display_label = "Prodotti consumati"
+            else:
+                o.consumi_display = [c for c in consumi if not c.confermato]
+                o.consumi_display_label = "Prodotti previsti"
+        ctx["ods_list"] = ods_list
         ctx["condomini_list"] = self.object.condomini_set.select_related(
             "tecnico", "assistente"
         ).prefetch_related("unita", "prodotti__prodotto").order_by("data", "ora")
