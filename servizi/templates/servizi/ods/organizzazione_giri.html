@@ -68,30 +68,36 @@
         {% with o=item.obj %}
         <div class="card mb-2 border-0 shadow-sm giro-card giro-card--non-assegnato"
              id="card-ods-{{ o.pk }}" data-marker-id="ods-{{ o.pk }}">
-          <div class="card-body py-2 px-3">
-            <div class="d-flex justify-content-between align-items-center mb-1">
-              <a href="{{ o.get_absolute_url }}" class="fw-bold text-brand text-decoration-none">{{ o.numero }}</a>
-              {% if o.fatturazione_diversa %}<span class="badge bg-warning text-dark ms-1" style="font-size:.65rem;">OS2</span>{% endif %}
-              {% if item.ora %}<span class="text-muted small"><i class="bi bi-clock me-1"></i>{{ item.ora|time:"H:i" }}</span>{% endif %}
+          <div class="card-body py-2 px-3 d-flex gap-2">
+            <div class="flex-grow-1 min-width-0">
+              <div class="mb-1">
+                <a href="{{ o.get_absolute_url }}" class="fw-bold text-brand text-decoration-none">{{ o.numero }}</a>
+                {% if o.fatturazione_diversa %}<span class="badge bg-warning text-dark ms-1" style="font-size:.65rem;">OS2</span>{% endif %}
+              </div>
+              <div class="fw-semibold small mb-1">{{ item.cliente }}</div>
+              <div class="text-muted small mb-2">
+                {% if item.indirizzo %}<i class="bi bi-geo-alt me-1"></i>{{ item.indirizzo }}{% if item.citta %}, {{ item.citta }}{% endif %}<br>{% endif %}
+                {% if o.servizio_principale %}<i class="bi bi-wrench me-1"></i>{{ o.servizio_principale }}{% endif %}
+              </div>
+              <form method="post" action="{% url 'servizi:ods_assegna_tecnico' o.pk %}" class="d-flex gap-2 align-items-center">
+                {% csrf_token %}
+                <input type="hidden" name="data" value="{{ selected_date|date:'Y-m-d' }}">
+                <select name="tecnico" class="form-select form-select-sm flex-fill" required>
+                  <option value="">— Tecnico —</option>
+                  {% for u in utenti %}
+                  <option value="{{ u.pk }}">{{ u.get_full_name|default:u.username }}</option>
+                  {% endfor %}
+                </select>
+                <button type="submit" class="btn btn-sm btn-brand px-3">
+                  <i class="bi bi-check-lg"></i>
+                </button>
+              </form>
             </div>
-            <div class="fw-semibold small mb-1">{{ item.cliente }}</div>
-            <div class="text-muted small mb-2">
-              {% if item.indirizzo %}<i class="bi bi-geo-alt me-1"></i>{{ item.indirizzo }}{% if item.citta %}, {{ item.citta }}{% endif %}<br>{% endif %}
-              {% if o.servizio_principale %}<i class="bi bi-wrench me-1"></i>{{ o.servizio_principale }}{% endif %}
+            {% if item.ora %}
+            <div class="flex-shrink-0 text-end">
+              <div class="fw-bold text-brand" style="font-size:1.5rem;line-height:1;">{{ item.ora|time:"H:i" }}</div>
             </div>
-            <form method="post" action="{% url 'servizi:ods_assegna_tecnico' o.pk %}" class="d-flex gap-2 align-items-center">
-              {% csrf_token %}
-              <input type="hidden" name="data" value="{{ selected_date|date:'Y-m-d' }}">
-              <select name="tecnico" class="form-select form-select-sm flex-fill" required>
-                <option value="">— Tecnico —</option>
-                {% for u in utenti %}
-                <option value="{{ u.pk }}">{{ u.get_full_name|default:u.username }}</option>
-                {% endfor %}
-              </select>
-              <button type="submit" class="btn btn-sm btn-brand px-3">
-                <i class="bi bi-check-lg"></i>
-              </button>
-            </form>
+            {% endif %}
           </div>
         </div>
         {% endwith %}
@@ -99,35 +105,41 @@
         {% with c=item.obj %}
         <div class="card mb-2 border-0 shadow-sm giro-card giro-card--non-assegnato"
              id="card-cond-{{ c.pk }}" data-marker-id="cond-{{ c.pk }}">
-          <div class="card-body py-2 px-3">
-            <div class="d-flex justify-content-between align-items-center mb-1">
-              <a href="{{ c.get_absolute_url }}" class="fw-bold text-brand text-decoration-none">
-                <i class="bi bi-buildings me-1"></i>{{ c.numero }}
-              </a>
-              {% if item.ora %}<span class="text-muted small"><i class="bi bi-clock me-1"></i>{{ item.ora|time:"H:i" }}</span>{% endif %}
+          <div class="card-body py-2 px-3 d-flex gap-2">
+            <div class="flex-grow-1 min-width-0">
+              <div class="mb-1">
+                <a href="{{ c.get_absolute_url }}" class="fw-bold text-brand text-decoration-none">
+                  <i class="bi bi-buildings me-1"></i>{{ c.numero }}
+                </a>
+              </div>
+              <div class="fw-semibold small mb-1">{{ c.titolo }}</div>
+              <div class="text-muted small mb-2"><i class="bi bi-geo-alt me-1"></i>{{ c.indirizzo }}</div>
+              <form method="post" action="{% url 'servizi:condominio_assegna_tecnico' c.pk %}"
+                    class="d-flex gap-2 align-items-center" data-giro-form>
+                {% csrf_token %}
+                <input type="hidden" name="data" value="{{ selected_date|date:'Y-m-d' }}">
+                <select name="tecnico" class="form-select form-select-sm tecnico-sel" required>
+                  <option value="">— Tecnico —</option>
+                  {% for u in utenti %}
+                  <option value="{{ u.pk }}">{{ u.get_full_name|default:u.username }}</option>
+                  {% endfor %}
+                </select>
+                <select name="assistente" class="form-select form-select-sm assistente-sel">
+                  <option value="">— nessuno —</option>
+                  {% for u in utenti %}
+                  <option value="{{ u.pk }}">{{ u.get_full_name|default:u.username }}</option>
+                  {% endfor %}
+                </select>
+                <button type="submit" class="btn btn-sm btn-brand px-3">
+                  <i class="bi bi-check-lg"></i>
+                </button>
+              </form>
             </div>
-            <div class="fw-semibold small mb-1">{{ c.titolo }}</div>
-            <div class="text-muted small mb-2"><i class="bi bi-geo-alt me-1"></i>{{ c.indirizzo }}</div>
-            <form method="post" action="{% url 'servizi:condominio_assegna_tecnico' c.pk %}"
-                  class="d-flex gap-2 align-items-center" data-giro-form>
-              {% csrf_token %}
-              <input type="hidden" name="data" value="{{ selected_date|date:'Y-m-d' }}">
-              <select name="tecnico" class="form-select form-select-sm tecnico-sel" required>
-                <option value="">— Tecnico —</option>
-                {% for u in utenti %}
-                <option value="{{ u.pk }}">{{ u.get_full_name|default:u.username }}</option>
-                {% endfor %}
-              </select>
-              <select name="assistente" class="form-select form-select-sm assistente-sel">
-                <option value="">— nessuno —</option>
-                {% for u in utenti %}
-                <option value="{{ u.pk }}">{{ u.get_full_name|default:u.username }}</option>
-                {% endfor %}
-              </select>
-              <button type="submit" class="btn btn-sm btn-brand px-3">
-                <i class="bi bi-check-lg"></i>
-              </button>
-            </form>
+            {% if item.ora %}
+            <div class="flex-shrink-0 text-end">
+              <div class="fw-bold text-brand" style="font-size:1.5rem;line-height:1;">{{ item.ora|time:"H:i" }}</div>
+            </div>
+            {% endif %}
           </div>
         </div>
         {% endwith %}
