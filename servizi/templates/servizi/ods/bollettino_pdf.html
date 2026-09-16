@@ -112,6 +112,12 @@
   Prodotto utilizzato: {{ p.prodotto.nome_prodotto }}{% if p.prodotto.numero_registrazione %} (PMC n°{{ p.prodotto.numero_registrazione }}){% endif %} — Qtà {{ p.quantita|floatformat:"-3" }}<br>
   {% endfor %}
   {% endif %}
+  {% if consumi_cisterna %}
+  <br>
+  {% for c in consumi_cisterna %}
+  Liquido cisterna: {{ c.litri_consumati|floatformat:"-2" }} lt{% if c.prodotto %} — Prodotto: {{ c.prodotto.nome_prodotto }}{% if c.prodotto.numero_registrazione %} (PMC n°{{ c.prodotto.numero_registrazione }}){% endif %}{% endif %}<br>
+  {% endfor %}
+  {% endif %}
 </div>
 
 <!-- Firma cliente -->

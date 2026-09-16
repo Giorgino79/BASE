@@ -192,6 +192,12 @@
         </div>
         {% endfor %}
         {% endif %}
+        {% for cc in ods.consumi_cisterna.all %}
+        <div class="d-flex align-items-center gap-2 mb-1">
+          <span class="small"><i class="bi bi-droplet-half me-1"></i>Liquido cisterna — <strong>{{ cc.litri_consumati }}</strong> lt
+            {% if cc.prodotto %}({{ cc.prodotto.nome_prodotto }}){% endif %}</span>
+        </div>
+        {% endfor %}
       </div>
       {% if distinta.stato == "aperta" and ods.stato != "completato" %}
       <div class="flex-shrink-0">
@@ -296,8 +302,25 @@
               Litri di liquido cisterna consumati per questo servizio
               <span class="text-muted fw-normal">(facoltativo{% if litri_in_vasca is not None %} — in vasca: {{ litri_in_vasca }} lt{% endif %})</span>
             </label>
-            <input type="number" name="litri_cisterna_consumati" step="0.01" min="0"
-                   class="form-control form-control-sm mb-3" placeholder="Es. 50">
+            <div class="row g-2 mb-3">
+              <div class="col-5">
+                <input type="number" name="litri_cisterna_consumati" step="0.01" min="0"
+                       class="form-control form-control-sm" placeholder="Es. 50">
+              </div>
+              <div class="col-7">
+                <select name="prodotto_cisterna" class="form-select form-select-sm">
+                  <option value="">Prodotto usato per la miscela…</option>
+                  {% for p in prodotti_attivi %}
+                  <option value="{{ p.pk }}">{{ p.nome_prodotto }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+            <p class="small text-muted fst-italic mb-3" style="margin-top:-.5rem;">
+              <i class="bi bi-info-circle me-1"></i>Il prodotto qui indicato non scala il magazzino
+              (è già stato scalato al carico in cisterna): serve solo a farlo comparire sul rapportino.
+              Obbligatorio se indichi dei litri.
+            </p>
             {% endif %}
 
             <label class="form-label">Note intervento</label>

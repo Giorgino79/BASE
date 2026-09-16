@@ -468,6 +468,15 @@ class ConsumoCisterna(models.Model):
     litri_consumati = models.DecimalField(
         max_digits=8, decimal_places=2, verbose_name="Litri consumati",
     )
+    # Solo per il rapportino: il prodotto puro usato per fare questa miscela è
+    # già stato scalato da ScortaMezzo al momento del carico in cisterna
+    # (RigaCaricoCisterna), quindi qui NON tocca mai il magazzino — serve solo
+    # a far comparire il nome/numero di registrazione PMC sul bollettino di
+    # servizio, dove per legge va indicato cosa è stato usato.
+    prodotto = models.ForeignKey(
+        "magazzino.Prodotto", on_delete=models.PROTECT, null=True, blank=True,
+        related_name="consumi_cisterna", verbose_name="Prodotto (solo per rapportino)",
+    )
     data = models.DateTimeField(auto_now_add=True, verbose_name="Data/ora consumo")
 
     class Meta:

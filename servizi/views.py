@@ -490,6 +490,7 @@ def ods_bollettino_pdf(request, pk):
         ).prefetch_related(
             "righe__servizio",
             "righe__consumi__prodotto",
+            "consumi_cisterna__prodotto",
         ),
         pk=pk,
     )
@@ -533,6 +534,11 @@ def ods_bollettino_pdf(request, pk):
         c for r in ods.righe.all() for c in r.consumi.all() if c.confermato
     ]
 
+    # Liquido di cisterna consumato (non passa da ConsumoMateriale: non scala
+    # il magazzino, ma il prodotto usato per la miscela va comunque indicato
+    # sul rapportino)
+    consumi_cisterna = list(ods.consumi_cisterna.all())
+
     # Firma cliente (raccolta in chiusura o dal portale)
     from portale.models import FirmaDigitale
     firma = None
@@ -549,6 +555,7 @@ def ods_bollettino_pdf(request, pk):
         "servizi_sx": servizi_sx,
         "servizi_dx": servizi_dx,
         "prodotti_usati": prodotti_usati,
+        "consumi_cisterna": consumi_cisterna,
         "firma_data": firma.firma_svg if firma else "",
         "firmato_da": firma.firmato_da if firma else "",
         "oggi": timezone.now().date(),
@@ -1320,6 +1327,7 @@ class DistintaDetailView(LoginRequiredMixin, DetailView):
         ).prefetch_related(
             "righe__servizio",
             "righe__consumi__prodotto",
+            "consumi_cisterna__prodotto",
         ).annotate(
             prezzo_sum=Sum("righe__prezzo"),
         ).order_by("data_servizio", "pk")
@@ -1634,6 +1642,18 @@ def chiudi_servizio_distinta(request, ods_pk):
                     back = ods.distinta.get_absolute_url() if ods.distinta else reverse("servizi:distinta_list")
                     return redirect(back)
 
+                # Se si consuma liquido di cisterna il prodotto usato per farlo va
+                # sempre indicato: non scala il magazzino (già scalato al carico),
+                # ma deve comparire sul rapportino con il suo numero PMC.
+                if ha_litri_cisterna and not request.POST.get("prodotto_cisterna", "").strip():
+                    messages.error(
+                        request,
+                        "Indica il prodotto usato per il liquido di cisterna: "
+                        "deve comparire sul rapportino di servizio.",
+                    )
+                    back = ods.distinta.get_absolute_url() if ods.distinta else reverse("servizi:distinta_list")
+                    return redirect(back)
+
             cd = form.cleaned_data
             registra_incasso = request.POST.get("registra_incasso") == "1"
             ods.stato = "completato"
@@ -1719,7 +1739,11 @@ def chiudi_servizio_distinta(request, ods_pk):
                                 f"disponibili in vasca ({disponibile}) — non registrati.",
                             )
                         else:
-                            ConsumoCisterna.objects.create(ods=ods, mezzo=mezzo, litri_consumati=litri_cisterna)
+                            prodotto_cisterna_id = request.POST.get("prodotto_cisterna", "").strip() or None
+                            ConsumoCisterna.objects.create(
+                                ods=ods, mezzo=mezzo, litri_consumati=litri_cisterna,
+                                prodotto_id=prodotto_cisterna_id,
+                            )
 
             # Firma cliente raccolta sul campo al momento della chiusura
             firma_data = request.POST.get("firma_data", "").strip()
