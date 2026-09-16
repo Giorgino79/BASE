@@ -370,7 +370,7 @@ class ODSRiga(models.Model):
         return f"{self.ods.numero} — {self.servizio}"
 
 
-class Distinta(models.Model):
+class Distinta(AllegatiMixin, models.Model):
 
     class Stato(models.TextChoices):
         APERTA = "aperta", "Aperta"

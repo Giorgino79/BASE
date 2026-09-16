@@ -81,6 +81,14 @@
         <div class="detail-field-value">{{ distinta.n_completati }} / {{ distinta.n_totale }} servizi</div>
       </div>
     </div>
+    {% if distinta.assistente %}
+    <div class="col-sm-3">
+      <div class="detail-field">
+        <div class="detail-field-label">Assistente</div>
+        <div class="detail-field-value">{{ distinta.assistente.get_full_name|default:distinta.assistente.username }}</div>
+      </div>
+    </div>
+    {% endif %}
     {% if mezzo %}
     <div class="col-sm-3">
       <div class="detail-field">
@@ -98,6 +106,48 @@
   </div>
   {% endif %}
 </div>
+
+{% if distinta.stato == "chiusa" %}
+<div class="card mb-4 border-success-subtle">
+  <div class="card-header bg-success bg-opacity-10">
+    <i class="bi bi-lock-fill me-1"></i>Riepilogo chiusura
+  </div>
+  <div class="card-body">
+    <div class="row g-3">
+      <div class="col-sm-3">
+        <div class="detail-field">
+          <div class="detail-field-label">Chiusa da</div>
+          <div class="detail-field-value">
+            {% if distinta.chiusa_da %}{{ distinta.chiusa_da.get_full_name|default:distinta.chiusa_da.username }}{% else %}—{% endif %}
+          </div>
+        </div>
+      </div>
+      <div class="col-sm-3">
+        <div class="detail-field">
+          <div class="detail-field-label">Chiusa il</div>
+          <div class="detail-field-value">{% if distinta.chiusa_il %}{{ distinta.chiusa_il|date:"d/m/Y H:i" }}{% else %}—{% endif %}</div>
+        </div>
+      </div>
+      <div class="col-sm-3">
+        <div class="detail-field">
+          <div class="detail-field-label">Importo ricevuto</div>
+          <div class="detail-field-value fw-semibold text-success">
+            {% if distinta.importo_ricevuto is not None %}€ {{ distinta.importo_ricevuto }}{% else %}—{% endif %}
+          </div>
+        </div>
+      </div>
+      {% if distinta.importo_os2_incassato %}
+      <div class="col-sm-3">
+        <div class="detail-field">
+          <div class="detail-field-label">Di cui OS2</div>
+          <div class="detail-field-value">€ {{ distinta.importo_os2_incassato }}</div>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endif %}
 
 {% for ods in ods_list %}
 <div class="card mb-3">

@@ -1317,10 +1317,14 @@ class DistintaDetailView(LoginRequiredMixin, DetailView):
     context_object_name = "distinta"
 
     def get_queryset(self):
-        return Distinta.objects.select_related("tecnico", "creata_da", "mezzo")
+        return Distinta.objects.select_related(
+            "tecnico", "assistente", "creata_da", "mezzo", "chiusa_da",
+        )
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
+        ctx["content_type_id"] = ContentType.objects.get_for_model(Distinta).pk
+        ctx["object_id"] = self.object.pk
         from django.db.models import Sum
         ods_qs = self.object.ods_set.select_related(
             "filiale__cliente", "privato", "firma_digitale",
