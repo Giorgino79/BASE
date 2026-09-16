@@ -108,17 +108,20 @@ Parametri (tutti opzionali):
                               rows="3" placeholder="Testo del messaggio (opzionale)">{{ messaggio }}</textarea>
                 </div>
 
-                {% if pdf_url or pdf_path %}
-                <div class="alert alert-secondary py-2 mb-2 d-flex align-items-center">
-                    <i class="bi bi-file-earmark-pdf-fill text-danger me-2 fs-5"></i>
-                    <small>PDF allegato: <strong>{{ oggetto|default:"documento" }}.pdf</strong></small>
+                {% comment %}
+                Sempre presenti nel DOM (nascosti se non pertinenti) e non solo
+                condizionati al render server-side: un chiamante esterno può
+                puntare questa istanza a un documento diverso via dataset
+                (vedi override più sotto), e l'anteprima deve seguirlo.
+                {% endcomment %}
+                <div id="{{ modal_id }}_doc_box" class="alert alert-secondary py-2 mb-2 d-flex align-items-center {% if not pdf_url and not pdf_path %}d-none{% endif %}">
+                    <i class="bi bi-paperclip text-secondary me-2 fs-5"></i>
+                    <small>Allegato: <strong id="{{ modal_id }}_doc_nome">{{ oggetto|default:"documento" }}</strong></small>
                 </div>
-                {% elif link_url %}
-                <div class="alert alert-info py-2 mb-2 d-flex align-items-center">
+                <div id="{{ modal_id }}_link_box" class="alert alert-info py-2 mb-2 d-flex align-items-center {% if not link_url %}d-none{% endif %}">
                     <i class="bi bi-link-45deg text-info me-2 fs-5"></i>
                     <small>Link allegato: <strong>{{ oggetto }}</strong></small>
                 </div>
-                {% endif %}
 
                 <!-- Area feedback -->
                 <div id="{{ modal_id }}_feedback" class="d-none"></div>
@@ -221,10 +224,36 @@ Parametri (tutti opzionali):
         });
     });
 
+    // ── Anteprima allegato: segue l'eventuale override via dataset ──
+    // Stessa logica di lettura usata nel fetch dell'invio (dataset prima,
+    // valore del template come fallback) — senza questo la spunta "Invia"
+    // funzionava già, ma il box qui sotto restava quello (vuoto) del
+    // render iniziale e sembrava che il documento non fosse allegato.
+    function aggiornaAnteprimaDocumento() {
+        var modalDataset = document.getElementById(mid).dataset;
+        var pdfUrl  = modalDataset.pdfUrl  !== undefined ? modalDataset.pdfUrl  : "{{ pdf_url }}";
+        var pdfPath = modalDataset.pdfPath !== undefined ? modalDataset.pdfPath : "{{ pdf_path }}";
+        var linkUrl = modalDataset.linkUrl !== undefined ? modalDataset.linkUrl : "{{ link_url }}";
+        var docBox  = $id("doc_box");
+        var linkBox = $id("link_box");
+        if (pdfUrl || pdfPath) {
+            $id("doc_nome").textContent = $id("oggetto").value || "documento";
+            docBox.classList.remove("d-none");
+            linkBox.classList.add("d-none");
+        } else if (linkUrl) {
+            docBox.classList.add("d-none");
+            linkBox.classList.remove("d-none");
+        } else {
+            docBox.classList.add("d-none");
+            linkBox.classList.add("d-none");
+        }
+    }
+
     // ── Reset al riaprire il modal ─────────────────────────────────
     document.getElementById(mid).addEventListener("show.bs.modal", function () {
         setLoading(false);
         clearFeedback();
+        aggiornaAnteprimaDocumento();
     });
 
     // ── Pulizia dell'override documento alla chiusura ───────────────
