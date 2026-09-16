@@ -21,12 +21,22 @@ from whatsapp.services import (
 from .models.invia_log import InvioLog
 
 
-def _fetch_pdf_with_session(abs_url: str, session_id: str) -> str | None:
+def _fetch_file_with_session(abs_url: str, session_id: str) -> str | None:
     """
-    Scarica un PDF da una URL Django protetta da login usando il session cookie.
-    Salva in un file temporaneo e restituisce il percorso, oppure None in caso di errore.
+    Scarica un file da una URL Django protetta da login usando il session
+    cookie. Salva in un file temporaneo e restituisce il percorso, oppure
+    None in caso di errore.
+
+    L'estensione del temporaneo non è fissa a .pdf: si ricava dal nome file
+    dichiarato in Content-Disposition (fallback: dal content-type) — serve
+    anche per allegati non-PDF (immagini) inviati dalla gestione allegati,
+    e WhatsApp/email hanno bisogno dell'estensione giusta per riconoscere
+    il tipo di file.
     """
+    import mimetypes as _mimetypes
+    import re as _re
     import requests as _req
+
     try:
         resp = _req.get(
             abs_url,
@@ -34,14 +44,23 @@ def _fetch_pdf_with_session(abs_url: str, session_id: str) -> str | None:
             timeout=30,
             allow_redirects=False,
         )
-        if resp.status_code == 200 and "pdf" in resp.headers.get("content-type", ""):
-            tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
-            tmp.write(resp.content)
-            tmp.close()
-            return tmp.name
+        if resp.status_code != 200:
+            return None
+
+        suffix = ""
+        match = _re.search(r'filename="?([^";]+)"?', resp.headers.get("content-disposition", ""))
+        if match:
+            suffix = os.path.splitext(match.group(1))[1]
+        if not suffix:
+            content_type = resp.headers.get("content-type", "").split(";")[0].strip()
+            suffix = _mimetypes.guess_extension(content_type) or ""
+
+        tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
+        tmp.write(resp.content)
+        tmp.close()
+        return tmp.name
     except Exception:
-        pass
-    return None
+        return None
 
 
 @login_required
@@ -94,7 +113,7 @@ def invia_documento(request):
         is_static = any(abs_pdf_url.split("?")[0].endswith(ext)
                         for ext in (".pdf", ".png", ".jpg", ".jpeg"))
         if not is_static:
-            pre_downloaded_path = _fetch_pdf_with_session(abs_pdf_url, session_id)
+            pre_downloaded_path = _fetch_file_with_session(abs_pdf_url, session_id)
 
     log = InvioLog.objects.create(
         utente=request.user,

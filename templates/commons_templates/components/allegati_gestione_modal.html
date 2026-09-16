@@ -56,6 +56,9 @@ I valori vengono iniettati da JS tramite dataset sul modal stesso.
                 <a href="#" class="btn btn-outline-primary allegato-download-btn" title="Scarica">
                   <i class="bi bi-download"></i>
                 </a>
+                <button type="button" class="btn btn-outline-success allegato-invia-btn" title="Invia (WhatsApp/Email)">
+                  <i class="bi bi-send"></i>
+                </button>
                 <button type="button" class="btn btn-outline-primary allegato-delete-btn" title="Elimina">
                   <i class="bi bi-trash3"></i>
                 </button>
@@ -119,6 +122,7 @@ I valori vengono iniettati da JS tramite dataset sul modal stesso.
 
       const previewBtn  = tr.querySelector('.allegato-preview-btn');
       const downloadBtn = tr.querySelector('.allegato-download-btn');
+      const inviaBtn    = tr.querySelector('.allegato-invia-btn');
       const deleteBtn   = tr.querySelector('.allegato-delete-btn');
 
       if (a.is_pdf || a.is_image) {
@@ -128,6 +132,28 @@ I valori vengono iniettati da JS tramite dataset sul modal stesso.
         previewBtn.setAttribute('aria-disabled', 'true');
       }
       downloadBtn.href = '/core/allegati/' + a.id + '/download/';
+
+      // Invia via WhatsApp/Email: solo PDF e immagini, stesso limite della
+      // preview — un altro tipo di file richiederebbe generalizzare anche
+      // il riconoscimento MIME lato invio, non solo il download.
+      const inviaModal = document.getElementById('fabInviaModal');
+      if (!(a.is_pdf || a.is_image) || !inviaModal) {
+        inviaBtn.disabled = true;
+        inviaBtn.classList.add('disabled');
+      } else {
+        inviaBtn.addEventListener('click', function () {
+          inviaModal.dataset.pdfUrl = '/core/allegati/' + a.id + '/download/';
+          const oggettoEl = document.getElementById('fabInviaModal_oggetto');
+          if (oggettoEl) oggettoEl.value = a.nome;
+
+          // Una modale per volta: si apre l'invio solo a gestione chiusa.
+          gestioneModal.addEventListener('hidden.bs.modal', function apri() {
+            gestioneModal.removeEventListener('hidden.bs.modal', apri);
+            bootstrap.Modal.getOrCreateInstance(inviaModal).show();
+          });
+          bootstrap.Modal.getOrCreateInstance(gestioneModal).hide();
+        });
+      }
 
       if (!a.can_delete) {
         deleteBtn.disabled = true;

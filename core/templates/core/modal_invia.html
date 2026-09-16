@@ -227,6 +227,18 @@ Parametri (tutti opzionali):
         clearFeedback();
     });
 
+    // ── Pulizia dell'override documento alla chiusura ───────────────
+    // Un chiamante esterno può aver puntato questa istanza a un documento
+    // diverso (vedi dataset override sopra): senza questa pulizia il
+    // prossimo uso "generico" del modale (es. il bottone Invia del FAB)
+    // continuerebbe ad allegare il documento dell'uso precedente.
+    document.getElementById(mid).addEventListener("hidden.bs.modal", function () {
+        delete this.dataset.pdfUrl;
+        delete this.dataset.pdfPath;
+        delete this.dataset.linkUrl;
+        delete this.dataset.destinatarioNome;
+    });
+
     // ── Invia ──────────────────────────────────────────────────────
     $id("btn_invia").addEventListener("click", function () {
         var canale   = document.querySelector('input[name="' + mid + '_canale"]:checked')?.value || "whatsapp";
@@ -248,15 +260,22 @@ Parametri (tutti opzionali):
         setLoading(true);
         clearFeedback();
 
+        // Un chiamante esterno (es. la riga di un allegato) può puntare
+        // questa stessa istanza modale a un documento diverso da quello
+        // renderizzato server-side, impostando i dataset prima di aprirla
+        // — stesso pattern già usato per content-type/object-id sul modal
+        // allegati. Senza override resta il valore del template.
+        var modalDataset = document.getElementById(mid).dataset;
         fetch("{% url 'core:invia_documento' %}", {
             method: "POST",
             headers: {"Content-Type": "application/json", "X-CSRFToken": getCookie("csrftoken")},
             body: JSON.stringify({
                 canale: canale, telefono: telefono, email: email,
                 oggetto: oggetto, messaggio: messaggio,
-                pdf_url: "{{ pdf_url }}", pdf_path: "{{ pdf_path }}",
-                link_url: "{{ link_url }}",
-                destinatario_nome: "{{ destinatario_nome }}",
+                pdf_url: modalDataset.pdfUrl !== undefined ? modalDataset.pdfUrl : "{{ pdf_url }}",
+                pdf_path: modalDataset.pdfPath !== undefined ? modalDataset.pdfPath : "{{ pdf_path }}",
+                link_url: modalDataset.linkUrl !== undefined ? modalDataset.linkUrl : "{{ link_url }}",
+                destinatario_nome: modalDataset.destinatarioNome !== undefined ? modalDataset.destinatarioNome : "{{ destinatario_nome }}",
             }),
         })
         .then(function(r){ return r.json(); })
