@@ -306,54 +306,13 @@ def on_fattura_passiva_creata(sender, instance, created, **kwargs):
         registra_fattura_passiva(instance)
 
 
-# ── Movimento da passaggio di cassa ──────────────────────────────────────────
-
-def registra_passaggio_cassa(instance):
-    """
-    Una riga per ogni forma consegnata (mai scorporo IVA: qui non c'è un
-    documento fiscale, solo denaro che cambia mano) — un passaggio può
-    portare contanti e assegni insieme, e i due non si sommano in
-    un'unica riga per lo stesso motivo per cui non si sommano sul modello:
-    restano quantità distinte anche in prima nota. Chi consegna va in
-    Avere — il suo saldo scende — chi riceve in Dare: stesso verso di un
-    giroconto cassa→banca.
-    """
-    from contabilita.models import FormaConsegna, MovimentoPrimaNota
-
-    if instance.richiede_conferma and not instance.confermato_il:
-        return False
-    if instance.movimenti_prima_nota.exists():
-        return False
-
-    righe = (
-        (FormaConsegna.CONTANTI, instance.importo_contanti),
-        (FormaConsegna.ASSEGNO, instance.importo_assegno),
-    )
-    creati = False
-    for forma, importo in righe:
-        if not importo:
-            continue
-        MovimentoPrimaNota.objects.create(
-            data=instance.data,
-            causale=f'{instance.causale} ({forma.label.lower()})',
-            importo=importo,
-            tipo=MovimentoPrimaNota.Tipo.GIROCONTO,
-            conto_dare=instance.a_conto,
-            conto_avere=instance.da_conto,
-            forma=forma,
-            passaggio_cassa=instance,
-            is_automatico=True,
-            creato_da=instance.creato_da,
-        )
-        creati = True
-    return creati
-
-
-@receiver(post_save, sender='contabilita.PassaggioCassa')
-def on_passaggio_cassa_creato(sender, instance, created, **kwargs):
-    if created:
-        registra_passaggio_cassa(instance)
-
+# ── PAS (passaggio di cassa fra persone) ─────────────────────────────────────
+#
+# Un PAS non genera mai un movimento di prima nota, nemmeno quando è
+# confermato e nemmeno quando coinvolge un contabile: è solo un log di
+# custodia (chi ha il contante in mano adesso), non un fatto contabile.
+# L'unico ponte legittimo fra servizi e prima nota è la fattura (vedi
+# servizi/views.py::chiudi_distinta_ufficio per l'incasso per ODS).
 
 def notifica_conferma_ricezione(instance):
     """

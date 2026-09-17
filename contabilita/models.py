@@ -348,23 +348,6 @@ class MovimentoPrimaNota(AllegatiMixin, models.Model):
         related_name='movimenti_prima_nota',
         verbose_name='Fattura fornitore',
     )
-    passaggio_cassa  = models.ForeignKey(
-        'PassaggioCassa',
-        null=True, blank=True,
-        on_delete=models.SET_NULL,
-        related_name='movimenti_prima_nota',
-        verbose_name='Passaggio di cassa',
-    )
-
-    # Valorizzata solo sui righi generati da un passaggio di cassa: un
-    # passaggio può consegnare contanti e assegni insieme, quindi genera una
-    # riga per ciascuna forma presente (vedi signals.py::registra_passaggio_cassa),
-    # e questo campo dice a quale delle due si riferisce quella riga.
-    forma            = models.CharField(
-        max_length=10, choices=FormaConsegna.choices, blank=True,
-        verbose_name='Forma',
-    )
-
     # Valorizzata solo sui righi IVA generati dallo scorporo (vedi signals.py):
     # dice se quell'IVA è stata inclusa in una liquidazione, e quale. Il
     # dettaglio fattura la legge per mostrare "IVA versata"/"IVA da versare"
@@ -707,16 +690,16 @@ def valida_dare_avere(tipo, conto_dare, conto_avere, is_storno=False):
 
 class PassaggioCassa(AllegatiMixin, models.Model):
     """
-    Un passaggio di contanti/assegni da un conto di custodia a un altro:
-    tecnico → cassiere, cassiere → cassaforte, cassaforte → banca, o fra due
-    persone qualsiasi. È un oggetto di per sé, non solo una riga di prima
-    nota — l'amministrazione deve poterlo consultare come evento (chi, a chi,
-    quanto, quando, con che pezza d'appoggio), non solo come dare/avere.
+    PAS — un passaggio di contanti/assegni da un conto di custodia a un
+    altro: tecnico → cassiere, cassiere → cassaforte, cassaforte → banca, o
+    fra due persone qualsiasi.
 
-    Alla creazione genera in automatico il `MovimentoPrimaNota` di tipo
-    GIROCONTO corrispondente (vedi `contabilita/signals.py`), stesso
-    meccanismo già usato per `Fattura` e `FatturaPassiva`: qui vive il fatto
-    di dominio, il movimento è la sua ombra contabile.
+    È solo un log di custodia: dice chi ha il contante in mano adesso, mai
+    un fatto contabile. Non genera e non genererà mai un movimento di prima
+    nota — nemmeno quando coinvolge un contabile — perché la prima nota si
+    aggiorna solo attraverso un documento fiscale vero (fattura). Vedi
+    `servizi/views.py::chiudi_distinta_ufficio` per l'incasso per ODS, che è
+    il vero (unico) ponte fra servizi e contabilità.
     """
 
     # data non è mai scelta dall'utente: è sempre "oggi", come un
@@ -773,8 +756,8 @@ class PassaggioCassa(AllegatiMixin, models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        verbose_name        = 'Passaggio di cassa'
-        verbose_name_plural  = 'Passaggi di cassa'
+        verbose_name        = 'PAS'
+        verbose_name_plural  = 'PAS'
         ordering             = ['-data', '-created_at']
 
     def __str__(self):

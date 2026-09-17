@@ -341,6 +341,18 @@ class ODS(AllegatiMixin, models.Model):
             return self.filiale.cliente.tipo_pagamento == "immediato"
         return True
 
+    @property
+    def fattura_valida(self):
+        """
+        La fattura (non annullata) che copre questo ODS, se esiste — usa la
+        vera relazione `Fattura.ods` (M2M), non un confronto testuale sul
+        numero. Serve a decidere se un incasso immediato può passare in
+        prima nota: mai senza un documento fiscale vero (vedi
+        servizi/views.py::chiudi_distinta_ufficio).
+        """
+        from fatturazione_attiva.models import Fattura
+        return self.fatture.exclude(stato=Fattura.Stato.ANNULLATA).first()
+
 
 class ODSRiga(models.Model):
 

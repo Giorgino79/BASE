@@ -14,6 +14,30 @@
   <h1><i class="bi bi-lock me-2 text-brand"></i>Chiusura Distinta — Ufficio</h1>
 </div>
 
+{% if ods_da_fatturare %}
+<div class="alert alert-danger">
+  <div class="fw-semibold mb-2">
+    <i class="bi bi-exclamation-triangle-fill me-1"></i>
+    Fattura questi ODS prima di chiudere la distinta (a incasso immediato, ma senza documento fiscale):
+  </div>
+  {% for o in ods_da_fatturare %}
+  <div class="d-flex justify-content-between align-items-center py-1 {% if not forloop.last %}border-bottom{% endif %}">
+    <span class="small">
+      <a href="{{ o.get_absolute_url }}">{{ o.numero }}</a> — {{ o.cliente_display }}
+      — € {{ o.importo_incassato|default:"0,00" }}
+    </span>
+    <form method="post" action="{% url 'fatturazione_attiva:fattura_rapida_ods' o.pk %}">
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{{ request.path }}">
+      <button type="submit" class="btn btn-sm btn-danger">
+        <i class="bi bi-receipt me-1"></i>Fattura ora
+      </button>
+    </form>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
 <form method="post">
 {% csrf_token %}
 <div class="row g-3">

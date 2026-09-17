@@ -1904,6 +1904,26 @@ def chiudi_distinta_ufficio(request, pk):
             if o.fatturazione_diversa and not request.POST.get(f"riapri_{o.pk}")
         ]
 
+        # Un ODS a incasso immediato non può passare in prima nota senza un
+        # documento fiscale vero: se manca, la distinta non si chiude — va
+        # fatturato al volo (pulsante "Fattura ora" nel template) oppure
+        # riaperto. Gli OS2 restano esenti per disegno (fatturazione a cura
+        # del cliente, cancellati alla chiusura — vedi _elimina_os2).
+        non_fatturati = [
+            o for o in ods_list
+            if o.incassato and o.stato != "annullato" and not o.fatturazione_diversa
+            and not request.POST.get(f"riapri_{o.pk}")
+            and not o.fattura_valida
+        ]
+        if non_fatturati:
+            messages.error(
+                request,
+                "Alcuni ODS a incasso immediato non hanno ancora una fattura: "
+                "fatturali oppure riaprili prima di chiudere la distinta.",
+            )
+            ctx_base["ods_da_fatturare"] = non_fatturati
+            return render(request, "servizi/distinte/chiudi_ufficio.html", ctx_base)
+
         with transaction.atomic():
             # Riapertura ODS selezionati
             riaperti = 0
@@ -1972,6 +1992,41 @@ def chiudi_distinta_ufficio(request, pk):
                 "stato", "importo_ricevuto", "importo_os2_incassato",
                 "chiusa_da", "chiusa_il",
             ])
+
+            # Incasso in prima nota, un movimento per ODS (mai per l'intera
+            # distinta) — il gate qui sopra garantisce che ognuno di questi
+            # abbia già una fattura. Il conto monetario è la custodia del
+            # tecnico: il contante è letteralmente lì in questo momento: il
+            # passaggio successivo verso la cassaforte è un PAS a parte, mai
+            # un fatto di prima nota (vedi contabilita/models.py::PassaggioCassa).
+            from contabilita.models import ContoContabile, MovimentoPrimaNota
+            from contabilita.signals import _get_or_create_conto, conto_custodia_di
+
+            for o in ods_list:
+                if (not o.incassato or o.stato == "annullato" or o.fatturazione_diversa
+                        or request.POST.get(f"riapri_{o.pk}")):
+                    continue
+                fattura = o.fattura_valida
+                if not fattura or fattura.is_saldata:
+                    continue
+                quota = min(o.importo_incassato or Decimal("0"), fattura.residuo)
+                if quota <= 0:
+                    continue
+                conto_tecnico = conto_custodia_di(o.tecnico)
+                conto_cliente = _get_or_create_conto(ContoContabile.Tipo.CLIENTE, fattura.dest_nome)
+                MovimentoPrimaNota.objects.create(
+                    data=timezone.localdate(),
+                    tipo=MovimentoPrimaNota.Tipo.INCASSO,
+                    causale=f"Incasso fattura {fattura.numero} — {fattura.dest_nome}",
+                    importo=quota,
+                    conto_dare=conto_tecnico,
+                    conto_avere=conto_cliente,
+                    numero_documento=fattura.numero,
+                    fattura_attiva=fattura,
+                    is_automatico=True,
+                    creato_da=request.user,
+                )
+                fattura.registra_incasso(quota, timezone.localdate())
 
             # Cancellazione definitiva dei servizi OS2 non riaperti
             if os2_non_riaperti:

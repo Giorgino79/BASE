@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'contabilita:dashboard' %}">Contabilità</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'contabilita:passaggio_cassa_list' %}">PAS</a></li>
+      <li class="breadcrumb-item"><a href="{{ passaggio.get_absolute_url }}">{{ passaggio.da_conto.nome }} → {{ passaggio.a_conto.nome }}</a></li>
+      <li class="breadcrumb-item active">Modifica</li>
+    </ol>
+  </nav>
+  <h1><i class="bi bi-pencil me-2 text-brand"></i>{{ page_title }}</h1>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-6">
+    <form method="post" id="formPassaggioCassaEdit" novalidate>
+      {% csrf_token %}
+      <div class="card">
+        <div class="card-body">
+          {% if form.non_field_errors %}
+          <div class="alert alert-danger py-2 small">{{ form.non_field_errors.0 }}</div>
+          {% endif %}
+
+          <p class="text-muted small mb-3">
+            <i class="bi bi-arrow-right me-1"></i>Da <strong>{{ passaggio.da_conto.nome }}</strong>
+            (chi consegna non è modificabile: crea un nuovo PAS se ti sei sbagliato di persona)
+          </p>
+
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label">{{ form.a_conto.label }} <span class="text-danger">*</span></label>
+              {{ form.a_conto }}
+              {% if form.a_conto.errors %}<div class="invalid-feedback d-block small">{{ form.a_conto.errors.0 }}</div>{% endif %}
+            </div>
+
+            <div class="col-12">
+              <label class="form-label d-block">{{ form.forme.label }} <span class="text-danger">*</span></label>
+              {{ form.forme }}
+              {% if form.forme.errors %}<div class="invalid-feedback d-block small">{{ form.forme.errors.0 }}</div>{% endif %}
+            </div>
+
+            <div class="col-sm-6 riga-forma d-none" data-riga-forma="contanti">
+              <label class="form-label">{{ form.importo_contanti.label }} <span class="text-danger">*</span></label>
+              {{ form.importo_contanti }}
+              {% if form.importo_contanti.errors %}<div class="invalid-feedback d-block small">{{ form.importo_contanti.errors.0 }}</div>{% endif %}
+            </div>
+            <div class="col-sm-6 riga-forma d-none" data-riga-forma="assegno">
+              <label class="form-label">{{ form.importo_assegno.label }} <span class="text-danger">*</span></label>
+              {{ form.importo_assegno }}
+              {% if form.importo_assegno.errors %}<div class="invalid-feedback d-block small">{{ form.importo_assegno.errors.0 }}</div>{% endif %}
+            </div>
+
+            <div class="col-12">
+              <label class="form-label">{{ form.causale.label }}</label>
+              {{ form.causale }}
+            </div>
+            <div class="col-12">
+              <label class="form-label">{{ form.note.label }}</label>
+              {{ form.note }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="d-flex gap-2 mt-3">
+        <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Salva</button>
+        <a href="{{ passaggio.get_absolute_url }}" class="btn btn-outline-secondary">Annulla</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  var form = document.getElementById('formPassaggioCassaEdit');
+  var checkForme = form.querySelectorAll('input[name="forme"]');
+
+  function aggiornaRigheForma() {
+    checkForme.forEach(function (cb) {
+      var riga = form.querySelector('.riga-forma[data-riga-forma="' + cb.value + '"]');
+      if (!riga) return;
+      riga.classList.toggle('d-none', !cb.checked);
+    });
+  }
+  checkForme.forEach(function (cb) { cb.addEventListener('change', aggiornaRigheForma); });
+  aggiornaRigheForma();
+})();
+</script>
+{% endblock %}

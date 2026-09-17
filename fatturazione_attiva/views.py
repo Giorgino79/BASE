@@ -10,6 +10,7 @@ from django.db.models import F, Sum
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect, get_object_or_404
 from django.template.loader import render_to_string
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 from django.contrib.contenttypes.models import ContentType
@@ -273,6 +274,40 @@ def azione_fatturazione(request):
         return redirect("fatturazione_attiva:fattura_detail", pk=fattura.pk)
 
     return redirect(request.META.get("HTTP_REFERER", "fatturazione_attiva:ricerca"))
+
+
+@login_required
+@require_POST
+def fattura_rapida_ods(request, ods_pk):
+    """
+    Fattura un solo ODS al volo, dalla chiusura ufficio di una distinta: un
+    ODS a incasso immediato non può passare in prima nota finché non ha un
+    documento fiscale vero (vedi servizi/views.py::chiudi_distinta_ufficio).
+
+    Riusa integralmente `_build_ods_righe` e `Fattura.crea` — stessa
+    numerazione e stesso calcolo IVA della fatturazione a lotti, zero
+    logica nuova da mantenere in sincrono con quella.
+    """
+    ods = get_object_or_404(ODS, pk=ods_pk)
+    next_url = request.POST.get("next") or (
+        ods.distinta.get_absolute_url() if ods.distinta_id else reverse("servizi:ods_list")
+    )
+
+    if ods.fattura_valida:
+        messages.info(request, f"{ods.numero} ha già la fattura {ods.fattura_valida.numero}.")
+        return redirect(next_url)
+
+    righe_rows, righe_senza, _ = _build_ods_righe(ODS.objects.filter(pk=ods.pk))
+    if not righe_rows:
+        messages.error(
+            request,
+            f"{ods.numero} non ha righe con un importo: aggiungilo prima di poterlo fatturare.",
+        )
+        return redirect(next_url)
+
+    fattura = Fattura.crea(righe_rows, emessa_da=request.user)
+    messages.success(request, f"Fattura {fattura.numero} creata per {ods.numero}.")
+    return redirect(next_url)
 
 
 # ── Lista fatture emesse ──────────────────────────────────────────────────────

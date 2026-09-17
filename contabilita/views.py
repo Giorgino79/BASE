@@ -30,10 +30,7 @@ from .models import (
     ContoContabile, ImpostazioniContabilita, LiquidazioneIva, MovimentoPrimaNota,
     PassaggioCassa, RegimeIva, data_minima_plausibile,
 )
-from .signals import (
-    _get_or_create_conto, conto_custodia_di, notifica_conferma_ricezione,
-    registra_passaggio_cassa,
-)
+from .signals import _get_or_create_conto, conto_custodia_di, notifica_conferma_ricezione
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -465,9 +462,9 @@ def passaggio_cassa_create(request):
 def passaggio_cassa_conferma(request, pk):
     """
     Conferma di aver ricevuto davvero il denaro: solo il titolare del conto
-    che riceve può farlo. Finché non succede, `registra_passaggio_cassa` non
-    ha creato nessun movimento — lo crea da qui, ora che c'è la conferma, e
-    avvisa chi ha consegnato con un messaggio in chat.
+    che riceve può farlo. Un PAS non genera mai un movimento di prima nota
+    (vedi contabilita/signals.py) — la conferma serve solo a chiudere il
+    log di custodia e ad avvisare chi ha consegnato con un messaggio in chat.
     """
     passaggio = get_object_or_404(
         PassaggioCassa.objects.select_related('da_conto', 'a_conto'), pk=pk,
@@ -486,11 +483,66 @@ def passaggio_cassa_conferma(request, pk):
         passaggio.confermato_il = timezone.now()
         passaggio.confermato_da = request.user
         passaggio.save(update_fields=['confermato_il', 'confermato_da'])
-        registra_passaggio_cassa(passaggio)
         notifica_conferma_ricezione(passaggio)
 
     messages.success(request, 'Ricezione confermata.')
     return redirect(passaggio.get_absolute_url())
+
+
+def _puo_modificare_passaggio(user, passaggio):
+    return user.pk == passaggio.creato_da_id or getattr(user, 'is_contabile', False)
+
+
+@login_required
+def passaggio_cassa_update(request, pk):
+    """
+    Modifica un PAS: essendo fuori dalla contabilità ufficiale (vedi
+    modello), un errore si corregge modificando direttamente la riga —
+    niente storno, non è un movimento di prima nota. Riservata a chi l'ha
+    creato o a un contabile.
+    """
+    passaggio = get_object_or_404(
+        PassaggioCassa.objects.select_related('da_conto', 'a_conto', 'creato_da'), pk=pk,
+    )
+    if not _puo_modificare_passaggio(request.user, passaggio):
+        messages.error(request, 'Solo chi ha creato questo PAS o un contabile può modificarlo.')
+        return redirect(passaggio.get_absolute_url())
+
+    if request.method == 'POST':
+        form = PassaggioCassaForm(request.POST, instance=passaggio, user=passaggio.creato_da)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'PAS aggiornato.')
+            return redirect(passaggio.get_absolute_url())
+    else:
+        form = PassaggioCassaForm(instance=passaggio, user=passaggio.creato_da)
+
+    return render(request, 'contabilita/passaggio_cassa_form.html', {
+        'page_title': 'Modifica PAS',
+        'form':       form,
+        'passaggio':  passaggio,
+    })
+
+
+@login_required
+def passaggio_cassa_delete(request, pk):
+    passaggio = get_object_or_404(PassaggioCassa, pk=pk)
+    if not _puo_modificare_passaggio(request.user, passaggio):
+        messages.error(request, 'Solo chi ha creato questo PAS o un contabile può eliminarlo.')
+        return redirect(passaggio.get_absolute_url())
+
+    if request.method == 'POST':
+        for allegato in passaggio.allegati:
+            allegato.file.delete(save=False)
+            allegato.delete()
+        passaggio.delete()
+        messages.success(request, 'PAS eliminato.')
+        return redirect('contabilita:passaggio_cassa_list')
+
+    return render(request, 'contabilita/passaggio_cassa_confirm_delete.html', {
+        'page_title': 'Elimina PAS',
+        'passaggio':  passaggio,
+    })
 
 
 @login_required
@@ -521,11 +573,11 @@ def passaggio_cassa_list(request):
 
 class PassaggioCassaDetailView(LoginRequiredMixin, SidebarQrAllegatiMixin,
                                PrintDetailMixin, DetailView):
-    """Dettaglio del passaggio: chi, a chi, quanto, con quale pezza d'appoggio."""
+    """Dettaglio del PAS: chi, a chi, quanto, con quale pezza d'appoggio."""
     model               = PassaggioCassa
     template_name       = 'contabilita/passaggio_cassa_detail.html'
     context_object_name = 'passaggio'
-    print_title         = 'Passaggio di cassa'
+    print_title         = 'PAS'
     print_fields        = [
         'data', 'da_conto', 'a_conto', 'importo_contanti', 'importo_assegno',
         'causale', 'note', 'created_at',
@@ -533,13 +585,16 @@ class PassaggioCassaDetailView(LoginRequiredMixin, SidebarQrAllegatiMixin,
 
     def get_queryset(self):
         return (super().get_queryset()
-                .select_related('da_conto', 'a_conto', 'creato_da')
-                .prefetch_related('movimenti_prima_nota'))
+                .select_related('da_conto', 'a_conto', 'creato_da'))
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        ctx['page_title'] = f'Passaggio di cassa — {self.object.data:%d/%m/%Y}'
+        ctx['page_title'] = f'PAS — {self.object.data:%d/%m/%Y}'
         ctx['allegati']   = self.object.allegati
+        ctx['puo_modificare'] = (
+            self.request.user.pk == self.object.creato_da_id
+            or getattr(self.request.user, 'is_contabile', False)
+        )
         return ctx
 
 
