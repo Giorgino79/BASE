@@ -12,7 +12,7 @@
     {% for contratto in contratti %}
     <div class="card border-0 shadow-sm mb-3">
       <div class="card-header bg-white fw-semibold">
-        {{ contratto.get_periodicita_display }}
+        {{ contratto.nome|default:"Contratto" }}
         {% if contratto.data_inizio %} — dal {{ contratto.data_inizio|date:"d/m/Y" }}{% endif %}
         {% if contratto.data_fine %} al {{ contratto.data_fine|date:"d/m/Y" }}{% endif %}
       </div>
@@ -25,7 +25,7 @@
             {% for r in contratto.righe.all %}
             <tr>
               <td>{{ r.servizio.nome }}</td>
-              <td class="text-end small text-muted">{{ contratto.get_periodicita_display }}</td>
+              <td class="text-end small text-muted">{{ r.get_periodicita_display }}</td>
             </tr>
             {% empty %}
             <tr><td colspan="2" class="text-muted text-center py-3">Nessun servizio</td></tr>

@@ -31,8 +31,8 @@
 <body>
 
 <div class="header">
-  <h1>Contratto — {{ contratto.cliente }}</h1>
-  <p>{{ contratto.get_periodicita_display }}{% if contratto.data_inizio %} · Dal {{ contratto.data_inizio|date:"d/m/Y" }}{% endif %}{% if contratto.data_fine %} al {{ contratto.data_fine|date:"d/m/Y" }}{% endif %}</p>
+  <h1>Contratto{% if contratto.nome %} — {{ contratto.nome }}{% endif %} — {{ contratto.cliente }}</h1>
+  <p>{% if contratto.data_inizio %}Dal {{ contratto.data_inizio|date:"d/m/Y" }}{% endif %}{% if contratto.data_fine %} al {{ contratto.data_fine|date:"d/m/Y" }}{% endif %}</p>
 </div>
 
 <div class="section-title">Dati contratto</div>
@@ -44,8 +44,8 @@
     <td class="value">{{ contratto.get_stato_display }}</td>
   </tr>
   <tr>
-    <td class="label">Periodicità</td>
-    <td class="value">{{ contratto.get_periodicita_display }}</td>
+    <td class="label">Nome</td>
+    <td class="value">{{ contratto.nome|default:"—" }}</td>
     <td class="label">Data inizio</td>
     <td class="value">{{ contratto.data_inizio|date:"d/m/Y"|default:"—" }}</td>
   </tr>
@@ -68,17 +68,19 @@
   <thead>
     <tr>
       <th>Servizio</th>
-      <th class="right">Prezzo ({{ contratto.get_periodicita_display }})</th>
+      <th>Periodicità</th>
+      <th class="right">Prezzo</th>
     </tr>
   </thead>
   <tbody>
     {% for r in righe %}
     <tr>
       <td>{{ r.servizio.nome }}</td>
+      <td>{{ r.get_periodicita_display }}</td>
       <td class="right">€ {{ r.prezzo }}</td>
     </tr>
     {% empty %}
-    <tr><td colspan="2" style="text-align:center;color:#888;">Nessun servizio</td></tr>
+    <tr><td colspan="3" style="text-align:center;color:#888;">Nessun servizio</td></tr>
     {% endfor %}
   </tbody>
 </table>

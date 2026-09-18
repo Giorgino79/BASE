@@ -129,13 +129,26 @@ def pianificazione_eventi_api(request):
 
 @login_required
 def pianificazione_filiali_api(request):
+    """Sedi disponibili. Con `contratto_id` restituisce solo le sedi coperte
+    da quel contratto (usato in pianificazione, per non programmare
+    interventi in sedi che il cliente non ha messo a contratto). Con
+    `cliente_id` restituisce tutte le sedi attive del cliente (usato nel
+    form contratto, per scegliere quali sedi includere).
+    """
     from anagrafica_r2.models import Filiale
 
+    contratto_id = request.GET.get("contratto_id")
     cliente_id = request.GET.get("cliente_id")
-    if not cliente_id:
+
+    if contratto_id:
+        filiali = Filiale.objects.filter(
+            contratti_filiale__contratto_id=contratto_id, attivo=True
+        ).order_by("nome")
+    elif cliente_id:
+        filiali = Filiale.objects.filter(cliente_id=cliente_id, attivo=True).order_by("nome")
+    else:
         return JsonResponse([], safe=False)
 
-    filiali = Filiale.objects.filter(cliente_id=cliente_id, attivo=True).order_by("nome")
     return JsonResponse([
         {
             "id": f.pk,
@@ -149,48 +162,56 @@ def pianificazione_filiali_api(request):
 
 
 @login_required
-def pianificazione_servizi_api(request):
-    """Servizi disponibili per il cliente selezionato: solo quelli previsti
-    esplicitamente nelle righe dei suoi contratti attivi, con la relativa
-    periodicità. Le righe sede (ContrattoFilialeRiga) sono escluse di
-    proposito: rappresentano prezzi/aggiunte specifiche di una sede, non un
-    impegno contrattuale generale — includerle in questo elenco porterebbe
-    a programmare servizi che il cliente non è tenuto ad avere ovunque.
-    """
-    from .models import Servizio, Contratto, ContrattoRiga
+def pianificazione_contratti_api(request):
+    """Contratti attivi del cliente selezionato, da scegliere prima dei
+    servizi: ogni contratto può coprire sedi e servizi diversi."""
+    from .models import Contratto
 
     cliente_id = request.GET.get("cliente_id")
     if not cliente_id:
         return JsonResponse([], safe=False)
 
-    contratti_ids = list(
-        Contratto.objects.filter(cliente_id=cliente_id, stato="attivo")
-        .values_list("id", flat=True)
+    contratti = Contratto.objects.filter(
+        cliente_id=cliente_id, stato="attivo"
+    ).order_by("-data_inizio")
+    return JsonResponse([
+        {
+            "id": c.pk,
+            "nome": c.nome or f"Contratto dal {c.data_inizio.strftime('%d/%m/%Y')}",
+        }
+        for c in contratti
+    ], safe=False)
+
+
+@login_required
+def pianificazione_servizi_api(request):
+    """Servizi inclusi nel contratto selezionato, con la relativa
+    periodicità. Le righe sede (ContrattoFilialeRiga) sono escluse di
+    proposito: rappresentano prezzi/aggiunte specifiche di una sede, non un
+    impegno contrattuale generale — includerle in questo elenco porterebbe
+    a programmare servizi che il cliente non è tenuto ad avere ovunque.
+    """
+    from .models import ContrattoRiga
+
+    contratto_id = request.GET.get("contratto_id")
+    if not contratto_id:
+        return JsonResponse([], safe=False)
+
+    righe = (
+        ContrattoRiga.objects
+        .filter(contratto_id=contratto_id, servizio__attivo=True)
+        .select_related("servizio")
+        .order_by("servizio__nome")
     )
-    if not contratti_ids:
-        return JsonResponse([], safe=False)
-
-    labels = dict(Contratto.Periodicita.choices)
-    periodicita_per_servizio = {}
-    for servizio_id, periodicita in (
-        ContrattoRiga.objects.filter(contratto_id__in=contratti_ids)
-        .values_list("servizio_id", "periodicita")
-    ):
-        periodicita_per_servizio.setdefault(servizio_id, periodicita)
-
-    if not periodicita_per_servizio:
-        return JsonResponse([], safe=False)
-
-    result = []
-    for s in Servizio.objects.filter(pk__in=periodicita_per_servizio, attivo=True).order_by("nome"):
-        periodicita = periodicita_per_servizio.get(s.pk)
-        result.append({
-            "id": s.pk,
-            "nome": s.nome,
-            "periodicita": periodicita,
-            "periodicita_display": labels.get(periodicita, ""),
-        })
-    return JsonResponse(result, safe=False)
+    return JsonResponse([
+        {
+            "id": r.servizio_id,
+            "nome": r.servizio.nome,
+            "periodicita": r.periodicita,
+            "periodicita_display": r.get_periodicita_display(),
+        }
+        for r in righe
+    ], safe=False)
 
 
 @login_required

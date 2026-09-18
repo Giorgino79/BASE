@@ -27,16 +27,27 @@ class ServizioForm(forms.ModelForm):
         }
 
 
+class ContrattoFilialiField(forms.ModelMultipleChoiceField):
+    def label_from_instance(self, obj):
+        return f"{obj.nome} — {obj.citta}" if obj.citta else obj.nome
+
+
 class ContrattoForm(forms.ModelForm):
+    filiali = ContrattoFilialiField(
+        queryset=None, required=True, label="Sedi coperte dal contratto",
+        widget=forms.SelectMultiple(attrs={"class": "form-select", "id": "id_filiali"}),
+        help_text="Il prezzo dei servizi può essere diverso da sede a sede: gestiscilo dal dettaglio del contratto.",
+    )
+
     class Meta:
         model = Contratto
         fields = [
-            "cliente", "periodicita",
+            "cliente", "nome",
             "data_inizio", "data_fine", "stato", "note",
         ]
         widgets = {
             "cliente":     forms.Select(attrs=_SEL),
-            "periodicita": forms.Select(attrs=_SEL),
+            "nome":        forms.TextInput(attrs=_BS),
             "data_inizio": forms.DateInput(attrs=_DATE, format="%Y-%m-%d"),
             "data_fine":   forms.DateInput(attrs=_DATE, format="%Y-%m-%d"),
             "stato":       forms.Select(attrs=_SEL),
@@ -45,10 +56,26 @@ class ContrattoForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        from anagrafica_r2.models import Azienda
+        from anagrafica_r2.models import Azienda, Filiale
         self.fields["cliente"].queryset = Azienda.objects.filter(attivo=True).order_by("ragione_sociale")
         self.fields["data_fine"].required = False
         self.fields["note"].required = False
+        self.fields["nome"].required = False
+
+        cliente_id = self.data.get("cliente") if self.is_bound else None
+        if not cliente_id and self.instance and self.instance.pk:
+            cliente_id = self.instance.cliente_id
+        if cliente_id:
+            self.fields["filiali"].queryset = Filiale.objects.filter(
+                cliente_id=cliente_id, attivo=True
+            ).order_by("nome")
+        else:
+            self.fields["filiali"].queryset = Filiale.objects.none()
+
+        if self.instance and self.instance.pk:
+            self.fields["filiali"].initial = list(
+                self.instance.filiali_contratto.values_list("filiale_id", flat=True)
+            )
 
 
 class ContrattoRigaForm(forms.ModelForm):

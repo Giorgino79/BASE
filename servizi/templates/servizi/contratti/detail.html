@@ -34,8 +34,8 @@
           </div>
           <div class="col-sm-3">
             <div class="detail-field">
-              <div class="detail-field-label">Periodicità</div>
-              <div class="detail-field-value">{{ contratto.get_periodicita_display }}</div>
+              <div class="detail-field-label">Nome</div>
+              <div class="detail-field-value {% if not contratto.nome %}empty{% endif %}">{{ contratto.nome|default:"—" }}</div>
             </div>
           </div>
           <div class="col-sm-3">

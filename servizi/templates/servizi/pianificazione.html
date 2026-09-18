@@ -179,7 +179,7 @@
   <div>
     <h1 class="h4 fw-bold mb-1" style="color:var(--slate-900);">Pianificazione servizi</h1>
     <p class="text-muted mb-0" style="font-size:.875rem;">
-      Seleziona cliente e servizio, poi trascina le sedi sui giorni desiderati
+      Seleziona cliente, contratto e servizio, poi trascina le sedi sui giorni desiderati
     </p>
   </div>
 </div>
@@ -201,11 +201,19 @@
         </select>
       </div>
 
+      <!-- contratto -->
+      <div class="side-section">
+        <span class="side-label"><i class="bi bi-file-earmark-text me-1"></i>Contratto</span>
+        <select id="sel-contratto" class="side-select" disabled>
+          <option value="">— Prima il cliente —</option>
+        </select>
+      </div>
+
       <!-- servizio -->
       <div class="side-section">
         <span class="side-label"><i class="bi bi-tools me-1"></i>Servizio</span>
         <select id="sel-servizio" class="side-select" disabled>
-          <option value="">— Prima il cliente —</option>
+          <option value="">— Prima il contratto —</option>
         </select>
       </div>
 
@@ -213,7 +221,7 @@
       <div class="side-section">
         <span class="side-label"><i class="bi bi-geo-alt me-1"></i>Sedi</span>
         <div id="filiali-list">
-          <p class="side-empty">Seleziona cliente e servizio</p>
+          <p class="side-empty">Seleziona cliente, contratto e servizio</p>
         </div>
         <div class="drag-hint" id="drag-hint">
           <i class="bi bi-arrows-move me-1"></i>Trascina una sede sul giorno
@@ -241,7 +249,7 @@
   <div class="cal-card">
     <div id="cal-empty" class="cal-empty">
       <i class="bi bi-calendar2-range"></i>
-      <p>Seleziona cliente e servizio<br>per iniziare la pianificazione</p>
+      <p>Seleziona cliente, contratto e servizio<br>per iniziare la pianificazione</p>
     </div>
     <div id="calendario" style="display:none;"></div>
   </div>
@@ -258,15 +266,17 @@
 (function () {
 'use strict';
 
-const CSRF        = '{{ csrf_token }}';
-const URL_EVENTI  = '{% url "servizi:pianificazione_eventi_api" %}';
-const URL_FILIALI = '{% url "servizi:pianificazione_filiali_api" %}';
-const URL_SERVIZI = '{% url "servizi:pianificazione_servizi_api" %}';
-const URL_SALVA   = '{% url "servizi:pianificazione_salva_piano" %}';
-const URL_SPOSTA  = pk => `/servizi/api/pianificazione/ods/${pk}/sposta/`;
+const CSRF          = '{{ csrf_token }}';
+const URL_EVENTI    = '{% url "servizi:pianificazione_eventi_api" %}';
+const URL_FILIALI   = '{% url "servizi:pianificazione_filiali_api" %}';
+const URL_CONTRATTI = '{% url "servizi:pianificazione_contratti_api" %}';
+const URL_SERVIZI   = '{% url "servizi:pianificazione_servizi_api" %}';
+const URL_SALVA     = '{% url "servizi:pianificazione_salva_piano" %}';
+const URL_SPOSTA    = pk => `/servizi/api/pianificazione/ods/${pk}/sposta/`;
 
 // ── stato globale ─────────────────────────────────────────────
 let clienteId   = null;
+let contrattoId = null;
 let servizioId  = null;
 let calendar    = null;
 let draggable   = null;
@@ -479,12 +489,14 @@ async function caricaFiliali() {
   $list.innerHTML = '<p class="side-empty">Caricamento…</p>';
   $hint.classList.remove('on');
 
-  if (!clienteId || !servizioId) {
-    $list.innerHTML = '<p class="side-empty">Seleziona cliente e servizio</p>';
+  if (!contrattoId || !servizioId) {
+    $list.innerHTML = '<p class="side-empty">Seleziona contratto e servizio</p>';
     return;
   }
 
-  const filiali = await api(URL_FILIALI + '?cliente_id=' + clienteId);
+  // Solo le sedi coperte da questo contratto: evita di programmare
+  // interventi in sedi per cui il cliente non ha un impegno contrattuale.
+  const filiali = await api(URL_FILIALI + '?contratto_id=' + contrattoId);
   if (!filiali.length) {
     $list.innerHTML = '<p class="side-empty">Nessuna sede trovata</p>';
     return;
@@ -512,24 +524,28 @@ async function caricaFiliali() {
 
 // ── select cliente ────────────────────────────────────────────
 document.getElementById('sel-cliente').addEventListener('change', async function () {
-  clienteId  = this.value || null;
-  servizioId = null;
+  clienteId   = this.value || null;
+  contrattoId = null;
+  servizioId  = null;
 
   // reset bozza
   svuotaBozza();
 
+  const $selCon  = document.getElementById('sel-contratto');
   const $selServ = document.getElementById('sel-servizio');
-  $selServ.innerHTML = '<option value="">Caricamento…</option>';
+  $selCon.innerHTML  = '<option value="">Caricamento…</option>';
+  $selCon.disabled   = true;
+  $selServ.innerHTML = '<option value="">— Prima il contratto —</option>';
   $selServ.disabled  = true;
 
-  document.getElementById('filiali-list').innerHTML = '<p class="side-empty">Seleziona cliente e servizio</p>';
+  document.getElementById('filiali-list').innerHTML = '<p class="side-empty">Seleziona cliente, contratto e servizio</p>';
   document.getElementById('drag-hint').classList.remove('on');
 
   const $empty = document.getElementById('cal-empty');
   const $cal   = document.getElementById('calendario');
 
   if (!clienteId) {
-    $selServ.innerHTML = '<option value="">— Prima il cliente —</option>';
+    $selCon.innerHTML = '<option value="">— Prima il cliente —</option>';
     $empty.style.display = '';
     $cal.style.display   = 'none';
     ricaricaEventi();
@@ -540,9 +556,45 @@ document.getElementById('sel-cliente').addEventListener('change', async function
   $cal.style.display   = '';
   if (!calendar) buildCalendar();
 
-  const servizi = await api(URL_SERVIZI + '?cliente_id=' + clienteId);
+  const contratti = await api(URL_CONTRATTI + '?cliente_id=' + clienteId);
+  if (contratti.length === 0) {
+    $selCon.innerHTML = '<option value="">— Nessun contratto attivo per questo cliente —</option>';
+    $selCon.disabled = true;
+  } else {
+    $selCon.innerHTML = '<option value="">— Seleziona contratto —</option>';
+    contratti.forEach(c => {
+      const o = document.createElement('option');
+      o.value = c.id; o.textContent = c.nome;
+      $selCon.appendChild(o);
+    });
+    $selCon.disabled = false;
+  }
+
+  ricaricaEventi();
+});
+
+// ── select contratto ──────────────────────────────────────────
+document.getElementById('sel-contratto').addEventListener('change', async function () {
+  contrattoId = this.value || null;
+  servizioId  = null;
+  svuotaBozza();
+
+  const $selServ = document.getElementById('sel-servizio');
+  document.getElementById('filiali-list').innerHTML = '<p class="side-empty">Seleziona cliente, contratto e servizio</p>';
+  document.getElementById('drag-hint').classList.remove('on');
+
+  if (!contrattoId) {
+    $selServ.innerHTML = '<option value="">— Prima il contratto —</option>';
+    $selServ.disabled  = true;
+    return;
+  }
+
+  $selServ.innerHTML = '<option value="">Caricamento…</option>';
+  $selServ.disabled  = true;
+
+  const servizi = await api(URL_SERVIZI + '?contratto_id=' + contrattoId);
   if (servizi.length === 0) {
-    $selServ.innerHTML = '<option value="">— Nessun servizio a contratto per questo cliente —</option>';
+    $selServ.innerHTML = '<option value="">— Nessun servizio in questo contratto —</option>';
     $selServ.disabled = true;
   } else {
     $selServ.innerHTML = '<option value="">— Seleziona servizio —</option>';
@@ -554,8 +606,6 @@ document.getElementById('sel-cliente').addEventListener('change', async function
     });
     $selServ.disabled = false;
   }
-
-  ricaricaEventi();
 });
 
 // ── select servizio ───────────────────────────────────────────

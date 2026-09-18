@@ -44,14 +44,14 @@
   <div class="table-responsive">
     <table class="table mb-0">
       <thead class="bg-brand text-white">
-        <tr><th>Cliente</th><th>Servizi</th><th>Periodicità</th><th>Inizio</th><th>Stato</th><th></th></tr>
+        <tr><th>Cliente</th><th>Nome</th><th>Servizi</th><th>Inizio</th><th>Stato</th><th></th></tr>
       </thead>
       <tbody>
         {% for c in contratti %}
         <tr>
           <td><a href="{{ c.get_absolute_url }}" class="text-brand fw-semibold text-decoration-none">{{ c.cliente }}</a></td>
+          <td class="text-muted small">{{ c.nome|default:"—" }}</td>
           <td class="small">{% for r in c.righe.all %}{{ r.servizio }}{% if not forloop.last %}, {% endif %}{% empty %}<span class="text-muted">—</span>{% endfor %}</td>
-          <td class="text-muted small">{{ c.get_periodicita_display }}</td>
           <td class="text-muted small">{{ c.data_inizio|date:"d/m/Y" }}</td>
           <td>
             {% if c.stato == "attivo" %}<span class="badge badge-ok">Attivo</span>

@@ -29,9 +29,9 @@ class ContrattoFilialeInline(admin.TabularInline):
 
 @admin.register(Contratto)
 class ContrattoAdmin(admin.ModelAdmin):
-    list_display = ["cliente", "periodicita", "stato", "data_inizio"]
-    list_filter = ["stato", "periodicita"]
-    search_fields = ["cliente__ragione_sociale", "righe__servizio__nome"]
+    list_display = ["cliente", "nome", "stato", "data_inizio"]
+    list_filter = ["stato"]
+    search_fields = ["cliente__ragione_sociale", "nome", "righe__servizio__nome"]
     inlines = [ContrattoRigaInline, ContrattoFilialeInline]
 
 

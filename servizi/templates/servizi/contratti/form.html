@@ -1,6 +1,18 @@
 {% extends "base.html" %}
 {% load static %}
-{% block extra_css %}<link rel="stylesheet" href="{% static 'css/detail.css' %}">{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/detail.css' %}">
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
+<style>
+  .select2-container { width: 100% !important; }
+  .select2-container--default .select2-selection--multiple {
+    border-color: #d1d5db; border-radius: .375rem; min-height: 38px;
+  }
+  .select2-container--default .select2-selection--multiple .select2-selection__choice {
+    background: #dbeafe; border-color: #bfdbfe; color: #1e40af; font-size: .82rem;
+  }
+</style>
+{% endblock %}
 {% block content %}
 <div class="page-header mb-4">
   <nav aria-label="breadcrumb">
@@ -28,11 +40,11 @@
               {{ form.cliente }}
               {% if form.cliente.errors %}<div class="invalid-feedback d-block">{{ form.cliente.errors.0 }}</div>{% endif %}
             </div>
-            <div class="col-sm-3">
-              <label class="form-label">{{ form.periodicita.label }}</label>
-              {{ form.periodicita }}
+            <div class="col-sm-6">
+              <label class="form-label">{{ form.nome.label }} <span class="text-muted fw-normal">(facoltativo)</span></label>
+              {{ form.nome }}
             </div>
-            <div class="col-sm-3">
+            <div class="col-sm-4">
               <label class="form-label">{{ form.stato.label }}</label>
               {{ form.stato }}
             </div>
@@ -43,6 +55,12 @@
             <div class="col-sm-4">
               <label class="form-label">{{ form.data_fine.label }}</label>
               {{ form.data_fine }}
+            </div>
+            <div class="col-12">
+              <label class="form-label">{{ form.filiali.label }} <span class="text-danger">*</span></label>
+              {{ form.filiali }}
+              <div class="form-text">{{ form.filiali.help_text }}</div>
+              {% if form.filiali.errors %}<div class="invalid-feedback d-block">{{ form.filiali.errors.0 }}</div>{% endif %}
             </div>
             <div class="col-12">
               <label class="form-label">{{ form.note.label }}</label>
@@ -105,13 +123,6 @@
         </div>
       </div>
 
-      {% if not object %}
-      <div class="alert alert-info small">
-        <i class="bi bi-info-circle me-2"></i>
-        Al salvataggio, il contratto verrà applicato a tutte le sedi attive del cliente selezionato.
-      </div>
-      {% endif %}
-
       <div class="d-flex gap-2">
         <button type="submit" class="btn btn-brand"><i class="bi bi-check-lg me-1"></i>Salva</button>
         <a href="{{ back_url }}" class="btn btn-outline-secondary">Annulla</a>
@@ -161,6 +172,40 @@
     });
     body.appendChild(clone);
     totalFormsInput.value = idx + 1;
+  });
+})();
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+(function () {
+  const URL_FILIALI = '{% url "servizi:pianificazione_filiali_api" %}';
+  const $cliente = $('#id_cliente');
+  const $filiali = $('#id_filiali');
+
+  $filiali.select2({
+    placeholder: 'Seleziona una o più sedi…',
+    width: '100%',
+    language: { noResults: () => 'Nessuna sede trovata per questo cliente' },
+  });
+
+  // Cambiando cliente le sedi vanno ricaricate: quelle già selezionate
+  // appartenevano a un altro cliente e non hanno più senso qui.
+  $cliente.on('change', function () {
+    const clienteId = this.value;
+    $filiali.empty().trigger('change');
+    if (!clienteId) return;
+
+    fetch(URL_FILIALI + '?cliente_id=' + clienteId)
+      .then(r => r.json())
+      .then(filiali => {
+        filiali.forEach(f => {
+          const label = f.citta ? f.nome + ' — ' + f.citta : f.nome;
+          $filiali.append(new Option(label, f.id, false, false));
+        });
+        $filiali.trigger('change');
+      });
   });
 })();
 </script>

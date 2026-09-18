@@ -236,7 +236,9 @@ class ContrattoListView(LoginRequiredMixin, ListView):
         q = self.request.GET.get("q", "").strip()
         if q:
             qs = qs.filter(
-                Q(cliente__ragione_sociale__icontains=q) | Q(righe__servizio__nome__icontains=q)
+                Q(cliente__ragione_sociale__icontains=q)
+                | Q(nome__icontains=q)
+                | Q(righe__servizio__nome__icontains=q)
             ).distinct()
         stato = self.request.GET.get("stato", "attivo")
         if stato:
@@ -294,11 +296,11 @@ class ContrattoCreateView(LoginRequiredMixin, CreateView):
             self.object = form.save()
             righe_fs.instance = self.object
             righe_fs.save()
-            filiali = self.object.cliente.filiali.filter(attivo=True)
+            filiali = form.cleaned_data["filiali"]
             for f in filiali:
                 ContrattoFiliale.objects.get_or_create(contratto=self.object, filiale=f)
             n = filiali.count()
-            messages.success(request, f"Contratto creato e applicato a {n} sede{'i' if n != 1 else ''}.")
+            messages.success(request, f"Contratto creato per {n} sede{'i' if n != 1 else ''}.")
             return redirect(self.object.get_absolute_url())
         ctx = self.get_context_data(form=form, righe_fs=righe_fs)
         return self.render_to_response(ctx)
@@ -324,6 +326,13 @@ class ContrattoUpdateView(LoginRequiredMixin, UpdateView):
         if form.is_valid() and righe_fs.is_valid():
             self.object = form.save()
             righe_fs.save()
+            scelte = set(form.cleaned_data["filiali"].values_list("id", flat=True))
+            esistenti = set(self.object.filiali_contratto.values_list("filiale_id", flat=True))
+            for fid in scelte - esistenti:
+                ContrattoFiliale.objects.get_or_create(contratto=self.object, filiale_id=fid)
+            da_rimuovere = esistenti - scelte
+            if da_rimuovere:
+                self.object.filiali_contratto.filter(filiale_id__in=da_rimuovere).delete()
             messages.success(request, "Contratto aggiornato.")
             return redirect(self.object.get_absolute_url())
         ctx = self.get_context_data(form=form, righe_fs=righe_fs)

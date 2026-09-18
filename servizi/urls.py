@@ -88,6 +88,8 @@ urlpatterns = [
          views_pianificazione.pianificazione_eventi_api, name="pianificazione_eventi_api"),
     path("api/pianificazione/filiali/",
          views_pianificazione.pianificazione_filiali_api, name="pianificazione_filiali_api"),
+    path("api/pianificazione/contratti/",
+         views_pianificazione.pianificazione_contratti_api, name="pianificazione_contratti_api"),
     path("api/pianificazione/servizi/",
          views_pianificazione.pianificazione_servizi_api, name="pianificazione_servizi_api"),
     path("api/pianificazione/genera/",

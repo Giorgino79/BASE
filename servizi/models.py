@@ -88,9 +88,9 @@ class Contratto(AllegatiMixin, models.Model):
         "anagrafica.Azienda", on_delete=models.PROTECT,
         related_name="contratti", verbose_name="Cliente",
     )
-    periodicita    = models.CharField(
-        max_length=20, choices=Periodicita.choices, default=Periodicita.MENSILE,
-        verbose_name="Periodicità",
+    nome           = models.CharField(
+        max_length=200, blank=True, verbose_name="Nome contratto",
+        help_text="Facoltativo — utile per distinguere più contratti dello stesso cliente",
     )
     data_inizio    = models.DateField(verbose_name="Data inizio", default=timezone.localdate)
     data_fine      = models.DateField(null=True, blank=True, verbose_name="Data fine")
@@ -112,7 +112,9 @@ class Contratto(AllegatiMixin, models.Model):
         ordering = ["-created_at"]
 
     def __str__(self):
-        return f"{self.cliente} — {self.get_periodicita_display()}"
+        if self.nome:
+            return f"{self.nome} — {self.cliente}"
+        return f"Contratto {self.data_inizio:%d/%m/%Y} — {self.cliente}"
 
     def get_absolute_url(self):
         return reverse("servizi:contratto_detail", kwargs={"pk": self.pk})
