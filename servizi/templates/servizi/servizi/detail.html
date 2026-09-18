@@ -61,7 +61,7 @@
             <tr>
               <td><a href="{{ r.contratto.get_absolute_url }}" class="text-decoration-none">{{ r.contratto.cliente }}</a></td>
               <td class="text-end fw-bold text-brand">€ {{ r.prezzo }}</td>
-              <td>{{ r.get_periodicita_display }}</td>
+              <td>{{ r.periodicita }}</td>
               <td class="text-end"><a href="{{ r.contratto.get_absolute_url }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-eye"></i></a></td>
             </tr>
             {% endfor %}

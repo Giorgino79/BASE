@@ -68,15 +68,26 @@ class Servizio(AllegatiMixin, models.Model):
         return reverse("servizi:servizio_detail", kwargs={"pk": self.pk})
 
 
-class Contratto(AllegatiMixin, models.Model):
+class Periodicita(models.Model):
+    """Frequenza di un servizio a contratto — elenco aperto: oltre alle
+    voci standard (Mensile, Trimestrale, ...) il cliente può richiedere
+    frequenze non previste, inseribili al volo dal form del contratto.
+    """
 
-    class Periodicita(models.TextChoices):
-        MENSILE     = "mensile",     "Mensile"
-        BIMESTRALE  = "bimestrale",  "Bimestrale"
-        TRIMESTRALE = "trimestrale", "Trimestrale"
-        SEMESTRALE  = "semestrale",  "Semestrale"
-        ANNUALE     = "annuale",     "Annuale"
-        A_CHIAMATA  = "a_chiamata",  "A chiamata"
+    nome       = models.CharField(max_length=100, unique=True, verbose_name="Periodicità")
+    attivo     = models.BooleanField(default=True, verbose_name="Attiva")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Periodicità"
+        verbose_name_plural = "Periodicità"
+        ordering = ["nome"]
+
+    def __str__(self):
+        return self.nome
+
+
+class Contratto(AllegatiMixin, models.Model):
 
     class Stato(models.TextChoices):
         ATTIVO    = "attivo",    "Attivo"
@@ -182,9 +193,9 @@ class ContrattoRiga(models.Model):
     prezzo    = models.DecimalField(
         max_digits=10, decimal_places=2, verbose_name="Prezzo",
     )
-    periodicita = models.CharField(
-        max_length=20, choices=Contratto.Periodicita.choices,
-        default=Contratto.Periodicita.MENSILE, verbose_name="Periodicità",
+    periodicita = models.ForeignKey(
+        Periodicita, on_delete=models.PROTECT,
+        related_name="righe_contratto", verbose_name="Periodicità",
     )
 
     class Meta:

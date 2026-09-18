@@ -344,6 +344,6 @@ def contratto(request):
     from servizi.models import Contratto
     contratti = (Contratto.objects
                  .filter(cliente=cliente, stato='attivo')
-                 .prefetch_related('righe__servizio')
+                 .prefetch_related('righe__servizio', 'righe__periodicita')
                  .order_by('-data_inizio'))
     return render(request, 'portale/contratto.html', {'contratti': contratti})

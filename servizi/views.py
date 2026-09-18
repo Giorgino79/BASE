@@ -14,7 +14,7 @@ from django.http import JsonResponse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from .models import Servizio, Contratto, ContrattoFiliale, ContrattoFilialeRiga, ContrattoRiga, ODS, ODSRiga, Distinta, ConsumoMateriale, CondominioODS, RigaUnitaAbitativa, RigaProdottoCondominio, CondominioStabile, UnitaAbitativaBase
+from .models import Servizio, Contratto, ContrattoFiliale, ContrattoFilialeRiga, ContrattoRiga, Periodicita, ODS, ODSRiga, Distinta, ConsumoMateriale, CondominioODS, RigaUnitaAbitativa, RigaProdottoCondominio, CondominioStabile, UnitaAbitativaBase
 from .forms import (
     ServizioForm, ContrattoForm, ContrattoRigaFormSet, ContrattoFilialeRigaFormSet,
     ODSForm, ODSRigaFormSet,
@@ -165,7 +165,7 @@ class ServizioDetailView(LoginRequiredMixin, DetailView):
         ctx = super().get_context_data(**kwargs)
         ctx["contratto_righe"] = (
             ContrattoRiga.objects.filter(servizio=self.object, contratto__stato="attivo")
-            .select_related("contratto__cliente")
+            .select_related("contratto__cliente", "periodicita")
             .order_by("-contratto__created_at")
         )
         ctx["back_url"] = reverse("servizi:servizio_list")
@@ -269,7 +269,7 @@ class ContrattoDetailView(LoginRequiredMixin, DetailView):
         ctx["edit_url"] = reverse("servizi:contratto_update", kwargs={"pk": self.object.pk})
         ctx["content_type_id"] = ContentType.objects.get_for_model(Contratto).pk
         ctx["object_id"] = self.object.pk
-        ctx["righe"] = self.object.righe.select_related("servizio")
+        ctx["righe"] = self.object.righe.select_related("servizio", "periodicita")
         ctx["filiali"] = self.object.filiali_contratto.select_related("filiale").order_by("filiale__nome")
         return ctx
 
@@ -283,6 +283,7 @@ class ContrattoCreateView(LoginRequiredMixin, CreateView):
         ctx = super().get_context_data(**kwargs)
         ctx["titolo"] = "Nuovo Contratto"
         ctx["back_url"] = reverse("servizi:contratto_list")
+        ctx["periodicita_list"] = Periodicita.objects.filter(attivo=True).order_by("nome")
         if "righe_fs" not in ctx:
             ctx["righe_fs"] = ContrattoRigaFormSet(prefix="righe")
         return ctx
@@ -315,6 +316,7 @@ class ContrattoUpdateView(LoginRequiredMixin, UpdateView):
         ctx = super().get_context_data(**kwargs)
         ctx["titolo"] = f"Modifica contratto — {self.object}"
         ctx["back_url"] = self.object.get_absolute_url()
+        ctx["periodicita_list"] = Periodicita.objects.filter(attivo=True).order_by("nome")
         if "righe_fs" not in ctx:
             ctx["righe_fs"] = ContrattoRigaFormSet(instance=self.object, prefix="righe")
         return ctx
@@ -337,6 +339,22 @@ class ContrattoUpdateView(LoginRequiredMixin, UpdateView):
             return redirect(self.object.get_absolute_url())
         ctx = self.get_context_data(form=form, righe_fs=righe_fs)
         return self.render_to_response(ctx)
+
+
+@login_required
+@require_POST
+def periodicita_create(request):
+    """Crea al volo una nuova periodicità dal form del contratto (modale)."""
+    nome = request.POST.get("nome", "").strip()
+    if not nome:
+        return JsonResponse({"ok": False, "errore": "Il nome è obbligatorio."}, status=400)
+
+    esistente = Periodicita.objects.filter(nome__iexact=nome).first()
+    if esistente:
+        return JsonResponse({"ok": True, "id": esistente.pk, "nome": esistente.nome, "esisteva": True})
+
+    p = Periodicita.objects.create(nome=nome)
+    return JsonResponse({"ok": True, "id": p.pk, "nome": p.nome, "esisteva": False})
 
 
 class ContrattoDisattivaView(LoginRequiredMixin, DetailView):
@@ -590,13 +608,13 @@ def contratto_pdf(request, pk):
     from core.pdf_generator import generate_pdf_from_html, PDFConfig
 
     contratto = get_object_or_404(
-        Contratto.objects.select_related("cliente").prefetch_related("righe__servizio"),
+        Contratto.objects.select_related("cliente").prefetch_related("righe__servizio", "righe__periodicita"),
         pk=pk,
     )
     filiali = ContrattoFiliale.objects.filter(contratto=contratto).select_related("filiale")
     ctx = {
         "contratto": contratto,
-        "righe": contratto.righe.select_related("servizio"),
+        "righe": contratto.righe.select_related("servizio", "periodicita"),
         "filiali": filiali,
         "oggi": timezone.now().date(),
     }

@@ -1,6 +1,6 @@
 from django import forms
 from django.forms import inlineformset_factory
-from .models import Servizio, Contratto, ContrattoFiliale, ContrattoFilialeRiga, ContrattoRiga, ODS, ODSRiga, ConsumoMateriale, CondominioODS, RigaUnitaAbitativa, RigaProdottoCondominio, CondominioStabile, UnitaAbitativaBase
+from .models import Servizio, Contratto, ContrattoFiliale, ContrattoFilialeRiga, ContrattoRiga, Periodicita, ODS, ODSRiga, ConsumoMateriale, CondominioODS, RigaUnitaAbitativa, RigaProdottoCondominio, CondominioStabile, UnitaAbitativaBase
 
 _BS = {"class": "form-control"}
 _SEL = {"class": "form-select"}
@@ -91,6 +91,16 @@ class ContrattoRigaForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["servizio"].queryset = Servizio.objects.filter(attivo=True).order_by("nome")
+        self.fields["periodicita"].queryset = Periodicita.objects.filter(attivo=True).order_by("nome")
+
+
+class PeriodicitaForm(forms.ModelForm):
+    class Meta:
+        model = Periodicita
+        fields = ["nome"]
+        widgets = {
+            "nome": forms.TextInput(attrs={"class": "form-control form-control-sm", "placeholder": "Es. Ogni 45 giorni"}),
+        }
 
 
 class ContrattoFilialeRigaForm(forms.ModelForm):

@@ -71,7 +71,12 @@
       </div>
 
       <div class="card mb-3">
-        <div class="card-header card-header-primary"><i class="bi bi-list-ul me-2"></i>Servizi del Contratto</div>
+        <div class="card-header card-header-primary d-flex justify-content-between align-items-center">
+          <span><i class="bi bi-list-ul me-2"></i>Servizi del Contratto</span>
+          <button type="button" class="btn btn-sm btn-light" data-bs-toggle="modal" data-bs-target="#modal-nuova-periodicita">
+            <i class="bi bi-plus-lg me-1"></i>Nuova periodicità
+          </button>
+        </div>
         {% if righe_fs.non_form_errors %}
         <div class="alert alert-danger m-3">{{ righe_fs.non_form_errors }}</div>
         {% endif %}
@@ -132,6 +137,38 @@
   </div>
 </form>
 
+{# Modal nuova periodicità #}
+<div class="modal fade" id="modal-nuova-periodicita" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h6 class="modal-title"><i class="bi bi-calendar-plus me-2"></i>Nuova periodicità</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <label class="form-label">Nome periodicità</label>
+        <input type="text" id="np-nome" class="form-control form-control-sm" placeholder="Es. Ogni 45 giorni">
+        <div id="np-errore" class="text-danger small mt-1" style="display:none;"></div>
+        <div id="np-ok" class="text-success small mt-1" style="display:none;"></div>
+        <button type="button" id="np-salva" class="btn btn-sm btn-brand w-100 mt-2">
+          <i class="bi bi-check-lg me-1"></i>Crea periodicità
+        </button>
+
+        <hr>
+        <div class="small fw-semibold text-muted mb-1">Periodicità già esistenti</div>
+        <ul id="np-elenco" class="list-unstyled small mb-0" style="max-height:160px;overflow-y:auto;">
+          {% for p in periodicita_list %}
+          <li class="py-1 border-bottom">{{ p.nome }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Chiudi</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 {# Template invisibile per la nuova riga da clonare via JS #}
 <template id="riga-empty-template">
   <tr class="riga-row">
@@ -172,6 +209,90 @@
     });
     body.appendChild(clone);
     totalFormsInput.value = idx + 1;
+  });
+})();
+</script>
+
+<script>
+(function () {
+  function getCsrf() {
+    const m = document.cookie.match('(^|;)\\s*csrftoken\\s*=\\s*([^;]+)');
+    return m ? m.pop() : '';
+  }
+
+  const URL_PERIODICITA = '{% url "servizi:periodicita_create" %}';
+  const $input  = document.getElementById('np-nome');
+  const $btn    = document.getElementById('np-salva');
+  const $errore = document.getElementById('np-errore');
+  const $ok     = document.getElementById('np-ok');
+  const $elenco = document.getElementById('np-elenco');
+  const template = document.getElementById('riga-empty-template');
+
+  function aggiungiOpzionePeriodicita(id, nome) {
+    // Righe già in pagina
+    document.querySelectorAll('select[name$="-periodicita"]').forEach(sel => {
+      if (!sel.querySelector(`option[value="${id}"]`)) {
+        sel.appendChild(new Option(nome, id));
+      }
+    });
+    // Il template invisibile usato per clonare le nuove righe
+    const selTemplate = template.content.querySelector('select[name$="-periodicita"]');
+    if (selTemplate && !selTemplate.querySelector(`option[value="${id}"]`)) {
+      selTemplate.appendChild(new Option(nome, id));
+    }
+  }
+
+  function salva() {
+    const nome = $input.value.trim();
+    $errore.style.display = 'none';
+    $ok.style.display = 'none';
+    if (!nome) {
+      $errore.textContent = 'Inserisci un nome.';
+      $errore.style.display = 'block';
+      return;
+    }
+
+    $btn.disabled = true;
+    fetch(URL_PERIODICITA, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'X-CSRFToken': getCsrf(),
+      },
+      body: 'nome=' + encodeURIComponent(nome),
+    })
+      .then(r => r.json())
+      .then(d => {
+        $btn.disabled = false;
+        if (!d.ok) {
+          $errore.textContent = d.errore || 'Errore durante il salvataggio.';
+          $errore.style.display = 'block';
+          return;
+        }
+        aggiungiOpzionePeriodicita(d.id, d.nome);
+        if (!d.esisteva) {
+          const li = document.createElement('li');
+          li.className = 'py-1 border-bottom';
+          li.textContent = d.nome;
+          $elenco.appendChild(li);
+          $ok.textContent = 'Periodicità creata.';
+        } else {
+          $ok.textContent = 'Esisteva già: ' + d.nome + '.';
+        }
+        $ok.style.display = 'block';
+        $input.value = '';
+        $input.focus();
+      })
+      .catch(() => {
+        $btn.disabled = false;
+        $errore.textContent = 'Errore di rete, riprova.';
+        $errore.style.display = 'block';
+      });
+  }
+
+  $btn.addEventListener('click', salva);
+  $input.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') { e.preventDefault(); salva(); }
   });
 })();
 </script>

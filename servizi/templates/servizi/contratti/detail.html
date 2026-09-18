@@ -73,7 +73,7 @@
             {% for r in righe %}
             <tr>
               <td><a href="{{ r.servizio.get_absolute_url }}" class="text-decoration-none">{{ r.servizio }}</a></td>
-              <td>{{ r.get_periodicita_display }}</td>
+              <td>{{ r.periodicita }}</td>
               <td class="text-end fw-bold text-brand">€ {{ r.prezzo }}</td>
             </tr>
             {% empty %}

@@ -1,11 +1,18 @@
 from django.contrib import admin
-from .models import Servizio, Contratto, ContrattoFiliale, ContrattoFilialeRiga, ContrattoRiga, ODS, ODSRiga, ConsumoMateriale
+from .models import Servizio, Contratto, ContrattoFiliale, ContrattoFilialeRiga, ContrattoRiga, Periodicita, ODS, ODSRiga, ConsumoMateriale
 
 
 @admin.register(Servizio)
 class ServizioAdmin(admin.ModelAdmin):
     list_display = ["nome", "tariffa_cartello", "attivo", "richiede_installazione"]
     list_filter = ["attivo", "richiede_installazione"]
+    search_fields = ["nome"]
+
+
+@admin.register(Periodicita)
+class PeriodicitaAdmin(admin.ModelAdmin):
+    list_display = ["nome", "attivo", "created_at"]
+    list_filter = ["attivo"]
     search_fields = ["nome"]
 
 

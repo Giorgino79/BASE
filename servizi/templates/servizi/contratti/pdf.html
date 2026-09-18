@@ -76,7 +76,7 @@
     {% for r in righe %}
     <tr>
       <td>{{ r.servizio.nome }}</td>
-      <td>{{ r.get_periodicita_display }}</td>
+      <td>{{ r.periodicita }}</td>
       <td class="right">€ {{ r.prezzo }}</td>
     </tr>
     {% empty %}

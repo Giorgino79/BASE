@@ -24,6 +24,7 @@ urlpatterns = [
     path("contratti/filiale/<int:cf_pk>/",          views.contratto_filiale_detail,      name="contratto_filiale_detail"),
     path("contratti/filiale/<int:cf_pk>/gestisci/", views.contratto_filiale_gestisci,    name="contratto_filiale_gestisci"),
     path("contratti/<int:pk>/pdf/",                 views.contratto_pdf,                 name="contratto_pdf"),
+    path("periodicita/nuova/",                      views.periodicita_create,            name="periodicita_create"),
 
     # ODS
     path("ods/",                   views.ods_list,                name="ods_list"),

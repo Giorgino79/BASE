@@ -200,15 +200,15 @@ def pianificazione_servizi_api(request):
     righe = (
         ContrattoRiga.objects
         .filter(contratto_id=contratto_id, servizio__attivo=True)
-        .select_related("servizio")
+        .select_related("servizio", "periodicita")
         .order_by("servizio__nome")
     )
     return JsonResponse([
         {
             "id": r.servizio_id,
             "nome": r.servizio.nome,
-            "periodicita": r.periodicita,
-            "periodicita_display": r.get_periodicita_display(),
+            "periodicita": r.periodicita_id,
+            "periodicita_display": r.periodicita.nome,
         }
         for r in righe
     ], safe=False)
