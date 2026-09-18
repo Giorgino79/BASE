@@ -173,6 +173,15 @@
         {% if ods.firma_digitale.firmato_da %}
           <span class="badge bg-secondary-subtle text-secondary-emphasis"><i class="bi bi-pen me-1"></i>{{ ods.firma_digitale.firmato_da }}</span>
         {% endif %}
+        {% if distinta.stato == "aperta" %}
+        <form method="post" action="{% url 'servizi:riapri_servizio_distinta' ods.pk %}" class="d-inline">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-sm btn-outline-secondary" title="Riapri per modificare i dati inseriti"
+                  onclick="return confirm('Riaprire {{ ods.numero }}? Prodotti confermati e incasso registrato verranno annullati e potrai reinserirli.')">
+            <i class="bi bi-arrow-counterclockwise me-1"></i>Riapri
+          </button>
+        </form>
+        {% endif %}
       {% elif ods.stato == "annullato" %}
         <span class="badge badge-ko"><i class="bi bi-x-circle me-1"></i>Annullato</span>
       {% else %}

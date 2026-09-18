@@ -1768,6 +1768,58 @@ def chiudi_servizio_distinta(request, ods_pk):
 
 
 @login_required
+def riapri_servizio_distinta(request, ods_pk):
+    """Riapre un ODS già completato dentro una distinta ancora aperta,
+    per permettere di correggere i dati inseriti alla chiusura (prodotti,
+    incasso, note...).
+
+    Annulla gli effetti della chiusura: sblocca i consumi confermati
+    (ripristinando lo stock sul mezzo tramite ConsumoMateriale.save()),
+    cancella i consumi di cisterna registrati e resetta incasso/stato.
+    Bloccato se esiste già una fattura valida collegata: riaprire dopo
+    la fatturazione disallineerebbe i dati dal documento fiscale emesso.
+    """
+    ods = get_object_or_404(ODS.objects.select_related("distinta"), pk=ods_pk)
+    back = ods.distinta.get_absolute_url() if ods.distinta else reverse("servizi:distinta_list")
+    if request.method != "POST":
+        return redirect(back)
+
+    if not ods.distinta or ods.distinta.stato != "aperta" or ods.stato != "completato":
+        messages.error(request, "Questo servizio non può essere riaperto.")
+        return redirect(back)
+
+    if ods.fattura_valida:
+        messages.error(
+            request,
+            f"{ods.numero} ha già una fattura collegata: non può essere riaperto.",
+        )
+        return redirect(back)
+
+    from django.db import transaction
+
+    with transaction.atomic():
+        for riga in ods.righe.all():
+            for c in ConsumoMateriale.objects.filter(riga=riga, confermato=True):
+                c.confermato = False
+                c.save()
+
+        ods.consumi_cisterna.all().delete()
+
+        ods.stato = "programmato"
+        ods.ora_fine = None
+        fields = ["stato", "ora_fine"]
+        if ods.incassato:
+            ods.incassato = False
+            ods.importo_incassato = None
+            ods.data_incasso = None
+            fields += ["incassato", "importo_incassato", "data_incasso"]
+        ods.save(update_fields=fields)
+
+    messages.info(request, f"ODS {ods.numero} riaperto per modifiche.")
+    return redirect(back)
+
+
+@login_required
 def aggiungi_consumo(request, ods_pk):
     """Aggiunge un ConsumoMateriale a un ODS (prima riga) e scala ScortaMezzo."""
     ods = get_object_or_404(

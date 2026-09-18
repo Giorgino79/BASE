@@ -48,6 +48,7 @@ urlpatterns = [
     path("distinte/<int:pk>/chiudi-ufficio/",   views.chiudi_distinta_ufficio,     name="chiudi_distinta_ufficio"),
     path("distinte/incassi/",                   views.situazione_incassi,          name="situazione_incassi"),
     path("ods/<int:ods_pk>/chiudi-servizio/",   views.chiudi_servizio_distinta,    name="chiudi_servizio_distinta"),
+    path("ods/<int:ods_pk>/riapri-servizio/",   views.riapri_servizio_distinta,    name="riapri_servizio_distinta"),
     path("ods/<int:ods_pk>/aggiungi-consumo/",  views.aggiungi_consumo,            name="aggiungi_consumo"),
     path("consumo/<int:consumo_pk>/elimina/",   views.elimina_consumo,             name="elimina_consumo"),
     path("distinte/<int:pk>/aggiungi-servizio/", views.distinta_aggiungi_ods,      name="distinta_aggiungi_ods"),
