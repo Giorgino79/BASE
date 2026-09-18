@@ -151,10 +151,13 @@ def pianificazione_filiali_api(request):
 @login_required
 def pianificazione_servizi_api(request):
     """Servizi disponibili per il cliente selezionato: solo quelli previsti
-    nei suoi contratti attivi (a livello di contratto o di singola sede),
-    con la periodicità della riga contratto quando definita.
+    esplicitamente nelle righe dei suoi contratti attivi, con la relativa
+    periodicità. Le righe sede (ContrattoFilialeRiga) sono escluse di
+    proposito: rappresentano prezzi/aggiunte specifiche di una sede, non un
+    impegno contrattuale generale — includerle in questo elenco porterebbe
+    a programmare servizi che il cliente non è tenuto ad avere ovunque.
     """
-    from .models import Servizio, Contratto, ContrattoRiga, ContrattoFilialeRiga
+    from .models import Servizio, Contratto, ContrattoRiga
 
     cliente_id = request.GET.get("cliente_id")
     if not cliente_id:
@@ -175,16 +178,11 @@ def pianificazione_servizi_api(request):
     ):
         periodicita_per_servizio.setdefault(servizio_id, periodicita)
 
-    ids = set(periodicita_per_servizio) | set(
-        ContrattoFilialeRiga.objects.filter(
-            contratto_filiale__contratto_id__in=contratti_ids
-        ).values_list("servizio_id", flat=True)
-    )
-    if not ids:
+    if not periodicita_per_servizio:
         return JsonResponse([], safe=False)
 
     result = []
-    for s in Servizio.objects.filter(pk__in=ids, attivo=True).order_by("nome"):
+    for s in Servizio.objects.filter(pk__in=periodicita_per_servizio, attivo=True).order_by("nome"):
         periodicita = periodicita_per_servizio.get(s.pk)
         result.append({
             "id": s.pk,
