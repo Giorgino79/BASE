@@ -150,35 +150,49 @@ def pianificazione_filiali_api(request):
 
 @login_required
 def pianificazione_servizi_api(request):
-    """Servizi disponibili per un cliente (da contratti attivi, fallback tutti)."""
+    """Servizi disponibili per il cliente selezionato: solo quelli previsti
+    nei suoi contratti attivi (a livello di contratto o di singola sede),
+    con la periodicità della riga contratto quando definita.
+    """
     from .models import Servizio, Contratto, ContrattoRiga, ContrattoFilialeRiga
 
     cliente_id = request.GET.get("cliente_id")
-    if cliente_id:
-        contratti_ids = list(
-            Contratto.objects.filter(cliente_id=cliente_id, stato="attivo")
-            .values_list("id", flat=True)
-        )
-        if contratti_ids:
-            ids = set(
-                ContrattoRiga.objects.filter(contratto_id__in=contratti_ids)
-                .values_list("servizio_id", flat=True)
-            )
-            ids |= set(
-                ContrattoFilialeRiga.objects.filter(
-                    contratto_filiale__contratto_id__in=contratti_ids
-                ).values_list("servizio_id", flat=True)
-            )
-            if ids:
-                return JsonResponse([
-                    {"id": s.pk, "nome": s.nome}
-                    for s in Servizio.objects.filter(pk__in=ids, attivo=True).order_by("nome")
-                ], safe=False)
+    if not cliente_id:
+        return JsonResponse([], safe=False)
 
-    return JsonResponse([
-        {"id": s.pk, "nome": s.nome}
-        for s in Servizio.objects.filter(attivo=True).order_by("nome")
-    ], safe=False)
+    contratti_ids = list(
+        Contratto.objects.filter(cliente_id=cliente_id, stato="attivo")
+        .values_list("id", flat=True)
+    )
+    if not contratti_ids:
+        return JsonResponse([], safe=False)
+
+    labels = dict(Contratto.Periodicita.choices)
+    periodicita_per_servizio = {}
+    for servizio_id, periodicita in (
+        ContrattoRiga.objects.filter(contratto_id__in=contratti_ids)
+        .values_list("servizio_id", "periodicita")
+    ):
+        periodicita_per_servizio.setdefault(servizio_id, periodicita)
+
+    ids = set(periodicita_per_servizio) | set(
+        ContrattoFilialeRiga.objects.filter(
+            contratto_filiale__contratto_id__in=contratti_ids
+        ).values_list("servizio_id", flat=True)
+    )
+    if not ids:
+        return JsonResponse([], safe=False)
+
+    result = []
+    for s in Servizio.objects.filter(pk__in=ids, attivo=True).order_by("nome"):
+        periodicita = periodicita_per_servizio.get(s.pk)
+        result.append({
+            "id": s.pk,
+            "nome": s.nome,
+            "periodicita": periodicita,
+            "periodicita_display": labels.get(periodicita, ""),
+        })
+    return JsonResponse(result, safe=False)
 
 
 @login_required

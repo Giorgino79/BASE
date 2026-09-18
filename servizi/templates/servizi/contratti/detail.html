@@ -63,20 +63,21 @@
     </div>
 
     <div class="card mb-3">
-      <div class="card-header card-header-primary"><i class="bi bi-list-ul me-2"></i>Servizi del Contratto</div>
+      <div class="card-header card-header-primary"><i class="bi bi-list-ul me-2"></i>Servizi</div>
       <div class="table-responsive">
         <table class="table mb-0 align-middle">
           <thead class="bg-brand text-white">
-            <tr><th>Servizio</th><th class="text-end">Prezzo</th></tr>
+            <tr><th>Servizio</th><th>Periodicità</th><th class="text-end">Prezzo</th></tr>
           </thead>
           <tbody>
             {% for r in righe %}
             <tr>
               <td><a href="{{ r.servizio.get_absolute_url }}" class="text-decoration-none">{{ r.servizio }}</a></td>
+              <td>{{ r.get_periodicita_display }}</td>
               <td class="text-end fw-bold text-brand">€ {{ r.prezzo }}</td>
             </tr>
             {% empty %}
-            <tr><td colspan="2" class="text-center text-muted py-2">Nessun servizio inserito</td></tr>
+            <tr><td colspan="3" class="text-center text-muted py-2">Nessun servizio inserito</td></tr>
             {% endfor %}
           </tbody>
         </table>

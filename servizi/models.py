@@ -164,7 +164,12 @@ class ContrattoFilialeRiga(models.Model):
 
 
 class ContrattoRiga(models.Model):
-    """Un servizio con il relativo prezzo all'interno di un contratto."""
+    """Un servizio con prezzo e periodicità all'interno di un contratto.
+
+    La periodicità è per-servizio (non per contratto): un contratto può
+    prevedere ad esempio derattizzazione mensile e disinfestazione
+    trimestrale contemporaneamente.
+    """
 
     contratto = models.ForeignKey(
         Contratto, on_delete=models.CASCADE, related_name="righe",
@@ -174,6 +179,10 @@ class ContrattoRiga(models.Model):
     )
     prezzo    = models.DecimalField(
         max_digits=10, decimal_places=2, verbose_name="Prezzo",
+    )
+    periodicita = models.CharField(
+        max_length=20, choices=Contratto.Periodicita.choices,
+        default=Contratto.Periodicita.MENSILE, verbose_name="Periodicità",
     )
 
     class Meta:

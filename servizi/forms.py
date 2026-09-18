@@ -54,10 +54,11 @@ class ContrattoForm(forms.ModelForm):
 class ContrattoRigaForm(forms.ModelForm):
     class Meta:
         model = ContrattoRiga
-        fields = ["servizio", "prezzo"]
+        fields = ["servizio", "prezzo", "periodicita"]
         widgets = {
-            "servizio": forms.Select(attrs={"class": "form-select form-select-sm"}),
-            "prezzo":   forms.NumberInput(attrs={"class": "form-control form-control-sm", "step": "0.01", "placeholder": "0.00"}),
+            "servizio":    forms.Select(attrs={"class": "form-select form-select-sm"}),
+            "prezzo":      forms.NumberInput(attrs={"class": "form-control form-control-sm", "step": "0.01", "placeholder": "0.00"}),
+            "periodicita": forms.Select(attrs={"class": "form-select form-select-sm"}),
         }
 
     def __init__(self, *args, **kwargs):

@@ -12,7 +12,7 @@ class ServizioAdmin(admin.ModelAdmin):
 class ContrattoRigaInline(admin.TabularInline):
     model = ContrattoRiga
     extra = 1
-    fields = ["servizio", "prezzo"]
+    fields = ["servizio", "periodicita", "prezzo"]
 
 
 class ContrattoFilialeRigaInline(admin.TabularInline):

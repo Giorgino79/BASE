@@ -541,13 +541,19 @@ document.getElementById('sel-cliente').addEventListener('change', async function
   if (!calendar) buildCalendar();
 
   const servizi = await api(URL_SERVIZI + '?cliente_id=' + clienteId);
-  $selServ.innerHTML = '<option value="">— Seleziona servizio —</option>';
-  servizi.forEach(s => {
-    const o = document.createElement('option');
-    o.value = s.id; o.textContent = s.nome;
-    $selServ.appendChild(o);
-  });
-  $selServ.disabled = false;
+  if (servizi.length === 0) {
+    $selServ.innerHTML = '<option value="">— Nessun servizio a contratto per questo cliente —</option>';
+    $selServ.disabled = true;
+  } else {
+    $selServ.innerHTML = '<option value="">— Seleziona servizio —</option>';
+    servizi.forEach(s => {
+      const o = document.createElement('option');
+      o.value = s.id;
+      o.textContent = s.periodicita_display ? s.nome + ' — ' + s.periodicita_display : s.nome;
+      $selServ.appendChild(o);
+    });
+    $selServ.disabled = false;
+  }
 
   ricaricaEventi();
 });
