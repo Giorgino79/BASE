@@ -44,15 +44,23 @@ class FatturazioneDashboardView(LoginRequiredMixin, TemplateView):
         fatture_anno = Fattura.objects.filter(anno=anno).exclude(stato=Fattura.Stato.ANNULLATA)
         da_incassare = Fattura.objects.filter(stato=Fattura.Stato.EMESSA)
 
+        # SQLite non ha un tipo DECIMAL nativo: Sum() su un DecimalField torna
+        # un float con residui di imprecisione (es. 1234.5600000000004), da
+        # qui il quantize esplicito invece di fidarsi del valore aggregato.
+        DUE_DECIMALI = Decimal("0.01")
+
         ctx["anno"] = anno
         ctx["n_fatture_anno"]        = fatture_anno.count()
-        ctx["totale_fatturato_anno"] = fatture_anno.aggregate(t=Sum("totale"))["t"] or Decimal("0.00")
+        ctx["totale_fatturato_anno"] = (
+            fatture_anno.aggregate(t=Sum("totale"))["t"] or Decimal("0.00")
+        ).quantize(DUE_DECIMALI, rounding=ROUND_HALF_UP)
         ctx["n_da_incassare"]        = da_incassare.count()
         # Da incassare = residuo, non il totale: una fattura può essere già
         # incassata in parte (vedi contabilita.views.incasso_create).
-        ctx["totale_da_incassare"]   = da_incassare.aggregate(
-            t=Sum(F("totale") - F("importo_incassato"))
-        )["t"] or Decimal("0.00")
+        ctx["totale_da_incassare"]   = (
+            da_incassare.aggregate(t=Sum(F("totale") - F("importo_incassato")))["t"]
+            or Decimal("0.00")
+        ).quantize(DUE_DECIMALI, rounding=ROUND_HALF_UP)
         ctx["ultime_fatture"]        = Fattura.objects.order_by("-anno", "-progressivo")[:6]
         return ctx
 

@@ -32,7 +32,7 @@
     <div class="card text-center h-100">
       <div class="card-body py-4">
         <div class="text-muted small mb-1">Fatturato {{ anno }}</div>
-        <div class="fw-bold fs-2 text-brand">€ {{ totale_fatturato_anno }}</div>
+        <div class="fw-bold fs-2 text-brand">€ {{ totale_fatturato_anno|floatformat:2 }}</div>
       </div>
     </div>
   </div>
@@ -48,7 +48,7 @@
     <div class="card text-center h-100 border-warning">
       <div class="card-body py-4">
         <div class="text-muted small mb-1">Totale da incassare</div>
-        <div class="fw-bold fs-2 text-warning">€ {{ totale_da_incassare }}</div>
+        <div class="fw-bold fs-2 text-warning">€ {{ totale_da_incassare|floatformat:2 }}</div>
       </div>
     </div>
   </div>
@@ -127,7 +127,7 @@
           <td class="fw-semibold">{{ f.numero }}</td>
           <td class="text-nowrap small">{{ f.data_emissione|date:"d/m/Y" }}</td>
           <td>{{ f.dest_nome }}</td>
-          <td class="text-end">€ {{ f.totale }}</td>
+          <td class="text-end">€ {{ f.totale|floatformat:2 }}</td>
           <td class="text-center">
             {% if f.stato == 'emessa' %}
               <span class="badge badge-wait">Emessa</span>
