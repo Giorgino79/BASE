@@ -177,6 +177,7 @@ def _registra_quote(request, form, *, tipo, verso):
     note    = form.cleaned_data['note']
     creati  = []
     saldate = []
+    nc_usate = [n.numero for elenco in form.note_credito.values() for n in elenco]
 
     with transaction.atomic():
         for fattura, quota in form.ripartizione.items():
@@ -188,23 +189,35 @@ def _registra_quote(request, form, *, tipo, verso):
             dare, avere = ((conto, conto_contro) if verso['monetario_in_dare']
                            else (conto_contro, conto))
 
-            MovimentoPrimaNota.objects.create(
-                data=data,
-                causale=(
-                    f'{verso["etichetta"]} {"parziale " if parziale else ""}fattura '
-                    f'{numero} — {controparte}'
-                ),
-                importo=quota,
-                tipo=tipo,
-                conto_dare=dare,
-                conto_avere=avere,
-                numero_documento=numero,
-                note=note,
-                creato_da=request.user,
-                **{verso['campo_fattura']: fattura},
-            )
+            # Le note di credito scelte insieme alla fattura sono già a registro
+            # in prima nota (Avere cliente, quando sono state emesse): il cliente
+            # le ha trattenute dal bonifico, quindi il denaro che entra è la
+            # quota meno le note. La fattura invece le conta come incassate.
+            note_nc = form.note_credito.get(fattura, [])
+            in_denaro = quota - sum((n.totale for n in note_nc), Decimal('0.00'))
+
+            if in_denaro > 0:
+                MovimentoPrimaNota.objects.create(
+                    data=data,
+                    causale=(
+                        f'{verso["etichetta"]} {"parziale " if parziale else ""}fattura '
+                        f'{numero} — {controparte}'
+                        + (f' (al netto di {", ".join(n.numero for n in note_nc)})' if note_nc else '')
+                    ),
+                    importo=in_denaro,
+                    tipo=tipo,
+                    conto_dare=dare,
+                    conto_avere=avere,
+                    numero_documento=numero,
+                    note=note,
+                    creato_da=request.user,
+                    **{verso['campo_fattura']: fattura},
+                )
+                creati.append(numero)
+            for nc in note_nc:
+                nc.compensata = True
+                nc.save(update_fields=['compensata', 'updated_at'])
             verso['registra'](fattura, quota, data)
-            creati.append(numero)
             if fattura.is_saldata:
                 saldate.append(numero)
 
@@ -215,6 +228,8 @@ def _registra_quote(request, form, *, tipo, verso):
     if saldate:
         messaggio += f' Fatture saldate: {", ".join(saldate)}.'
     aperte = [n for n in creati if n not in saldate]
+    if nc_usate:
+        messaggio += f' Note di credito compensate: {", ".join(nc_usate)}.'
     if aperte:
         messaggio += f' Ancora aperte (parziale): {", ".join(aperte)}.'
     messages.success(request, messaggio)
@@ -264,7 +279,11 @@ def incasso_fatture(request):
     if not cliente:
         return JsonResponse({'results': []})
     qs = documenti.fatture_da_incassare().filter(dest_nome=cliente)
-    return JsonResponse({'results': documenti.righe_fatture(qs, lambda f: f.numero)})
+    note = documenti.note_credito_da_compensare().filter(fattura__dest_nome=cliente)
+    return JsonResponse({'results': (
+        documenti.righe_fatture(qs, lambda f: f.numero)
+        + documenti.righe_note_credito(note)
+    )})
 
 
 @login_required

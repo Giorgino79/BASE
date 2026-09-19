@@ -6,7 +6,10 @@ from django.utils import timezone
 
 from fatturazione_attiva.models import Fattura
 
-from .documenti import fatture_da_incassare, fatture_da_pagare
+from .documenti import (
+    fatture_da_incassare, fatture_da_pagare, note_credito_da_compensare,
+    righe_note_credito,
+)
 from .models import (
     REGOLE_DARE_AVERE, ContoContabile, FormaConsegna, ImpostazioniContabilita,
     LiquidazioneIva, MovimentoPrimaNota, PassaggioCassa, RegimeIva,
@@ -344,11 +347,36 @@ class RegistrazioneQuoteForm(BootstrapMixin, forms.Form):
         # Le quote arrivano come campi dinamici: qui si tiene la ripartizione
         # risolta, così la view non deve rileggere il POST.
         self.ripartizione = {}
+        # Note di credito scelte nello stesso select delle fatture (valori
+        # `nc_<pk>`), risolte in clean(): {fattura: [nota, ...]}.
+        self.note_credito = {}
+        self.note_credito_pks = self._separa_note_credito()
+
+    def _separa_note_credito(self):
+        """
+        Toglie dai valori di `fatture` quelli `nc_<pk>`: il campo è un
+        ModelMultipleChoice di fatture e non saprebbe cosa farne.
+        """
+        if not (self.is_bound and hasattr(self.data, 'getlist')):
+            return []
+        valori = self.data.getlist('fatture')
+        note = [v.removeprefix('nc_') for v in valori if v.startswith('nc_')]
+        if note:
+            self.data = self.data.copy()
+            self.data.setlist('fatture', [v for v in valori if not v.startswith('nc_')])
+        return note
 
     # ── Da specializzare ─────────────────────────────────────────────────────
 
     def get_fatture_queryset(self):
         raise NotImplementedError
+
+    def get_note_credito_queryset(self):
+        """Note di credito selezionabili insieme alle fatture (nessuna di default)."""
+        return None
+
+    def righe_note_credito(self, qs):
+        return []
 
     def numero_fattura(self, fattura):
         raise NotImplementedError
@@ -401,10 +429,14 @@ class RegistrazioneQuoteForm(BootstrapMixin, forms.Form):
         from .documenti import righe_fatture
 
         pks = [p for p in (self.data.getlist('fatture') if self.is_bound else []) if p]
-        if not pks:
+        if not pks and not self.note_credito_pks:
             return json.dumps([])
         qs = self.get_fatture_queryset().filter(pk__in=pks)
-        return json.dumps(righe_fatture(qs, self.numero_fattura))
+        righe = righe_fatture(qs, self.numero_fattura)
+        if self.note_credito_pks and self.get_note_credito_queryset() is not None:
+            note = self.get_note_credito_queryset().filter(pk__in=self.note_credito_pks)
+            righe += self.righe_note_credito(note)
+        return json.dumps(righe)
 
     # ── Ripartizione ─────────────────────────────────────────────────────────
 
@@ -491,15 +523,59 @@ class RegistrazioneQuoteForm(BootstrapMixin, forms.Form):
         if self.errors:
             return cleaned
 
-        if totale_quote != importo:
+        totale_nc = self._risolvi_note_credito(ripartizione, controparte)
+        if self.errors:
+            return cleaned
+
+        if totale_quote - totale_nc != importo:
             self.add_error(None, (
-                f'La ripartizione fra le fatture (€ {totale_quote}) non corrisponde '
-                f'all\'importo del movimento (€ {importo}). Correggi le quote o l\'importo.'
+                f'La ripartizione fra le fatture (€ {totale_quote - totale_nc}'
+                f'{f", al netto di € {totale_nc} di note di credito" if totale_nc else ""}) '
+                f'non corrisponde all\'importo del movimento (€ {importo}). '
+                f'Correggi le quote o l\'importo.'
             ))
             return cleaned
 
         self.ripartizione = ripartizione
         return cleaned
+
+    def _risolvi_note_credito(self, ripartizione, controparte):
+        """
+        Associa le note di credito scelte alla loro fattura e ne restituisce il
+        totale. La NC toglie denaro dal movimento, quindi la sua fattura deve
+        essere fra quelle scelte e la sua quota deve coprirla.
+        """
+        self.note_credito = {}
+        if not self.note_credito_pks:
+            return Decimal('0.00')
+
+        candidate = self.get_note_credito_queryset()
+        note = list(candidate.filter(pk__in=self.note_credito_pks)) if candidate is not None else []
+        if len(note) != len(set(self.note_credito_pks)):
+            self.add_error(None, 'Una nota di credito scelta non è più disponibile: ricarica la pagina.')
+            return Decimal('0.00')
+
+        totale = Decimal('0.00')
+        for nc in note:
+            if nc.fattura.dest_nome != controparte:
+                self.add_error(None, f'La nota di credito {nc.numero} non appartiene alla controparte selezionata.')
+            elif nc.fattura not in ripartizione:
+                self.add_error(None, (
+                    f'La nota di credito {nc.numero} si riferisce alla fattura {nc.fattura.numero}: '
+                    f'scegli anche quella, altrimenti la nota non ha niente da ridurre.'
+                ))
+            else:
+                self.note_credito.setdefault(nc.fattura, []).append(nc)
+                totale += nc.totale
+
+        for fattura, elenco in self.note_credito.items():
+            in_nc = sum((n.totale for n in elenco), Decimal('0.00'))
+            if ripartizione[fattura] < in_nc:
+                self.add_error(None, (
+                    f'La quota della fattura {fattura.numero} (€ {ripartizione[fattura]}) è inferiore '
+                    f'alle note di credito scelte (€ {in_nc}).'
+                ))
+        return totale
 
 
 class RegistrazioneIncassoForm(RegistrazioneQuoteForm):
@@ -526,6 +602,12 @@ class RegistrazioneIncassoForm(RegistrazioneQuoteForm):
 
     def get_fatture_queryset(self):
         return fatture_da_incassare()
+
+    def get_note_credito_queryset(self):
+        return note_credito_da_compensare()
+
+    def righe_note_credito(self, qs):
+        return righe_note_credito(qs)
 
     def numero_fattura(self, fattura):
         return fattura.numero

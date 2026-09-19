@@ -421,6 +421,11 @@ class NotaCredito(models.Model):
     emit_email           = models.EmailField(blank=True)
     emit_iban            = models.CharField(max_length=40, blank=True)
 
+    # True quando il cliente l'ha già trattenuta da un pagamento: la NC è stata
+    # scelta in un incasso (contabilita.views.incasso_create) e ha ridotto
+    # quanto restava da incassare sulla sua fattura.
+    compensata = models.BooleanField(default=False, verbose_name='Compensata in un incasso')
+
     # Audit
     emessa_da  = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL,

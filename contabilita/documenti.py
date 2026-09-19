@@ -36,6 +36,20 @@ def fatture_da_incassare():
             .order_by('data_emissione', 'numero'))
 
 
+def note_credito_da_compensare():
+    """
+    Note di credito che il cliente può aver trattenuto dal pagamento: non
+    ancora compensate e riferite a una fattura ancora aperta. Si scelgono nel
+    flusso di incasso insieme alle fatture, e ne riducono l'incasso in denaro.
+    """
+    from fatturazione_attiva.models import NotaCredito
+
+    return (NotaCredito.objects
+            .select_related('fattura')
+            .filter(compensata=False, fattura__in=fatture_da_incassare())
+            .order_by('data_emissione', 'numero'))
+
+
 def fatture_da_pagare():
     """
     Fatture passive ancora aperte: registrate e non ancora coperte da
@@ -138,6 +152,27 @@ def righe_fatture(qs, numero):
                        else f.data_fattura.strftime('%d/%m/%Y'),
         }
         for f in qs
+    ]
+
+
+def righe_note_credito(qs):
+    """
+    Note di credito nel formato delle righe di `righe_fatture`, con importo
+    negativo: nella ripartizione tolgono denaro invece di aggiungerne. L'id ha
+    il prefisso `nc_` perché sta nello stesso select delle fatture.
+    """
+    return [
+        {
+            'id':          f'nc_{n.pk}',
+            'tipo':        'nc',
+            'numero':      n.numero,
+            'totale':      str(-n.totale),
+            'residuo':     str(-n.totale),
+            'data':        n.data_emissione.strftime('%d/%m/%Y'),
+            'fattura_id':  str(n.fattura_id),
+            'fattura':     n.fattura.numero,
+        }
+        for n in qs
     ]
 
 

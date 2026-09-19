@@ -269,6 +269,9 @@
   });
 
   function testoFattura(f) {
+    if (f.tipo === 'nc') {
+      return f.numero + ' — nota di credito su ' + f.fattura + ', ' + eur(num(f.totale));
+    }
     return f.numero + ' — ' + eur(num(f.residuo)) + ' da saldare';
   }
 
@@ -354,6 +357,21 @@
 
     const tdInp = document.createElement('td');
     tdInp.className = 'text-end';
+    const tdEsito = document.createElement('td');
+    tdEsito.className = 'small text-muted';
+
+    // Una nota di credito non ha una quota da scegliere: toglie il suo
+    // importo, intero, dal denaro ricevuto.
+    if (dati.tipo === 'nc') {
+      tr.classList.add('riga-nc');
+      tdNum.textContent = dati.numero + ' (nota di credito)';
+      tdRes.textContent = '';
+      tdInp.textContent = eur(num(dati.totale));
+      tdInp.classList.add('pe-3');
+      tr.append(tdNum, tdData, tdTot, tdRes, tdInp, tdEsito);
+      return tr;
+    }
+
     const inp = document.createElement('input');
     inp.type = 'number'; inp.step = '0.01'; inp.min = '0.01';
     inp.max = dati.residuo;
@@ -363,22 +381,32 @@
     inp.addEventListener('input', aggiornaQuadratura);
     tdInp.appendChild(inp);
 
-    const tdEsito = document.createElement('td');
-    tdEsito.className = 'small text-muted';
-
     tr.append(tdNum, tdData, tdTot, tdRes, tdInp, tdEsito);
     return tr;
   }
 
   function aggiornaQuadratura() {
     let ripartito = 0;
+    const scelte = $fatture.val() || [];
     tbody.querySelectorAll('tr').forEach(function (tr) {
+      const dati  = FATTURE[tr.dataset.pk];
+      const esito = tr.children[5];
+
+      if (dati.tipo === 'nc') {
+        ripartito += num(dati.totale);
+        const presente = scelte.indexOf(dati.fattura_id) !== -1;
+        esito.textContent = presente
+          ? 'trattenuta su ' + dati.fattura
+          : 'scegli anche ' + dati.fattura;
+        esito.className = presente ? 'small text-muted' : 'small quadra-ko';
+        return;
+      }
+
       const inp = tr.querySelector('input.quota');
       const q   = num(inp.value);
-      const res = num(FATTURE[tr.dataset.pk].residuo);
+      const res = num(dati.residuo);
       ripartito += q;
 
-      const esito = tr.children[5];
       inp.classList.remove('is-invalid');
       if (q > res) {
         esito.textContent = 'oltre il residuo';
@@ -426,7 +454,7 @@
 
     // Comodità: se l'importo è ancora vuoto, proponi la somma dei residui.
     if (scelte.length && !num(inpImp.value)) {
-      const somma = scelte.reduce((t, pk) => t + num(FATTURE[pk].residuo), 0);
+      const somma = scelte.reduce((t, pk) => t + (FATTURE[pk] ? num(FATTURE[pk].residuo) : 0), 0);
       inpImp.value = somma.toFixed(2);
     }
     aggiornaQuadratura();
