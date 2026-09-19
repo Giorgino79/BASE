@@ -78,9 +78,12 @@
             </tr>
           </thead>
           <tbody>
-            {% for r in fattura.righe.all %}
+            {% for r in righe %}
             <tr>
-              <td class="fw-semibold small">{{ r.ods_numero }}</td>
+              <td class="fw-semibold small">
+                {% if r.ods_obj %}<a href="{{ r.ods_obj.get_absolute_url }}" class="text-decoration-none">{{ r.ods_numero }}</a>
+                {% else %}{{ r.ods_numero }}{% endif %}
+              </td>
               <td class="small text-nowrap">{{ r.data_servizio|date:"d/m/Y" }}</td>
               <td>{{ r.descrizione }}{% if r.note %} <span class="text-muted small">— {{ r.note }}</span>{% endif %}</td>
               <td class="text-end">€ {{ r.importo }}</td>
@@ -139,7 +142,9 @@
           <tbody>
             {% for nc in nc_list %}
             <tr>
-              <td class="fw-semibold">{{ nc.numero }}</td>
+              <td class="fw-semibold">
+                <a href="{% url 'fatturazione_attiva:nc_detail' nc.pk %}" class="text-decoration-none">{{ nc.numero }}</a>
+              </td>
               <td class="small text-nowrap">{{ nc.data_emissione|date:"d/m/Y" }}</td>
               <td>
                 <span class="badge bg-secondary">{{ nc.get_tipo_display }}</span>

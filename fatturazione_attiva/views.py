@@ -379,6 +379,19 @@ class FatturaDetailView(LoginRequiredMixin, SidebarQrAllegatiMixin, DetailView):
     template_name = "fatturazione_attiva/fattura_detail.html"
     context_object_name = "fattura"
 
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        # ods_numero in RigaFattura è uno snapshot testuale (la fattura non
+        # deve cambiare se l'ODS viene poi modificato/cancellato): risaliamo
+        # all'ODS vero tramite la M2M Fattura.ods per poterlo linkare quando
+        # esiste ancora.
+        ods_by_numero = {o.numero: o for o in self.object.ods.all()}
+        righe = list(self.object.righe.all())
+        for r in righe:
+            r.ods_obj = ods_by_numero.get(r.ods_numero)
+        ctx["righe"] = righe
+        return ctx
+
 
 def calcola_data_scadenza(data_emissione, note_pagamento):
     """
